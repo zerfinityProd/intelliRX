@@ -1,0 +1,340 @@
+
+<div class="modal-overlay" (click)="onClose()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Add New Patient</h2>
+      <button class="close-button" (click)="onClose()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <form (ngSubmit)="onSubmit()" #patientForm="ngForm">
+
+
+        <!-- Basic Information Section -->
+        <div class="section">
+          <h3 class="section-title">Basic Information</h3>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="firstName">First Name <span class="required">*</span></label>
+              <input
+                type="text"
+                id="firstName"
+                name="firstName"
+                [(ngModel)]="firstName"
+                (ngModelChange)="onNameChange(); clearSuccessMessage()"
+                placeholder="Enter first name"
+                required
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="lastName">Last Name <span class="required">*</span></label>
+              <input
+                type="text"
+                id="lastName"
+                name="lastName"
+                [(ngModel)]="lastName"
+                (ngModelChange)="onNameChange()"
+                placeholder="Enter last name"
+                required
+                class="form-input"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="phone">Phone Number <span class="required">*</span></label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                [(ngModel)]="phone"
+                placeholder="10-digit number"
+                required
+                maxlength="10"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="familyId">
+                Family ID 
+                <span class="auto-label">(Auto-generated)</span>
+              </label>
+              <input
+                type="text"
+                id="familyId"
+                name="familyId"
+                [(ngModel)]="familyId"
+                placeholder="Will be generated from name"
+                readonly
+                class="form-input readonly-input"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="dateOfBirth">Date of Birth</label>
+              <input
+                type="date"
+                id="dateOfBirth"
+                name="dateOfBirth"
+                [(ngModel)]="dateOfBirth"
+                class="form-input"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="gender">Gender</label>
+              <select id="gender" name="gender" [(ngModel)]="gender" class="form-input">
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label for="email">Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                [(ngModel)]="email"
+                placeholder="patient@example.com"
+                class="form-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Present Illness Section -->
+        <div class="section">
+          <h3 class="section-title">Present Illness</h3>
+          
+          <div *ngFor="let illness of presentIllnesses; let i = index" class="dynamic-field">
+            <textarea
+              [(ngModel)]="illness.description"
+              [name]="'illness-' + i"
+              placeholder="Describe illness"
+              class="form-textarea"
+              rows="2"
+            ></textarea>
+            <button *ngIf="presentIllnesses.length > 1" type="button" class="remove-btn" (click)="removeIllness(i)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <button type="button" class="add-field-btn" (click)="addIllness()">
+            + Add Illness
+          </button>
+        </div>
+
+        <!-- Allergies Section -->
+        <div class="section">
+          <h3 class="section-title">Allergies</h3>
+          
+          <div *ngFor="let allergy of allergies; let i = index" class="dynamic-field">
+            <input
+              type="text"
+              [(ngModel)]="allergy.description"
+              [name]="'allergy-' + i"
+              placeholder="List any known allergies"
+              class="form-input"
+            />
+            <button *ngIf="allergies.length > 1" type="button" class="remove-btn" (click)="removeAllergy(i)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <button type="button" class="add-field-btn" (click)="addAllergy()">
+            + Add Allergy
+          </button>
+        </div>
+
+        <!-- Chief Complaints Section -->
+        <div class="section">
+          <h3 class="section-title">Chief Complaints</h3>
+          
+          <div *ngFor="let complaint of chiefComplaints; let i = index" class="dynamic-field">
+            <textarea
+              [(ngModel)]="complaint.description"
+              [name]="'complaint-' + i"
+              placeholder="Describe chief complaints"
+              class="form-textarea"
+              rows="2"
+            ></textarea>
+            <button *ngIf="chiefComplaints.length > 1" type="button" class="remove-btn" (click)="removeChiefComplaint(i)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <button type="button" class="add-field-btn" (click)="addChiefComplaint()">
+            + Add Complaint
+          </button>
+        </div>
+
+        <!-- Diagnosis Section -->
+        <div class="section">
+          <h3 class="section-title">Diagnosis</h3>
+          
+          <div class="form-group">
+            <textarea
+              id="diagnosis"
+              name="diagnosis"
+              [(ngModel)]="diagnosis"
+              placeholder="Enter diagnosis"
+              class="form-textarea"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Examinations Section -->
+        <div class="section">
+          <h3 class="section-title">Examinations</h3>
+          
+          <div *ngFor="let exam of examinations; let i = index" class="exam-field">
+            <div class="exam-inputs">
+              <input
+                type="text"
+                [(ngModel)]="exam.testName"
+                [name]="'examName-' + i"
+                placeholder="Test name"
+                class="form-input"
+              />
+              <input
+                type="text"
+                [(ngModel)]="exam.result"
+                [name]="'examResult-' + i"
+                placeholder="Result"
+                class="form-input"
+              />
+            </div>
+            <button *ngIf="examinations.length > 1" type="button" class="remove-btn" (click)="removeExamination(i)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <button type="button" class="add-field-btn" (click)="addExamination()">
+            + Add Examination
+          </button>
+        </div>
+
+        <!-- Medicines Section -->
+        <div class="section">
+          <h3 class="section-title">Medicines</h3>
+          
+          <div *ngFor="let medicine of medicines; let i = index" class="medicine-field">
+            <div class="medicine-inputs">
+              <input
+                type="text"
+                [(ngModel)]="medicine.name"
+                [name]="'medicineName-' + i"
+                placeholder="Medicine name"
+                class="form-input"
+              />
+              <input
+                type="text"
+                [(ngModel)]="medicine.dosage"
+                [name]="'medicineDosage-' + i"
+                placeholder="Dosage"
+                class="form-input"
+              />
+              <input
+                type="text"
+                [(ngModel)]="medicine.frequency"
+                [name]="'medicineFrequency-' + i"
+                placeholder="Frequency"
+                class="form-input"
+              />
+            </div>
+            <button *ngIf="medicines.length > 1" type="button" class="remove-btn" (click)="removeMedicine(i)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          
+          <button type="button" class="add-field-btn" (click)="addMedicine()">
+            + Add Medicine
+          </button>
+        </div>
+
+        <!-- Treatment Plan Section -->
+        <div class="section">
+          <h3 class="section-title">Treatment Plan</h3>
+          
+          <div class="form-group">
+            <textarea
+              id="treatmentPlan"
+              name="treatmentPlan"
+              [(ngModel)]="treatmentPlan"
+              placeholder="Outline the treatment plan"
+              class="form-textarea"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Advice Section -->
+        <div class="section">
+          <h3 class="section-title">Advice</h3>
+          
+          <div class="form-group">
+            <textarea
+              id="advice"
+              name="advice"
+              [(ngModel)]="advice"
+              placeholder="Additional advice for the patient"
+              class="form-textarea"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          
+          <span *ngIf="successMessage" style="color: #16a34a; font-weight: 600; font-size: 15px; margin-right: auto;">
+            ✓ {{ successMessage }}
+          </span>
+          <button type="button" class="cancel-button" (click)="onClose()" [disabled]="isSubmitting">
+            Cancel
+          </button>
+          <button type="submit" class="submit-button" [disabled]="isSubmitting">
+            <span *ngIf="!isSubmitting">Save Patient</span>
+            <span *ngIf="isSubmitting" class="loading-content">
+              <span class="loading-spinner"></span>
+              Saving...
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
