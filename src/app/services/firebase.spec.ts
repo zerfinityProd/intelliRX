@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-
 import { FirebaseService } from './firebase';
 
-describe('Firebase', () => {
+// Disable tests - they should only run with 'ng test', not 'ng serve'
+describe('FirebaseService', () => {
   let service: FirebaseService;
 
   beforeEach(() => {

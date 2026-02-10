@@ -1,4 +1,3 @@
-
 export interface Patient {
   uniqueId: string; // Primary key: combination of familyId and phone
   familyId: string; // lastname_firstname
@@ -7,7 +6,6 @@ export interface Patient {
   email?: string;
   dateOfBirth?: Date;
   gender?: string;
-  presentIllness?: string;
   allergies?: string; 
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +40,7 @@ export interface Medicine {
 
 export interface Visit {
   id?: string;
+  presentIllness?: string; // Moved from Patient - illness at time of visit
   chiefComplaints: string;
   diagnosis: string;
   examination: string;

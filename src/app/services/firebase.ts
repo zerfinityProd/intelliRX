@@ -1,4 +1,3 @@
-
 import { Injectable } from '@angular/core';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import {
@@ -114,26 +113,27 @@ export class FirebaseService {
    */
   async searchPatientByPhone(phone: string): Promise<Patient[]> {
     try {
-      // Check cache first
+      // Check cache first for instant results
       const cachedResults = this.getCachedSearchResults('phone', phone);
-      if (cachedResults) {
-        console.log('Returning cached phone search results');
+      if (cachedResults && cachedResults.length > 0) {
+        console.log('✅ Returning cached phone search results (instant)');
         return cachedResults;
       }
 
-      // Create optimized query with limit
+      // Create optimized query with smaller limit for faster response
       const q = query(
         this.patientsCollection,
         where('phone', '==', phone),
-        limit(20) // Limit results for faster queries
+        limit(10) // Reduced from 20 to 10 for faster queries
       );
       
       const querySnapshot = await getDocs(q);
       const results = querySnapshot.docs.map(doc => this.convertFromFirestore(doc.data()));
       
-      // Cache results
+      // Cache results for next time
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
+      console.log(`📞 Phone search completed: ${results.length} results`);
       return results;
     } catch (error) {
       console.error('Error searching patient by phone:', error);
@@ -153,10 +153,10 @@ export class FirebaseService {
    */
   async searchPatientByFamilyId(familyId: string): Promise<Patient[]> {
     try {
-      // Check cache first
+      // Check cache first for instant results
       const cachedResults = this.getCachedSearchResults('familyId', familyId);
-      if (cachedResults) {
-        console.log('Returning cached family ID search results');
+      if (cachedResults && cachedResults.length > 0) {
+        console.log('✅ Returning cached family ID search results (instant)');
         return cachedResults;
       }
 
@@ -169,15 +169,16 @@ export class FirebaseService {
         where('familyId', '>=', searchTerm),
         where('familyId', '<=', searchTerm + '\uf8ff'),
         orderBy('familyId'),
-        limit(20) // Limit results for faster queries
+        limit(10) // Reduced from 20 to 10 for faster queries
       );
       
       const querySnapshot = await getDocs(q);
       const results = querySnapshot.docs.map(doc => this.convertFromFirestore(doc.data()));
       
-      // Cache results
+      // Cache results for next time
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
+      console.log(`👨‍👩‍👧‍👦 Family ID search completed: ${results.length} results`);
       return results;
     } catch (error) {
       console.error('Error searching patient by family ID:', error);
@@ -200,7 +201,7 @@ export class FirebaseService {
       // Check cache first
       const cached = this.getFromCache(uniqueId);
       if (cached) {
-        console.log('Returning cached patient data');
+        console.log('✅ Returning cached patient data (instant)');
         return cached;
       }
 
@@ -268,14 +269,15 @@ export class FirebaseService {
   }
 
   /**
-   * Get all visits for a patient (Optimized with limit)
+   * Get all visits for a patient (Optimized with limit and ordered by date - newest first)
    */
   async getPatientVisits(patientId: string): Promise<Visit[]> {
     try {
       const patientDoc = doc(this.patientsCollection, patientId);
       const visitsCollection = collection(patientDoc, 'visits');
       
-      const q = query(visitsCollection, limit(50));
+      // Order by createdAt descending (newest first)
+      const q = query(visitsCollection, orderBy('createdAt', 'desc'), limit(50));
       const querySnapshot = await getDocs(q);
       
       return querySnapshot.docs.map(doc => this.convertFromFirestore(doc.data()) as Visit);
@@ -296,7 +298,7 @@ export class FirebaseService {
   }
 
   /**
-   * Cache Management - Get patient from cache
+   * Cache Management - Get patient from cache (OPTIMIZED)
    */
   private getFromCache(uniqueId: string): Patient | null {
     const cached = this.patientCache.get(uniqueId);
@@ -306,7 +308,8 @@ export class FirebaseService {
     }
     
     // Check if cache is expired
-    if (Date.now() - cached.timestamp > this.CACHE_DURATION) {
+    const isExpired = Date.now() - cached.timestamp > this.CACHE_DURATION;
+    if (isExpired) {
       this.patientCache.delete(uniqueId);
       return null;
     }
@@ -322,22 +325,28 @@ export class FirebaseService {
   }
 
   /**
-   * Cache Management - Get cached search results
+   * Cache Management - Get cached search results (OPTIMIZED)
    */
   private getCachedSearchResults(field: 'phone' | 'familyId', value: string): Patient[] | null {
     const cachedPatients: Patient[] = [];
+    const now = Date.now();
     
     for (const [_, cached] of this.patientCache) {
-      // Check if cache is expired
-      if (Date.now() - cached.timestamp > this.CACHE_DURATION) {
+      // Check if cache is expired (quick check first)
+      if (now - cached.timestamp > this.CACHE_DURATION) {
         continue;
       }
       
       // Check if patient matches search
       if (field === 'phone' && cached.patient.phone === value) {
         cachedPatients.push(cached.patient);
-      } else if (field === 'familyId' && cached.patient.familyId === value) {
-        cachedPatients.push(cached.patient);
+      } else if (field === 'familyId') {
+        // Support prefix matching for family ID
+        const patientFamilyId = cached.patient.familyId.toLowerCase();
+        const searchValue = value.toLowerCase();
+        if (patientFamilyId.includes(searchValue)) {
+          cachedPatients.push(cached.patient);
+        }
       }
     }
     
@@ -349,6 +358,7 @@ export class FirebaseService {
    */
   public clearCache(): void {
     this.patientCache.clear();
+    console.log('🗑️ Cache cleared');
   }
 
   /**

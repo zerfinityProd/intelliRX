@@ -1,101 +1,148 @@
-
 <div class="modal-overlay" (click)="onClose()">
   <div class="modal-content" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>Add New Patient</h2>
-      <button class="close-button" (click)="onClose()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
+      <h2>{{ isNewVisit ? 'Add New Visit' : 'Add New Patient' }}</h2>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <!-- Edit Button (only shows for existing patients) -->
+        <button 
+          *ngIf="isNewVisit" 
+          type="button"
+          class="edit-toggle-button" 
+          (click)="onEditClick()"
+          [class.active]="isEditMode"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          {{ isEditMode ? 'Lock' : 'Edit' }}
+        </button>
+        <button class="close-button" (click)="onClose()">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div class="modal-body">
       <form (ngSubmit)="onSubmit()" #patientForm="ngForm">
 
-
         <!-- Basic Information Section -->
         <div class="section">
           <h3 class="section-title">Basic Information</h3>
           
-          <div class="form-row">
+          <!-- 3-COLUMN: First Name, Last Name, Phone -->
+          <div class="form-row-3col">
             <div class="form-group">
-              <label for="firstName">First Name <span class="required">*</span></label>
+              <label for="firstName">
+                First Name <span class="required">*</span>
+                <span *ngIf="isFieldReadonly('firstName')" class="locked-label">🔒</span>
+              </label>
               <input
                 type="text"
                 id="firstName"
                 name="firstName"
                 [(ngModel)]="firstName"
-                (ngModelChange)="onNameChange(); clearSuccessMessage()"
+                (ngModelChange)="onNameChange()"
                 placeholder="Enter first name"
                 required
+                [readonly]="isFieldReadonly('firstName')"
+                [class.readonly-input]="isFieldReadonly('firstName')"
                 class="form-input"
               />
             </div>
 
             <div class="form-group">
-              <label for="lastName">Last Name <span class="required">*</span></label>
+              <label for="lastName">
+                Last Name <span class="required">*</span>
+                <span *ngIf="isFieldReadonly('lastName')" class="locked-label">🔒</span>
+              </label>
               <input
                 type="text"
                 id="lastName"
                 name="lastName"
                 [(ngModel)]="lastName"
-                (ngModelChange)="onNameChange()"
+                (ngModelChange)="onNameChange(); clearSuccessMessage()"
                 placeholder="Enter last name"
                 required
+                [readonly]="isFieldReadonly('lastName')"
+                [class.readonly-input]="isFieldReadonly('lastName')"
                 class="form-input"
               />
             </div>
-          </div>
 
-          <div class="form-row">
             <div class="form-group">
-              <label for="phone">Phone Number <span class="required">*</span></label>
+              <label for="phone">
+                Phone Number <span class="required">*</span>
+                <span *ngIf="isFieldReadonly('phone')" class="locked-label">🔒</span>
+              </label>
               <input
                 type="tel"
                 id="phone"
                 name="phone"
                 [(ngModel)]="phone"
+                (ngModelChange)="clearSuccessMessage()"
                 placeholder="10-digit number"
                 required
                 maxlength="10"
+                [readonly]="isFieldReadonly('phone')"
+                [class.readonly-input]="isFieldReadonly('phone')"
                 class="form-input"
               />
             </div>
+          </div>
 
+          <!-- 3-COLUMN: Family ID, Date of Birth, Gender -->
+          <div class="form-row-3col">
             <div class="form-group">
               <label for="familyId">
                 Family ID 
-                <span class="auto-label">(Auto-generated)</span>
+                <span class="auto-label">(Auto)</span>
               </label>
               <input
                 type="text"
                 id="familyId"
                 name="familyId"
                 [(ngModel)]="familyId"
-                placeholder="Will be generated from name"
+                placeholder="Generated from name"
                 readonly
                 class="form-input readonly-input"
               />
             </div>
-          </div>
 
-          <div class="form-row">
             <div class="form-group">
-              <label for="dateOfBirth">Date of Birth</label>
+              <label for="dateOfBirth">
+                Date of Birth
+                <span *ngIf="isFieldReadonly('dateOfBirth')" class="locked-label">🔒</span>
+              </label>
               <input
                 type="date"
                 id="dateOfBirth"
                 name="dateOfBirth"
                 [(ngModel)]="dateOfBirth"
+                (ngModelChange)="clearSuccessMessage()"
+                [readonly]="isFieldReadonly('dateOfBirth')"
+                [class.readonly-input]="isFieldReadonly('dateOfBirth')"
                 class="form-input"
               />
             </div>
 
             <div class="form-group">
-              <label for="gender">Gender</label>
-              <select id="gender" name="gender" [(ngModel)]="gender" class="form-input">
+              <label for="gender">
+                Gender
+                <span *ngIf="isFieldReadonly('gender')" class="locked-label">🔒</span>
+              </label>
+              <select 
+                id="gender" 
+                name="gender" 
+                [(ngModel)]="gender"
+                (ngModelChange)="clearSuccessMessage()"
+                [disabled]="isFieldReadonly('gender')"
+                [class.readonly-input]="isFieldReadonly('gender')"
+                class="form-input"
+              >
                 <option value="">Select gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -103,156 +150,258 @@
               </select>
             </div>
           </div>
+        </div>
 
-          <div class="form-row">
-            <div class="form-group" style="grid-column: 1 / -1;">
-              <label for="email">Email</label>
+        <!-- ✅ 2-COLUMN LAYOUT: Email + Present Illness -->
+        <div class="sections-container">
+          <!-- Email Section -->
+          <div class="section">
+            <h3 class="section-title">Email</h3>
+            <div class="form-group">
               <input
                 type="email"
                 id="email"
                 name="email"
                 [(ngModel)]="email"
+                (ngModelChange)="clearSuccessMessage()"
                 placeholder="patient@example.com"
+                [readonly]="isFieldReadonly('email')"
+                [class.readonly-input]="isFieldReadonly('email')"
                 class="form-input"
               />
             </div>
           </div>
-        </div>
 
-        <!-- Present Illness Section -->
-        <div class="section">
-          <h3 class="section-title">Present Illness</h3>
-          
-          <div *ngFor="let illness of presentIllnesses; let i = index" class="dynamic-field">
-            <textarea
-              [(ngModel)]="illness.description"
-              [name]="'illness-' + i"
-              placeholder="Describe illness"
-              class="form-textarea"
-              rows="2"
-            ></textarea>
-            <button *ngIf="presentIllnesses.length > 1" type="button" class="remove-btn" (click)="removeIllness(i)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          
-          <button type="button" class="add-field-btn" (click)="addIllness()">
-            + Add Illness
-          </button>
-        </div>
-
-        <!-- Allergies Section -->
-        <div class="section">
-          <h3 class="section-title">Allergies</h3>
-          
-          <div *ngFor="let allergy of allergies; let i = index" class="dynamic-field">
-            <input
-              type="text"
-              [(ngModel)]="allergy.description"
-              [name]="'allergy-' + i"
-              placeholder="List any known allergies"
-              class="form-input"
-            />
-            <button *ngIf="allergies.length > 1" type="button" class="remove-btn" (click)="removeAllergy(i)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          
-          <button type="button" class="add-field-btn" (click)="addAllergy()">
-            + Add Allergy
-          </button>
-        </div>
-
-        <!-- Chief Complaints Section -->
-        <div class="section">
-          <h3 class="section-title">Chief Complaints</h3>
-          
-          <div *ngFor="let complaint of chiefComplaints; let i = index" class="dynamic-field">
-            <textarea
-              [(ngModel)]="complaint.description"
-              [name]="'complaint-' + i"
-              placeholder="Describe chief complaints"
-              class="form-textarea"
-              rows="2"
-            ></textarea>
-            <button *ngIf="chiefComplaints.length > 1" type="button" class="remove-btn" (click)="removeChiefComplaint(i)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          
-          <button type="button" class="add-field-btn" (click)="addChiefComplaint()">
-            + Add Complaint
-          </button>
-        </div>
-
-        <!-- Diagnosis Section -->
-        <div class="section">
-          <h3 class="section-title">Diagnosis</h3>
-          
-          <div class="form-group">
-            <textarea
-              id="diagnosis"
-              name="diagnosis"
-              [(ngModel)]="diagnosis"
-              placeholder="Enter diagnosis"
-              class="form-textarea"
-              rows="3"
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- Examinations Section -->
-        <div class="section">
-          <h3 class="section-title">Examinations</h3>
-          
-          <div *ngFor="let exam of examinations; let i = index" class="exam-field">
-            <div class="exam-inputs">
-              <input
-                type="text"
-                [(ngModel)]="exam.testName"
-                [name]="'examName-' + i"
-                placeholder="Test name"
-                class="form-input"
-              />
-              <input
-                type="text"
-                [(ngModel)]="exam.result"
-                [name]="'examResult-' + i"
-                placeholder="Result"
-                class="form-input"
-              />
+          <!-- Present Illness Section -->
+          <div class="section">
+            <h3 class="section-title">Present Illness</h3>
+            
+            <div *ngFor="let illness of presentIllnesses; let i = index" class="dynamic-field">
+              <textarea
+                [(ngModel)]="illness.description"
+                (ngModelChange)="clearSuccessMessage()"
+                [name]="'illness-' + i"
+                placeholder="Describe illness"
+                class="form-textarea"
+                rows="2"
+              ></textarea>
+              <button *ngIf="presentIllnesses.length > 1" type="button" class="remove-btn" (click)="removeIllness(i)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
             </div>
-            <button *ngIf="examinations.length > 1" type="button" class="remove-btn" (click)="removeExamination(i)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
+            
+            <button type="button" class="add-field-btn" (click)="addIllness()">
+              + Add Illness
             </button>
           </div>
-          
-          <button type="button" class="add-field-btn" (click)="addExamination()">
-            + Add Examination
-          </button>
         </div>
 
-        <!-- Medicines Section -->
-        <div class="section">
+        <!-- ✅ 2-COLUMN LAYOUT: Allergies + Chief Complaints -->
+        <div class="sections-container">
+          <!-- Allergies Section -->
+          <div class="section">
+            <h3 class="section-title">
+              Allergies
+              <span *ngIf="isNewVisit && existingAllergies.length > 0 && !isEditMode" class="info-badge">{{ existingAllergies.length }} existing</span>
+            </h3>
+            
+            <!-- For New Patient: Show regular allergy input -->
+            <ng-container *ngIf="!isNewVisit">
+              <div *ngFor="let allergy of allergies; let i = index" class="dynamic-field">
+                <input
+                  type="text"
+                  [(ngModel)]="allergy.description"
+                  (ngModelChange)="clearSuccessMessage()"
+                  [name]="'allergy-' + i"
+                  placeholder="List any known allergies"
+                  class="form-input"
+                />
+                <button *ngIf="allergies.length > 1" type="button" class="remove-btn" (click)="removeAllergy(i)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </ng-container>
+            
+            <!-- For Existing Patient Visit -->
+            <ng-container *ngIf="isNewVisit">
+              <!-- EDIT MODE: Show existing allergies as EDITABLE -->
+              <ng-container *ngIf="isEditMode">
+                <div *ngIf="existingAllergies.length > 0" style="margin-bottom: 10px;">
+                  <div style="font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+                    ✏ Editing Allergies
+                  </div>
+                  <div *ngFor="let allergy of existingAllergies; let i = index" class="dynamic-field">
+                    <input
+                      type="text"
+                      [(ngModel)]="allergy.description"
+                      (ngModelChange)="clearSuccessMessage()"
+                      [name]="'existing-allergy-' + i"
+                      placeholder="Allergy"
+                      class="form-input"
+                    />
+                    <button *ngIf="existingAllergies.length > 1" type="button" class="remove-btn" (click)="removeExistingAllergy(i)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </ng-container>
+              
+              <!-- NOT EDIT MODE: Show existing allergies as LOCKED, new allergies as EDITABLE -->
+              <ng-container *ngIf="!isEditMode">
+                <!-- Existing Allergies (Locked/Read-only) -->
+                <div *ngIf="existingAllergies.length > 0" style="margin-bottom: 16px;">
+                  <div style="font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+                    🔒 Existing Allergies (Read-only)
+                  </div>
+                  <div *ngFor="let allergy of existingAllergies; let i = index" class="dynamic-field">
+                    <input
+                      type="text"
+                      [value]="allergy.description"
+                      [name]="'existing-allergy-readonly-' + i"
+                      readonly
+                      class="form-input readonly-input"
+                      style="background: #f8fafc; border-color: #e2e8f0; cursor: default;"
+                    />
+                    <div style="width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: #94a3b8;">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- New Allergies (Editable) -->
+                <div style="font-size: 11px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">
+                  ✏ New Allergies
+                </div>
+                
+                <div *ngFor="let allergy of newAllergies; let i = index" class="dynamic-field">
+                  <input
+                    type="text"
+                    [(ngModel)]="allergy.description"
+                    (ngModelChange)="clearSuccessMessage()"
+                    [name]="'new-allergy-' + i"
+                    placeholder="Add new allergy"
+                    class="form-input"
+                  />
+                  <button *ngIf="newAllergies.length > 1" type="button" class="remove-btn" (click)="removeNewAllergy(i)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </ng-container>
+            </ng-container>
+            
+            <button type="button" class="add-field-btn" (click)="addAllergy()">
+              + Add {{ isNewVisit ? 'Another' : '' }} Allergy
+            </button>
+          </div>
+
+          <!-- Chief Complaints Section -->
+          <div class="section">
+            <h3 class="section-title">Chief Complaints</h3>
+            
+            <div *ngFor="let complaint of chiefComplaints; let i = index" class="dynamic-field">
+              <textarea
+                [(ngModel)]="complaint.description"
+                (ngModelChange)="clearSuccessMessage()"
+                [name]="'complaint-' + i"
+                placeholder="Describe chief complaints"
+                class="form-textarea"
+                rows="2"
+              ></textarea>
+              <button *ngIf="chiefComplaints.length > 1" type="button" class="remove-btn" (click)="removeChiefComplaint(i)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            
+            <button type="button" class="add-field-btn" (click)="addChiefComplaint()">
+              + Add Complaint
+            </button>
+          </div>
+        </div>
+
+        <!-- ✅ 2-COLUMN LAYOUT: Diagnosis + Examinations -->
+        <div class="sections-container">
+          <!-- Diagnosis Section -->
+          <div class="section">
+            <h3 class="section-title">Diagnosis</h3>
+            
+            <div class="form-group">
+              <textarea
+                id="diagnosis"
+                name="diagnosis"
+                [(ngModel)]="diagnosis"
+                (ngModelChange)="clearSuccessMessage()"
+                placeholder="Enter diagnosis"
+                class="form-textarea"
+                rows="3"
+              ></textarea>
+            </div>
+          </div>
+
+          <!-- Examinations Section -->
+          <div class="section">
+            <h3 class="section-title">Examinations</h3>
+            
+            <div *ngFor="let exam of examinations; let i = index" class="exam-field">
+              <div class="exam-inputs">
+                <input
+                  type="text"
+                  [(ngModel)]="exam.testName"
+                  (ngModelChange)="clearSuccessMessage()"
+                  [name]="'examName-' + i"
+                  placeholder="Test name"
+                  class="form-input"
+                />
+                <input
+                  type="text"
+                  [(ngModel)]="exam.result"
+                  (ngModelChange)="clearSuccessMessage()"
+                  [name]="'examResult-' + i"
+                  placeholder="Result"
+                  class="form-input"
+                />
+              </div>
+              <button *ngIf="examinations.length > 1" type="button" class="remove-btn" (click)="removeExamination(i)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            
+            <button type="button" class="add-field-btn" (click)="addExamination()">
+              + Add Examination
+            </button>
+          </div>
+        </div>
+
+        <!-- Medicines Section - Full Width -->
+        <div class="section section-full-width">
           <h3 class="section-title">Medicines</h3>
           
           <div *ngFor="let medicine of medicines; let i = index" class="medicine-field">
-            <div class="medicine-inputs">
+            <div class="medicine-inputs-fullwidth">
               <input
                 type="text"
                 [(ngModel)]="medicine.name"
+                (ngModelChange)="clearSuccessMessage()"
                 [name]="'medicineName-' + i"
                 placeholder="Medicine name"
                 class="form-input"
@@ -260,6 +409,7 @@
               <input
                 type="text"
                 [(ngModel)]="medicine.dosage"
+                (ngModelChange)="clearSuccessMessage()"
                 [name]="'medicineDosage-' + i"
                 placeholder="Dosage"
                 class="form-input"
@@ -267,13 +417,14 @@
               <input
                 type="text"
                 [(ngModel)]="medicine.frequency"
+                (ngModelChange)="clearSuccessMessage()"
                 [name]="'medicineFrequency-' + i"
                 placeholder="Frequency"
                 class="form-input"
               />
             </div>
             <button *ngIf="medicines.length > 1" type="button" class="remove-btn" (click)="removeMedicine(i)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
@@ -285,49 +436,56 @@
           </button>
         </div>
 
-        <!-- Treatment Plan Section -->
-        <div class="section">
-          <h3 class="section-title">Treatment Plan</h3>
-          
-          <div class="form-group">
-            <textarea
-              id="treatmentPlan"
-              name="treatmentPlan"
-              [(ngModel)]="treatmentPlan"
-              placeholder="Outline the treatment plan"
-              class="form-textarea"
-              rows="3"
-            ></textarea>
+        <!-- ✅ 2-COLUMN LAYOUT: Treatment Plan + Advice -->
+        <div class="sections-container">
+          <!-- Treatment Plan Section -->
+          <div class="section">
+            <h3 class="section-title">Treatment Plan</h3>
+            
+            <div class="form-group">
+              <textarea
+                id="treatmentPlan"
+                name="treatmentPlan"
+                [(ngModel)]="treatmentPlan"
+                (ngModelChange)="clearSuccessMessage()"
+                placeholder="Outline the treatment plan"
+                class="form-textarea"
+                rows="3"
+              ></textarea>
+            </div>
           </div>
-        </div>
 
-        <!-- Advice Section -->
-        <div class="section">
-          <h3 class="section-title">Advice</h3>
-          
-          <div class="form-group">
-            <textarea
-              id="advice"
-              name="advice"
-              [(ngModel)]="advice"
-              placeholder="Additional advice for the patient"
-              class="form-textarea"
-              rows="3"
-            ></textarea>
+          <!-- Advice Section -->
+          <div class="section">
+            <h3 class="section-title">Advice</h3>
+            
+            <div class="form-group">
+              <textarea
+                id="advice"
+                name="advice"
+                [(ngModel)]="advice"
+                (ngModelChange)="clearSuccessMessage()"
+                placeholder="Additional advice for the patient"
+                class="form-textarea"
+                rows="3"
+              ></textarea>
+            </div>
           </div>
         </div>
 
         <!-- Form Actions -->
         <div class="form-actions">
-          
-          <span *ngIf="successMessage" style="color: #16a34a; font-weight: 600; font-size: 15px; margin-right: auto;">
+          <span *ngIf="successMessage" style="color: #16a34a; font-weight: 600; font-size: 14px; margin-right: auto;">
             ✓ {{ successMessage }}
+          </span>
+          <span *ngIf="errorMessage" style="color: #dc2626; font-weight: 600; font-size: 14px; margin-right: auto;">
+            ⚠ {{ errorMessage }}
           </span>
           <button type="button" class="cancel-button" (click)="onClose()" [disabled]="isSubmitting">
             Cancel
           </button>
           <button type="submit" class="submit-button" [disabled]="isSubmitting">
-            <span *ngIf="!isSubmitting">Save Patient</span>
+            <span *ngIf="!isSubmitting">{{ isNewVisit ? 'Save Visit' : 'Save Patient' }}</span>
             <span *ngIf="isSubmitting" class="loading-content">
               <span class="loading-spinner"></span>
               Saving...

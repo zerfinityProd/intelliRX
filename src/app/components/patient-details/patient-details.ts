@@ -1,45 +1,160 @@
-
-import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
+import { AddPatientComponent } from '../add-patient/add-patient';
+import { PatientStatsComponent } from '../patient-stats/patient-stats';
 
 @Component({
   selector: 'app-patient-details',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AddPatientComponent, PatientStatsComponent],
   templateUrl: './patient-details.html',
   styleUrl: './patient-details.css'
 })
 export class PatientDetailsComponent implements OnInit {
-  @Input() patient!: Patient;
-  @Output() close = new EventEmitter<void>();
-
+  patient: Patient | null = null;
   visits: Visit[] = [];
+  isLoadingPatient: boolean = true;
   isLoadingVisits: boolean = false;
   activeTab: 'info' | 'visits' = 'info';
+  errorMessage: string = '';
+  
+  // Properties for visit form
+  showAddVisitForm: boolean = false;
+  isEditingPatient: boolean = false;
 
-  constructor(private patientService: PatientService) {}
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private patientService: PatientService,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
+  ) {}
 
   async ngOnInit(): Promise<void> {
-    await this.loadVisits();
+    const patientId = this.route.snapshot.paramMap.get('id');
+    
+    console.log('🔍 Patient Details - Loading patient:', patientId);
+    
+    if (!patientId) {
+      this.ngZone.run(() => {
+        this.errorMessage = 'Invalid patient ID';
+        this.isLoadingPatient = false;
+        this.cdr.detectChanges();
+      });
+      return;
+    }
+
+    await this.loadPatient(patientId);
+  }
+
+  async loadPatient(patientId: string): Promise<void> {
+    this.ngZone.run(() => {
+      this.isLoadingPatient = true;
+      this.errorMessage = '';
+      this.cdr.detectChanges();
+    });
+    
+    try {
+      console.log('📡 Fetching patient from service...');
+      this.patient = await this.patientService.getPatient(patientId);
+      
+      console.log('✅ Patient data received:', this.patient ? 'Success' : 'Not found');
+      
+      this.ngZone.run(() => {
+        if (!this.patient) {
+          this.errorMessage = 'Patient not found';
+          this.isLoadingPatient = false;
+          this.cdr.detectChanges();
+          return;
+        }
+        
+        this.isLoadingPatient = false;
+        this.cdr.detectChanges();
+        
+        // Load visits after patient is loaded
+        this.loadVisits();
+      });
+    } catch (error) {
+      console.error('❌ Error loading patient:', error);
+      this.ngZone.run(() => {
+        this.errorMessage = 'Error loading patient details';
+        this.isLoadingPatient = false;
+        this.cdr.detectChanges();
+      });
+    }
   }
 
   async loadVisits(): Promise<void> {
     if (!this.patient || !this.patient.uniqueId) return;
     
-    this.isLoadingVisits = true;
+    this.ngZone.run(() => {
+      this.isLoadingVisits = true;
+      this.cdr.detectChanges();
+    });
+    
     try {
+      console.log('📡 Fetching visits...');
       this.visits = await this.patientService.getPatientVisits(this.patient.uniqueId);
+      console.log('✅ Visits loaded:', this.visits.length);
+      
+      this.ngZone.run(() => {
+        this.isLoadingVisits = false;
+        this.cdr.detectChanges();
+      });
     } catch (error) {
-      console.error('Error loading visits:', error);
-    } finally {
-      this.isLoadingVisits = false;
+      console.error('❌ Error loading visits:', error);
+      this.ngZone.run(() => {
+        this.isLoadingVisits = false;
+        this.cdr.detectChanges();
+      });
     }
   }
 
-  onClose(): void {
-    this.close.emit();
+  // Open visit form with patient data pre-filled
+  openAddVisitForm(): void {
+    this.ngZone.run(() => {
+      this.showAddVisitForm = true;
+      this.isEditingPatient = false; // Start with locked fields
+      this.cdr.detectChanges();
+    });
+  }
+
+  // Close visit form
+  closeAddVisitForm(): void {
+    this.ngZone.run(() => {
+      this.showAddVisitForm = false;
+      this.isEditingPatient = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  // Toggle edit mode for patient fields
+  toggleEditMode(): void {
+    this.ngZone.run(() => {
+      this.isEditingPatient = !this.isEditingPatient;
+      this.cdr.detectChanges();
+    });
+  }
+
+  // Handle visit added - reload data
+  async onVisitAdded(patientId: string): Promise<void> {
+    console.log('✅ Visit added:', patientId);
+    
+    // Reload patient data (in case it was edited)
+    await this.loadPatient(patientId);
+    
+    // Reload visits to show the new one
+    await this.loadVisits();
+    
+    // Switch to visits tab to show the new visit
+    this.setActiveTab('visits');
+  }
+
+  goBack(): void {
+    this.router.navigate(['/home']);
   }
 
   formatDate(date: Date | undefined | any): string {
@@ -84,6 +199,9 @@ export class PatientDetailsComponent implements OnInit {
   }
 
   setActiveTab(tab: 'info' | 'visits'): void {
-    this.activeTab = tab;
+    this.ngZone.run(() => {
+      this.activeTab = tab;
+      this.cdr.detectChanges();
+    });
   }
 }

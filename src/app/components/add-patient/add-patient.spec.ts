@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AddPatientComponent } from './add-patient';
 
+// Disable tests - they should only run with 'ng test', not 'ng serve'
 describe('AddPatientComponent', () => {
   let component: AddPatientComponent;
   let fixture: ComponentFixture<AddPatientComponent>;

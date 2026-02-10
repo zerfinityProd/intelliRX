@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { AppComponent } from './app';
 
+// Disable tests - they should only run with 'ng test', not 'ng serve'
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({

@@ -1,4 +1,3 @@
-
 <div class="home-container">
   <!-- Header -->
   <header class="header">
@@ -46,22 +45,21 @@
           <input
             type="text"
             [(ngModel)]="searchTerm"
-            (keyup.enter)="onSearch()"
-            placeholder="Enter phone number or family ID"
+            (ngModelChange)="onSearchInput()"
+            placeholder="Type to search by phone number or family ID..."
             class="search-input"
-            [disabled]="isLoading"
+            autocomplete="off"
           />
-          <button *ngIf="searchTerm" class="clear-button" (click)="clearSearch()">
+          <button *ngIf="searchTerm && !isSearching" class="clear-button" (click)="clearSearch()">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"></line>
               <line x1="6" y1="6" x2="18" y2="18"></line>
             </svg>
           </button>
+          <div *ngIf="isSearching" class="loading-indicator">
+            <div class="loading-spinner"></div>
+          </div>
         </div>
-        <button class="search-button" (click)="onSearch()" [disabled]="isLoading">
-          <span *ngIf="!isLoading">Search</span>
-          <span *ngIf="isLoading" class="loading-spinner"></span>
-        </button>
       </div>
 
       <div *ngIf="errorMessage" class="error-message">
@@ -81,14 +79,14 @@
         Add New Patient
       </button>
       
-      <button class="action-btn secondary-btn" disabled>
+      <button class="action-btn secondary-btn" (click)="goToAppointments()">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
           <line x1="16" y1="2" x2="16" y2="6"></line>
           <line x1="8" y1="2" x2="8" y2="6"></line>
           <line x1="3" y1="10" x2="21" y2="10"></line>
         </svg>
-        View Appointments
+        Appointments
       </button>
     </div>
 
@@ -145,15 +143,9 @@
   </main>
 </div>
 
-<!-- Add Patient Modal -->
+<!-- Add Patient Modal (keep this one) -->
 <app-add-patient
   *ngIf="showAddPatientForm"
   (close)="closeAddPatientForm()"
   (patientAdded)="onPatientAdded($event)"
 ></app-add-patient>
-<!-- Patient Details Modal -->
-<app-patient-details
-  *ngIf="showPatientDetails && selectedPatientForDetails"
-  [patient]="selectedPatientForDetails"
-  (close)="closePatientDetails()"
-></app-patient-details>

@@ -1,8 +1,39 @@
+<div class="page-container">
+  <!-- Header with Back Button -->
+  <header class="details-header">
+    <div class="header-content">
+      <button class="back-button" (click)="goBack()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        Back to Home
+      </button>
+      <h1 class="page-title">Patient Details</h1>
+    </div>
+  </header>
 
-<div class="modal-overlay" (click)="onClose()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <!-- Header -->
-    <div class="modal-header">
+  <!-- Loading State -->
+  <div *ngIf="isLoadingPatient" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading patient details...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="!isLoadingPatient && errorMessage" class="error-container">
+    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <h2>{{ errorMessage }}</h2>
+    <button class="primary-btn" (click)="goBack()">Go Back</button>
+  </div>
+
+  <!-- Patient Details Content -->
+  <div *ngIf="!isLoadingPatient && !errorMessage && patient" class="details-content">
+    <!-- Patient Header Card -->
+    <div class="patient-header-card">
       <div class="header-left">
         <div class="patient-avatar-large">
           {{ getInitials(patient.name) }}
@@ -26,213 +57,264 @@
           </div>
         </div>
       </div>
-      <button class="close-button" (click)="onClose()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button 
-        class="tab" 
-        [class.active]="activeTab === 'info'"
-        (click)="setActiveTab('info')"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-        Patient Information
-      </button>
-      <button 
-        class="tab" 
-        [class.active]="activeTab === 'visits'"
-        (click)="setActiveTab('visits')"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button class="add-visit-button" (click)="openAddVisitForm()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-          <polyline points="10 9 9 9 8 9"></polyline>
+          <line x1="12" y1="11" x2="12" y2="17"></line>
+          <line x1="9" y1="14" x2="15" y2="14"></line>
         </svg>
-        Visit History ({{ visits.length }})
+        Add New Visit
       </button>
     </div>
 
-    <!-- Modal Body -->
-    <div class="modal-body">
-      <!-- Patient Information Tab -->
-      <div *ngIf="activeTab === 'info'" class="info-content">
-        <!-- Basic Information -->
-        <div class="info-section">
-          <h3 class="section-title">Basic Information</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Full Name</span>
-              <span class="info-value">{{ patient.name }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Family ID</span>
-              <span class="info-value family-id">{{ patient.familyId }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Phone Number</span>
-              <span class="info-value">{{ patient.phone }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Email Address</span>
-              <span class="info-value">{{ patient.email || 'Not provided' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Date of Birth</span>
-              <span class="info-value">{{ formatDate(patient.dateOfBirth) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Gender</span>
-              <span class="info-value">
-                <span class="gender-badge" [class.male]="patient.gender === 'Male'" [class.female]="patient.gender === 'Female'">
-                  {{ patient.gender || 'Not specified' }}
-                </span>
-              </span>
-            </div>
-          </div>
+    <!-- 2-Column Grid Layout: Main Content (Left) + Stats Widget (Right) -->
+    <div class="details-grid">
+      <!-- LEFT COLUMN: Main Content -->
+      <div class="main-column">
+        <!-- Tabs -->
+        <div class="tabs">
+          <button 
+            class="tab" 
+            [class.active]="activeTab === 'info'"
+            (click)="setActiveTab('info')"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Patient Information
+          </button>
+          <button 
+            class="tab" 
+            [class.active]="activeTab === 'visits'"
+            (click)="setActiveTab('visits')"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Visit History ({{ visits.length }})
+          </button>
         </div>
 
-        <!-- Medical Information -->
-        <div class="info-section" *ngIf="patient.presentIllness || patient.allergies">
-          <h3 class="section-title">Medical History</h3>
-          
-          <div class="info-item-full" *ngIf="patient.presentIllness">
-            <span class="info-label">Present Illness</span>
-            <div class="info-value-text">{{ patient.presentIllness }}</div>
+        <!-- Tab Content -->
+        <div class="tab-content">
+          <!-- Patient Information Tab -->
+          <div *ngIf="activeTab === 'info'" class="info-content">
+            <!-- Basic Information -->
+            <div class="info-section">
+              <h3 class="section-title">Basic Information</h3>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Full Name</span>
+                  <span class="info-value">{{ patient.name }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Family ID</span>
+                  <span class="info-value family-id">{{ patient.familyId }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Phone Number</span>
+                  <span class="info-value">{{ patient.phone }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Email Address</span>
+                  <span class="info-value">{{ patient.email || 'Not provided' }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Date of Birth</span>
+                  <span class="info-value">{{ formatDate(patient.dateOfBirth) }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Gender</span>
+                  <span class="info-value">
+                    <span class="gender-badge" [class.male]="patient.gender === 'Male'" [class.female]="patient.gender === 'Female'">
+                      {{ patient.gender || 'Not specified' }}
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Medical Summary -->
+            <div class="info-section" *ngIf="patient.allergies">
+              <h3 class="section-title">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Medical History
+              </h3>
+              
+              <div class="summary-list">
+                <div class="summary-row">
+                  <div class="summary-row-label">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <line x1="12" y1="8" x2="12" y2="12"></line>
+                      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Known Allergies
+                  </div>
+                  <div class="summary-row-value">
+                    <span class="allergy-tag" *ngFor="let allergy of patient.allergies.split(','); let last = last">
+                      {{ allergy.trim() }}<span *ngIf="!last">, </span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Record Information -->
+            <div class="info-section">
+              <h3 class="section-title">Record Information</h3>
+              <div class="info-grid">
+                <div class="info-item">
+                  <span class="info-label">Patient ID</span>
+                  <span class="info-value id-badge">{{ patient.uniqueId }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Created On</span>
+                  <span class="info-value">{{ formatDateTime(patient.createdAt) }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Last Updated</span>
+                  <span class="info-value">{{ formatDateTime(patient.updatedAt) }}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- ✅ NEW: Display Allergies -->
-          <div class="info-item-full" *ngIf="patient.allergies" style="margin-top: 16px;">
-            <span class="info-label">Allergies</span>
-            <div class="info-value-text" style="border-left-color: #dc2626;">{{ patient.allergies }}</div>
-          </div>
-        </div>
+          <!-- Visit History Tab -->
+          <div *ngIf="activeTab === 'visits'" class="visits-content">
+            <div *ngIf="isLoadingVisits" class="loading-state">
+              <div class="spinner"></div>
+              <p>Loading visit history...</p>
+            </div>
 
-        <!-- Record Information -->
-        <div class="info-section">
-          <h3 class="section-title">Record Information</h3>
-          <div class="info-grid">
-            <div class="info-item">
-              <span class="info-label">Patient ID</span>
-              <span class="info-value id-badge">{{ patient.uniqueId }}</span>
+            <div *ngIf="!isLoadingVisits && visits.length === 0" class="empty-state">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+              <h3>No Visit History</h3>
+              <p>This patient hasn't had any visits recorded yet.</p>
             </div>
-            <div class="info-item">
-              <span class="info-label">Created On</span>
-              <span class="info-value">{{ formatDateTime(patient.createdAt) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">Last Updated</span>
-              <span class="info-value">{{ formatDateTime(patient.updatedAt) }}</span>
+
+            <div *ngIf="!isLoadingVisits && visits.length > 0" class="visits-list">
+              <div *ngFor="let visit of visits; let i = index" class="visit-card">
+                <div class="visit-header">
+                  <div class="visit-number">Visit #{{ visits.length - i }}</div>
+                  <div class="visit-date">{{ formatDateTime(visit.createdAt) }}</div>
+                </div>
+
+                <div class="visit-details">
+                  <div class="visit-detail" *ngIf="visit.presentIllness">
+                    <span class="detail-label">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                      </svg>
+                      Present Illness
+                    </span>
+                    <span class="detail-value">{{ visit.presentIllness }}</span>
+                  </div>
+
+                  <div class="visit-detail" *ngIf="visit.chiefComplaints">
+                    <span class="detail-label">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
+                      Chief Complaints
+                    </span>
+                    <span class="detail-value">{{ visit.chiefComplaints }}</span>
+                  </div>
+
+                  <div class="visit-detail" *ngIf="visit.diagnosis">
+                    <span class="detail-label">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                      </svg>
+                      Diagnosis
+                    </span>
+                    <span class="detail-value">{{ visit.diagnosis }}</span>
+                  </div>
+
+                  <div class="visit-detail" *ngIf="visit.examination">
+                    <span class="detail-label">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                      </svg>
+                      Examination
+                    </span>
+                    <span class="detail-value">{{ visit.examination }}</span>
+                  </div>
+
+                  <div class="visit-detail" *ngIf="visit.medicines">
+                    <span class="detail-label">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                      </svg>
+                      Medicines Prescribed
+                    </span>
+                    <span class="detail-value">{{ visit.medicines }}</span>
+                  </div>
+
+                  <div class="visit-detail" *ngIf="visit.treatmentPlan">
+                    <span class="detail-label">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                      </svg>
+                      Treatment Plan
+                    </span>
+                    <span class="detail-value">{{ visit.treatmentPlan }}</span>
+                  </div>
+
+                  <div class="visit-detail" *ngIf="visit.advice">
+                    <span class="detail-label">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
+                      Advice
+                    </span>
+                    <span class="detail-value">{{ visit.advice }}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Visit History Tab -->
-      <div *ngIf="activeTab === 'visits'" class="visits-content">
-        <div *ngIf="isLoadingVisits" class="loading-state">
-          <div class="spinner"></div>
-          <p>Loading visit history...</p>
-        </div>
-
-        <div *ngIf="!isLoadingVisits && visits.length === 0" class="empty-state">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-          </svg>
-          <h3>No Visit History</h3>
-          <p>This patient hasn't had any visits recorded yet.</p>
-        </div>
-
-        <div *ngIf="!isLoadingVisits && visits.length > 0" class="visits-list">
-          <div *ngFor="let visit of visits; let i = index" class="visit-card">
-            <div class="visit-header">
-              <div class="visit-number">Visit #{{ visits.length - i }}</div>
-              <div class="visit-date">{{ formatDateTime(visit.createdAt) }}</div>
-            </div>
-
-            <div class="visit-details">
-              <div class="visit-detail" *ngIf="visit.chiefComplaints">
-                <span class="detail-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  Chief Complaints
-                </span>
-                <span class="detail-value">{{ visit.chiefComplaints }}</span>
-              </div>
-
-              <div class="visit-detail" *ngIf="visit.diagnosis">
-                <span class="detail-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                  </svg>
-                  Diagnosis
-                </span>
-                <span class="detail-value">{{ visit.diagnosis }}</span>
-              </div>
-
-              <div class="visit-detail" *ngIf="visit.examination">
-                <span class="detail-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <path d="m21 21-4.35-4.35"></path>
-                  </svg>
-                  Examination
-                </span>
-                <span class="detail-value">{{ visit.examination }}</span>
-              </div>
-
-              <!-- ✅ NEW: Display Medicines in Visit -->
-              <div class="visit-detail" *ngIf="visit.medicines">
-                <span class="detail-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
-                    <line x1="9" y1="9" x2="15" y2="9"></line>
-                    <line x1="9" y1="15" x2="15" y2="15"></line>
-                  </svg>
-                  Medicines Prescribed
-                </span>
-                <span class="detail-value">{{ visit.medicines }}</span>
-              </div>
-
-              <div class="visit-detail" *ngIf="visit.treatmentPlan">
-                <span class="detail-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="9" y1="9" x2="15" y2="9"></line>
-                    <line x1="9" y1="15" x2="15" y2="15"></line>
-                  </svg>
-                  Treatment Plan
-                </span>
-                <span class="detail-value">{{ visit.treatmentPlan }}</span>
-              </div>
-
-              <div class="visit-detail" *ngIf="visit.advice">
-                <span class="detail-label">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  Advice
-                </span>
-                <span class="detail-value">{{ visit.advice }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
+      <!-- RIGHT COLUMN: Stats Widget -->
+      <div class="stats-column">
+        <app-patient-stats
+          [patient]="patient"
+          [visits]="visits"
+        ></app-patient-stats>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Add Visit Modal -->
+<app-add-patient
+  *ngIf="showAddVisitForm"
+  [patientData]="patient"
+  [isEditMode]="isEditingPatient"
+  (close)="closeAddVisitForm()"
+  (patientAdded)="onVisitAdded($event)"
+  (toggleEdit)="toggleEditMode()"
+></app-add-patient>

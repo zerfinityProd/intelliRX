@@ -1,5 +1,4 @@
-
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseService } from './firebase';
 import { Patient, Visit } from '../models/patient.model';
@@ -15,7 +14,14 @@ export class PatientService {
   private selectedPatientSubject = new BehaviorSubject<Patient | null>(null);
   public selectedPatient$: Observable<Patient | null> = this.selectedPatientSubject.asObservable();
 
-  constructor(private firebaseService: FirebaseService) {}
+  // Local cache for INSTANT results
+  private lastSearchTerm: string = '';
+  private lastSearchResults: Patient[] = [];
+
+  constructor(
+    private firebaseService: FirebaseService,
+    private ngZone: NgZone
+  ) {}
 
   /**
    * Create a new patient
@@ -35,26 +41,93 @@ export class PatientService {
   }
 
   /**
-   * Search patients by phone number or family ID
+   * Search patients by phone number or family ID - OPTIMIZED FOR INSTANT RESULTS
    */
   async searchPatients(searchTerm: string): Promise<Patient[]> {
     try {
-      let results: Patient[] = [];
+      console.log('🔍 searchPatients called with:', searchTerm);
       
-      // If search term is numeric, search by phone
-      if (/^\d+$/.test(searchTerm)) {
-        results = await this.firebaseService.searchPatientByPhone(searchTerm);
-      } else {
-        // Otherwise search by family ID
-        results = await this.firebaseService.searchPatientByFamilyId(searchTerm.toLowerCase());
+      // ⚡ INSTANT: Check if we have exact same search cached
+      if (searchTerm === this.lastSearchTerm && this.lastSearchResults.length > 0) {
+        console.log('⚡ INSTANT CACHE HIT - Showing results immediately!');
+        this.updateResults(this.lastSearchResults);
+        return this.lastSearchResults;
       }
-      
-      this.searchResultsSubject.next(results);
+
+      // ⚡ INSTANT: For partial searches, show matching cached results immediately
+      if (this.lastSearchTerm && searchTerm.startsWith(this.lastSearchTerm) && this.lastSearchResults.length > 0) {
+        const filteredResults = this.filterCachedResults(searchTerm);
+        if (filteredResults.length > 0) {
+          console.log('⚡ INSTANT PARTIAL CACHE - Showing filtered results!');
+          this.updateResults(filteredResults);
+          // Still fetch from Firebase in background for accuracy
+          this.fetchFromFirebase(searchTerm);
+          return filteredResults;
+        }
+      }
+
+      // Fetch from Firebase
+      const results = await this.fetchFromFirebase(searchTerm);
       return results;
     } catch (error) {
       console.error('Error searching patients:', error);
-      this.searchResultsSubject.next([]);
+      this.updateResults([]);
       throw error;
+    }
+  }
+
+  /**
+   * Fetch from Firebase and update cache - with NgZone for proper change detection
+   */
+  private async fetchFromFirebase(searchTerm: string): Promise<Patient[]> {
+    let results: Patient[] = [];
+    
+    console.log('📡 Fetching from Firebase:', searchTerm);
+    
+    // If search term is numeric, search by phone
+    if (/^\d+$/.test(searchTerm)) {
+      results = await this.firebaseService.searchPatientByPhone(searchTerm);
+    } else {
+      // Otherwise search by family ID
+      results = await this.firebaseService.searchPatientByFamilyId(searchTerm.toLowerCase());
+    }
+    
+    console.log('📡 Firebase returned:', results.length, 'results');
+    
+    // Update cache
+    this.lastSearchTerm = searchTerm;
+    this.lastSearchResults = results;
+    
+    // Update UI with NgZone
+    this.updateResults(results);
+    
+    return results;
+  }
+
+  /**
+   * Update results with proper zone handling
+   */
+  private updateResults(results: Patient[]): void {
+    this.ngZone.run(() => {
+      console.log('✅ Updating searchResultsSubject with', results.length, 'results');
+      this.searchResultsSubject.next(results);
+    });
+  }
+
+  /**
+   * Filter cached results for partial matches
+   */
+  private filterCachedResults(searchTerm: string): Patient[] {
+    if (/^\d+$/.test(searchTerm)) {
+      // Phone number search - filter by phone prefix
+      return this.lastSearchResults.filter(p => p.phone.startsWith(searchTerm));
+    } else {
+      // Family ID search - filter by family ID prefix
+      const term = searchTerm.toLowerCase();
+      return this.lastSearchResults.filter(p => 
+        p.familyId.toLowerCase().startsWith(term) ||
+        p.name.toLowerCase().includes(term)
+      );
     }
   }
 
@@ -65,7 +138,9 @@ export class PatientService {
     try {
       const patient = await this.firebaseService.getPatientById(uniqueId);
       if (patient) {
-        this.selectedPatientSubject.next(patient);
+        this.ngZone.run(() => {
+          this.selectedPatientSubject.next(patient);
+        });
       }
       return patient;
     } catch (error) {
@@ -86,7 +161,9 @@ export class PatientService {
       if (currentSelected && currentSelected.uniqueId === uniqueId) {
         const updatedPatient = await this.firebaseService.getPatientById(uniqueId);
         if (updatedPatient) {
-          this.selectedPatientSubject.next(updatedPatient);
+          this.ngZone.run(() => {
+            this.selectedPatientSubject.next(updatedPatient);
+          });
         }
       }
     } catch (error) {
@@ -123,14 +200,17 @@ export class PatientService {
    * Clear search results
    */
   clearSearchResults(): void {
-    this.searchResultsSubject.next([]);
+    this.updateResults([]);
+    // Keep cache for faster subsequent searches
   }
 
   /**
    * Set selected patient
    */
   setSelectedPatient(patient: Patient | null): void {
-    this.selectedPatientSubject.next(patient);
+    this.ngZone.run(() => {
+      this.selectedPatientSubject.next(patient);
+    });
   }
 
   /**

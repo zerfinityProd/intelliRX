@@ -1,4 +1,3 @@
-
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -27,7 +26,7 @@
   background: white;
   border-radius: 20px;
   width: 100%;
-  max-width: 900px;
+  max-width: 1400px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -86,24 +85,44 @@
 
 /* Section Styles */
 .section {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .section-title {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   color: #1e293b;
-  margin: 0 0 16px 0;
-  padding-bottom: 8px;
+  margin: 0 0 14px 0;
+  padding-bottom: 6px;
   border-bottom: 2px solid #f1f5f9;
+}
+
+/* 2-column grid for sections */
+.sections-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.section-full-width {
+  grid-column: 1 / -1;
 }
 
 /* Form Styles */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+/* 3-column layout for compact fields */
+.form-row-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 .form-group {
@@ -112,10 +131,10 @@
 }
 
 .form-group label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #334155;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .required {
@@ -123,7 +142,7 @@
 }
 
 .auto-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: #6366f1;
   margin-left: 4px;
@@ -131,7 +150,7 @@
 
 .form-input,
 .form-textarea {
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 2px solid #e2e8f0;
   border-radius: 10px;
   font-size: 14px;
@@ -149,20 +168,21 @@
 
 .readonly-input {
   background: #f8fafc;
-  color: #6366f1;
+  color: #64748b;
   font-weight: 600;
   cursor: not-allowed;
   border-style: dashed;
+  border-color: #f59e0b;
 }
 
 .readonly-input:focus {
-  border-color: #e2e8f0;
-  box-shadow: none;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
 }
 
 .form-textarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 55px;
 }
 
 select.form-input {
@@ -172,8 +192,8 @@ select.form-input {
 /* Dynamic Fields */
 .dynamic-field {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
   align-items: start;
 }
 
@@ -182,19 +202,24 @@ select.form-input {
   flex: 1;
 }
 
+.dynamic-field .form-textarea {
+  min-height: 45px;
+}
+
 .exam-field,
 .medicine-field {
   display: flex;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 10px;
   align-items: start;
 }
 
 .exam-inputs,
+.exam-inputs,
 .medicine-inputs {
   flex: 1;
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .exam-inputs {
@@ -202,6 +227,14 @@ select.form-input {
 }
 
 .medicine-inputs {
+  grid-template-columns: 1fr;
+}
+
+/* Full-width medicines layout (3 columns) */
+.medicine-inputs-fullwidth {
+  flex: 1;
+  display: grid;
+  gap: 10px;
   grid-template-columns: 2fr 1fr 1fr;
 }
 
@@ -210,13 +243,14 @@ select.form-input {
   border: 1px solid #fecaca;
   color: #dc2626;
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 40px;
 }
 
 .remove-btn:hover {
@@ -229,8 +263,8 @@ select.form-input {
   border: 2px dashed #cbd5e1;
   color: #6366f1;
   border-radius: 10px;
-  padding: 10px 16px;
-  font-size: 14px;
+  padding: 8px 14px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -248,10 +282,10 @@ select.form-input {
   background: #f0fdf4;
   border: 1px solid #86efac;
   color: #16a34a;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 10px;
   font-size: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -280,10 +314,10 @@ select.form-input {
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #dc2626;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border-radius: 10px;
   font-size: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   font-weight: 500;
 }
 
@@ -292,20 +326,20 @@ select.form-input {
   display: flex;
   gap: 12px;
   justify-content: flex-end;
-  padding-top: 24px;
+  padding-top: 20px;
   border-top: 1px solid #e2e8f0;
 }
 
 .cancel-button,
 .submit-button {
-  padding: 14px 28px;
+  padding: 12px 24px;
   border-radius: 12px;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   border: none;
-  min-width: 120px;
+  min-width: 110px;
 }
 
 .cancel-button {
@@ -376,7 +410,79 @@ select.form-input {
   background: #94a3b8;
 }
 
+/* Edit Toggle Button Styles */
+.edit-toggle-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: white;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.edit-toggle-button:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #6366f1;
+}
+
+.edit-toggle-button.active {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border-color: #6366f1;
+  color: white;
+}
+
+.edit-toggle-button svg {
+  flex-shrink: 0;
+}
+
+/* Locked Field Label */
+.locked-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #f59e0b;
+  background: #fef3c7;
+  padding: 2px 6px;
+  border-radius: 6px;
+  margin-left: 6px;
+}
+
+/* Info Badge */
+.info-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+  background: #d1fae5;
+  padding: 3px 8px;
+  border-radius: 8px;
+  margin-left: 10px;
+}
+
 /* Responsive Design */
+@media (max-width: 1400px) {
+  .modal-content {
+    max-width: 95%;
+  }
+}
+
+@media (max-width: 1200px) {
+  .form-row-3col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 1024px) {
+  .sections-container {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 768px) {
   .modal-content {
     max-width: 100%;
@@ -384,7 +490,8 @@ select.form-input {
     border-radius: 0;
   }
 
-  .form-row {
+  .form-row,
+  .form-row-3col {
     grid-template-columns: 1fr;
   }
 
@@ -392,7 +499,8 @@ select.form-input {
     grid-template-columns: 1fr;
   }
 
-  .medicine-inputs {
+  .medicine-inputs,
+  .medicine-inputs-fullwidth {
     grid-template-columns: 1fr;
   }
 

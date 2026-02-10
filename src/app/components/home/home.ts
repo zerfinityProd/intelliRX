@@ -1,5 +1,4 @@
-
-import { Component, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -8,105 +7,181 @@ import { AuthService, User } from '../../services/auth';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
-import { PatientDetailsComponent } from '../patient-details/patient-details';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddPatientComponent, PatientDetailsComponent],
+  imports: [CommonModule, FormsModule, AddPatientComponent],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
-export class HomeComponent implements OnDestroy {
+export class HomeComponent implements OnInit, OnDestroy {
   currentUser: User | null = null;
   searchTerm: string = '';
   searchResults: Patient[] = [];
-  isLoading: boolean = false;
   showAddPatientForm: boolean = false;
-  showPatientDetails: boolean = false;
-  selectedPatientForDetails: Patient | null = null;
   errorMessage: string = '';
+  isSearching: boolean = false;
   
   private destroy$ = new Subject<void>();
+  private searchTimeout: any;
 
   constructor(
     private authService: AuthService,
     private patientService: PatientService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef,
+    private ngZone: NgZone
   ) {
+    // Subscribe to current user with change detection
     this.authService.currentUser$
       .pipe(takeUntil(this.destroy$))
       .subscribe(user => {
-        this.currentUser = user;
+        this.ngZone.run(() => {
+          this.currentUser = user;
+          this.cdr.detectChanges();
+        });
       });
 
+    // Subscribe to search results with change detection
     this.patientService.searchResults$
       .pipe(takeUntil(this.destroy$))
       .subscribe(results => {
-        this.searchResults = results;
-        this.isLoading = false;
+        this.ngZone.run(() => {
+          this.searchResults = results;
+          this.isSearching = false;
+          console.log('Ã¢Å“â€¦ Search results updated:', results.length, 'patients');
+          this.cdr.detectChanges();
+        });
       });
+  }
+
+  ngOnInit(): void {
+    // Clear any previous search results when component loads
+    this.clearSearch();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
   }
 
-  async onSearch(): Promise<void> {
+  /**
+   * Called on every keystroke in search input - with debounce for performance
+   */
+  onSearchInput(): void {
     this.errorMessage = '';
     
+    // Clear any existing timeout
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+    
+    // If search term is empty, clear results immediately
     if (!this.searchTerm.trim()) {
-      this.errorMessage = 'Please enter a phone number or family ID';
       this.patientService.clearSearchResults();
+      this.isSearching = false;
+      this.cdr.detectChanges();
       return;
     }
 
-    this.isLoading = true;
-    
-    try {
-      await this.patientService.searchPatients(this.searchTerm.trim());
-      
-      if (this.searchResults.length === 0) {
-        this.errorMessage = 'No patients found';
-      }
-    } catch (error) {
-      this.errorMessage = 'Error searching for patients. Please try again.';
-      console.error('Search error:', error);
-    } finally {
-      this.isLoading = false;
+    // Ã¢Å“â€¦ CHANGED: Don't set loading state immediately - wait for debounce
+    // Debounce search by 1000ms (1 second) - only search when user stops typing
+    this.searchTimeout = setTimeout(() => {
+      this.ngZone.run(() => {
+        this.isSearching = true;
+        this.cdr.detectChanges();
+      });
+      this.performSearch(this.searchTerm.trim());
+    }, 1000); // Changed from 300ms to 1000ms
+  }
+
+  /**
+   * Perform the actual search with proper error handling
+   */
+  private async performSearch(searchTerm: string): Promise<void> {
+    if (!searchTerm) {
+      this.patientService.clearSearchResults();
+      this.isSearching = false;
+      this.cdr.detectChanges();
+      return;
     }
+
+    try {
+      console.log('Ã°Å¸â€Â Starting search for:', searchTerm);
+      await this.patientService.searchPatients(searchTerm);
+      
+      // Check results in the next tick to ensure subscription has updated
+      this.ngZone.run(() => {
+        if (this.searchResults.length === 0) {
+          this.errorMessage = 'No patients found';
+        } else {
+          this.errorMessage = '';
+        }
+        this.isSearching = false;
+        this.cdr.detectChanges();
+      });
+    } catch (error) {
+      this.ngZone.run(() => {
+        this.errorMessage = 'Error searching for patients. Please try again.';
+        this.isSearching = false;
+        console.error('Search error:', error);
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  /**
+   * Legacy method - kept for backward compatibility
+   */
+  async onSearch(): Promise<void> {
+    if (!this.searchTerm.trim()) {
+      this.patientService.clearSearchResults();
+      return;
+    }
+    
+    this.isSearching = true;
+    this.cdr.detectChanges();
+    await this.performSearch(this.searchTerm.trim());
   }
 
   openAddPatientForm(): void {
     this.showAddPatientForm = true;
+    this.cdr.detectChanges();
   }
 
   closeAddPatientForm(): void {
     this.showAddPatientForm = false;
+    this.cdr.detectChanges();
   }
 
   async onPatientAdded(patientId: string): Promise<void> {
+    console.log('Ã¢Å“â€¦ Patient added:', patientId);
     
+    // Refresh search results if there's an active search
     if (this.searchTerm.trim()) {
       await this.onSearch();
     }
   }
 
+  /**
+   * View patient details
+   */
   viewPatientDetails(patient: Patient): void {
-    this.selectedPatientForDetails = patient;
-    this.showPatientDetails = true;
-  }
-
-  closePatientDetails(): void {
-    this.showPatientDetails = false;
-    this.selectedPatientForDetails = null;
+    // Clear search before navigating
+    this.clearSearch();
+    this.router.navigate(['/patient', patient.uniqueId]);
   }
 
   clearSearch(): void {
     this.searchTerm = '';
     this.errorMessage = '';
+    this.isSearching = false;
     this.patientService.clearSearchResults();
+    this.cdr.detectChanges();
   }
 
   logout(): void {
@@ -114,6 +189,9 @@ export class HomeComponent implements OnDestroy {
     this.router.navigate(['/login']);
   }
 
+  goToAppointments(): void {
+    this.router.navigate(['/appointments']);
+  }
 
   // Format date for display
   formatDate(date: Date | undefined | any): string {
