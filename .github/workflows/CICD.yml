@@ -1,0 +1,51 @@
+name: Nightly Build + Deploy to GitHub Pages
+
+# run on schedule at 02:00 UTC every night
+on:
+  schedule:
+    - cron: '0 2 * * *'  
+  workflow_dispatch:  # optional manual trigger
+
+permissions:
+  contents: read
+  pages: write        # write permission required
+  id-token: write     # for pages deployment
+
+jobs:
+  build:
+    name: Build Angular App
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'     # choose your Node version
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Angular app
+        run: |
+          npm run build -- --configuration production --base-href="/<REPO_NAME>/"
+
+      - name: Upload build files artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist/<PROJECT_FOLDER>/browser
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy
+        uses: actions/deploy-pages@v4
