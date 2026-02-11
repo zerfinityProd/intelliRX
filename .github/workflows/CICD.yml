@@ -49,7 +49,7 @@ jobs:
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        with:
+        
           # Optional: can reference custom domain later
           # custom_domain: example.com
           #
