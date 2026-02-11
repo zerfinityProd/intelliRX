@@ -1,6 +1,6 @@
-# Intellirx
+# Intellirx https://github.com/zerfinityProd/intelliRX/actions/workflows/CICD.yml/badge.svg
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.2.
+This project was generated using [Angular CLI]
 
 ## Development server
 
