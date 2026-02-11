@@ -2,7 +2,7 @@ name: 🛠 Nightly Angular Build + Deploy
 
 on:
   schedule:
-    # Daily at 02:30 IST (21:00 UTC previous day)
+    # Daily at 02:30 IST → 21:00 UTC previous day
     - cron: '0 21 * * *'
   workflow_dispatch:
 
@@ -32,12 +32,13 @@ jobs:
         run: npm run build -- --configuration production --base-href "/intelliRX/"
 
       - name: Add .nojekyll
-        run: echo "" > dist/intelliRX/browser/.nojekyll
+        # Create .nojekyll at the root of the actual build folder
+        run: echo "" > dist/intellirx/.nojekyll
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/intelliRX/browser
+          path: dist/intellirx
 
   deploy:
     needs: build_and_deploy
