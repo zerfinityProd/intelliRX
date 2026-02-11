@@ -1,4 +1,4 @@
-# Intellirx https://github.com/zerfinityProd/intelliRX/actions/workflows/CICD.yml/badge.svg
+# Intellirx ![Status](https://github.com/zerfinityProd/intelliRX/actions/workflows/CICD.yml/badge.svg)
 
 This project was generated using [Angular CLI]
 
