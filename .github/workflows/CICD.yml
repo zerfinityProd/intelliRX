@@ -2,8 +2,8 @@ name: 🛠 Nightly Angular Build + Deploy
 
 on:
   schedule:
-    # This runs at 02:30 India time daily → (21:00 UTC previous day + 2:30 IST)
-    - cron: '21 21 * * *'
+    # Daily at 02:30 IST (21:00 UTC previous day)
+    - cron: '0 21 * * *'
   workflow_dispatch:
 
 permissions:
@@ -12,7 +12,7 @@ permissions:
   id-token: write
 
 jobs:
-  build_deploy:
+  build_and_deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,27 +32,20 @@ jobs:
         run: npm run build -- --configuration production --base-href "/intelliRX/"
 
       - name: Add .nojekyll
-        run: echo "" > dist/intellirx/browser/.nojekyll
+        run: echo "" > dist/intelliRX/browser/.nojekyll
 
-      - name: Upload build artifacts
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/intellirx/browser
+          path: dist/intelliRX/browser
+
   deploy:
-    needs: build_deploy
+    needs: build_and_deploy
     runs-on: ubuntu-latest
     environment:
-      name: github-pages       # << REQUIRED
-      url: https://zerfinityProd.github.io/intelliRX  # optional but recommended
+      name: github-pages
+      url: https://zerfinityProd.github.io/intelliRX
+
     steps:
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        
-          # Optional: can reference custom domain later
-          # custom_domain: example.com
-          #
-          # The action auto-picks the artifact uploaded above.
-          # The result will be on the gh-pages branch and published by Pages
-          # per repo settings.
-          #
-          # Ensure GitHub Pages is set to "Deploy from GitHub Actions" in Settings.
