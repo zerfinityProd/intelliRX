@@ -1,9 +1,11 @@
+/* home.css — layout only, no font rules */
+
 .home-container {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
 }
 
-/* Header Styles */
+/* ── Header ─────────────────────────────────────────────── */
 .header {
   background: white;
   border-bottom: 1px solid #e2e8f0;
@@ -62,16 +64,8 @@
   flex-direction: column;
 }
 
-.user-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.user-email {
-  font-size: 12px;
-  color: #64748b;
-}
+.user-name  { font-size: 14px; font-weight: 600; color: #1e293b; }
+.user-email { font-size: 12px; color: #64748b; }
 
 .logout-button {
   display: flex;
@@ -94,7 +88,7 @@
   border-color: #fecaca;
 }
 
-/* Main Content Styles */
+/* ── Main Content ────────────────────────────────────────── */
 .main-content {
   max-width: 1400px;
   margin: 0 auto;
@@ -149,7 +143,7 @@
   font-size: 15px;
   color: #1e293b;
   transition: all 0.3s ease;
-  font-family: inherit;
+  background: white;
 }
 
 .search-input:focus {
@@ -161,6 +155,11 @@
 .search-input:disabled {
   background: #f8fafc;
   cursor: not-allowed;
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+  font-size: 14px;
 }
 
 .clear-button {
@@ -203,10 +202,6 @@
   animation: spin 0.6s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 .error-message {
   max-width: 800px;
   margin: 20px auto 0;
@@ -220,7 +215,7 @@
   text-align: center;
 }
 
-/* Action Buttons */
+/* ── Action Buttons ──────────────────────────────────────── */
 .action-buttons {
   display: flex;
   justify-content: center;
@@ -269,25 +264,12 @@
   cursor: not-allowed;
 }
 
-/* Results Section */
+/* ── Results ─────────────────────────────────────────────── */
 .results-section {
   animation: fadeIn 0.5s ease-in-out;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.results-header {
-  margin-bottom: 20px;
-}
+.results-header { margin-bottom: 20px; }
 
 .results-title {
   font-size: 24px;
@@ -296,7 +278,7 @@
   margin: 0;
 }
 
-/* Table Styles */
+/* ── Table ───────────────────────────────────────────────── */
 .table-container {
   background: white;
   border-radius: 16px;
@@ -328,13 +310,8 @@
   transition: all 0.2s ease;
 }
 
-.patients-table tbody tr:hover {
-  background: #f8fafc;
-}
-
-.patients-table tbody tr:last-child {
-  border-bottom: none;
-}
+.patients-table tbody tr:hover { background: #f8fafc; }
+.patients-table tbody tr:last-child { border-bottom: none; }
 
 .patients-table td {
   padding: 16px 20px;
@@ -368,9 +345,9 @@
 }
 
 .family-id-cell {
-  font-family: 'Courier New', monospace;
   color: #6366f1;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.05em;
 }
 
 .gender-badge {
@@ -383,15 +360,8 @@
   color: #64748b;
 }
 
-.gender-badge.male {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.gender-badge.female {
-  background: #fce7f3;
-  color: #be185d;
-}
+.gender-badge.male   { background: #dbeafe; color: #1e40af; }
+.gender-badge.female { background: #fce7f3; color: #be185d; }
 
 .view-btn {
   display: inline-flex;
@@ -413,71 +383,52 @@
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
 }
 
-.view-btn svg {
-  flex-shrink: 0;
-}
-
-/* Responsive Design */
+/* ── Responsive ─────────────────────────────────────────── */
 @media (max-width: 1200px) {
-  .table-container {
-    overflow-x: auto;
-  }
-
-  .patients-table {
-    min-width: 900px;
-  }
+  .table-container { overflow-x: auto; }
+  .patients-table  { min-width: 700px; }
 }
 
 @media (max-width: 768px) {
-  .header-content {
-    flex-direction: column;
-    gap: 20px;
-  }
-
-  .search-box {
-    flex-direction: column;
-  }
-
-  .action-buttons {
-    flex-direction: column;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  .action-btn {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .user-details {
-    display: none;
-  }
-
-  .main-content {
-    padding: 30px 20px;
-  }
-
-  .search-title {
-    font-size: 28px;
-  }
+  .header-content { padding: 14px 16px; gap: 12px; }
+  .logo-text      { font-size: 20px; }
+  .user-details   { display: none; }
+  .logout-button  { padding: 8px 14px; font-size: 13px; gap: 6px; }
+  .main-content   { padding: 24px 16px; }
+  .search-section { margin-bottom: 24px; }
+  .search-title   { font-size: 26px; margin-bottom: 8px; }
+  .search-subtitle{ font-size: 14px; margin-bottom: 20px; }
+  .search-box     { flex-direction: column; }
+  .search-input   { font-size: 14px; padding: 14px 44px 14px 44px; }
+  .action-buttons { flex-direction: column; width: 100%; }
+  .action-btn     { width: 100%; justify-content: center; padding: 13px 20px; font-size: 14px; }
+  .results-title  { font-size: 20px; }
 }
 
 @media (max-width: 480px) {
-  .logout-button span {
-    display: none;
-  }
+  .header-content { padding: 12px 14px; }
+  .logo-text      { font-size: 18px; }
+  .user-avatar    { width: 36px; height: 36px; font-size: 14px; }
+  .logout-button  { padding: 7px 12px; font-size: 12px; }
+  .main-content   { padding: 20px 12px; }
+  .search-title   { font-size: 22px; }
+  .search-subtitle{ font-size: 13px; }
+  .search-input   { font-size: 13px; padding: 12px 42px 12px 42px; border-radius: 12px; }
+  .search-icon    { left: 13px; width: 18px; height: 18px; }
+  .action-btn     { padding: 12px 16px; font-size: 14px; border-radius: 12px; }
+  .patients-table th, .patients-table td { padding: 10px 12px; }
+  .patients-table th { font-size: 11px; }
+  .patients-table td { font-size: 12px; }
+  .view-btn { padding: 6px 10px; font-size: 12px; }
+}
 
-  .patients-table th,
-  .patients-table td {
-    padding: 12px 16px;
-  }
-
-  .patients-table th {
-    font-size: 12px;
-  }
-
-  .patients-table td {
-    font-size: 13px;
-  }
+@media (max-width: 390px) {
+  .header-content { padding: 10px 12px; }
+  .logo-section svg { width: 28px; height: 28px; }
+  .logo-text      { font-size: 17px; }
+  .logout-button svg { display: none; }
+  .logout-button  { padding: 7px 10px; font-size: 12px; }
+  .main-content   { padding: 16px 10px; }
+  .search-title   { font-size: 20px; }
+  .search-input   { padding: 11px 40px 11px 40px; font-size: 13px; }
 }

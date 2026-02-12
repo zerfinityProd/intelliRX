@@ -33,7 +33,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
   ) {
-    // Subscribe to current user with change detection
+    // Subscribe to current user
     this.authService.currentUser$
       .pipe(takeUntil(this.destroy$))
       .subscribe(user => {
@@ -43,21 +43,20 @@ export class HomeComponent implements OnInit, OnDestroy {
         });
       });
 
-    // Subscribe to search results with change detection
+    // Subscribe to search results
     this.patientService.searchResults$
       .pipe(takeUntil(this.destroy$))
       .subscribe(results => {
         this.ngZone.run(() => {
           this.searchResults = results;
           this.isSearching = false;
-          console.log('Ã¢Å“â€¦ Search results updated:', results.length, 'patients');
+          console.log('✔️ Search results updated:', results.length, 'patients');
           this.cdr.detectChanges();
         });
       });
   }
 
   ngOnInit(): void {
-    // Clear any previous search results when component loads
     this.clearSearch();
   }
 
@@ -69,18 +68,13 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Called on every keystroke in search input - with debounce for performance
-   */
   onSearchInput(): void {
     this.errorMessage = '';
     
-    // Clear any existing timeout
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);
     }
     
-    // If search term is empty, clear results immediately
     if (!this.searchTerm.trim()) {
       this.patientService.clearSearchResults();
       this.isSearching = false;
@@ -88,20 +82,15 @@ export class HomeComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Ã¢Å“â€¦ CHANGED: Don't set loading state immediately - wait for debounce
-    // Debounce search by 1000ms (1 second) - only search when user stops typing
     this.searchTimeout = setTimeout(() => {
       this.ngZone.run(() => {
         this.isSearching = true;
         this.cdr.detectChanges();
       });
       this.performSearch(this.searchTerm.trim());
-    }, 1000); // Changed from 300ms to 1000ms
+    }, 1000);
   }
 
-  /**
-   * Perform the actual search with proper error handling
-   */
   private async performSearch(searchTerm: string): Promise<void> {
     if (!searchTerm) {
       this.patientService.clearSearchResults();
@@ -111,10 +100,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('Ã°Å¸â€Â Starting search for:', searchTerm);
+      console.log('🔎 Starting search for:', searchTerm);
       await this.patientService.searchPatients(searchTerm);
       
-      // Check results in the next tick to ensure subscription has updated
       this.ngZone.run(() => {
         if (this.searchResults.length === 0) {
           this.errorMessage = 'No patients found';
@@ -134,9 +122,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Legacy method - kept for backward compatibility
-   */
   async onSearch(): Promise<void> {
     if (!this.searchTerm.trim()) {
       this.patientService.clearSearchResults();
@@ -159,19 +144,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   async onPatientAdded(patientId: string): Promise<void> {
-    console.log('Ã¢Å“â€¦ Patient added:', patientId);
+    console.log('✅ Patient saved to Firebase:', patientId);
     
-    // Refresh search results if there's an active search
+    // Wait a bit for Firebase to index the new patient
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Always refresh search if there's a search term
     if (this.searchTerm.trim()) {
+      console.log('🔄 Refreshing search results...');
       await this.onSearch();
+    } else {
+      // If no search term, trigger a search with the new patient's phone
+      // This is helpful to show the newly added patient
+      this.isSearching = true;
+      this.cdr.detectChanges();
+      await this.performSearch(this.searchTerm.trim() || '');
     }
+    
+    console.log('✅ Search refreshed, results count:', this.searchResults.length);
   }
 
-  /**
-   * View patient details
-   */
   viewPatientDetails(patient: Patient): void {
-    // Clear search before navigating
     this.clearSearch();
     this.router.navigate(['/patient', patient.uniqueId]);
   }
@@ -184,20 +177,18 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  logout(): void {
-    this.authService.logout();
-    this.router.navigate(['/login']);
+  async logout(): Promise<void> {
+    try {
+      await this.authService.logout();
+      this.router.navigate(['/login']);
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   }
 
-  goToAppointments(): void {
-    this.router.navigate(['/appointments']);
-  }
-
-  // Format date for display
   formatDate(date: Date | undefined | any): string {
     if (!date) return 'N/A';
     
-    // Handle Firestore Timestamp objects
     if (date && typeof date.toDate === 'function') {
       date = date.toDate();
     }

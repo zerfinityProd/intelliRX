@@ -1,8 +1,8 @@
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseService } from './firebase';
+import { AuthService } from './auth';
 import { Patient, Visit } from '../models/patient.model';
-
 
 @Injectable({
   providedIn: 'root'
@@ -14,121 +14,223 @@ export class PatientService {
   private selectedPatientSubject = new BehaviorSubject<Patient | null>(null);
   public selectedPatient$: Observable<Patient | null> = this.selectedPatientSubject.asObservable();
 
-  // Local cache for INSTANT results
   private lastSearchTerm: string = '';
   private lastSearchResults: Patient[] = [];
 
   constructor(
     private firebaseService: FirebaseService,
+    private authService: AuthService,
     private ngZone: NgZone
   ) {}
 
   /**
-   * Create a new patient
+   * Get current user ID - throws error if not authenticated
    */
-  async createPatient(patientData: Omit<Patient, 'uniqueId' | 'familyId' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  private getCurrentUserId(): string {
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      throw new Error('User not authenticated');
+    }
+    return userId;
+  }
+
+  /**
+   * Find existing patient by name and phone
+   * Returns the NEWEST matching record if exists
+   */
+  async findExistingPatient(name: string, phone: string): Promise<Patient | null> {
     try {
-      const familyId = this.firebaseService.generateFamilyId(patientData.name);
-      const uniqueId = await this.firebaseService.addPatient({
-        ...patientData,
-        familyId
+      const userId = this.getCurrentUserId();
+      const normalizedName = name.trim().toLowerCase();
+      const normalizedPhone = phone.trim();
+      
+      const phoneMatches = await this.firebaseService.searchPatientByPhone(normalizedPhone, userId);
+      
+      if (phoneMatches.length === 0) {
+        return null;
+      }
+      
+      const exactMatches = phoneMatches.filter(patient => 
+        patient.name.trim().toLowerCase() === normalizedName
+      );
+      
+      if (exactMatches.length === 0) {
+        return null;
+      }
+      
+      const sorted = exactMatches.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
       });
+      
+      return sorted[0];
+    } catch (error) {
+      console.error('Error finding existing patient:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a new patient OR update existing if found
+   * Returns the patient ID (existing or new)
+   */
+  async createPatient(patientData: Omit<Patient, 'uniqueId' | 'userId' | 'familyId' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const userId = this.getCurrentUserId();
+      
+      // Check for existing patient with same name and phone
+      const existingPatient = await this.findExistingPatient(patientData.name, patientData.phone);
+      
+      if (existingPatient) {
+        console.log('📝 Found existing patient, updating basic info:', existingPatient.uniqueId);
+        
+        const updateData: Partial<Patient> = {
+          name: patientData.name,
+          phone: patientData.phone,
+          email: patientData.email || existingPatient.email,
+          dateOfBirth: patientData.dateOfBirth || existingPatient.dateOfBirth,
+          gender: patientData.gender || existingPatient.gender,
+          allergies: patientData.allergies || existingPatient.allergies
+        };
+        
+        await this.updatePatient(existingPatient.uniqueId, updateData);
+        
+        this.lastSearchTerm = '';
+        this.lastSearchResults = [];
+        
+        return existingPatient.uniqueId;
+      }
+      
+      // New patient - create new record
+      const familyId = this.firebaseService.generateFamilyId(patientData.name);
+      
+      const patientWithUserId = {
+        ...patientData,
+        familyId,
+        userId
+      };
+      
+      const uniqueId = await this.firebaseService.addPatient(patientWithUserId, userId);
+      
+      console.log('🔄 Patient created, invalidating cache');
+      this.lastSearchTerm = '';
+      this.lastSearchResults = [];
+      
       return uniqueId;
     } catch (error) {
-      console.error('Error creating patient:', error);
+      console.error('Error creating/updating patient:', error);
       throw error;
     }
   }
 
   /**
-   * Search patients by phone number or family ID - OPTIMIZED FOR INSTANT RESULTS
+   * Update patient information
    */
-  async searchPatients(searchTerm: string): Promise<Patient[]> {
+  async updatePatient(uniqueId: string, patientData: Partial<Patient>): Promise<void> {
     try {
-      console.log('🔍 searchPatients called with:', searchTerm);
+      const userId = this.getCurrentUserId();
+      await this.firebaseService.updatePatient(uniqueId, patientData, userId);
       
-      // ⚡ INSTANT: Check if we have exact same search cached
-      if (searchTerm === this.lastSearchTerm && this.lastSearchResults.length > 0) {
-        console.log('⚡ INSTANT CACHE HIT - Showing results immediately!');
-        this.updateResults(this.lastSearchResults);
-        return this.lastSearchResults;
-      }
-
-      // ⚡ INSTANT: For partial searches, show matching cached results immediately
-      if (this.lastSearchTerm && searchTerm.startsWith(this.lastSearchTerm) && this.lastSearchResults.length > 0) {
-        const filteredResults = this.filterCachedResults(searchTerm);
-        if (filteredResults.length > 0) {
-          console.log('⚡ INSTANT PARTIAL CACHE - Showing filtered results!');
-          this.updateResults(filteredResults);
-          // Still fetch from Firebase in background for accuracy
-          this.fetchFromFirebase(searchTerm);
-          return filteredResults;
-        }
-      }
-
-      // Fetch from Firebase
-      const results = await this.fetchFromFirebase(searchTerm);
-      return results;
+      this.lastSearchTerm = '';
+      this.lastSearchResults = [];
+      
+      console.log('✅ Patient updated successfully');
     } catch (error) {
-      console.error('Error searching patients:', error);
-      this.updateResults([]);
+      console.error('Error updating patient:', error);
       throw error;
     }
   }
 
   /**
-   * Fetch from Firebase and update cache - with NgZone for proper change detection
+   * Add a visit to a patient
    */
-  private async fetchFromFirebase(searchTerm: string): Promise<Patient[]> {
-    let results: Patient[] = [];
-    
-    console.log('📡 Fetching from Firebase:', searchTerm);
-    
-    // If search term is numeric, search by phone
-    if (/^\d+$/.test(searchTerm)) {
-      results = await this.firebaseService.searchPatientByPhone(searchTerm);
-    } else {
-      // Otherwise search by family ID
-      results = await this.firebaseService.searchPatientByFamilyId(searchTerm.toLowerCase());
+  async addVisit(patientId: string, visitData: Omit<Visit, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+    try {
+      const userId = this.getCurrentUserId();
+      const visitId = await this.firebaseService.addVisit(patientId, visitData, userId);
+      console.log('✅ Visit added successfully');
+      return visitId;
+    } catch (error) {
+      console.error('Error adding visit:', error);
+      throw error;
     }
-    
-    console.log('📡 Firebase returned:', results.length, 'results');
-    
-    // Update cache
-    this.lastSearchTerm = searchTerm;
-    this.lastSearchResults = results;
-    
-    // Update UI with NgZone
-    this.updateResults(results);
-    
-    return results;
   }
+  /**
+ * Search patients - shows ALL records, sorted by newest first
+ */
+async searchPatients(searchTerm: string): Promise<void> {
+  try {
+    const userId = this.getCurrentUserId();
+    const trimmedTerm = searchTerm.trim();
+
+    if (trimmedTerm === this.lastSearchTerm && this.lastSearchResults.length > 0) {
+      console.log('⚡ Using cached search results');
+      this.ngZone.run(() => {
+        this.searchResultsSubject.next(this.lastSearchResults);
+      });
+      return;
+    }
+
+    console.log('🔍 Searching for:', trimmedTerm);
+
+    let allResults: Patient[] = [];
+
+    const isNumeric = /^\d+$/.test(trimmedTerm);
+
+    if (isNumeric) {
+      // Phone search
+      const phoneResults = await this.firebaseService.searchPatientByPhone(trimmedTerm, userId);
+      allResults = phoneResults;
+    } else {
+      // Family ID search - make sure to pass lowercase
+      const familyResults = await this.firebaseService.searchPatientByFamilyId(trimmedTerm.toLowerCase(), userId);
+      allResults = familyResults;
+    }
+
+    // Sort by newest first
+    allResults.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+      const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    });
+    
+    console.log(`📊 Found ${allResults.length} records (showing all, newest first)`);
+
+    this.lastSearchTerm = trimmedTerm;
+    this.lastSearchResults = allResults;
+
+    this.ngZone.run(() => {
+      this.searchResultsSubject.next(allResults);
+    });
+
+  } catch (error) {
+    console.error('Error searching patients:', error);
+    this.ngZone.run(() => {
+      this.searchResultsSubject.next([]);
+    });
+    throw error;
+  }
+}
 
   /**
-   * Update results with proper zone handling
+   * Clear search results
    */
-  private updateResults(results: Patient[]): void {
+  clearSearchResults(): void {
+    this.lastSearchTerm = '';
+    this.lastSearchResults = [];
     this.ngZone.run(() => {
-      console.log('✅ Updating searchResultsSubject with', results.length, 'results');
-      this.searchResultsSubject.next(results);
+      this.searchResultsSubject.next([]);
     });
   }
 
   /**
-   * Filter cached results for partial matches
+   * Select a patient for viewing details
    */
-  private filterCachedResults(searchTerm: string): Patient[] {
-    if (/^\d+$/.test(searchTerm)) {
-      // Phone number search - filter by phone prefix
-      return this.lastSearchResults.filter(p => p.phone.startsWith(searchTerm));
-    } else {
-      // Family ID search - filter by family ID prefix
-      const term = searchTerm.toLowerCase();
-      return this.lastSearchResults.filter(p => 
-        p.familyId.toLowerCase().startsWith(term) ||
-        p.name.toLowerCase().includes(term)
-      );
-    }
+  selectPatient(patient: Patient | null): void {
+    this.ngZone.run(() => {
+      this.selectedPatientSubject.next(patient);
+    });
   }
 
   /**
@@ -136,7 +238,9 @@ export class PatientService {
    */
   async getPatient(uniqueId: string): Promise<Patient | null> {
     try {
-      const patient = await this.firebaseService.getPatientById(uniqueId);
+      const userId = this.getCurrentUserId();
+      const patient = await this.firebaseService.getPatientById(uniqueId, userId);
+      
       if (patient) {
         this.ngZone.run(() => {
           this.selectedPatientSubject.next(patient);
@@ -150,82 +254,28 @@ export class PatientService {
   }
 
   /**
-   * Update patient information
-   */
-  async updatePatient(uniqueId: string, patientData: Partial<Patient>): Promise<void> {
-    try {
-      await this.firebaseService.updatePatient(uniqueId, patientData);
-      
-      // Update selected patient if it's the same
-      const currentSelected = this.selectedPatientSubject.value;
-      if (currentSelected && currentSelected.uniqueId === uniqueId) {
-        const updatedPatient = await this.firebaseService.getPatientById(uniqueId);
-        if (updatedPatient) {
-          this.ngZone.run(() => {
-            this.selectedPatientSubject.next(updatedPatient);
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error updating patient:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Add a visit for a patient
-   */
-  async addVisit(patientId: string, visitData: Omit<Visit, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    try {
-      return await this.firebaseService.addVisit(patientId, visitData);
-    } catch (error) {
-      console.error('Error adding visit:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get patient visits
+   * Get all visits for a patient
    */
   async getPatientVisits(patientId: string): Promise<Visit[]> {
     try {
-      return await this.firebaseService.getPatientVisits(patientId);
+      const userId = this.getCurrentUserId();
+      const visits = await this.firebaseService.getPatientVisits(patientId, userId);
+      return visits;
     } catch (error) {
       console.error('Error getting visits:', error);
-      throw error;
+      return [];
     }
   }
 
   /**
-   * Clear search results
-   */
-  clearSearchResults(): void {
-    this.updateResults([]);
-    // Keep cache for faster subsequent searches
-  }
-
-  /**
-   * Set selected patient
-   */
-  setSelectedPatient(patient: Patient | null): void {
-    this.ngZone.run(() => {
-      this.selectedPatientSubject.next(patient);
-    });
-  }
-
-  /**
-   * Validate phone number
+   * Validation helpers
    */
   isValidPhone(phone: string): boolean {
-    return /^\d{10}$/.test(phone);
+    return /^\d{10}$/.test(phone.trim());
   }
 
-  /**
-   * Validate email
-   */
   isValidEmail(email: string): boolean {
-    if (!email) return true; // Email is optional
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return emailRegex.test(email.trim());
   }
 }

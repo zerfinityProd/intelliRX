@@ -1,4 +1,3 @@
-
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
@@ -7,7 +6,7 @@ import { RouterOutlet } from '@angular/router';
   standalone: true,
   imports: [RouterOutlet],
   template: '<router-outlet></router-outlet>',
-  styles: []
+  styleUrls: ['./app.css']
 })
 export class AppComponent {
   title = 'IntelliRx Patient Management';

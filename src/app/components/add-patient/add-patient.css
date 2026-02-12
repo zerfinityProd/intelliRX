@@ -1,9 +1,8 @@
+/* add-patient.css — layout only, no font rules */
+
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
@@ -11,15 +10,6 @@
   z-index: 1000;
   padding: 20px;
   animation: fadeIn 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
 }
 
 .modal-content {
@@ -32,17 +22,6 @@
   flex-direction: column;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   animation: slideUp 0.3s ease-in-out;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
 }
 
 .modal-header {
@@ -83,10 +62,8 @@
   padding: 30px;
 }
 
-/* Section Styles */
-.section {
-  margin-bottom: 24px;
-}
+/* ── Sections ────────────────────────────────────────────── */
+.section { margin-bottom: 24px; }
 
 .section-title {
   font-size: 17px;
@@ -97,7 +74,6 @@
   border-bottom: 2px solid #f1f5f9;
 }
 
-/* 2-column grid for sections */
 .sections-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -105,11 +81,9 @@
   margin-bottom: 24px;
 }
 
-.section-full-width {
-  grid-column: 1 / -1;
-}
+.section-full-width { grid-column: 1 / -1; }
 
-/* Form Styles */
+/* ── Form ────────────────────────────────────────────────── */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -117,7 +91,6 @@
   margin-bottom: 14px;
 }
 
-/* 3-column layout for compact fields */
 .form-row-3col {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
@@ -135,18 +108,13 @@
   font-weight: 600;
   color: #334155;
   margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.required {
-  color: #dc2626;
-}
-
-.auto-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: #6366f1;
-  margin-left: 4px;
-}
+.required    { color: #dc2626; }
+.auto-label  { font-size: 11px; font-weight: 500; color: #6366f1; margin-left: 4px; }
 
 .form-input,
 .form-textarea {
@@ -156,7 +124,7 @@
   font-size: 14px;
   color: #1e293b;
   transition: all 0.3s ease;
-  font-family: inherit;
+  background: white;
 }
 
 .form-input:focus,
@@ -185,36 +153,29 @@
   min-height: 55px;
 }
 
-select.form-input {
-  cursor: pointer;
-}
+select.form-input          { cursor: pointer; }
+select.form-input:disabled { cursor: not-allowed; }
 
-/* Dynamic Fields */
+/* ── Dynamic fields ──────────────────────────────────────── */
 .dynamic-field {
   display: flex;
   gap: 10px;
   margin-bottom: 10px;
-  align-items: start;
+  align-items: flex-start;
 }
 
 .dynamic-field .form-input,
-.dynamic-field .form-textarea {
-  flex: 1;
-}
-
-.dynamic-field .form-textarea {
-  min-height: 45px;
-}
+.dynamic-field .form-textarea { flex: 1; }
+.dynamic-field .form-textarea { min-height: 45px; }
 
 .exam-field,
 .medicine-field {
   display: flex;
   gap: 10px;
   margin-bottom: 10px;
-  align-items: start;
+  align-items: flex-start;
 }
 
-.exam-inputs,
 .exam-inputs,
 .medicine-inputs {
   flex: 1;
@@ -222,15 +183,9 @@ select.form-input {
   gap: 10px;
 }
 
-.exam-inputs {
-  grid-template-columns: 1fr 1fr;
-}
+.exam-inputs { grid-template-columns: 1fr 1fr; }
+.medicine-inputs { grid-template-columns: 1fr; }
 
-.medicine-inputs {
-  grid-template-columns: 1fr;
-}
-
-/* Full-width medicines layout (3 columns) */
 .medicine-inputs-fullwidth {
   flex: 1;
   display: grid;
@@ -277,7 +232,7 @@ select.form-input {
   border-color: #94a3b8;
 }
 
-/* Success Message */
+/* ── Messages ────────────────────────────────────────────── */
 .success-message {
   background: #f0fdf4;
   border: 1px solid #86efac;
@@ -290,26 +245,8 @@ select.form-input {
   display: flex;
   align-items: center;
   gap: 10px;
-  animation: slideInSuccess 0.3s ease-in-out;
 }
 
-@keyframes slideInSuccess {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.success-message svg {
-  flex-shrink: 0;
-  stroke: #16a34a;
-}
-
-/* Error Message */
 .error-message {
   background: #fef2f2;
   border: 1px solid #fecaca;
@@ -321,7 +258,7 @@ select.form-input {
   font-weight: 500;
 }
 
-/* Form Actions */
+/* ── Form Actions ────────────────────────────────────────── */
 .form-actions {
   display: flex;
   gap: 12px;
@@ -365,10 +302,7 @@ select.form-input {
 }
 
 .submit-button:disabled,
-.cancel-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+.cancel-button:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .loading-content {
   display: flex;
@@ -381,36 +315,39 @@ select.form-input {
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid rgba(255,255,255,0.3);
   border-top-color: white;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ── Allergy helpers ─────────────────────────────────────── */
+.existing-allergies-label,
+.new-allergies-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 8px;
+  margin-top: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* Scrollbar Styling */
-.modal-body::-webkit-scrollbar {
-  width: 8px;
+.existing-allergies-label { margin-top: 0; }
+
+.readonly-allergy-badge {
+  padding: 10px 14px;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 14px;
+  margin-bottom: 8px;
+  display: inline-block;
+  margin-right: 8px;
 }
 
-.modal-body::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 10px;
-}
-
-.modal-body::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 10px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Edit Toggle Button Styles */
+/* ── Edit toggle ─────────────────────────────────────────── */
 .edit-toggle-button {
   display: flex;
   align-items: center;
@@ -426,34 +363,24 @@ select.form-input {
   transition: all 0.3s ease;
 }
 
-.edit-toggle-button:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-  color: #6366f1;
-}
+.edit-toggle-button:hover  { background: #f8fafc; border-color: #cbd5e1; color: #6366f1; }
+.edit-toggle-button.active { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); border-color: #6366f1; color: white; }
 
-.edit-toggle-button.active {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  border-color: #6366f1;
-  color: white;
-}
-
-.edit-toggle-button svg {
-  flex-shrink: 0;
-}
-
-/* Locked Field Label */
 .locked-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
   font-weight: 600;
   color: #f59e0b;
   background: #fef3c7;
-  padding: 2px 6px;
+  padding: 3px 6px;
   border-radius: 6px;
-  margin-left: 6px;
+  margin-left: 4px;
 }
 
-/* Info Badge */
+.locked-label svg { width: 12px; height: 12px; stroke: #f59e0b; }
+
 .info-badge {
   font-size: 11px;
   font-weight: 600;
@@ -464,66 +391,59 @@ select.form-input {
   margin-left: 10px;
 }
 
-/* Responsive Design */
-@media (max-width: 1400px) {
-  .modal-content {
-    max-width: 95%;
-  }
-}
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 1400px) { .modal-content { max-width: 95%; } }
 
 @media (max-width: 1200px) {
-  .form-row-3col {
-    grid-template-columns: 1fr 1fr;
-  }
+  .form-row-3col { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 1024px) {
-  .sections-container {
-    grid-template-columns: 1fr;
-  }
+  .sections-container { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
-  .modal-content {
-    max-width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-
-  .form-row,
-  .form-row-3col {
-    grid-template-columns: 1fr;
-  }
-
-  .exam-inputs {
-    grid-template-columns: 1fr;
-  }
-
-  .medicine-inputs,
-  .medicine-inputs-fullwidth {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions {
-    flex-direction: column-reverse;
-  }
-
-  .cancel-button,
-  .submit-button {
-    width: 100%;
-  }
+  .modal-overlay  { padding: 12px; align-items: flex-end; }
+  .modal-content  { max-width: 100%; max-height: 95vh; border-radius: 20px 20px 0 0; }
+  .modal-header   { padding: 18px 20px; }
+  .modal-header h2{ font-size: 20px; }
+  .modal-body     { padding: 20px; }
+  .form-row-3col  { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-row       { gap: 10px; }
+  .sections-container { grid-template-columns: 1fr; gap: 0; }
+  .form-input, .form-textarea { font-size: 14px; padding: 9px 12px; }
+  .form-group label { font-size: 12px; }
+  .section-title  { font-size: 15px; }
+  .form-actions   { padding-top: 16px; gap: 10px; }
+  .cancel-button, .submit-button { padding: 11px 18px; font-size: 14px; min-width: 90px; }
+  .edit-toggle-button { padding: 8px 14px; font-size: 13px; }
 }
 
 @media (max-width: 480px) {
-  .modal-header {
-    padding: 20px;
-  }
+  .modal-overlay  { padding: 0; align-items: flex-end; }
+  .modal-content  { border-radius: 16px 16px 0 0; max-height: 96vh; }
+  .modal-header   { padding: 16px; flex-wrap: wrap; }
+  .modal-header h2{ font-size: 18px; }
+  .modal-body     { padding: 16px; }
+  .form-row-3col  { grid-template-columns: 1fr; gap: 8px; }
+  .form-row       { grid-template-columns: 1fr; gap: 8px; }
+  .section        { margin-bottom: 12px; }
+  .section-title  { font-size: 14px; margin-bottom: 10px; }
+  .form-input, .form-textarea { padding: 9px 11px; border-radius: 8px; font-size: 14px; }
+  .form-group     { margin-bottom: 2px; }
+  .form-group label { font-size: 12px; margin-bottom: 4px; }
+  .exam-inputs    { grid-template-columns: 1fr; }
+  .medicine-inputs, .medicine-inputs-fullwidth { grid-template-columns: 1fr; }
+  .form-actions   { flex-direction: row; padding-top: 14px; gap: 8px; }
+  .cancel-button, .submit-button { flex: 1; padding: 11px 12px; font-size: 14px; min-width: unset; }
+  .add-field-btn  { padding: 7px 12px; font-size: 12px; }
+  .edit-toggle-button { width: 100%; justify-content: center; font-size: 12px; padding: 8px 12px; }
+}
 
-  .modal-body {
-    padding: 20px;
-  }
-
-  .modal-header h2 {
-    font-size: 20px;
-  }
+@media (max-width: 390px) {
+  .modal-header   { padding: 14px; }
+  .modal-body     { padding: 12px; }
+  .form-input, .form-textarea { font-size: 13px; padding: 8px 10px; }
+  .section-title  { font-size: 13px; }
+  .form-group label { font-size: 11px; }
 }

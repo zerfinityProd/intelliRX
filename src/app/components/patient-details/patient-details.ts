@@ -5,11 +5,12 @@ import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
 import { AddPatientComponent } from '../add-patient/add-patient';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
+import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
 
 @Component({
   selector: 'app-patient-details',
   standalone: true,
-  imports: [CommonModule, AddPatientComponent, PatientStatsComponent],
+  imports: [CommonModule, AddPatientComponent, PatientStatsComponent, EditPatientInfoComponent],
   templateUrl: './patient-details.html',
   styleUrl: './patient-details.css'
 })
@@ -24,6 +25,9 @@ export class PatientDetailsComponent implements OnInit {
   // Properties for visit form
   showAddVisitForm: boolean = false;
   isEditingPatient: boolean = false;
+  
+  // Property for edit patient info modal
+  showEditPatientInfo: boolean = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -120,6 +124,33 @@ export class PatientDetailsComponent implements OnInit {
       this.isEditingPatient = false; // Start with locked fields
       this.cdr.detectChanges();
     });
+  }
+
+  // Open separate modal to edit patient information
+  openEditPatientInfo(): void {
+    this.ngZone.run(() => {
+      this.showEditPatientInfo = true;
+      this.cdr.detectChanges();
+    });
+  }
+
+  // Close edit patient info modal
+  closeEditPatientInfo(): void {
+    this.ngZone.run(() => {
+      this.showEditPatientInfo = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  // Handle patient info updated
+  async onPatientInfoUpdated(patientId: string): Promise<void> {
+    console.log('✅ Patient info updated:', patientId);
+    
+    // Reload patient data
+    await this.loadPatient(patientId);
+    
+    // Close the edit modal
+    this.closeEditPatientInfo();
   }
 
   // Close visit form

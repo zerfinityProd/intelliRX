@@ -1,56 +1,149 @@
-/* You can add global styles to this file, and also import other style files */
-/* src/styles.css */
-/* Global Styles */
+/* ============================================================
+   INTELLIRX — GLOBAL STYLESHEET  (src/styles.css)
+   Listed in angular.json → "styles": ["src/styles.css"]
+   This is the ONLY file allowed to import Google Fonts.
+   All component CSS files must NOT have @import or font-family rules.
+   ============================================================ */
 
-* {
+/* ── 1. Google Fonts ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ── 2. CSS Design Tokens ────────────────────────────────── */
+:root {
+  --font:              'Poppins', sans-serif;
+  --fs-xs:             11px;
+  --fs-sm:             12px;
+  --fs-base:           14px;
+  --fs-md:             15px;
+  --fs-lg:             16px;
+  --fs-xl:             18px;
+  --fs-2xl:            20px;
+  --fs-3xl:            24px;
+  --fs-4xl:            32px;
+  --fw-normal:         400;
+  --fw-medium:         500;
+  --fw-semibold:       600;
+  --fw-bold:           700;
+  --lh-tight:          1.25;
+  --lh-normal:         1.5;
+  --lh-relaxed:        1.7;
+  --clr-primary:       #6366f1;
+  --clr-primary-dark:  #4f46e5;
+  --clr-primary-light: #ede9fe;
+  --clr-secondary:     #64748b;
+  --clr-text:          #1e293b;
+  --clr-text-muted:    #64748b;
+  --clr-text-light:    #94a3b8;
+  --clr-bg:            #f5f7fa;
+  --clr-surface:       #ffffff;
+  --clr-border:        #e2e8f0;
+  --clr-border-light:  #f1f5f9;
+  --clr-success:       #16a34a;
+  --clr-error:         #dc2626;
+  --clr-warning:       #f59e0b;
+  --shadow-sm:         0 1px 3px rgba(0,0,0,.06);
+  --shadow-md:         0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg:         0 10px 30px rgba(0,0,0,.10);
+  --shadow-xl:         0 20px 60px rgba(0,0,0,.15);
+  --t-fast:            0.15s ease;
+  --t-normal:          0.25s ease;
+}
+
+/* ── 3. Box-sizing reset ─────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
+}
+
+/* ── 4. Root — sets Poppins as the cascade root ──────────── */
+html {
+  font-family:             var(--font);
+  font-size:               var(--fs-base);
+  font-weight:             var(--fw-normal);
+  line-height:             var(--lh-normal);
+  color:                   var(--clr-text);
+  background-color:        var(--clr-bg);
+  -webkit-font-smoothing:  antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering:          optimizeLegibility;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
-  color: #1e293b;
+  font-family: var(--font);
+  min-height:  100vh;
 }
 
-html, body {
-  height: 100%;
-}
-
-/* Remove default button styles */
-button {
+/* Every element inherits — this kills Times New Roman */
+* {
   font-family: inherit;
 }
 
-/* Remove spinner from number inputs */
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+/* ── 5. Form controls (browsers inject their own fonts here) */
+input, textarea, select, button, optgroup, option {
+  font-family: var(--font);
+  font-size:   inherit;
+  line-height: inherit;
+  color:       inherit;
 }
 
-input[type="number"] {
- appearance: textfield;
-  -moz-appearance: textfield;
+/* ── 6. Headings ─────────────────────────────────────────── */
+h1 { font-size: var(--fs-4xl); font-weight: var(--fw-bold);     line-height: var(--lh-tight); }
+h2 { font-size: var(--fs-3xl); font-weight: var(--fw-bold);     line-height: var(--lh-tight); }
+h3 { font-size: var(--fs-2xl); font-weight: var(--fw-semibold); line-height: var(--lh-tight); }
+h4 { font-size: var(--fs-xl);  font-weight: var(--fw-semibold); line-height: var(--lh-normal); }
+h5 { font-size: var(--fs-lg);  font-weight: var(--fw-medium);   line-height: var(--lh-normal); }
+h6 { font-size: var(--fs-md);  font-weight: var(--fw-medium);   line-height: var(--lh-normal); }
+
+/* ── 7. Misc ──────────────────────────────────────────────── */
+p { line-height: var(--lh-relaxed); }
+a { color: var(--clr-primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+img, svg { display: block; max-width: 100%; }
+table { border-collapse: collapse; width: 100%; }
+ul, ol { list-style: none; }
+button { cursor: pointer; font-family: var(--font); font-weight: var(--fw-semibold); }
+
+/* ── 8. Focus ring ───────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--clr-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
+/* ── 9. Scrollbar ────────────────────────────────────────── */
+::-webkit-scrollbar        { width: 8px; height: 8px; }
+::-webkit-scrollbar-track  { background: var(--clr-border-light); border-radius: 8px; }
+::-webkit-scrollbar-thumb  { background: var(--clr-border); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--clr-text-light); }
+
+/* ── 10. Shared keyframes (used by all components) ───────── */
+@keyframes fadeIn  { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+@keyframes slideUp { from { opacity:0; transform:translateY(40px); } to { opacity:1; transform:translateY(0); } }
+@keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:.5; } }
+
+/* ── 11. Responsive scaling ──────────────────────────────── */
+@media (max-width: 768px) {
+  :root {
+    --fs-3xl: 22px;
+    --fs-4xl: 28px;
+  }
+}
+@media (max-width: 480px) {
+  :root {
+    --fs-base: 13px;
+    --fs-3xl:  20px;
+    --fs-4xl:  24px;
+  }
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Selection color */
-::selection {
-  background-color: rgba(99, 102, 241, 0.2);
-  color: #1e293b;
-}
-
-::-moz-selection {
-  background-color: rgba(99, 102, 241, 0.2);
-  color: #1e293b;
+/* ── 12. Print ───────────────────────────────────────────── */
+@media print {
+  html, body, * {
+    background: white !important;
+    color: black !important;
+    box-shadow: none !important;
+  }
 }

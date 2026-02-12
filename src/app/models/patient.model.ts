@@ -1,5 +1,6 @@
 export interface Patient {
-  uniqueId: string; // Primary key: combination of familyId and phone
+  uniqueId: string; // Primary key: combination of userId, familyId and phone
+  userId: string; // Firebase Auth UID - for user-specific data access
   familyId: string; // lastname_firstname
   name: string;
   phone: string;
@@ -40,7 +41,7 @@ export interface Medicine {
 
 export interface Visit {
   id?: string;
-  presentIllness?: string; // Moved from Patient - illness at time of visit
+  presentIllness?: string;
   chiefComplaints: string;
   diagnosis: string;
   examination: string;

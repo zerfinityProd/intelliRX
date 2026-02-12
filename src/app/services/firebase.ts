@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
-import { initializeApp, FirebaseApp } from 'firebase/app';
+import { Firestore } from '@angular/fire/firestore';
 import {
-  getFirestore,
-  Firestore,
   collection,
   doc,
   setDoc,
@@ -15,40 +13,30 @@ import {
   DocumentData,
   Timestamp,
   limit,
-  orderBy,
-  persistentLocalCache,
-  persistentMultipleTabManager
-} from 'firebase/firestore';
-import { environment } from '../../environments/environment';
-
+  orderBy
+} from '@angular/fire/firestore';
 import { Patient, Visit } from '../models/patient.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FirebaseService {
-  private app: FirebaseApp;
-  private db: Firestore;
   private patientsCollection: CollectionReference<DocumentData>;
   
   // In-memory cache for faster repeated queries
   private patientCache: Map<string, { patient: Patient; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  constructor() {
-    this.app = initializeApp(environment.firebase);
-    
-    // Initialize Firestore with new persistence API (supports multiple tabs)
-    this.db = getFirestore(this.app);
-    
+  constructor(private db: Firestore) {
     this.patientsCollection = collection(this.db, 'patients');
   }
 
   /**
-   * Generate unique ID from family ID and phone number
+   * Generate unique ID from family ID, phone number, and user ID
    */
-  private generateUniqueId(familyId: string, phone: string): string {
-    return `${familyId}_${phone}`;
+  private generateUniqueId(familyId: string, phone: string, userId: string): string {
+    // Include userId to ensure each user gets separate records
+    return `${familyId}_${phone}_${userId}`;
   }
 
   /**
@@ -65,11 +53,15 @@ export class FirebaseService {
   }
 
   /**
-   * Add a new patient to Firebase (Optimized with batch operations)
+   * Add a new patient to Firebase (with userId)
+   * The patientData should already include userId from the calling service
    */
-  async addPatient(patientData: Omit<Patient, 'uniqueId' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async addPatient(
+    patientData: Omit<Patient, 'uniqueId' | 'createdAt' | 'updatedAt'>,
+    userId: string
+  ): Promise<string> {
     try {
-      const uniqueId = this.generateUniqueId(patientData.familyId, patientData.phone);
+      const uniqueId = this.generateUniqueId(patientData.familyId, patientData.phone, userId);
       const patientDoc = doc(this.patientsCollection, uniqueId);
 
       const patient: Patient = {
@@ -79,10 +71,9 @@ export class FirebaseService {
         updatedAt: new Date()
       };
 
-      // Clean the data before saving - remove undefined values
+      // Clean the data before saving
       const cleanedPatient = this.removeUndefinedFields(patient);
 
-      // Use setDoc with merge option for faster writes
       await setDoc(patientDoc, this.convertToFirestore(cleanedPatient));
       
       // Add to cache immediately
@@ -109,99 +100,80 @@ export class FirebaseService {
   }
 
   /**
-   * Search patient by phone number (Optimized with limit and cache)
+   * Search patient by phone number (user-specific)
+   * Returns ALL records for the phone number, sorted by newest first
    */
-  async searchPatientByPhone(phone: string): Promise<Patient[]> {
+  async searchPatientByPhone(phone: string, userId: string): Promise<Patient[]> {
     try {
-      // Check cache first for instant results
-      const cachedResults = this.getCachedSearchResults('phone', phone);
-      if (cachedResults && cachedResults.length > 0) {
-        console.log('✅ Returning cached phone search results (instant)');
-        return cachedResults;
-      }
+      // Don't use cache for phone searches - always get fresh data
+      console.log('ðŸ“ž Searching for all records with phone:', phone);
 
-      // Create optimized query with smaller limit for faster response
+      // Query with userId filter for security, ordered by creation date (newest first)
       const q = query(
         this.patientsCollection,
+        where('userId', '==', userId),
         where('phone', '==', phone),
-        limit(10) // Reduced from 20 to 10 for faster queries
+        orderBy('createdAt', 'desc')  // Newest first
+        // No limit - get ALL records for this phone number
       );
       
       const querySnapshot = await getDocs(q);
       const results = querySnapshot.docs.map(doc => this.convertFromFirestore(doc.data()));
       
-      // Cache results for next time
+      // Cache results
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
-      console.log(`📞 Phone search completed: ${results.length} results`);
+      console.log(`âœ… Phone search completed: Found ${results.length} record(s), sorted by newest first`);
       return results;
     } catch (error) {
       console.error('Error searching patient by phone:', error);
-      
-      // If error is about missing index, provide helpful message
-      if (error instanceof Error && error.message.includes('index')) {
-        console.error('FIRESTORE INDEX REQUIRED: Create an index for phone + createdAt');
-        console.error('Click the link in the console to auto-create the index');
-      }
-      
       throw error;
     }
   }
 
   /**
-   * Search patient by family ID (Optimized with prefix search)
+   * Search patient by family ID (user-specific)
    */
-  async searchPatientByFamilyId(familyId: string): Promise<Patient[]> {
+  async searchPatientByFamilyId(familyId: string, userId: string): Promise<Patient[]> {
     try {
-      // Check cache first for instant results
-      const cachedResults = this.getCachedSearchResults('familyId', familyId);
-      if (cachedResults && cachedResults.length > 0) {
-        console.log('✅ Returning cached family ID search results (instant)');
-        return cachedResults;
-      }
+      // Don't use cache - always get fresh data
+      console.log('ðŸ‘¨â€ðŸ‘©â€ðŸ‘§â€ðŸ‘¦ Searching for family ID:', familyId);
 
-      // Normalize search term
       const searchTerm = familyId.toLowerCase().trim();
       
-      // Create optimized query with prefix matching
+      // Query with userId filter for security
       const q = query(
         this.patientsCollection,
+        where('userId', '==', userId),
         where('familyId', '>=', searchTerm),
         where('familyId', '<=', searchTerm + '\uf8ff'),
         orderBy('familyId'),
-        limit(10) // Reduced from 20 to 10 for faster queries
+        orderBy('createdAt', 'desc')  // Within same family, newest first
       );
       
       const querySnapshot = await getDocs(q);
       const results = querySnapshot.docs.map(doc => this.convertFromFirestore(doc.data()));
       
-      // Cache results for next time
+      // Cache results
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
-      console.log(`👨‍👩‍👧‍👦 Family ID search completed: ${results.length} results`);
+      console.log(`âœ… Family ID search completed: Found ${results.length} record(s)`);
       return results;
     } catch (error) {
       console.error('Error searching patient by family ID:', error);
-      
-      // If error is about missing index, provide helpful message
-      if (error instanceof Error && error.message.includes('index')) {
-        console.error('FIRESTORE INDEX REQUIRED: Create an index for familyId');
-        console.error('Click the link in the console to auto-create the index');
-      }
-      
       throw error;
     }
   }
 
   /**
-   * Get patient by unique ID (Optimized with cache)
+   * Get patient by unique ID (with userId verification)
    */
-  async getPatientById(uniqueId: string): Promise<Patient | null> {
+  async getPatientById(uniqueId: string, userId: string): Promise<Patient | null> {
     try {
       // Check cache first
       const cached = this.getFromCache(uniqueId);
-      if (cached) {
-        console.log('✅ Returning cached patient data (instant)');
+      if (cached && cached.userId === userId) {
+        console.log('âœ”ï¸ Returning cached patient data');
         return cached;
       }
 
@@ -210,6 +182,13 @@ export class FirebaseService {
       
       if (docSnap.exists()) {
         const patient = this.convertFromFirestore(docSnap.data());
+        
+        // Verify that the patient belongs to the requesting user
+        if (patient.userId !== userId) {
+          console.error('ðŸš« Unauthorized access attempt');
+          return null;
+        }
+        
         this.addToCache(uniqueId, patient);
         return patient;
       }
@@ -221,22 +200,30 @@ export class FirebaseService {
   }
 
   /**
-   * Update patient information (Optimized with cache invalidation)
+   * Update patient information (with userId verification)
    */
-  async updatePatient(uniqueId: string, patientData: Partial<Patient>): Promise<void> {
+  async updatePatient(uniqueId: string, patientData: Partial<Patient>, userId: string): Promise<void> {
     try {
+      // First verify the patient belongs to this user
+      const existingPatient = await this.getPatientById(uniqueId, userId);
+      if (!existingPatient) {
+        throw new Error('Patient not found or unauthorized');
+      }
+
       const patientDoc = doc(this.patientsCollection, uniqueId);
+      
+      // Remove fields that should never be updated
+      const { createdAt, uniqueId: _, userId: __, ...dataWithoutProtectedFields } = patientData as any;
+      
       const updateData = {
-        ...patientData,
+        ...dataWithoutProtectedFields,
         updatedAt: new Date()
       };
       
-      // Clean the data before updating
       const cleanedUpdate = this.removeUndefinedFields(updateData);
-      
       await updateDoc(patientDoc, this.convertToFirestore(cleanedUpdate));
       
-      // Invalidate cache for this patient
+      // Invalidate cache
       this.removeFromCache(uniqueId);
     } catch (error) {
       console.error('Error updating patient:', error);
@@ -245,10 +232,20 @@ export class FirebaseService {
   }
 
   /**
-   * Add a visit to a patient (Optimized)
+   * Add a visit to a patient (with userId verification)
    */
-  async addVisit(patientId: string, visitData: Omit<Visit, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async addVisit(
+    patientId: string, 
+    visitData: Omit<Visit, 'id' | 'createdAt' | 'updatedAt'>,
+    userId: string
+  ): Promise<string> {
     try {
+      // Verify patient belongs to user
+      const patient = await this.getPatientById(patientId, userId);
+      if (!patient) {
+        throw new Error('Patient not found or unauthorized');
+      }
+
       const patientDoc = doc(this.patientsCollection, patientId);
       const visitsCollection = collection(patientDoc, 'visits');
       const visitDoc = doc(visitsCollection);
@@ -269,14 +266,19 @@ export class FirebaseService {
   }
 
   /**
-   * Get all visits for a patient (Optimized with limit and ordered by date - newest first)
+   * Get all visits for a patient (with userId verification)
    */
-  async getPatientVisits(patientId: string): Promise<Visit[]> {
+  async getPatientVisits(patientId: string, userId: string): Promise<Visit[]> {
     try {
+      // Verify patient belongs to user
+      const patient = await this.getPatientById(patientId, userId);
+      if (!patient) {
+        throw new Error('Patient not found or unauthorized');
+      }
+
       const patientDoc = doc(this.patientsCollection, patientId);
       const visitsCollection = collection(patientDoc, 'visits');
       
-      // Order by createdAt descending (newest first)
       const q = query(visitsCollection, orderBy('createdAt', 'desc'), limit(50));
       const querySnapshot = await getDocs(q);
       
@@ -287,27 +289,15 @@ export class FirebaseService {
     }
   }
 
-  /**
-   * Cache Management - Add patient to cache
-   */
+  // Cache management methods
   private addToCache(uniqueId: string, patient: Patient): void {
-    this.patientCache.set(uniqueId, {
-      patient,
-      timestamp: Date.now()
-    });
+    this.patientCache.set(uniqueId, { patient, timestamp: Date.now() });
   }
 
-  /**
-   * Cache Management - Get patient from cache (OPTIMIZED)
-   */
   private getFromCache(uniqueId: string): Patient | null {
     const cached = this.patientCache.get(uniqueId);
+    if (!cached) return null;
     
-    if (!cached) {
-      return null;
-    }
-    
-    // Check if cache is expired
     const isExpired = Date.now() - cached.timestamp > this.CACHE_DURATION;
     if (isExpired) {
       this.patientCache.delete(uniqueId);
@@ -317,31 +307,25 @@ export class FirebaseService {
     return cached.patient;
   }
 
-  /**
-   * Cache Management - Remove patient from cache
-   */
   private removeFromCache(uniqueId: string): void {
     this.patientCache.delete(uniqueId);
   }
 
-  /**
-   * Cache Management - Get cached search results (OPTIMIZED)
-   */
-  private getCachedSearchResults(field: 'phone' | 'familyId', value: string): Patient[] | null {
+  private getCachedSearchResults(
+    field: 'phone' | 'familyId', 
+    value: string, 
+    userId: string
+  ): Patient[] | null {
     const cachedPatients: Patient[] = [];
     const now = Date.now();
     
     for (const [_, cached] of this.patientCache) {
-      // Check if cache is expired (quick check first)
-      if (now - cached.timestamp > this.CACHE_DURATION) {
-        continue;
-      }
+      if (now - cached.timestamp > this.CACHE_DURATION) continue;
+      if (cached.patient.userId !== userId) continue;
       
-      // Check if patient matches search
       if (field === 'phone' && cached.patient.phone === value) {
         cachedPatients.push(cached.patient);
       } else if (field === 'familyId') {
-        // Support prefix matching for family ID
         const patientFamilyId = cached.patient.familyId.toLowerCase();
         const searchValue = value.toLowerCase();
         if (patientFamilyId.includes(searchValue)) {
@@ -353,27 +337,17 @@ export class FirebaseService {
     return cachedPatients.length > 0 ? cachedPatients : null;
   }
 
-  /**
-   * Clear all cache (call this on logout or when needed)
-   */
   public clearCache(): void {
     this.patientCache.clear();
-    console.log('🗑️ Cache cleared');
+    console.log('ðŸ—‘ï¸ Cache cleared');
   }
 
-  /**
-   * Convert data to Firestore format (Date to Timestamp)
-   */
   private convertToFirestore(data: any): any {
     const converted: any = {};
     
     for (const key in data) {
       const value = data[key];
-      
-      // Skip undefined values
-      if (value === undefined) {
-        continue;
-      }
+      if (value === undefined) continue;
       
       if (value instanceof Date) {
         converted[key] = Timestamp.fromDate(value);
@@ -385,9 +359,6 @@ export class FirebaseService {
     return converted;
   }
 
-  /**
-   * Convert Firestore data to application format (Timestamp to Date)
-   */
   private convertFromFirestore(data: any): any {
     const converted: any = {};
     

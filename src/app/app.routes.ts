@@ -5,7 +5,6 @@ import { HomeComponent } from './components/home/home';
 import { PatientDetailsComponent } from './components/patient-details/patient-details';
 
 import { authGuard } from './guards/auth-guard';
-import { AppointmentsComponent } from './components/appointments/appointments';
 
 export const routes: Routes = [
   {
@@ -22,11 +21,7 @@ export const routes: Routes = [
     component: HomeComponent,
     canActivate: [authGuard]
   },
-  {
-    path: 'appointments',
-    component: AppointmentsComponent,
-    canActivate: [authGuard]
-  },
+ 
   {
     path: 'patient/:id',
     component: PatientDetailsComponent,

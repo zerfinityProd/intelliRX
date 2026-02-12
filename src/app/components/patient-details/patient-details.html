@@ -39,7 +39,15 @@
           {{ getInitials(patient.name) }}
         </div>
         <div class="patient-header-info">
-          <h2 class="patient-name">{{ patient.name }}</h2>
+          <h2 class="patient-name">
+            {{ patient.name }}
+            <button class="edit-icon-button" (click)="openEditPatientInfo()" title="Edit patient information">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+            </button>
+          </h2>
           <div class="patient-meta">
             <span class="meta-item">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -115,7 +123,7 @@
                 </div>
                 <div class="info-item">
                   <span class="info-label">Family ID</span>
-                  <span class="info-value family-id">{{ patient.familyId }}</span>
+                  <span class="info-value">{{ patient.familyId }}</span>
                 </div>
                 <div class="info-item">
                   <span class="info-label">Phone Number</span>
@@ -131,11 +139,7 @@
                 </div>
                 <div class="info-item">
                   <span class="info-label">Gender</span>
-                  <span class="info-value">
-                    <span class="gender-badge" [class.male]="patient.gender === 'Male'" [class.female]="patient.gender === 'Female'">
-                      {{ patient.gender || 'Not specified' }}
-                    </span>
-                  </span>
+                  <span class="info-value">{{ patient.gender || 'Not specified' }}</span>
                 </div>
               </div>
             </div>
@@ -162,9 +166,9 @@
                     </svg>
                     Known Allergies
                   </div>
-                  <div class="summary-row-value">
-                    <span class="allergy-tag" *ngFor="let allergy of patient.allergies.split(','); let last = last">
-                      {{ allergy.trim() }}<span *ngIf="!last">, </span>
+                  <div class="summary-row-value allergy-badges">
+                    <span class="allergy-badge" *ngFor="let allergy of patient.allergies.split(',')">
+                      {{ allergy.trim() }}
                     </span>
                   </div>
                 </div>
@@ -175,10 +179,6 @@
             <div class="info-section">
               <h3 class="section-title">Record Information</h3>
               <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Patient ID</span>
-                  <span class="info-value id-badge">{{ patient.uniqueId }}</span>
-                </div>
                 <div class="info-item">
                   <span class="info-label">Created On</span>
                   <span class="info-value">{{ formatDateTime(patient.createdAt) }}</span>
@@ -318,3 +318,11 @@
   (patientAdded)="onVisitAdded($event)"
   (toggleEdit)="toggleEditMode()"
 ></app-add-patient>
+
+<!-- Edit Patient Info Modal -->
+<app-edit-patient-info
+  *ngIf="showEditPatientInfo"
+  [patientData]="patient"
+  (close)="closeEditPatientInfo()"
+  (patientUpdated)="onPatientInfoUpdated($event)"
+></app-edit-patient-info>

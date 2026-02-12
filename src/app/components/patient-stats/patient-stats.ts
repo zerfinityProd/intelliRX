@@ -430,6 +430,31 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     });
   }
 
+  /**
+   * Calculate patient's current age from date of birth
+   */
+  calculateAge(dateOfBirth: Date | any): number {
+    if (!dateOfBirth) return 0;
+    
+    let birthDate: Date;
+    if (dateOfBirth && typeof dateOfBirth.toDate === 'function') {
+      birthDate = dateOfBirth.toDate();
+    } else {
+      birthDate = new Date(dateOfBirth);
+    }
+    
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    // Adjust age if birthday hasn't occurred yet this year
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  }
+
   ngOnDestroy(): void {
     if (this.visitTrendChart) {
       this.visitTrendChart.destroy();
