@@ -1,4 +1,6 @@
-# Intellirx ![Status](https://github.com/zerfinityProd/intelliRX/actions/workflows/CICD.yml/badge.svg)
+# Intellirx 
+Nightly Build :: ![ Nightly ](https://github.com/zerfinityProd/intelliRX/actions/workflows/CICD.yml/badge.svg)
+Latest Build :: ![ Latest ](https://github.com/zerfinityProd/intelliRX/actions/workflows/pages/pages-build-deployment/badge.svg)
 
 This project was generated using [Angular CLI]
 
