@@ -24,7 +24,7 @@ jobs:
 
       - run: npm ci
 
-      - run: npm run build -- --configuration production --base-href "/intelliRX/"
+      - run: npm run build -- --configuration production --base-href "/"
 
       - name: Debug dist
         run: |
@@ -52,6 +52,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: https://zerfinityprod.github.io/intelliRX/
+      url: https://intellirx.zerfinity.com/
     steps:
       - uses: actions/deploy-pages@v4
