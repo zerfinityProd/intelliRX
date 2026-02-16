@@ -50,7 +50,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.ngZone.run(() => {
           this.searchResults = results;
           this.isSearching = false;
-          console.log('✔️ Search results updated:', results.length, 'patients');
+          console.log('âœ”ï¸ Search results updated:', results.length, 'patients');
           this.cdr.detectChanges();
         });
       });
@@ -100,7 +100,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
 
     try {
-      console.log('🔎 Starting search for:', searchTerm);
+      console.log('ðŸ”Ž Starting search for:', searchTerm);
       await this.patientService.searchPatients(searchTerm);
       
       this.ngZone.run(() => {
@@ -144,14 +144,14 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   async onPatientAdded(patientId: string): Promise<void> {
-    console.log('✅ Patient saved to Firebase:', patientId);
+    console.log('âœ… Patient saved to Firebase:', patientId);
     
     // Wait a bit for Firebase to index the new patient
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Always refresh search if there's a search term
     if (this.searchTerm.trim()) {
-      console.log('🔄 Refreshing search results...');
+      console.log('ðŸ”„ Refreshing search results...');
       await this.onSearch();
     } else {
       // If no search term, trigger a search with the new patient's phone
@@ -161,7 +161,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       await this.performSearch(this.searchTerm.trim() || '');
     }
     
-    console.log('✅ Search refreshed, results count:', this.searchResults.length);
+    console.log('âœ… Search refreshed, results count:', this.searchResults.length);
   }
 
   viewPatientDetails(patient: Patient): void {

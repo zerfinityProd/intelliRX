@@ -40,7 +40,7 @@ export class PatientDetailsComponent implements OnInit {
   async ngOnInit(): Promise<void> {
     const patientId = this.route.snapshot.paramMap.get('id');
     
-    console.log('🔍 Patient Details - Loading patient:', patientId);
+    console.log('ðŸ” Patient Details - Loading patient:', patientId);
     
     if (!patientId) {
       this.ngZone.run(() => {
@@ -62,10 +62,10 @@ export class PatientDetailsComponent implements OnInit {
     });
     
     try {
-      console.log('📡 Fetching patient from service...');
+      console.log('ðŸ“¡ Fetching patient from service...');
       this.patient = await this.patientService.getPatient(patientId);
       
-      console.log('✅ Patient data received:', this.patient ? 'Success' : 'Not found');
+      console.log('âœ… Patient data received:', this.patient ? 'Success' : 'Not found');
       
       this.ngZone.run(() => {
         if (!this.patient) {
@@ -82,7 +82,7 @@ export class PatientDetailsComponent implements OnInit {
         this.loadVisits();
       });
     } catch (error) {
-      console.error('❌ Error loading patient:', error);
+      console.error('âŒ Error loading patient:', error);
       this.ngZone.run(() => {
         this.errorMessage = 'Error loading patient details';
         this.isLoadingPatient = false;
@@ -100,16 +100,16 @@ export class PatientDetailsComponent implements OnInit {
     });
     
     try {
-      console.log('📡 Fetching visits...');
+      console.log('ðŸ“¡ Fetching visits...');
       this.visits = await this.patientService.getPatientVisits(this.patient.uniqueId);
-      console.log('✅ Visits loaded:', this.visits.length);
+      console.log('âœ… Visits loaded:', this.visits.length);
       
       this.ngZone.run(() => {
         this.isLoadingVisits = false;
         this.cdr.detectChanges();
       });
     } catch (error) {
-      console.error('❌ Error loading visits:', error);
+      console.error('âŒ Error loading visits:', error);
       this.ngZone.run(() => {
         this.isLoadingVisits = false;
         this.cdr.detectChanges();
@@ -144,7 +144,7 @@ export class PatientDetailsComponent implements OnInit {
 
   // Handle patient info updated
   async onPatientInfoUpdated(patientId: string): Promise<void> {
-    console.log('✅ Patient info updated:', patientId);
+    console.log('âœ… Patient info updated:', patientId);
     
     // Reload patient data
     await this.loadPatient(patientId);
@@ -172,7 +172,7 @@ export class PatientDetailsComponent implements OnInit {
 
   // Handle visit added - reload data
   async onVisitAdded(patientId: string): Promise<void> {
-    console.log('✅ Visit added:', patientId);
+    console.log('âœ… Visit added:', patientId);
     
     // Reload patient data (in case it was edited)
     await this.loadPatient(patientId);

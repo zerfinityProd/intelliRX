@@ -573,11 +573,11 @@
 
         <!-- Form Actions -->
         <div class="form-actions">
-          <span *ngIf="successMessage" style="color: #16a34a; font-weight: 600; font-size: 14px; margin-right: auto;">
+          <span *ngIf="successMessage" class="success-message">
             ✓ {{ successMessage }}
           </span>
-          <span *ngIf="errorMessage" style="color: #dc2626; font-weight: 600; font-size: 14px; margin-right: auto;">
-            ⚠ {{ errorMessage }}
+          <span *ngIf="errorMessage" class="error-message">
+            ⚠️ {{ errorMessage }}
           </span>
           <button type="button" class="cancel-button" (click)="onClose()" [disabled]="isSubmitting">
             Cancel

@@ -1,4 +1,4 @@
-/* add-patient.css — layout only, no font rules */
+/* add-patient.css – layout only, no font rules */
 
 .modal-overlay {
   position: fixed;
@@ -62,7 +62,7 @@
   padding: 30px;
 }
 
-/* ── Sections ────────────────────────────────────────────── */
+/* ══ Sections ══════════════════════════════════════════ */
 .section { margin-bottom: 24px; }
 
 .section-title {
@@ -83,7 +83,7 @@
 
 .section-full-width { grid-column: 1 / -1; }
 
-/* ── Form ────────────────────────────────────────────────── */
+/* ══ Form ══════════════════════════════════════════════ */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -156,7 +156,7 @@
 select.form-input          { cursor: pointer; }
 select.form-input:disabled { cursor: not-allowed; }
 
-/* ── Dynamic fields ──────────────────────────────────────── */
+/* ══ Dynamic fields ════════════════════════════════════ */
 .dynamic-field {
   display: flex;
   gap: 10px;
@@ -232,7 +232,8 @@ select.form-input:disabled { cursor: not-allowed; }
   border-color: #94a3b8;
 }
 
-/* ── Messages ────────────────────────────────────────────── */
+/* ══ Messages ══════════════════════════════════════════ */
+/* Default message styles (when used standalone) */
 .success-message {
   background: #f0fdf4;
   border: 1px solid #86efac;
@@ -244,7 +245,7 @@ select.form-input:disabled { cursor: not-allowed; }
   font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 .error-message {
@@ -255,10 +256,33 @@ select.form-input:disabled { cursor: not-allowed; }
   border-radius: 10px;
   font-size: 14px;
   margin-bottom: 16px;
-  font-weight: 500;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
-/* ── Form Actions ────────────────────────────────────────── */
+/* Messages when displayed in form-actions (simplified inline style) */
+.form-actions .success-message,
+.form-actions .error-message {
+  margin-right: auto;  /* Push to the left side */
+  margin-bottom: 0;    /* Remove bottom margin */
+  padding: 0;          /* No padding - inline style */
+  background: transparent;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.form-actions .success-message {
+  color: #16a34a;
+}
+
+.form-actions .error-message {
+  color: #dc2626;
+}
+
+/* ══ Form Actions ══════════════════════════════════════ */
 .form-actions {
   display: flex;
   gap: 12px;
@@ -321,7 +345,7 @@ select.form-input:disabled { cursor: not-allowed; }
   animation: spin 0.6s linear infinite;
 }
 
-/* ── Allergy helpers ─────────────────────────────────────── */
+/* ══ Allergy helpers ═══════════════════════════════════ */
 .existing-allergies-label,
 .new-allergies-label {
   font-size: 13px;
@@ -347,7 +371,7 @@ select.form-input:disabled { cursor: not-allowed; }
   margin-right: 8px;
 }
 
-/* ── Edit toggle ─────────────────────────────────────────── */
+/* ══ Edit toggle ═══════════════════════════════════════ */
 .edit-toggle-button {
   display: flex;
   align-items: center;
@@ -391,7 +415,28 @@ select.form-input:disabled { cursor: not-allowed; }
   margin-left: 10px;
 }
 
-/* ── Responsive ─────────────────────────────────────────── */
+/* ══ Animations ════════════════════════════════════════ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ══ Responsive ════════════════════════════════════════ */
 @media (max-width: 1400px) { .modal-content { max-width: 95%; } }
 
 @media (max-width: 1200px) {
@@ -417,6 +462,12 @@ select.form-input:disabled { cursor: not-allowed; }
   .form-actions   { padding-top: 16px; gap: 10px; }
   .cancel-button, .submit-button { padding: 11px 18px; font-size: 14px; min-width: 90px; }
   .edit-toggle-button { padding: 8px 14px; font-size: 13px; }
+  
+  /* Message adjustments for tablet */
+  .form-actions .success-message,
+  .form-actions .error-message {
+    font-size: 13px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -434,10 +485,19 @@ select.form-input:disabled { cursor: not-allowed; }
   .form-group label { font-size: 12px; margin-bottom: 4px; }
   .exam-inputs    { grid-template-columns: 1fr; }
   .medicine-inputs, .medicine-inputs-fullwidth { grid-template-columns: 1fr; }
-  .form-actions   { flex-direction: row; padding-top: 14px; gap: 8px; }
+  .form-actions   { flex-wrap: wrap; padding-top: 14px; gap: 8px; }
   .cancel-button, .submit-button { flex: 1; padding: 11px 12px; font-size: 14px; min-width: unset; }
   .add-field-btn  { padding: 7px 12px; font-size: 12px; }
   .edit-toggle-button { width: 100%; justify-content: center; font-size: 12px; padding: 8px 12px; }
+  
+  /* Message adjustments for mobile */
+  .form-actions .success-message,
+  .form-actions .error-message {
+    width: 100%;
+    font-size: 12px;
+    order: -1;  /* Place messages above buttons on mobile */
+    margin-bottom: 8px;
+  }
 }
 
 @media (max-width: 390px) {
