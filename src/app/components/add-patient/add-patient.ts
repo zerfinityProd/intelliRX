@@ -1,4 +1,4 @@
-import { Component, OnInit, OnChanges, SimpleChanges, Input, Output, EventEmitter, NgZone } from '@angular/core';
+import { Component, OnInit, OnChanges, OnDestroy, SimpleChanges, Input, Output, EventEmitter, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PatientService } from '../../services/patient';
@@ -41,7 +41,7 @@ interface SaveData {
   templateUrl: './add-patient.html',
   styleUrl: './add-patient.css'
 })
-export class AddPatientComponent implements OnInit, OnChanges {
+export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
   @Input() patientData: Patient | null = null;
   @Input() isEditMode: boolean = false;
   
@@ -70,7 +70,10 @@ export class AddPatientComponent implements OnInit, OnChanges {
 
   errorMessage: string = '';
   successMessage: string = '';
+  warningMessage: string = '';
   isSubmitting: boolean = false;
+  
+  private checkDebounceTimer: any = null;
 
   isNewVisit: boolean = false;
   
@@ -89,6 +92,13 @@ export class AddPatientComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['patientData'] && this.patientData) {
       this.initializeForm();
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Clean up the debounce timer
+    if (this.checkDebounceTimer) {
+      clearTimeout(this.checkDebounceTimer);
     }
   }
 
@@ -153,14 +163,54 @@ export class AddPatientComponent implements OnInit, OnChanges {
     
     this.errorMessage = '';
     this.successMessage = '';
+    this.warningMessage = '';
   }
 
   onNameChange(): void {
+    this.updateFamilyId();
+  }
+
+  onPhoneChange(): void {
+    this.updateFamilyId();
+  }
+
+  private async updateFamilyId(): Promise<void> {
     const fullName = `${this.firstName.trim()} ${this.lastName.trim()}`.trim();
-    if (fullName) {
-      this.familyId = this.generateFamilyIdPreview(fullName);
+    const phoneNumber = this.phone.trim();
+    
+    // Always generate family ID, even if partial
+    this.familyId = this.generateFamilyIdPreview(fullName, phoneNumber);
+    
+    // Clear any pending check
+    if (this.checkDebounceTimer) {
+      clearTimeout(this.checkDebounceTimer);
+    }
+    
+    // Check if patient already exists (only for new patients, not for visits)
+    if (!this.isNewVisit && fullName && phoneNumber && phoneNumber.length === 10) {
+      // Debounce the check by 300ms to avoid excessive API calls
+      this.checkDebounceTimer = setTimeout(async () => {
+        try {
+          const exists = await this.patientService.checkFamilyIdExists(this.familyId);
+          
+          // Use NgZone to ensure UI updates
+          this.ngZone.run(() => {
+            if (exists) {
+              this.warningMessage = '⚠️ This patient already exists in the system';
+            } else {
+              this.warningMessage = '';
+            }
+          });
+        } catch (error) {
+          console.error('Error checking family ID:', error);
+          this.ngZone.run(() => {
+            this.warningMessage = '';
+          });
+        }
+      }, 300);
     } else {
-      this.familyId = '';
+      // Clear warning if conditions not met
+      this.warningMessage = '';
     }
   }
 
@@ -168,17 +218,29 @@ export class AddPatientComponent implements OnInit, OnChanges {
     if (this.successMessage) {
       this.successMessage = '';
     }
+    if (this.errorMessage) {
+      this.errorMessage = '';
+    }
+    if (this.warningMessage) {
+      this.warningMessage = '';
+    }
   }
 
-  private generateFamilyIdPreview(name: string): string {
+  private generateFamilyIdPreview(name: string, phone: string): string {
     const nameParts = name.trim().split(' ').filter(part => part.length > 0);
+    const cleanPhone = phone.trim();
     
-    if (nameParts.length === 0) return '';
-    if (nameParts.length === 1) return nameParts[0].toLowerCase();
+    if (nameParts.length === 0) return cleanPhone ? cleanPhone : '';
+    
+    if (nameParts.length === 1) {
+      return cleanPhone ? `${nameParts[0].toLowerCase()}_${cleanPhone}` : nameParts[0].toLowerCase();
+    }
     
     const firstName = nameParts[0].toLowerCase();
     const lastName = nameParts[nameParts.length - 1].toLowerCase();
-    return `${lastName}_${firstName}`;
+    const baseFamilyId = `${lastName}_${firstName}`;
+    
+    return cleanPhone ? `${baseFamilyId}_${cleanPhone}` : baseFamilyId;
   }
 
   addIllness(): void {
@@ -266,6 +328,12 @@ export class AddPatientComponent implements OnInit, OnChanges {
   async onSubmit(): Promise<void> {
     this.errorMessage = '';
     this.successMessage = '';
+
+    // Check if patient already exists
+    if (this.warningMessage) {
+      this.errorMessage = 'This patient already exists. Please search for the existing patient to add a new visit.';
+      return;
+    }
 
     if (!this.validateForm()) {
       return;

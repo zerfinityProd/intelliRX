@@ -1,4 +1,4 @@
-/* add-patient.css – layout only, no font rules */
+/* add-patient.css â€“ layout only, no font rules */
 
 .modal-overlay {
   position: fixed;
@@ -62,7 +62,7 @@
   padding: 30px;
 }
 
-/* ══ Sections ══════════════════════════════════════════ */
+/* â•â• Sections â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .section { margin-bottom: 24px; }
 
 .section-title {
@@ -83,7 +83,7 @@
 
 .section-full-width { grid-column: 1 / -1; }
 
-/* ══ Form ══════════════════════════════════════════════ */
+/* â•â• Form â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -156,7 +156,7 @@
 select.form-input          { cursor: pointer; }
 select.form-input:disabled { cursor: not-allowed; }
 
-/* ══ Dynamic fields ════════════════════════════════════ */
+/* â•â• Dynamic fields â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .dynamic-field {
   display: flex;
   gap: 10px;
@@ -232,12 +232,26 @@ select.form-input:disabled { cursor: not-allowed; }
   border-color: #94a3b8;
 }
 
-/* ══ Messages ══════════════════════════════════════════ */
+/* â•â• Messages â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 /* Default message styles (when used standalone) */
 .success-message {
   background: #f0fdf4;
   border: 1px solid #86efac;
   color: #16a34a;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.warning-message {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  color: #d97706;
   padding: 10px 14px;
   border-radius: 10px;
   font-size: 14px;
@@ -264,6 +278,7 @@ select.form-input:disabled { cursor: not-allowed; }
 
 /* Messages when displayed in form-actions (simplified inline style) */
 .form-actions .success-message,
+.form-actions .warning-message,
 .form-actions .error-message {
   margin-right: auto;  /* Push to the left side */
   margin-bottom: 0;    /* Remove bottom margin */
@@ -278,11 +293,15 @@ select.form-input:disabled { cursor: not-allowed; }
   color: #16a34a;
 }
 
+.form-actions .warning-message {
+  color: #d97706;
+}
+
 .form-actions .error-message {
   color: #dc2626;
 }
 
-/* ══ Form Actions ══════════════════════════════════════ */
+/* â•â• Form Actions â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .form-actions {
   display: flex;
   gap: 12px;
@@ -345,7 +364,7 @@ select.form-input:disabled { cursor: not-allowed; }
   animation: spin 0.6s linear infinite;
 }
 
-/* ══ Allergy helpers ═══════════════════════════════════ */
+/* â•â• Allergy helpers â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .existing-allergies-label,
 .new-allergies-label {
   font-size: 13px;
@@ -371,7 +390,7 @@ select.form-input:disabled { cursor: not-allowed; }
   margin-right: 8px;
 }
 
-/* ══ Edit toggle ═══════════════════════════════════════ */
+/* â•â• Edit toggle â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 .edit-toggle-button {
   display: flex;
   align-items: center;
@@ -415,7 +434,7 @@ select.form-input:disabled { cursor: not-allowed; }
   margin-left: 10px;
 }
 
-/* ══ Animations ════════════════════════════════════════ */
+/* â•â• Animations â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -436,7 +455,7 @@ select.form-input:disabled { cursor: not-allowed; }
   to { transform: rotate(360deg); }
 }
 
-/* ══ Responsive ════════════════════════════════════════ */
+/* â•â• Responsive â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 @media (max-width: 1400px) { .modal-content { max-width: 95%; } }
 
 @media (max-width: 1200px) {

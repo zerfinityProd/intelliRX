@@ -32,24 +32,28 @@ export class FirebaseService {
   }
 
   /**
-   * Generate unique ID from family ID, phone number, and user ID
+   * Generate unique ID from family ID and user ID
+   * Format: familyId_userId
    */
-  private generateUniqueId(familyId: string, phone: string, userId: string): string {
-    // Include userId to ensure each user gets separate records
-    return `${familyId}_${phone}_${userId}`;
+  private generateUniqueId(familyId: string, userId: string): string {
+    return `${familyId}_${userId}`;
   }
 
   /**
-   * Generate family ID from name
+   * Generate family ID from name and phone number
+   * Format: lastname_firstname_phonenumber
    */
-  generateFamilyId(name: string): string {
+  generateFamilyId(name: string, phone: string): string {
     const nameParts = name.trim().split(' ');
+    const cleanPhone = phone.trim();
+    
     if (nameParts.length === 1) {
-      return nameParts[0].toLowerCase();
+      return `${nameParts[0].toLowerCase()}_${cleanPhone}`;
     }
+    
     const firstName = nameParts[0].toLowerCase();
     const lastName = nameParts[nameParts.length - 1].toLowerCase();
-    return `${lastName}_${firstName}`;
+    return `${lastName}_${firstName}_${cleanPhone}`;
   }
 
   /**
@@ -61,7 +65,7 @@ export class FirebaseService {
     userId: string
   ): Promise<string> {
     try {
-      const uniqueId = this.generateUniqueId(patientData.familyId, patientData.phone, userId);
+      const uniqueId = this.generateUniqueId(patientData.familyId, userId);
       const patientDoc = doc(this.patientsCollection, uniqueId);
 
       const patient: Patient = {
@@ -106,7 +110,7 @@ export class FirebaseService {
   async searchPatientByPhone(phone: string, userId: string): Promise<Patient[]> {
     try {
       // Don't use cache for phone searches - always get fresh data
-      console.log('ðŸ“ž Searching for all records with phone:', phone);
+      console.log('🔎 Searching for all records with phone:', phone);
 
       // Query with userId filter for security, ordered by creation date (newest first)
       const q = query(
@@ -123,7 +127,7 @@ export class FirebaseService {
       // Cache results
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
-      console.log(`âœ… Phone search completed: Found ${results.length} record(s), sorted by newest first`);
+      console.log(`✅ Phone search completed: Found ${results.length} record(s), sorted by newest first`);
       return results;
     } catch (error) {
       console.error('Error searching patient by phone:', error);
@@ -137,7 +141,7 @@ export class FirebaseService {
   async searchPatientByFamilyId(familyId: string, userId: string): Promise<Patient[]> {
     try {
       // Don't use cache - always get fresh data
-      console.log('ðŸ‘¨â€ðŸ‘©â€ðŸ‘§â€ðŸ‘¦ Searching for family ID:', familyId);
+      console.log('👨‍👩‍👧‍👦 Searching for family ID:', familyId);
 
       const searchTerm = familyId.toLowerCase().trim();
       
@@ -157,7 +161,7 @@ export class FirebaseService {
       // Cache results
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
-      console.log(`âœ… Family ID search completed: Found ${results.length} record(s)`);
+      console.log(`✅ Family ID search completed: Found ${results.length} record(s)`);
       return results;
     } catch (error) {
       console.error('Error searching patient by family ID:', error);
@@ -173,7 +177,7 @@ export class FirebaseService {
       // Check cache first
       const cached = this.getFromCache(uniqueId);
       if (cached && cached.userId === userId) {
-        console.log('âœ”ï¸ Returning cached patient data');
+        console.log('⚡️ Returning cached patient data');
         return cached;
       }
 
@@ -185,7 +189,7 @@ export class FirebaseService {
         
         // Verify that the patient belongs to the requesting user
         if (patient.userId !== userId) {
-          console.error('ðŸš« Unauthorized access attempt');
+          console.error('🚫 Unauthorized access attempt');
           return null;
         }
         
@@ -339,7 +343,7 @@ export class FirebaseService {
 
   public clearCache(): void {
     this.patientCache.clear();
-    console.log('ðŸ—‘ï¸ Cache cleared');
+    console.log('🗑️ Cache cleared');
   }
 
   private convertToFirestore(data: any): any {

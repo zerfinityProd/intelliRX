@@ -72,6 +72,32 @@ export class PatientService {
   }
 
   /**
+   * Check if a patient with the given family ID already exists
+   */
+  async checkFamilyIdExists(familyId: string): Promise<boolean> {
+    try {
+      const userId = this.getCurrentUserId();
+      const normalizedFamilyId = familyId.trim().toLowerCase();
+      
+      if (!normalizedFamilyId) {
+        return false;
+      }
+      
+      const results = await this.firebaseService.searchPatientByFamilyId(normalizedFamilyId, userId);
+      
+      // Check for exact match
+      const exactMatch = results.find(patient => 
+        patient.familyId.toLowerCase() === normalizedFamilyId
+      );
+      
+      return !!exactMatch;
+    } catch (error) {
+      console.error('Error checking family ID:', error);
+      return false;
+    }
+  }
+
+  /**
    * Create a new patient OR update existing if found
    * Returns the patient ID (existing or new)
    */
@@ -83,7 +109,7 @@ export class PatientService {
       const existingPatient = await this.findExistingPatient(patientData.name, patientData.phone);
       
       if (existingPatient) {
-        console.log('📝 Found existing patient, updating basic info:', existingPatient.uniqueId);
+        console.log('🔄 Found existing patient, updating basic info:', existingPatient.uniqueId);
         
         const updateData: Partial<Patient> = {
           name: patientData.name,
@@ -102,8 +128,8 @@ export class PatientService {
         return existingPatient.uniqueId;
       }
       
-      // New patient - create new record
-      const familyId = this.firebaseService.generateFamilyId(patientData.name);
+      // New patient - create new record with phone number in family ID
+      const familyId = this.firebaseService.generateFamilyId(patientData.name, patientData.phone);
       
       const patientWithUserId = {
         ...patientData,
@@ -113,7 +139,7 @@ export class PatientService {
       
       const uniqueId = await this.firebaseService.addPatient(patientWithUserId, userId);
       
-      console.log('🔄 Patient created, invalidating cache');
+      console.log('📝 Patient created, invalidating cache');
       this.lastSearchTerm = '';
       this.lastSearchResults = [];
       
