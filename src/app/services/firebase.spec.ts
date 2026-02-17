@@ -78,7 +78,7 @@ function makeMockPatient(overrides: Partial<Patient> = {}): Patient {
   return {
     uniqueId:  'doe_john_1234567890_user1',
     userId:    'user1',
-    familyId:  'doe_john',
+    familyId:  'doe_john_1234567890',
     name:      'John Doe',
     phone:     '1234567890',
     email:     'john@example.com',
@@ -100,25 +100,25 @@ describe('FirebaseService', () => {
 
   // ── generateFamilyId ────────────────────────────────────────────────────────
   describe('generateFamilyId', () => {
-    it('returns lastname_firstname for a two-part name', () => {
-      expect(service.generateFamilyId('John Doe')).toBe('doe_john');
-      expect(service.generateFamilyId('Jane Smith')).toBe('smith_jane');
+    it('returns lastname_firstname_phone for a two-part name', () => {
+      expect(service.generateFamilyId('John Doe', '1234567890')).toBe('doe_john_1234567890');
+      expect(service.generateFamilyId('Jane Smith', '9876543210')).toBe('smith_jane_9876543210');
     });
 
     it('uses the last word as last name for three-part names', () => {
-      expect(service.generateFamilyId('Mary Jane Watson')).toBe('watson_mary');
+      expect(service.generateFamilyId('Mary Jane Watson', '1234567890')).toBe('watson_mary_1234567890');
     });
 
-    it('returns single name lowercased when no space is present', () => {
-      expect(service.generateFamilyId('Robert')).toBe('robert');
+    it('returns single name lowercased with phone when no space is present', () => {
+      expect(service.generateFamilyId('Robert', '1234567890')).toBe('robert_1234567890');
     });
 
     it('trims leading/trailing spaces before processing', () => {
-      expect(service.generateFamilyId('  John Doe  ')).toBe('doe_john');
+      expect(service.generateFamilyId('  John Doe  ', '1234567890')).toBe('doe_john_1234567890');
     });
 
     it('lowercases all parts', () => {
-      expect(service.generateFamilyId('JOHN DOE')).toBe('doe_john');
+      expect(service.generateFamilyId('JOHN DOE', '1234567890')).toBe('doe_john_1234567890');
     });
   });
 
@@ -150,7 +150,7 @@ describe('FirebaseService', () => {
       mockDoc.mockReturnValue({ id: 'test-doc' } as any);
 
       const result = await service.addPatient({
-        userId: 'user1', familyId: 'doe_john', name: 'John Doe', phone: '1234567890',
+        userId: 'user1', familyId: 'doe_john_1234567890', name: 'John Doe', phone: '1234567890',
       } as any, 'user1');
 
       expect(mockSetDoc).toHaveBeenCalledOnce();
@@ -163,7 +163,7 @@ describe('FirebaseService', () => {
 
       await expect(
         service.addPatient({
-          userId: 'user1', familyId: 'doe_john', name: 'John Doe', phone: '1234567890',
+          userId: 'user1', familyId: 'doe_john_1234567890', name: 'John Doe', phone: '1234567890',
         } as any, 'user1')
       ).rejects.toThrow('Firestore write failed');
     });
@@ -240,9 +240,9 @@ describe('FirebaseService', () => {
       mockOrderBy.mockReturnValue({} as any);
       mockGetDocs.mockResolvedValueOnce({ docs: [{ data: () => patient }] });
 
-      const results = await service.searchPatientByFamilyId('doe_john', 'user1');
+      const results = await service.searchPatientByFamilyId('doe_john_1234567890', 'user1');
       expect(results).toHaveLength(1);
-      expect(results[0].familyId).toBe('doe_john');
+      expect(results[0].familyId).toBe('doe_john_1234567890');
     });
   });
 
@@ -345,7 +345,7 @@ describe('FirebaseService', () => {
       const inputDate = new Date('2024-06-15');
 
       await service.addPatient({
-        userId: 'user1', familyId: 'doe_john', name: 'John Doe',
+        userId: 'user1', familyId: 'doe_john_1234567890', name: 'John Doe',
         phone: '1234567890', dateOfBirth: inputDate,
       } as any, 'user1');
 
@@ -358,7 +358,7 @@ describe('FirebaseService', () => {
       const ts = MockTimestamp.fromDate(new Date('2024-06-15'));
       const rawData: any = {
         uniqueId: 'doe_john_1234567890_user1', userId: 'user1',
-        familyId: 'doe_john', name: 'John Doe', phone: '1234567890',
+        familyId: 'doe_john_1234567890', name: 'John Doe', phone: '1234567890',
         createdAt: ts, updatedAt: ts,
       };
       mockDoc.mockReturnValue({} as any);
@@ -373,7 +373,7 @@ describe('FirebaseService', () => {
       mockDoc.mockReturnValue({} as any);
 
       await service.addPatient({
-        userId: 'user1', familyId: 'doe_john', name: 'John Doe',
+        userId: 'user1', familyId: 'doe_john_1234567890', name: 'John Doe',
         phone: '1234567890', email: undefined,
       } as any, 'user1');
 
