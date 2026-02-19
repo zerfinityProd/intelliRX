@@ -25,7 +25,9 @@
               }
             ],
             "styles": [
-              "src/styles.css"
+              "src/styles.css",
+              "tippy.js/dist/tippy.css",
+              "tippy.js/animations/shift-away.css"
             ]
           },
           "configurations": {

@@ -1,20 +1,19 @@
 <div class="stats-container">
   <!-- Stats Cards - Only 2 cards now -->
   <div class="stats-cards">
-    <div class="stat-card">
+    <div class="stat-card" #pastIllnessCard style="cursor: pointer;">
       <div class="stat-icon visits">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
         </svg>
       </div>
       <div class="stat-content">
-        <div class="stat-value">{{ patient && patient.dateOfBirth ? calculateAge(patient.dateOfBirth) : 'N/A' }}</div>
-        <div class="stat-label">Age (Years)</div>
+        <div class="stat-value">{{ pastIllnessList.length }}</div>
+        <div class="stat-label">Past Illness</div>
       </div>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card" #allergiesCard style="cursor: pointer;">
       <div class="stat-icon allergies">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"></circle>
@@ -45,7 +44,7 @@
       </button>
     </div>
 
-    <div class="calendar-grid">
+    <div class="calendar-grid" #calendarGrid>
       <!-- Day headers -->
       <div class="calendar-day-header">Sun</div>
       <div class="calendar-day-header">Mon</div>
@@ -64,7 +63,6 @@
         [class.has-visit]="day.hasVisit"
         [class.clickable]="day.hasVisit"
         (click)="onDateClick(day)"
-        [title]="day.hasVisit ? day.visitCount + ' visit(s)' : ''"
       >
         <span class="day-number">{{ day.dayNumber }}</span>
         <div *ngIf="day.hasVisit" class="visit-indicator">

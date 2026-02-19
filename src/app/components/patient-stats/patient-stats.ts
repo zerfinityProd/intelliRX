@@ -2,6 +2,8 @@ import { Component, Input, OnChanges, SimpleChanges, ViewChild, ElementRef, OnDe
 import { CommonModule } from '@angular/common';
 import { Patient, Visit } from '../../models/patient.model';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
+import tippy, { Instance as TippyInstance } from 'tippy.js';
+import 'tippy.js/animations/shift-away.css';
 
 Chart.register(...registerables);
 
@@ -40,6 +42,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   @Input() visits: Visit[] = [];
   
   @ViewChild('visitTrendChart') visitTrendChartRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChild('pastIllnessCard') pastIllnessCardRef!: ElementRef<HTMLElement>;
+  @ViewChild('allergiesCard') allergiesCardRef!: ElementRef<HTMLElement>;
+  @ViewChild('calendarGrid') calendarGridRef!: ElementRef<HTMLElement>;
+
+  private pastIllnessTippy: TippyInstance | null = null;
+  private allergiesTooltipTippy: TippyInstance | null = null;
+  private calendarDayTippies: TippyInstance[] = [];
   
   stats: StatsData = {
     totalVisits: 0,
@@ -63,12 +72,14 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   private visitTrendChart: Chart | null = null;
   monthlyVisitsData: MonthlyVisitData[] = [];
   allergiesList: string[] = [];
+  pastIllnessList: string[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['patient'] || changes['visits']) {
       this.calculateStats();
       this.generateCalendar();
       this.prepareAllergiesList();
+      this.preparePastIllnessList();
       this.prepareMonthlyVisitsData();
       
       // Update chart after a small delay to ensure DOM is ready
@@ -78,6 +89,8 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
         } else if (this.visitTrendChartRef) {
           this.createVisitTrendChart();
         }
+        this.initTooltips();
+        this.initCalendarTooltips();
       }, 100);
     }
   }
@@ -85,6 +98,8 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   ngAfterViewInit(): void {
     setTimeout(() => {
       this.createVisitTrendChart();
+      this.initTooltips();
+      this.initCalendarTooltips();
     }, 200);
   }
 
@@ -121,6 +136,145 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     }
 
     this.allergiesList = this.patient.allergies.split(',').map(a => a.trim()).filter(a => a);
+  }
+
+  private preparePastIllnessList(): void {
+    this.pastIllnessList = this.visits
+      .map(v => v.presentIllness)
+      .filter((ill): ill is string => !!ill && ill.trim().length > 0)
+      .map(ill => ill.trim());
+  }
+
+  private buildPill(text: string, type: 'illness' | 'allergy'): string {
+    const isIllness = type === 'illness';
+    const bg = isIllness ? '#eef2ff' : '#fff1f2';
+    const color = isIllness ? '#4f46e5' : '#e11d48';
+    const border = isIllness ? '#c7d2fe' : '#fecdd3';
+    const dot = isIllness ? '#6366f1' : '#f43f5e';
+
+    return `
+      <span style="
+        display:inline-flex;
+        align-items:center;
+        gap:5px;
+        padding:4px 10px;
+        border-radius:999px;
+        font-size:12px;
+        font-weight:500;
+        font-family:'Poppins',sans-serif;
+        background:${bg};
+        color:${color};
+        border:1px solid ${border};
+        white-space:nowrap;
+        letter-spacing:0.01em;
+        line-height:1.4;
+      ">
+        <span style="width:5px;height:5px;border-radius:50%;background:${dot};flex-shrink:0;display:inline-block;"></span>
+        ${text}
+      </span>`;
+  }
+
+  private initTooltips(): void {
+    // Past Illness tooltip
+    if (this.pastIllnessCardRef?.nativeElement) {
+      if (this.pastIllnessTippy) {
+        this.pastIllnessTippy.destroy();
+      }
+      const illnessContent = this.pastIllnessList.length > 0
+        ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${this.pastIllnessList.map(i => this.buildPill(i, 'illness')).join('')}</div>`
+        : `<span style="color:#64748b;font-size:12px;font-style:italic;">No illnesses recorded</span>`;
+
+      this.pastIllnessTippy = tippy(this.pastIllnessCardRef.nativeElement, {
+        content: illnessContent,
+        allowHTML: true,
+        placement: 'bottom',
+        theme: 'medical',
+        arrow: true,
+        animation: 'shift-away',
+        duration: [200, 150],
+        interactive: false,
+      }) as TippyInstance;
+    }
+
+    // Allergies tooltip
+    if (this.allergiesCardRef?.nativeElement) {
+      if (this.allergiesTooltipTippy) {
+        this.allergiesTooltipTippy.destroy();
+      }
+      const allergyContent = this.allergiesList.length > 0
+        ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${this.allergiesList.map(a => this.buildPill(a, 'allergy')).join('')}</div>`
+        : `<span style="color:#64748b;font-size:12px;font-style:italic;">No allergies recorded</span>`;
+
+      this.allergiesTooltipTippy = tippy(this.allergiesCardRef.nativeElement, {
+        content: allergyContent,
+        allowHTML: true,
+        placement: 'bottom',
+        theme: 'medical',
+        arrow: true,
+        animation: 'shift-away',
+        duration: [200, 150],
+        interactive: false,
+      }) as TippyInstance;
+    }
+  }
+
+  private initCalendarTooltips(): void {
+    // Destroy previous calendar tooltips
+    this.calendarDayTippies.forEach(t => t.destroy());
+    this.calendarDayTippies = [];
+
+    if (!this.calendarGridRef?.nativeElement) return;
+
+    const dayEls = this.calendarGridRef.nativeElement.querySelectorAll<HTMLElement>('.calendar-day.has-visit');
+
+    dayEls.forEach((el, idx) => {
+      // Find the matching calendarDay data by day number and current month
+      const dayNumber = parseInt(el.querySelector('.day-number')?.textContent || '0', 10);
+      const day = this.calendarDays.find(d =>
+        d.dayNumber === dayNumber &&
+        d.isCurrentMonth &&
+        d.hasVisit
+      );
+      if (!day) return;
+
+      const visitWord = day.visitCount === 1 ? 'Visit' : 'Visits';
+      const countLine = `
+        <div style="
+          font-family:'Poppins',sans-serif;
+          font-size:11px;
+          font-weight:600;
+          color:#6366f1;
+          text-transform:uppercase;
+          letter-spacing:0.07em;
+          margin-bottom:6px;
+        ">
+          ${day.visitCount} ${visitWord}
+        </div>`;
+
+      const illnesses = day.visits
+        .map(v => v.presentIllness)
+        .filter((ill): ill is string => !!ill && ill.trim().length > 0);
+
+      const pillsHtml = illnesses.length > 0
+        ? `<div style="display:flex;flex-wrap:wrap;gap:5px;">${illnesses.map(ill => this.buildPill(ill, 'illness')).join('')}</div>`
+        : `<span style="font-family:'Poppins',sans-serif;font-size:11px;color:#94a3b8;font-style:italic;">No illness recorded</span>`;
+
+      const content = countLine + pillsHtml;
+
+      const instance = tippy(el, {
+        content,
+        allowHTML: true,
+        placement: 'top',
+        theme: 'medical',
+        arrow: true,
+        animation: 'shift-away',
+        duration: [150, 100],
+        interactive: false,
+        offset: [0, 8],
+      }) as TippyInstance;
+
+      this.calendarDayTippies.push(instance);
+    });
   }
 
   private prepareMonthlyVisitsData(): void {
@@ -355,11 +509,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   previousMonth(): void {
     this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() - 1, 1);
     this.generateCalendar();
+    setTimeout(() => this.initCalendarTooltips(), 50);
   }
 
   nextMonth(): void {
     this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 1);
     this.generateCalendar();
+    setTimeout(() => this.initCalendarTooltips(), 50);
   }
 
   onDateClick(day: CalendarDay): void {
@@ -459,5 +615,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     if (this.visitTrendChart) {
       this.visitTrendChart.destroy();
     }
+    if (this.pastIllnessTippy) {
+      this.pastIllnessTippy.destroy();
+    }
+    if (this.allergiesTooltipTippy) {
+      this.allergiesTooltipTippy.destroy();
+    }
+    this.calendarDayTippies.forEach(t => t.destroy());
+    this.calendarDayTippies = [];
   }
 }

@@ -400,3 +400,86 @@
   .day-number      { font-size: 12px; }
   .chart-container { height: 200px; }
 }
+/* ── Tippy.js Custom Medical Theme ─────────────────────────── */
+.tippy-box[data-theme~='medical'] {
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.3),
+    0 20px 40px -8px rgba(0, 0, 0, 0.4);
+  padding: 0;
+  max-width: 280px;
+}
+
+.tippy-box[data-theme~='medical'] .tippy-arrow {
+  color: rgba(15, 23, 42, 0.95);
+}
+
+.tippy-box[data-theme~='medical'] .tippy-content {
+  padding: 10px 12px;
+}
+
+/* Pill container */
+.tippy-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Base pill style */
+.tippy-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* Illness pill — indigo/violet */
+.tippy-pill--illness {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.tippy-pill--illness::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #818cf8;
+  flex-shrink: 0;
+}
+
+/* Allergy pill — rose/red */
+.tippy-pill--allergy {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.tippy-pill--allergy::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f87171;
+  flex-shrink: 0;
+}
+
+/* Empty state */
+.tippy-none {
+  color: #64748b;
+  font-size: 12px;
+  font-style: italic;
+  display: block;
+  padding: 2px 0;
+}

@@ -72,7 +72,37 @@ export class PatientService {
   }
 
   /**
+   * Generate the uniqueId for a given name, phone, and userId
+   * Format: firstname_lastname_phonenumber_userId
+   */
+  generateUniqueIdPreview(name: string, phone: string, userId: string): string {
+    const nameParts = name.trim().split(' ').filter(p => p.length > 0);
+    const firstName = (nameParts[0] || '').toLowerCase();
+    const lastName = (nameParts[nameParts.length - 1] || firstName).toLowerCase();
+    const cleanPhone = phone.trim();
+    return `${firstName}_${lastName}_${cleanPhone}_${userId}`;
+  }
+
+  /**
+   * Check if a patient with the given unique ID already exists
+   */
+  async checkUniqueIdExists(name: string, phone: string): Promise<boolean> {
+    try {
+      const userId = this.getCurrentUserId();
+      if (!name.trim() || !phone.trim()) return false;
+
+      const uniqueId = this.generateUniqueIdPreview(name, phone, userId);
+      const patient = await this.firebaseService.getPatientById(uniqueId, userId);
+      return !!patient;
+    } catch (error) {
+      console.error('Error checking unique ID:', error);
+      return false;
+    }
+  }
+
+  /**
    * Check if a patient with the given family ID already exists
+   * @deprecated Use checkUniqueIdExists instead
    */
   async checkFamilyIdExists(familyId: string): Promise<boolean> {
     try {
@@ -109,7 +139,7 @@ export class PatientService {
       const existingPatient = await this.findExistingPatient(patientData.name, patientData.phone);
       
       if (existingPatient) {
-        console.log('🔄 Found existing patient, updating basic info:', existingPatient.uniqueId);
+        console.log('ðŸ”„ Found existing patient, updating basic info:', existingPatient.uniqueId);
         
         const updateData: Partial<Patient> = {
           name: patientData.name,
@@ -139,7 +169,7 @@ export class PatientService {
       
       const uniqueId = await this.firebaseService.addPatient(patientWithUserId, userId);
       
-      console.log('📝 Patient created, invalidating cache');
+      console.log('ðŸ“ Patient created, invalidating cache');
       this.lastSearchTerm = '';
       this.lastSearchResults = [];
       
@@ -161,7 +191,7 @@ export class PatientService {
       this.lastSearchTerm = '';
       this.lastSearchResults = [];
       
-      console.log('✅ Patient updated successfully');
+      console.log('âœ… Patient updated successfully');
     } catch (error) {
       console.error('Error updating patient:', error);
       throw error;
@@ -175,7 +205,7 @@ export class PatientService {
     try {
       const userId = this.getCurrentUserId();
       const visitId = await this.firebaseService.addVisit(patientId, visitData, userId);
-      console.log('✅ Visit added successfully');
+      console.log('âœ… Visit added successfully');
       return visitId;
     } catch (error) {
       console.error('Error adding visit:', error);
@@ -191,14 +221,14 @@ async searchPatients(searchTerm: string): Promise<void> {
     const trimmedTerm = searchTerm.trim();
 
     if (trimmedTerm === this.lastSearchTerm && this.lastSearchResults.length > 0) {
-      console.log('⚡ Using cached search results');
+      console.log('âš¡ Using cached search results');
       this.ngZone.run(() => {
         this.searchResultsSubject.next(this.lastSearchResults);
       });
       return;
     }
 
-    console.log('🔍 Searching for:', trimmedTerm);
+    console.log('ðŸ” Searching for:', trimmedTerm);
 
     let allResults: Patient[] = [];
 
@@ -221,7 +251,7 @@ async searchPatients(searchTerm: string): Promise<void> {
       return dateB.getTime() - dateA.getTime();
     });
     
-    console.log(`📊 Found ${allResults.length} records (showing all, newest first)`);
+    console.log(`ðŸ“Š Found ${allResults.length} records (showing all, newest first)`);
 
     this.lastSearchTerm = trimmedTerm;
     this.lastSearchResults = allResults;

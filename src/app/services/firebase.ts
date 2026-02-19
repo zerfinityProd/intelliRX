@@ -35,25 +35,27 @@ export class FirebaseService {
    * Generate unique ID from family ID and user ID
    * Format: familyId_userId
    */
-  private generateUniqueId(familyId: string, userId: string): string {
+  private generateUniqueId(familyId: string, userId: string, name?: string, phone?: string): string {
+    if (name && phone) {
+      const nameParts = name.trim().split(' ');
+      const firstName = nameParts[0].toLowerCase();
+      const lastName = nameParts[nameParts.length - 1].toLowerCase();
+      const cleanPhone = phone.trim();
+      return `${firstName}_${lastName}_${cleanPhone}_${userId}`;
+    }
     return `${familyId}_${userId}`;
   }
 
   /**
    * Generate family ID from name and phone number
-   * Format: lastname_firstname_phonenumber
+   * Format: lastname_phonenumber
    */
   generateFamilyId(name: string, phone: string): string {
     const nameParts = name.trim().split(' ');
     const cleanPhone = phone.trim();
     
-    if (nameParts.length === 1) {
-      return `${nameParts[0].toLowerCase()}_${cleanPhone}`;
-    }
-    
-    const firstName = nameParts[0].toLowerCase();
     const lastName = nameParts[nameParts.length - 1].toLowerCase();
-    return `${lastName}_${firstName}_${cleanPhone}`;
+    return `${lastName}_${cleanPhone}`;
   }
 
   /**
@@ -65,7 +67,7 @@ export class FirebaseService {
     userId: string
   ): Promise<string> {
     try {
-      const uniqueId = this.generateUniqueId(patientData.familyId, userId);
+      const uniqueId = this.generateUniqueId(patientData.familyId, userId, patientData.name, patientData.phone);
       const patientDoc = doc(this.patientsCollection, uniqueId);
 
       const patient: Patient = {
@@ -110,13 +112,16 @@ export class FirebaseService {
   async searchPatientByPhone(phone: string, userId: string): Promise<Patient[]> {
     try {
       // Don't use cache for phone searches - always get fresh data
-      console.log('🔎 Searching for all records with phone:', phone);
+      console.log('Ã°Å¸â€Å½ Searching for all records with phone:', phone);
 
-      // Query with userId filter for security, ordered by creation date (newest first)
+      // Query with userId filter for security, using prefix range query like familyId search
+      const searchTerm = phone.trim();
       const q = query(
         this.patientsCollection,
         where('userId', '==', userId),
-        where('phone', '==', phone),
+        where('phone', '>=', searchTerm),
+        where('phone', '<=', searchTerm + '\uf8ff'),
+        orderBy('phone'),
         orderBy('createdAt', 'desc')  // Newest first
         // No limit - get ALL records for this phone number
       );
@@ -127,7 +132,7 @@ export class FirebaseService {
       // Cache results
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
-      console.log(`✅ Phone search completed: Found ${results.length} record(s), sorted by newest first`);
+      console.log(`Ã¢Å“â€¦ Phone search completed: Found ${results.length} record(s), sorted by newest first`);
       return results;
     } catch (error) {
       console.error('Error searching patient by phone:', error);
@@ -141,7 +146,7 @@ export class FirebaseService {
   async searchPatientByFamilyId(familyId: string, userId: string): Promise<Patient[]> {
     try {
       // Don't use cache - always get fresh data
-      console.log('👨‍👩‍👧‍👦 Searching for family ID:', familyId);
+      console.log('Ã°Å¸â€˜Â¨Ã¢â‚¬ÂÃ°Å¸â€˜Â©Ã¢â‚¬ÂÃ°Å¸â€˜Â§Ã¢â‚¬ÂÃ°Å¸â€˜Â¦ Searching for family ID:', familyId);
 
       const searchTerm = familyId.toLowerCase().trim();
       
@@ -161,7 +166,7 @@ export class FirebaseService {
       // Cache results
       results.forEach(patient => this.addToCache(patient.uniqueId, patient));
       
-      console.log(`✅ Family ID search completed: Found ${results.length} record(s)`);
+      console.log(`Ã¢Å“â€¦ Family ID search completed: Found ${results.length} record(s)`);
       return results;
     } catch (error) {
       console.error('Error searching patient by family ID:', error);
@@ -177,7 +182,7 @@ export class FirebaseService {
       // Check cache first
       const cached = this.getFromCache(uniqueId);
       if (cached && cached.userId === userId) {
-        console.log('⚡️ Returning cached patient data');
+        console.log('Ã¢Å¡Â¡Ã¯Â¸Â Returning cached patient data');
         return cached;
       }
 
@@ -189,7 +194,7 @@ export class FirebaseService {
         
         // Verify that the patient belongs to the requesting user
         if (patient.userId !== userId) {
-          console.error('🚫 Unauthorized access attempt');
+          console.error('Ã°Å¸Å¡Â« Unauthorized access attempt');
           return null;
         }
         
@@ -343,7 +348,7 @@ export class FirebaseService {
 
   public clearCache(): void {
     this.patientCache.clear();
-    console.log('🗑️ Cache cleared');
+    console.log('Ã°Å¸â€”â€˜Ã¯Â¸Â Cache cleared');
   }
 
   private convertToFirestore(data: any): any {

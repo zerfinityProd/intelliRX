@@ -191,7 +191,7 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
       // Debounce the check by 300ms to avoid excessive API calls
       this.checkDebounceTimer = setTimeout(async () => {
         try {
-          const exists = await this.patientService.checkFamilyIdExists(this.familyId);
+          const exists = await this.patientService.checkUniqueIdExists(fullName, phoneNumber);
           
           // Use NgZone to ensure UI updates
           this.ngZone.run(() => {
@@ -202,7 +202,7 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
             }
           });
         } catch (error) {
-          console.error('Error checking family ID:', error);
+          console.error('Error checking unique ID:', error);
           this.ngZone.run(() => {
             this.warningMessage = '';
           });
@@ -230,17 +230,12 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
     const nameParts = name.trim().split(' ').filter(part => part.length > 0);
     const cleanPhone = phone.trim();
     
-    if (nameParts.length === 0) return cleanPhone ? cleanPhone : '';
+    // Need at least both first and last name to generate family ID
+    if (nameParts.length < 2) return '';
     
-    if (nameParts.length === 1) {
-      return cleanPhone ? `${nameParts[0].toLowerCase()}_${cleanPhone}` : nameParts[0].toLowerCase();
-    }
-    
-    const firstName = nameParts[0].toLowerCase();
     const lastName = nameParts[nameParts.length - 1].toLowerCase();
-    const baseFamilyId = `${lastName}_${firstName}`;
     
-    return cleanPhone ? `${baseFamilyId}_${cleanPhone}` : baseFamilyId;
+    return cleanPhone ? `${lastName}_${cleanPhone}` : lastName;
   }
 
   addIllness(): void {

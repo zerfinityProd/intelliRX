@@ -147,3 +147,31 @@ button { cursor: pointer; font-family: var(--font); font-weight: var(--fw-semibo
     box-shadow: none !important;
   }
 }
+/* ── Tippy.js imports ────────────────────────────────────────── */
+/* NOTE: Also add these to angular.json styles array:
+   "tippy.js/dist/tippy.css"
+   "tippy.js/animations/shift-away.css"
+*/
+
+/* ── Tippy Medical Theme (global — tooltips render on <body>) ── */
+.tippy-box[data-theme~='medical'] {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.07),
+    0 12px 28px -4px rgba(99, 102, 241, 0.12);
+  font-family: 'Poppins', sans-serif;
+}
+
+.tippy-box[data-theme~='medical'] .tippy-arrow {
+  color: #ffffff;
+}
+
+.tippy-box[data-theme~='medical'] .tippy-arrow::before {
+  filter: drop-shadow(0 -1px 0 #e2e8f0);
+}
+
+.tippy-box[data-theme~='medical'] .tippy-content {
+  padding: 10px 12px;
+}
