@@ -31,11 +31,8 @@ export class AuthService {
   constructor(private auth: Auth) {
     this.googleProvider = new GoogleAuthProvider();
     
-    // Initialize from localStorage for persistence
-    const storedUser = localStorage.getItem('currentUser');
-    this.currentUserSubject = new BehaviorSubject<User | null>(
-      storedUser ? JSON.parse(storedUser) : null
-    );
+    // Initialize with null - Firebase Auth will restore session via onAuthStateChanged
+    this.currentUserSubject = new BehaviorSubject<User | null>(null);
     this.currentUser$ = this.currentUserSubject.asObservable();
 
     // Listen to Firebase auth state changes
@@ -65,11 +62,8 @@ export class AuthService {
    * Set current user and persist to localStorage
    */
   private setCurrentUser(user: User | null): void {
-    if (user) {
-      localStorage.setItem('currentUser', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('currentUser');
-    }
+    // Do NOT persist user to localStorage - sensitive data (email, uid) must not
+    // be stored in cleartext. Firebase Auth handles session persistence natively.
     this.currentUserSubject.next(user);
   }
 
