@@ -21,6 +21,7 @@ export class PatientDetailsComponent implements OnInit {
   isLoadingVisits: boolean = false;
   activeTab: 'info' | 'visits' = 'info';
   errorMessage: string = '';
+  isDarkTheme: boolean = false;
   
   // Properties for visit form
   showAddVisitForm: boolean = false;
@@ -38,6 +39,12 @@ export class PatientDetailsComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    // Restore saved theme
+    this.isDarkTheme = localStorage.getItem('intellirx-theme') === 'dark';
+    if (this.isDarkTheme) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+
     const patientId = this.route.snapshot.paramMap.get('id');
     
     console.log('ðŸ” Patient Details - Loading patient:', patientId);
@@ -186,6 +193,17 @@ export class PatientDetailsComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/home']);
+  }
+
+  toggleTheme(): void {
+    this.isDarkTheme = !this.isDarkTheme;
+    if (this.isDarkTheme) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('intellirx-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('intellirx-theme', 'light');
+    }
   }
 
   formatDate(date: Date | undefined | any): string {

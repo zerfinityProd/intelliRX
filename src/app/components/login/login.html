@@ -1,21 +1,20 @@
-<div class="login-container">
+<div class="login-page">
   <div class="login-card">
-    <div class="logo-section">
-      <div class="logo">
-        <svg width="50" height="50" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="25" cy="25" r="23" stroke="#6366f1" stroke-width="3"/>
-          <path d="M18 25 L23 30 L33 20" stroke="#6366f1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-      <h1>IntelliRx</h1>
-      <p class="subtitle">Patient Management System</p>
+    <!-- Logo -->
+    <div class="text-center mb-4 login-logo">
+      <svg width="52" height="52" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-2">
+        <circle cx="25" cy="25" r="23" stroke="#6366f1" stroke-width="3"/>
+        <path d="M18 25 L23 30 L33 20" stroke="#6366f1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <h1 class="h3 fw-bold mb-1 login-brand-title">IntelliRx</h1>
+      <p class="text-muted mb-0 fw-medium" style="font-size:14px">Patient Management System</p>
     </div>
 
-    <!-- Forgot Password View -->
+    <!-- ── Forgot Password View ── -->
     <div *ngIf="showForgotPassword">
       <form (ngSubmit)="onResetPassword()" #resetForm="ngForm">
-        <div class="form-group">
-          <label for="reset-email">Email Address</label>
+        <div class="mb-3">
+          <label for="reset-email" class="form-label fw-semibold" style="font-size:13px">Email Address</label>
           <input
             type="email"
             id="reset-email"
@@ -23,20 +22,15 @@
             [(ngModel)]="email"
             placeholder="Enter your email"
             required
-            class="form-input"
+            class="form-control"
             [disabled]="isLoading"
           />
         </div>
 
-        <div *ngIf="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
+        <div *ngIf="errorMessage" class="alert alert-danger py-2 px-3">{{ errorMessage }}</div>
+        <div *ngIf="successMessage" class="alert alert-success py-2 px-3">✓ {{ successMessage }}</div>
 
-        <div *ngIf="successMessage" class="success-message">
-          ✓ {{ successMessage }}
-        </div>
-
-        <button type="submit" class="login-button" [disabled]="isLoading">
+        <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold" [disabled]="isLoading">
           <span *ngIf="!isLoading">Send Reset Link</span>
           <span *ngIf="isLoading" class="loading-content">
             <span class="loading-spinner"></span>
@@ -44,22 +38,21 @@
           </span>
         </button>
 
-        <div class="footer-text">
-          <p>
-            <a href="javascript:void(0)" (click)="toggleForgotPassword()">
-              Back to login
-            </a>
+        <div class="text-center mt-3">
+          <p class="text-muted mb-0" style="font-size:13px">
+            <a href="javascript:void(0)" (click)="toggleForgotPassword()">Back to login</a>
           </p>
         </div>
       </form>
     </div>
 
-    <!-- Login/Register View -->
+    <!-- ── Login / Register View ── -->
     <div *ngIf="!showForgotPassword">
+
       <!-- Login Form -->
       <form *ngIf="isLoginMode" (ngSubmit)="onLogin()" #loginForm="ngForm">
-        <div class="form-group">
-          <label for="login-email">Email Address</label>
+        <div class="mb-3">
+          <label for="login-email" class="form-label fw-semibold" style="font-size:13px">Email Address</label>
           <input
             type="email"
             id="login-email"
@@ -67,13 +60,13 @@
             [(ngModel)]="email"
             placeholder="Enter your email"
             required
-            class="form-input"
+            class="form-control"
             [disabled]="isLoading"
           />
         </div>
 
-        <div class="form-group">
-          <label for="login-password">Password</label>
+        <div class="mb-2">
+          <label for="login-password" class="form-label fw-semibold" style="font-size:13px">Password</label>
           <input
             type="password"
             id="login-password"
@@ -81,22 +74,20 @@
             [(ngModel)]="password"
             placeholder="Enter your password"
             required
-            class="form-input"
+            class="form-control"
             [disabled]="isLoading"
           />
         </div>
 
-        <div class="forgot-password-link">
-          <a href="javascript:void(0)" (click)="toggleForgotPassword()">
+        <div class="text-end mb-3">
+          <a href="javascript:void(0)" (click)="toggleForgotPassword()" style="font-size:12px; font-weight:500">
             Forgot password?
           </a>
         </div>
 
-        <div *ngIf="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
+        <div *ngIf="errorMessage" class="alert alert-danger py-2 px-3">{{ errorMessage }}</div>
 
-        <button type="submit" class="login-button" [disabled]="isLoading">
+        <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold" [disabled]="isLoading">
           <span *ngIf="!isLoading">Sign In</span>
           <span *ngIf="isLoading" class="loading-content">
             <span class="loading-spinner"></span>
@@ -107,8 +98,8 @@
 
       <!-- Register Form -->
       <form *ngIf="!isLoginMode" (ngSubmit)="onRegister()" #registerForm="ngForm">
-        <div class="form-group">
-          <label for="register-name">Full Name</label>
+        <div class="mb-3">
+          <label for="register-name" class="form-label fw-semibold" style="font-size:13px">Full Name</label>
           <input
             type="text"
             id="register-name"
@@ -116,13 +107,13 @@
             [(ngModel)]="displayName"
             placeholder="Enter your full name"
             required
-            class="form-input"
+            class="form-control"
             [disabled]="isLoading"
           />
         </div>
 
-        <div class="form-group">
-          <label for="register-email">Email Address</label>
+        <div class="mb-3">
+          <label for="register-email" class="form-label fw-semibold" style="font-size:13px">Email Address</label>
           <input
             type="email"
             id="register-email"
@@ -130,13 +121,13 @@
             [(ngModel)]="email"
             placeholder="Enter your email"
             required
-            class="form-input"
+            class="form-control"
             [disabled]="isLoading"
           />
         </div>
 
-        <div class="form-group">
-          <label for="register-password">Password</label>
+        <div class="mb-3">
+          <label for="register-password" class="form-label fw-semibold" style="font-size:13px">Password</label>
           <input
             type="password"
             id="register-password"
@@ -144,20 +135,15 @@
             [(ngModel)]="password"
             placeholder="At least 6 characters"
             required
-            class="form-input"
+            class="form-control"
             [disabled]="isLoading"
           />
         </div>
 
-        <div *ngIf="errorMessage" class="error-message">
-          {{ errorMessage }}
-        </div>
+        <div *ngIf="errorMessage" class="alert alert-danger py-2 px-3">{{ errorMessage }}</div>
+        <div *ngIf="successMessage" class="alert alert-success py-2 px-3">✓ {{ successMessage }}</div>
 
-        <div *ngIf="successMessage" class="success-message">
-          ✓ {{ successMessage }}
-        </div>
-
-        <button type="submit" class="login-button" [disabled]="isLoading">
+        <button type="submit" class="btn btn-primary w-100 py-3 fw-semibold" [disabled]="isLoading">
           <span *ngIf="!isLoading">Create Account</span>
           <span *ngIf="isLoading" class="loading-content">
             <span class="loading-spinner"></span>
@@ -171,10 +157,10 @@
         <span>OR</span>
       </div>
 
-      <!-- Google Sign In Button -->
-      <button 
-        type="button" 
-        class="google-button" 
+      <!-- Google Sign-In -->
+      <button
+        type="button"
+        class="google-btn"
         (click)="onGoogleLogin()"
         [disabled]="isLoading"
       >
@@ -187,15 +173,15 @@
         Continue with Google
       </button>
 
-      <!-- Toggle between login/register -->
-      <div class="footer-text">
-        <p *ngIf="isLoginMode">
-          Don't have an account? 
-          <a href="javascript:void(0)" (click)="toggleMode()">Sign up</a>
+      <!-- Toggle sign-in / sign-up -->
+      <div class="text-center mt-3">
+        <p *ngIf="isLoginMode" class="text-muted mb-0" style="font-size:13px">
+          Don't have an account?
+          <a href="javascript:void(0)" (click)="toggleMode()" class="fw-semibold">Sign up</a>
         </p>
-        <p *ngIf="!isLoginMode">
-          Already have an account? 
-          <a href="javascript:void(0)" (click)="toggleMode()">Sign in</a>
+        <p *ngIf="!isLoginMode" class="text-muted mb-0" style="font-size:13px">
+          Already have an account?
+          <a href="javascript:void(0)" (click)="toggleMode()" class="fw-semibold">Sign in</a>
         </p>
       </div>
     </div>

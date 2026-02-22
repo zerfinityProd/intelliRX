@@ -1,95 +1,57 @@
-<div class="stats-container">
-  <!-- Stats Cards - Only 2 cards now -->
-  <div class="stats-cards">
-    <div class="stat-card" #pastIllnessCard style="cursor: pointer;">
-      <div class="stat-icon visits">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-        </svg>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ pastIllnessList.length }}</div>
-        <div class="stat-label">Past Illness</div>
-      </div>
-    </div>
+<div class="d-flex flex-column gap-3">
 
-    <div class="stat-card" #allergiesCard style="cursor: pointer;">
-      <div class="stat-icon allergies">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-      </div>
-      <div class="stat-content">
-        <div class="stat-value">{{ stats.allergiesCount }}</div>
-        <div class="stat-label">Allergies</div>
+  <!-- Stats Cards -->
+  <div class="row g-3">
+    <div class="col-6">
+      <div class="stat-card" #pastIllnessCard>
+        <div class="stat-icon visits">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="stat-value">{{ pastIllnessList.length }}</div>
+          <div class="stat-label">Past Illness</div>
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Calendar Section -->
-  <div class="calendar-section">
-    <div class="calendar-header">
-      <button class="month-nav" (click)="previousMonth()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
-      <h3 class="calendar-title">{{ currentMonthYear }}</h3>
-      <button class="month-nav" (click)="nextMonth()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6"></polyline>
-        </svg>
-      </button>
-    </div>
-
-    <div class="calendar-grid" #calendarGrid>
-      <!-- Day headers -->
-      <div class="calendar-day-header">Sun</div>
-      <div class="calendar-day-header">Mon</div>
-      <div class="calendar-day-header">Tue</div>
-      <div class="calendar-day-header">Wed</div>
-      <div class="calendar-day-header">Thu</div>
-      <div class="calendar-day-header">Fri</div>
-      <div class="calendar-day-header">Sat</div>
-
-      <!-- Calendar days -->
-      <div 
-        *ngFor="let day of calendarDays"
-        class="calendar-day"
-        [class.other-month]="!day.isCurrentMonth"
-        [class.is-today]="day.isToday"
-        [class.has-visit]="day.hasVisit"
-        [class.clickable]="day.hasVisit"
-        (click)="onDateClick(day)"
-      >
-        <span class="day-number">{{ day.dayNumber }}</span>
-        <div *ngIf="day.hasVisit" class="visit-indicator">
-          <div class="visit-dot"></div>
+    <div class="col-6">
+      <div class="stat-card" #allergiesCard>
+        <div class="stat-icon allergies">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div>
+          <div class="stat-value">{{ stats.allergiesCount }}</div>
+          <div class="stat-label">Allergies</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Last Visit Info -->
-  <div class="info-section" *ngIf="stats.lastVisitDate !== 'N/A'">
-    <div class="info-header">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+
+  <!-- Last Visit -->
+  <div class="last-visit-strip" *ngIf="stats.lastVisitDate !== 'N/A'">
+    <div class="lv-label">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
         <line x1="16" y1="2" x2="16" y2="6"></line>
         <line x1="8" y1="2" x2="8" y2="6"></line>
         <line x1="3" y1="10" x2="21" y2="10"></line>
       </svg>
-      <span>Last Visit</span>
+      Last Visit
     </div>
-    <div class="info-value">{{ stats.lastVisitDate }}</div>
+    <div class="lv-value">{{ stats.lastVisitDate }}</div>
   </div>
 
-  <!-- Visit Trend Chart Section - Moved after Last Visit -->
-  <div class="chart-section" *ngIf="monthlyVisitsData.length > 0">
-    <h3 class="chart-title">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+  <!-- Visit Trend Chart -->
+  <div class="stats-widget-card" *ngIf="monthlyVisitsData.length > 0">
+    <h3 class="section-title" style="font-size:15px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary)" stroke-width="2">
         <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
       </svg>
       Visit Frequency (Last 6 Months)
@@ -100,53 +62,46 @@
   </div>
 </div>
 
-<!-- Visit Details Modal -->
-<div *ngIf="showVisitModal" class="modal-overlay" (click)="closeModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
+<!-- ── Visit Details Modal (date click) ── -->
+<div *ngIf="showVisitModal" class="stats-modal-overlay" (click)="closeModal()">
+  <div class="stats-modal-content" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h3>Visits on {{ formatDate(selectedDate) }}</h3>
       <button class="modal-close" (click)="closeModal()">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
       </button>
     </div>
-
     <div class="modal-body">
       <div *ngFor="let visit of selectedDateVisits; let i = index" class="visit-details-card">
         <div class="visit-time">{{ formatDateTime(visit.createdAt) }}</div>
-        
+
         <div class="visit-detail-row" *ngIf="visit.presentIllness">
           <span class="detail-label">Present Illness:</span>
           <span class="detail-value">{{ visit.presentIllness }}</span>
         </div>
-
         <div class="visit-detail-row" *ngIf="visit.chiefComplaints">
           <span class="detail-label">Chief Complaints:</span>
           <span class="detail-value">{{ visit.chiefComplaints }}</span>
         </div>
-
         <div class="visit-detail-row" *ngIf="visit.diagnosis">
           <span class="detail-label">Diagnosis:</span>
           <span class="detail-value">{{ visit.diagnosis }}</span>
         </div>
-
         <div class="visit-detail-row" *ngIf="visit.examination">
           <span class="detail-label">Examination:</span>
           <span class="detail-value">{{ visit.examination }}</span>
         </div>
-
         <div class="visit-detail-row" *ngIf="visit.medicines">
           <span class="detail-label">Medicines:</span>
           <span class="detail-value">{{ visit.medicines }}</span>
         </div>
-
         <div class="visit-detail-row" *ngIf="visit.treatmentPlan">
           <span class="detail-label">Treatment Plan:</span>
           <span class="detail-value">{{ visit.treatmentPlan }}</span>
         </div>
-
         <div class="visit-detail-row" *ngIf="visit.advice">
           <span class="detail-label">Advice:</span>
           <span class="detail-value">{{ visit.advice }}</span>

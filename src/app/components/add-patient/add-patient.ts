@@ -408,6 +408,7 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
       this.onClose();
 
       // Show success popup AFTER form closes
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       await Swal.fire({
         title: this.isNewVisit ? 'Visit Added!' : 'Patient Added Successfully!',
         text: this.isNewVisit ? 'The new visit has been recorded.' : 'The patient has been added to the system.',
@@ -415,7 +416,9 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
         confirmButtonText: 'OK',
         confirmButtonColor: '#6366f1',
         timer: 2000,
-        timerProgressBar: true
+        timerProgressBar: true,
+        background: isDark ? '#1f1f1f' : '#ffffff',
+        color: isDark ? '#e0e0e0' : '#1e293b',
       });
 
     } catch (error: any) {

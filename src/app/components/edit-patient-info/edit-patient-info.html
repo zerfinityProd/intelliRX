@@ -1,118 +1,67 @@
 <div class="modal-overlay" (click)="onClose()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
+  <div class="modal-content" style="max-width:780px" (click)="$event.stopPropagation()">
+
     <div class="modal-header">
       <h2>Edit Patient Information</h2>
-      <div style="display: flex; gap: 12px; align-items: center;">
-        <button class="close-button" (click)="onClose()">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
+      <button class="close-button" (click)="onClose()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
 
     <div class="modal-body">
       <form (ngSubmit)="onSubmit()" #patientForm="ngForm">
-        <!-- Basic Information Section -->
-        <div class="section">
+
+        <!-- Basic Information -->
+        <div class="mb-4">
           <h3 class="section-title">Basic Information</h3>
-          
-          <!-- 3-COLUMN: First Name, Last Name, Phone -->
-          <div class="form-row-3col">
-            <div class="form-group">
-              <label for="firstName">
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label for="firstName" class="form-label fw-semibold" style="font-size:12px">
                 First Name <span class="required">*</span>
               </label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                [(ngModel)]="firstName"
-                (ngModelChange)="onNameChange()"
-                placeholder="Enter first name"
-                required
-                class="form-input"
-              />
+              <input type="text" id="firstName" name="firstName" [(ngModel)]="firstName"
+                (ngModelChange)="onNameChange()" placeholder="Enter first name"
+                required class="form-control" />
             </div>
-
-            <div class="form-group">
-              <label for="lastName">
+            <div class="col-md-4">
+              <label for="lastName" class="form-label fw-semibold" style="font-size:12px">
                 Last Name <span class="required">*</span>
               </label>
-              <input
-                type="text"
-                id="lastName"
-                name="lastName"
-                [(ngModel)]="lastName"
-                (ngModelChange)="onNameChange(); clearSuccessMessage()"
-                placeholder="Enter last name"
-                required
-                class="form-input"
-              />
+              <input type="text" id="lastName" name="lastName" [(ngModel)]="lastName"
+                (ngModelChange)="onNameChange(); clearSuccessMessage()" placeholder="Enter last name"
+                required class="form-control" />
             </div>
-
-            <div class="form-group">
-              <label for="phone">
+            <div class="col-md-4">
+              <label for="phone" class="form-label fw-semibold" style="font-size:12px">
                 Phone Number <span class="required">*</span>
               </label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                [(ngModel)]="phone"
-                (ngModelChange)="clearSuccessMessage()"
-                placeholder="10-digit number"
-                required
-                maxlength="10"
-                class="form-input"
-              />
+              <input type="tel" id="phone" name="phone" [(ngModel)]="phone"
+                (ngModelChange)="clearSuccessMessage()" placeholder="10-digit number"
+                required maxlength="10" class="form-control" />
             </div>
           </div>
 
-          <!-- 3-COLUMN: Family ID, Date of Birth, Gender -->
-          <div class="form-row-3col">
-            <div class="form-group">
-              <label for="familyId">
-                Family ID 
-                <span class="auto-label">(Auto)</span>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label for="familyId" class="form-label fw-semibold" style="font-size:12px">
+                Family ID <span class="auto-label">(Auto)</span>
               </label>
-              <input
-                type="text"
-                id="familyId"
-                name="familyId"
-                [(ngModel)]="familyId"
-                placeholder="Generated from name"
-                readonly
-                class="form-input readonly-input"
-              />
+              <input type="text" id="familyId" name="familyId" [(ngModel)]="familyId"
+                placeholder="Generated from name" readonly class="form-control readonly-input" />
             </div>
-
-            <div class="form-group">
-              <label for="dateOfBirth">
-                Date of Birth
-              </label>
-              <input
-                type="date"
-                id="dateOfBirth"
-                name="dateOfBirth"
-                [(ngModel)]="dateOfBirth"
-                (ngModelChange)="clearSuccessMessage()"
-                class="form-input"
-              />
+            <div class="col-md-4">
+              <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth</label>
+              <input type="date" id="dateOfBirth" name="dateOfBirth" [(ngModel)]="dateOfBirth"
+                (ngModelChange)="clearSuccessMessage()" class="form-control" />
             </div>
-
-            <div class="form-group">
-              <label for="gender">
-                Gender
-              </label>
-              <select 
-                id="gender" 
-                name="gender" 
-                [(ngModel)]="gender"
-                (ngModelChange)="clearSuccessMessage()"
-                class="form-input"
-              >
+            <div class="col-md-4">
+              <label for="gender" class="form-label fw-semibold" style="font-size:12px">Gender</label>
+              <select id="gender" name="gender" [(ngModel)]="gender"
+                (ngModelChange)="clearSuccessMessage()" class="form-select">
                 <option value="">Select gender</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
@@ -121,33 +70,22 @@
             </div>
           </div>
 
-          <!-- Email Section (Single Column) -->
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              [(ngModel)]="email"
-              (ngModelChange)="clearSuccessMessage()"
-              placeholder="patient@example.com"
-              class="form-input"
-            />
+          <div class="mb-2">
+            <label for="email" class="form-label fw-semibold" style="font-size:12px">Email</label>
+            <input type="email" id="email" name="email" [(ngModel)]="email"
+              (ngModelChange)="clearSuccessMessage()" placeholder="patient@example.com"
+              class="form-control" />
           </div>
         </div>
 
         <!-- Form Actions -->
         <div class="form-actions">
-          <span *ngIf="successMessage" style="color: #16a34a; font-weight: 600; font-size: 14px; margin-right: auto;">
-            ✓ {{ successMessage }}
-          </span>
-          <span *ngIf="errorMessage" style="color: #dc2626; font-weight: 600; font-size: 14px; margin-right: auto;">
-            ⚠ {{ errorMessage }}
-          </span>
-          <button type="button" class="cancel-button" (click)="onClose()" [disabled]="isSubmitting">
+          <span *ngIf="successMessage" class="success-msg">✓ {{ successMessage }}</span>
+          <span *ngIf="errorMessage" class="error-msg">⚠ {{ errorMessage }}</span>
+          <button type="button" class="btn btn-outline-secondary fw-semibold px-4" (click)="onClose()" [disabled]="isSubmitting">
             Cancel
           </button>
-          <button type="submit" class="submit-button" [disabled]="isSubmitting">
+          <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting">
             <span *ngIf="!isSubmitting">Save Changes</span>
             <span *ngIf="isSubmitting" class="loading-content">
               <span class="loading-spinner"></span>

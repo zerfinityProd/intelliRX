@@ -156,10 +156,10 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
       <span style="
         display:inline-flex;
         align-items:center;
-        gap:5px;
-        padding:4px 10px;
+        gap:6px;
+        padding:6px 14px;
         border-radius:999px;
-        font-size:12px;
+        font-size:14px;
         font-weight:500;
         font-family:'Poppins',sans-serif;
         background:${bg};
@@ -169,7 +169,7 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
         letter-spacing:0.01em;
         line-height:1.4;
       ">
-        <span style="width:5px;height:5px;border-radius:50%;background:${dot};flex-shrink:0;display:inline-block;"></span>
+        <span style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0;display:inline-block;"></span>
         ${text}
       </span>`;
   }
@@ -187,12 +187,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
       this.pastIllnessTippy = tippy(this.pastIllnessCardRef.nativeElement, {
         content: illnessContent,
         allowHTML: true,
-        placement: 'bottom',
+        placement: 'bottom-start',
         theme: 'medical',
         arrow: true,
         animation: 'shift-away',
         duration: [200, 150],
         interactive: false,
+        maxWidth: 420,
       }) as TippyInstance;
     }
 
@@ -208,12 +209,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
       this.allergiesTooltipTippy = tippy(this.allergiesCardRef.nativeElement, {
         content: allergyContent,
         allowHTML: true,
-        placement: 'bottom',
+        placement: 'bottom-start',
         theme: 'medical',
         arrow: true,
         animation: 'shift-away',
         duration: [200, 150],
         interactive: false,
+        maxWidth: 420,
       }) as TippyInstance;
     }
   }

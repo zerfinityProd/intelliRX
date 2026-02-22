@@ -20,8 +20,13 @@ export class HomeComponent implements OnInit, OnDestroy {
   searchTerm: string = '';
   searchResults: Patient[] = [];
   showAddPatientForm: boolean = false;
+  isFabOpen: boolean = false;
+  showAddVisitForm: boolean = false;
+  selectedPatientForVisit: Patient | null = null;
+  isEditingPatientForVisit: boolean = false;
   errorMessage: string = '';
   isSearching: boolean = false;
+  isDarkTheme: boolean = false;
   
   private destroy$ = new Subject<void>();
   private searchTimeout: any;
@@ -58,6 +63,12 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.clearSearch();
+    // Restore saved theme
+    const saved = localStorage.getItem('intellirx-theme');
+    if (saved === 'dark') {
+      this.isDarkTheme = true;
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
   }
 
   ngOnDestroy(): void {
@@ -65,6 +76,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);
+    }
+  }
+
+  toggleTheme(): void {
+    this.isDarkTheme = !this.isDarkTheme;
+    if (this.isDarkTheme) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      localStorage.setItem('intellirx-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('intellirx-theme', 'light');
     }
   }
 
@@ -135,7 +157,41 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   openAddPatientForm(): void {
     this.showAddPatientForm = true;
+    this.isFabOpen = false;
     this.cdr.detectChanges();
+  }
+
+  toggleFab(): void {
+    this.isFabOpen = !this.isFabOpen;
+    this.cdr.detectChanges();
+  }
+
+  openAddVisitForm(patient: Patient): void {
+    this.selectedPatientForVisit = patient;
+    this.showAddVisitForm = true;
+    this.isEditingPatientForVisit = false;
+    this.isFabOpen = false;
+    this.cdr.detectChanges();
+  }
+
+  closeAddVisitForm(): void {
+    this.showAddVisitForm = false;
+    this.selectedPatientForVisit = null;
+    this.isEditingPatientForVisit = false;
+    this.cdr.detectChanges();
+  }
+
+  toggleVisitEditMode(): void {
+    this.isEditingPatientForVisit = !this.isEditingPatientForVisit;
+    this.cdr.detectChanges();
+  }
+
+  async onVisitAdded(patientId: string): Promise<void> {
+    console.log('✅ Visit added for patient:', patientId);
+    this.closeAddVisitForm();
+    if (this.searchTerm.trim()) {
+      await this.onSearch();
+    }
   }
 
   closeAddPatientForm(): void {
