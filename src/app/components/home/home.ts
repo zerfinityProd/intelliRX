@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -27,7 +27,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   errorMessage: string = '';
   isSearching: boolean = false;
   isDarkTheme: boolean = false;
+  isUserMenuOpen: boolean = false;
   
+  get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
+  get isLoadingMore(): boolean { return this.patientService.isLoadingMore; }
+
   private destroy$ = new Subject<void>();
   private searchTimeout: any;
 
@@ -87,6 +91,25 @@ export class HomeComponent implements OnInit, OnDestroy {
     } else {
       document.documentElement.removeAttribute('data-theme');
       localStorage.setItem('intellirx-theme', 'light');
+    }
+  }
+
+  toggleUserMenu(): void {
+    this.isUserMenuOpen = !this.isUserMenuOpen;
+    this.cdr.detectChanges();
+  }
+
+  closeUserMenu(): void {
+    this.isUserMenuOpen = false;
+    this.cdr.detectChanges();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.nav-avatar-wrap')) {
+      this.isUserMenuOpen = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -223,6 +246,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   viewPatientDetails(patient: Patient): void {
     this.clearSearch();
     this.router.navigate(['/patient', patient.uniqueId]);
+  }
+
+  async loadMoreResults(): Promise<void> {
+    await this.patientService.loadMorePatients();
+    this.cdr.detectChanges();
   }
 
   clearSearch(): void {

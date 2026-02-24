@@ -298,6 +298,198 @@
 [data-theme="dark"] .edit-toggle-button { background: var(--dk-bg3); border-color: var(--dk-border); color: var(--dk-text2); }
 [data-theme="dark"] .edit-toggle-button:hover { background: var(--dk-bg3); color: #ffffff; }
 
+/* ── Brand ── */
+.brand-hover-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--clr-text);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.3px;
+}
+.brand-name-hover {
+  white-space: nowrap;
+}
+[data-theme="dark"] .brand-hover-wrap { color: #ffffff; }
+
+/* ── Nav avatar wrapper (relative for dropdown positioning) ── */
+.nav-avatar-wrap {
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.nav-avatar-btn {
+  cursor: pointer;
+  transition: box-shadow var(--t-fast), transform var(--t-fast);
+}
+.nav-avatar-btn:hover {
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.3);
+  transform: scale(1.05);
+}
+
+/* ── Hover tooltip: name + email ── */
+.nav-avatar-tooltip {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 999;
+  pointer-events: none;
+}
+.nav-avatar-wrap:hover .nav-avatar-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+/* Hide tooltip when dropdown is open */
+.nav-avatar-wrap:has(.user-dropdown--open) .nav-avatar-tooltip {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+.nav-avatar-tooltip__name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--clr-text);
+}
+.nav-avatar-tooltip__email {
+  font-size: 11px;
+  color: var(--clr-text-muted);
+}
+[data-theme="dark"] .nav-avatar-tooltip {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+[data-theme="dark"] .nav-avatar-tooltip__name { color: var(--dk-text1); }
+[data-theme="dark"] .nav-avatar-tooltip__email { color: var(--dk-text2); }
+
+/* ── User dropdown panel ── */
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 240px;
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.97);
+  transform-origin: top right;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 1000;
+}
+.user-dropdown--open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+.user-dropdown__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--clr-primary-light);
+}
+.user-dropdown__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--clr-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.user-dropdown__info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.user-dropdown__name {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--clr-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-dropdown__email {
+  font-size: 11px;
+  color: var(--clr-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-dropdown__divider {
+  height: 1px;
+  background: var(--clr-border);
+  margin: 0;
+}
+.user-dropdown__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--clr-text);
+  cursor: pointer;
+  transition: background var(--t-fast);
+  text-align: left;
+}
+.user-dropdown__item:hover {
+  background: var(--clr-border-light);
+}
+.user-dropdown__item--danger { color: var(--clr-error); }
+.user-dropdown__item--danger:hover { background: rgba(220,38,38,0.07); }
+.user-dropdown__item-icon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Dark theme for dropdown */
+[data-theme="dark"] .user-dropdown {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
+[data-theme="dark"] .user-dropdown__header {
+  background: rgba(99,102,241,0.12);
+}
+[data-theme="dark"] .user-dropdown__name { color: var(--dk-text1); }
+[data-theme="dark"] .user-dropdown__email { color: var(--dk-text2); }
+[data-theme="dark"] .user-dropdown__divider { background: var(--dk-border); }
+[data-theme="dark"] .user-dropdown__item { color: var(--dk-text1); }
+[data-theme="dark"] .user-dropdown__item:hover { background: var(--dk-bg3); }
+[data-theme="dark"] .user-dropdown__item--danger { color: #f87171; }
+[data-theme="dark"] .user-dropdown__item--danger:hover { background: rgba(248,113,113,0.1); }
+
+
 /* ── Theme toggle button ── */
 .theme-toggle-btn {
   width: 38px;
@@ -1585,7 +1777,7 @@ a:hover { text-decoration: underline; }
   .app-navbar .btn { padding: 6px 10px; }
 
   /* Main padding */
-  main.py-5 { padding-top: 24px !important; padding-bottom: 24px !important; }
+  main.py-5 { padding-top: 24px !important; padding-bottom: 100px !important; }
 
   /* Search heading */
   .text-center h2 { font-size: 20px !important; margin-bottom: 16px !important; }
@@ -1624,14 +1816,24 @@ a:hover { text-decoration: underline; }
   .patients-table tbody tr:hover { background: var(--clr-surface); }
   .patients-table tbody tr:last-child { border-bottom: 1px solid var(--clr-border); }
 
-  /* Actions cell — full width */
+  /* Actions cell — full width, buttons centered */
   .patients-table tbody td:last-child {
-    justify-content: flex-end;
+    justify-content: center;
     padding-top: 12px;
+    padding-bottom: 12px;
     border-top: 1px solid var(--clr-border-light);
     margin: 0 8px;
+    gap: 10px;
   }
   .patients-table tbody td:last-child::before { display: none; }
+  .patients-table tbody td:last-child .d-flex {
+    width: 100%;
+    justify-content: center;
+  }
+  .patients-table tbody td:last-child .btn {
+    flex: 1;
+    justify-content: center;
+  }
 
   /* Modal — sheet from bottom */
   .modal-content {

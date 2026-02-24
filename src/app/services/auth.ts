@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, filter, take } from 'rxjs';
 import { 
   Auth, 
   User as FirebaseUser,
@@ -28,6 +28,11 @@ export class AuthService {
   public currentUser$: Observable<User | null>;
   private googleProvider: GoogleAuthProvider;
 
+  // Tracks whether Firebase has resolved the initial auth state (true after first emit)
+  private authReady = false;
+  private authReadySubject = new BehaviorSubject<boolean>(false);
+  public authReady$ = this.authReadySubject.asObservable();
+
   constructor(private auth: Auth) {
     this.googleProvider = new GoogleAuthProvider();
     
@@ -47,6 +52,11 @@ export class AuthService {
         this.setCurrentUser(user);
       } else {
         this.setCurrentUser(null);
+      }
+      // Mark auth as ready after first Firebase response
+      if (!this.authReady) {
+        this.authReady = true;
+        this.authReadySubject.next(true);
       }
     });
   }
