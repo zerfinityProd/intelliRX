@@ -30,6 +30,13 @@ export class PatientDetailsComponent implements OnInit {
   // Property for edit patient info modal
   showEditPatientInfo: boolean = false;
 
+  // Delete confirmation state
+  showDeleteVisitConfirm: boolean = false;
+  showDeletePatientConfirm: boolean = false;
+  visitToDelete: Visit | null = null;
+  isDeletingVisit: boolean = false;
+  isDeletingPatient: boolean = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
@@ -189,6 +196,70 @@ export class PatientDetailsComponent implements OnInit {
     
     // Switch to visits tab to show the new visit
     this.setActiveTab('visits');
+  }
+
+  // Delete Visit
+  confirmDeleteVisit(visit: Visit): void {
+    this.ngZone.run(() => {
+      this.visitToDelete = visit;
+      this.showDeleteVisitConfirm = true;
+      this.cdr.detectChanges();
+    });
+  }
+
+  cancelDeleteVisit(): void {
+    this.ngZone.run(() => {
+      this.visitToDelete = null;
+      this.showDeleteVisitConfirm = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  async executeDeleteVisit(): Promise<void> {
+    if (!this.visitToDelete || !this.patient) return;
+    this.isDeletingVisit = true;
+    try {
+      await this.patientService.deleteVisit(this.patient.uniqueId, this.visitToDelete.id!);
+      this.cancelDeleteVisit();
+      await this.loadVisits();
+    } catch (error) {
+      console.error('Error deleting visit:', error);
+    } finally {
+      this.ngZone.run(() => {
+        this.isDeletingVisit = false;
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  // Delete Patient
+  confirmDeletePatient(): void {
+    this.ngZone.run(() => {
+      this.showDeletePatientConfirm = true;
+      this.cdr.detectChanges();
+    });
+  }
+
+  cancelDeletePatient(): void {
+    this.ngZone.run(() => {
+      this.showDeletePatientConfirm = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  async executeDeletePatient(): Promise<void> {
+    if (!this.patient) return;
+    this.isDeletingPatient = true;
+    try {
+      await this.patientService.deletePatient(this.patient.uniqueId);
+      this.router.navigate(['/home']);
+    } catch (error) {
+      console.error('Error deleting patient:', error);
+      this.ngZone.run(() => {
+        this.isDeletingPatient = false;
+        this.cdr.detectChanges();
+      });
+    }
   }
 
   goBack(): void {

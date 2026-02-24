@@ -24,6 +24,16 @@ export interface User {
   providedIn: 'root'
 })
 export class AuthService {
+  // ✅ Add the emails you want to allow access here
+  private readonly ALLOWED_EMAILS: string[] = [
+    'garisharmaa4@gmail.com',
+    'garima.sharma@zerfinity.com',
+    'service@zerfinity.com',
+    'kundra.nakul@gmail.com',
+    'sameersrswt@gmail.com'
+    // add more emails here...
+  ];
+
   private currentUserSubject: BehaviorSubject<User | null>;
   public currentUser$: Observable<User | null>;
   private googleProvider: GoogleAuthProvider;
@@ -41,15 +51,22 @@ export class AuthService {
     this.currentUser$ = this.currentUserSubject.asObservable();
 
     // Listen to Firebase auth state changes
-    onAuthStateChanged(this.auth, (firebaseUser) => {
+    onAuthStateChanged(this.auth, async (firebaseUser) => {
       if (firebaseUser) {
-        const user: User = {
-          uid: firebaseUser.uid,
-          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User',
-          email: firebaseUser.email || '',
-          photoURL: firebaseUser.photoURL || undefined
-        };
-        this.setCurrentUser(user);
+        const email = firebaseUser.email || '';
+        if (!this.isEmailAllowed(email)) {
+          // Sign out unauthorized users immediately
+          await signOut(this.auth);
+          this.setCurrentUser(null);
+        } else {
+          const user: User = {
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || email.split('@')[0] || 'User',
+            email,
+            photoURL: firebaseUser.photoURL || undefined
+          };
+          this.setCurrentUser(user);
+        }
       } else {
         this.setCurrentUser(null);
       }
@@ -59,6 +76,13 @@ export class AuthService {
         this.authReadySubject.next(true);
       }
     });
+  }
+
+  /**
+   * Check if an email is in the allowed list
+   */
+  private isEmailAllowed(email: string): boolean {
+    return this.ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email.toLowerCase());
   }
 
   /**
@@ -109,6 +133,9 @@ export class AuthService {
    */
   async login(email: string, password: string): Promise<User> {
     try {
+      if (!this.isEmailAllowed(email)) {
+        throw new Error('Access denied. You are not authorized to log in.');
+      }
       const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
       
       const user: User = {
@@ -132,11 +159,17 @@ export class AuthService {
   async loginWithGoogle(): Promise<User> {
     try {
       const userCredential = await signInWithPopup(this.auth, this.googleProvider);
-      
+      const email = userCredential.user.email || '';
+
+      if (!this.isEmailAllowed(email)) {
+        await signOut(this.auth);
+        throw new Error('Access denied. You are not authorized to log in.');
+      }
+
       const user: User = {
         uid: userCredential.user.uid,
-        name: userCredential.user.displayName || userCredential.user.email?.split('@')[0] || 'User',
-        email: userCredential.user.email || '',
+        name: userCredential.user.displayName || email.split('@')[0] || 'User',
+        email,
         photoURL: userCredential.user.photoURL || undefined
       };
 

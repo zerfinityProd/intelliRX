@@ -337,6 +337,18 @@ export class PatientService {
     }
   }
 
+  async deleteVisit(patientId: string, visitId: string): Promise<void> {
+    const userId = this.getCurrentUserId();
+    await this.firebaseService.deleteVisit(patientId, visitId, userId);
+  }
+
+  async deletePatient(uniqueId: string): Promise<void> {
+    const userId = this.getCurrentUserId();
+    await this.firebaseService.deletePatient(uniqueId, userId);
+    this.lastSearchTerm = '';
+    this.lastSearchResults = [];
+  }
+
   isValidPhone(phone: string): boolean {
     return /^\d{10}$/.test(phone.trim());
   }

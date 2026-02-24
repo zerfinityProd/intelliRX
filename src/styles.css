@@ -1933,3 +1933,119 @@ a:hover { text-decoration: underline; }
     box-shadow: none !important;
   }
 }
+/* ── Delete Visit Button ─────────────────────────────────── */
+.delete-visit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1.5px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 0;
+  line-height: 0;
+  transition: color 0.15s, background 0.15s, border-color 0.15s, transform 0.15s;
+  flex-shrink: 0;
+}
+.delete-visit-btn:hover {
+  color: #ef4444;
+  background: #fee2e2;
+  border-color: #fca5a5;
+  transform: translateY(-1px);
+}
+[data-theme="dark"] .delete-visit-btn:hover {
+  background: rgba(239,68,68,0.15);
+  border-color: rgba(239,68,68,0.4);
+}
+
+/* ── Delete Patient Button (in header) ───────────────────── */
+.delete-patient-btn {
+  background: rgba(255,255,255,0.15) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+}
+.delete-patient-btn:hover {
+  background: rgba(239,68,68,0.8) !important;
+  border-color: rgba(239,68,68,0.9) !important;
+}
+
+/* ── Confirmation Modal ──────────────────────────────────── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+.confirm-dialog {
+  background: var(--clr-surface, #ffffff);
+  border-radius: 20px;
+  padding: 36px 32px 28px;
+  max-width: 400px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  animation: confirm-pop 0.2s ease;
+}
+@keyframes confirm-pop {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.confirm-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+.confirm-icon--danger {
+  background: #fee2e2;
+  color: #ef4444;
+}
+[data-theme="dark"] .confirm-icon--danger {
+  background: rgba(239,68,68,0.15);
+}
+.confirm-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin-bottom: 10px;
+}
+.confirm-message {
+  font-size: 0.9rem;
+  color: var(--clr-text-muted, #64748b);
+  margin-bottom: 28px;
+  line-height: 1.6;
+}
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+.confirm-actions .btn {
+  min-width: 120px;
+  padding: 10px 20px;
+  font-weight: 600;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}

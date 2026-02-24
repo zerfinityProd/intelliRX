@@ -9,6 +9,7 @@ import {
   query,
   where,
   updateDoc,
+  deleteDoc,
   CollectionReference,
   DocumentData,
   QueryDocumentSnapshot,
@@ -310,6 +311,24 @@ export class FirebaseService {
       converted[key] = value instanceof Date ? Timestamp.fromDate(value) : value;
     }
     return converted;
+  }
+
+  async deleteVisit(patientId: string, visitId: string, userId: string): Promise<void> {
+    const patientDoc = doc(this.patientsCollection, patientId);
+    const visitDoc = doc(collection(patientDoc, 'visits'), visitId);
+    await deleteDoc(visitDoc);
+  }
+
+  async deletePatient(uniqueId: string, userId: string): Promise<void> {
+    // Delete all visits first
+    const patientDoc = doc(this.patientsCollection, uniqueId);
+    const visitsCollection = collection(patientDoc, 'visits');
+    const visitsSnapshot = await getDocs(query(visitsCollection, where('userId', '==', userId)));
+    const deletePromises = visitsSnapshot.docs.map(d => deleteDoc(d.ref));
+    await Promise.all(deletePromises);
+    // Delete patient document
+    await deleteDoc(patientDoc);
+    this.patientCache.delete(uniqueId);
   }
 
   private convertFromFirestore(data: any): any {
