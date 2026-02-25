@@ -9,5 +9,5 @@ import { RouterOutlet } from '@angular/router';
   styleUrls: ['./app.css']
 })
 export class AppComponent {
-  title = 'IntelliRx Patient Management';
+  title = 'IntelliRX - Patient Management';
 }

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
-import { AuthService, User } from '../../services/auth';
+import { AuthenticationService, User } from '../../services/authenticationService';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
@@ -28,7 +28,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   isSearching: boolean = false;
   isDarkTheme: boolean = false;
   isUserMenuOpen: boolean = false;
-  
+
   get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
   get isLoadingMore(): boolean { return this.patientService.isLoadingMore; }
 
@@ -36,7 +36,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private searchTimeout: any;
 
   constructor(
-    private authService: AuthService,
+    private authService: AuthenticationService,
     private patientService: PatientService,
     private router: Router,
     private cdr: ChangeDetectorRef,
@@ -115,11 +115,11 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   onSearchInput(): void {
     this.errorMessage = '';
-    
+
     if (this.searchTimeout) {
       clearTimeout(this.searchTimeout);
     }
-    
+
     if (!this.searchTerm.trim()) {
       this.patientService.clearSearchResults();
       this.isSearching = false;
@@ -147,7 +147,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     try {
       console.log('ðŸ”Ž Starting search for:', searchTerm);
       await this.patientService.searchPatients(searchTerm);
-      
+
       this.ngZone.run(() => {
         if (this.searchResults.length === 0) {
           this.errorMessage = 'No patients found';
@@ -172,7 +172,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.patientService.clearSearchResults();
       return;
     }
-    
+
     this.isSearching = true;
     this.cdr.detectChanges();
     await this.performSearch(this.searchTerm.trim());
@@ -224,10 +224,10 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async onPatientAdded(patientId: string): Promise<void> {
     console.log('âœ… Patient saved to Firebase:', patientId);
-    
+
     // Wait a bit for Firebase to index the new patient
     await new Promise(resolve => setTimeout(resolve, 500));
-    
+
     // Always refresh search if there's a search term
     if (this.searchTerm.trim()) {
       console.log('ðŸ”„ Refreshing search results...');
@@ -239,7 +239,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
       await this.performSearch(this.searchTerm.trim() || '');
     }
-    
+
     console.log('âœ… Search refreshed, results count:', this.searchResults.length);
   }
 
@@ -272,11 +272,11 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   formatDate(date: Date | undefined | any): string {
     if (!date) return 'N/A';
-    
+
     if (date && typeof date.toDate === 'function') {
       date = date.toDate();
     }
-    
+
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',

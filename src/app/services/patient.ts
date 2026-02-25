@@ -1,7 +1,7 @@
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseService } from './firebase';
-import { AuthService } from './auth';
+import { AuthenticationService } from './authenticationService';
 import { Patient, Visit } from '../models/patient.model';
 import { QueryDocumentSnapshot, DocumentData } from '@angular/fire/firestore';
 
@@ -30,9 +30,9 @@ export class PatientService {
 
   constructor(
     private firebaseService: FirebaseService,
-    private authService: AuthService,
+    private authService: AuthenticationService,
     private ngZone: NgZone
-  ) {}
+  ) { }
 
   private getCurrentUserId(): string {
     const userId = this.authService.getCurrentUserId();

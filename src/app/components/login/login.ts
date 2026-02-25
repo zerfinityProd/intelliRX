@@ -2,7 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth';
+import { AuthenticationService } from '../../services/authenticationService';
 
 @Component({
   selector: 'app-login',
@@ -14,12 +14,12 @@ import { AuthService } from '../../services/auth';
 export class LoginComponent implements OnInit {
   // Login mode
   isLoginMode: boolean = true;
-  
+
   // Form fields
   email: string = '';
   password: string = '';
   displayName: string = '';
-  
+
   // UI state
   errorMessage: string = '';
   successMessage: string = '';
@@ -27,7 +27,7 @@ export class LoginComponent implements OnInit {
   showForgotPassword: boolean = false;
 
   constructor(
-    private authService: AuthService,
+    private authService: AuthenticationService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
@@ -137,7 +137,7 @@ export class LoginComponent implements OnInit {
       await this.authService.register(this.email.trim(), this.password, this.displayName.trim());
       this.successMessage = 'Account created successfully!';
       this.cdr.detectChanges();
-      
+
       // Redirect after short delay
       setTimeout(() => {
         this.router.navigate(['/home']);
@@ -202,7 +202,7 @@ export class LoginComponent implements OnInit {
       await this.authService.resetPassword(this.email.trim());
       this.successMessage = 'Password reset email sent! Check your inbox.';
       this.cdr.detectChanges();
-      
+
       // Reset form after delay
       setTimeout(() => {
         this.showForgotPassword = false;

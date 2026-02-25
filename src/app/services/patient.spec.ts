@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { PatientService } from './patient';
 import { FirebaseService } from './firebase';
-import { AuthService } from './auth';
+import { AuthenticationService } from './authenticationService';
 import { NgZone } from '@angular/core';
 
 describe('PatientService', () => {
@@ -49,7 +49,7 @@ describe('PatientService', () => {
       providers: [
         PatientService,
         { provide: FirebaseService, useValue: firebaseServiceMock },
-        { provide: AuthService, useValue: authServiceMock },
+        { provide: AuthenticationService, useValue: authServiceMock },
         { provide: NgZone, useValue: ngZoneMock }
       ]
     });
@@ -106,18 +106,18 @@ describe('PatientService', () => {
 
   it('should detect numeric search terms as phone searches', async () => {
     firebaseServiceMock.searchPatientByPhone.mockResolvedValue([]);
-    
+
     await service.searchPatients('9876543210');
-    
+
     expect(firebaseServiceMock.searchPatientByPhone).toHaveBeenCalled();
     expect(firebaseServiceMock.searchPatientByFamilyId).not.toHaveBeenCalled();
   });
 
   it('should detect non-numeric search terms as name searches', async () => {
     firebaseServiceMock.searchPatientByFamilyId.mockResolvedValue([]);
-    
+
     await service.searchPatients('Jane Smith');
-    
+
     expect(firebaseServiceMock.searchPatientByFamilyId).toHaveBeenCalled();
     expect(firebaseServiceMock.searchPatientByPhone).not.toHaveBeenCalled();
   });
