@@ -1,236 +1,421 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { PatientService } from './patient';
-import { FirebaseService } from './firebase';
+import { PatientSearchService } from './patientSearchService';
+import { PatientCRUDService } from './patientCRUDService';
+import { PatientVisitService } from './patientVisitService';
+import { PatientValidationService } from './patientValidationService';
 import { AuthenticationService } from './authenticationService';
-import { NgZone } from '@angular/core';
+import { Patient } from '../models/patient.model';
 
-describe('PatientService', () => {
+describe('PatientService (Orchestrator)', () => {
   let service: PatientService;
-  let firebaseServiceMock: any;
-  let authServiceMock: any;
-  let ngZoneMock: any;
+  let searchService: any;
+  let crudService: any;
+  let visitService: any;
+  let validationService: any;
+  let authService: any;
 
-  const mockPatient = {
-    uniqueId: 'doe_john_1234567890_user123',
-    userId: 'user123',
-    familyId: 'doe_john',
+  const mockPatient: Patient = {
+    uniqueId: 'pat-123',
+    userId: 'user-001',
     name: 'John Doe',
-    phone: '1234567890',
-    email: 'john@email.com',
-    dateOfBirth: new Date('1990-01-01'),
-    gender: 'Male',
-    allergies: 'None',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    familyId: 'doe_john',
+    phone: '5551234567',
+    email: 'john@example.com',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01')
   };
 
   beforeEach(() => {
-    firebaseServiceMock = {
-      addPatient: vi.fn(),
+    searchService = {
+      searchResults$: { subscribe: vi.fn() },
+      hasMoreResults: false,
+      isLoadingMore: false,
+      search: vi.fn(),
+      loadMore: vi.fn(),
+      clear: vi.fn()
+    };
+
+    crudService = {
+      selectedPatient$: { subscribe: vi.fn() },
+      getPatient: vi.fn(),
+      createPatient: vi.fn(),
       updatePatient: vi.fn(),
-      searchPatientByPhone: vi.fn(),
-      searchPatientByFamilyId: vi.fn(),
-      getPatientById: vi.fn(),
-      generateFamilyId: vi.fn(),
+      deletePatient: vi.fn(),
+      selectPatient: vi.fn(),
+      checkUniqueIdExists: vi.fn(),
+      checkFamilyIdExists: vi.fn()
+    };
+
+    visitService = {
       addVisit: vi.fn(),
-      getPatientVisits: vi.fn()
+      getVisits: vi.fn(),
+      deleteVisit: vi.fn()
     };
 
-    authServiceMock = {
-      getCurrentUserId: vi.fn().mockReturnValue('user123')
+    validationService = {
+      isValidPhone: vi.fn(),
+      isValidEmail: vi.fn(),
+      isValidName: vi.fn(),
+      isValidDateOfBirth: vi.fn(),
+      isValidGender: vi.fn(),
+      validatePatientData: vi.fn()
     };
 
-    ngZoneMock = {
-      run: vi.fn((fn) => fn())
+    authService = {
+      currentUser$: { subscribe: vi.fn() }
     };
 
     TestBed.configureTestingModule({
       providers: [
         PatientService,
-        { provide: FirebaseService, useValue: firebaseServiceMock },
-        { provide: AuthenticationService, useValue: authServiceMock },
-        { provide: NgZone, useValue: ngZoneMock }
+        { provide: PatientSearchService, useValue: searchService },
+        { provide: PatientCRUDService, useValue: crudService },
+        { provide: PatientVisitService, useValue: visitService },
+        { provide: PatientValidationService, useValue: validationService },
+        { provide: AuthenticationService, useValue: authService }
       ]
     });
 
     service = TestBed.inject(PatientService);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
-  it('should create a new patient when no duplicate exists', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([]);
-    firebaseServiceMock.generateFamilyId.mockReturnValue('doe_john');
-    firebaseServiceMock.addPatient.mockResolvedValue('doe_john_1234567890_user123');
-
-    const result = await service.createPatient({
-      name: 'John Doe',
-      phone: '1234567890'
+  describe('Observable Proxying', () => {
+    it('should proxy searchResults$ from PatientSearchService', () => {
+      const results$ = service.searchResults$;
+      expect(results$).toBeDefined();
     });
 
-    expect(result).toBe('doe_john_1234567890_user123');
-    expect(firebaseServiceMock.addPatient).toHaveBeenCalled();
-  });
-
-  it('should update existing patient when duplicate found', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-    firebaseServiceMock.updatePatient.mockResolvedValue(undefined);
-
-    const result = await service.createPatient({
-      name: 'John Doe',
-      phone: '1234567890'
+    it('should proxy selectedPatient$ from PatientCRUDService', () => {
+      const selected$ = service.selectedPatient$;
+      expect(selected$).toBeDefined();
     });
 
-    expect(result).toBe(mockPatient.uniqueId);
-    expect(firebaseServiceMock.updatePatient).toHaveBeenCalled();
-  });
-
-  it('should search patients by phone number', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-
-    await service.searchPatients('1234567890');
-
-    expect(firebaseServiceMock.searchPatientByPhone).toHaveBeenCalled();
-  });
-
-  it('should search patients by name', async () => {
-    firebaseServiceMock.searchPatientByFamilyId.mockResolvedValue([mockPatient]);
-
-    await service.searchPatients('john doe');
-
-    expect(firebaseServiceMock.searchPatientByFamilyId).toHaveBeenCalled();
-  });
-
-  it('should detect numeric search terms as phone searches', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([]);
-
-    await service.searchPatients('9876543210');
-
-    expect(firebaseServiceMock.searchPatientByPhone).toHaveBeenCalled();
-    expect(firebaseServiceMock.searchPatientByFamilyId).not.toHaveBeenCalled();
-  });
-
-  it('should detect non-numeric search terms as name searches', async () => {
-    firebaseServiceMock.searchPatientByFamilyId.mockResolvedValue([]);
-
-    await service.searchPatients('Jane Smith');
-
-    expect(firebaseServiceMock.searchPatientByFamilyId).toHaveBeenCalled();
-    expect(firebaseServiceMock.searchPatientByPhone).not.toHaveBeenCalled();
-  });
-
-  it('should use cached results for repeated searches', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-
-    await service.searchPatients('1234567890');
-    await service.searchPatients('1234567890');
-
-    expect(firebaseServiceMock.searchPatientByPhone).toHaveBeenCalledTimes(1);
-  });
-
-  it('should clear search results', () => {
-    service.clearSearchResults();
-
-    service.searchResults$.subscribe(results => {
-      expect(results.length).toBe(0);
+    it('should proxy loading states from PatientSearchService', () => {
+      const hasMore = service.hasMoreResults;
+      const isLoading = service.isLoadingMore;
+      expect(typeof hasMore).toBe('boolean');
+      expect(typeof isLoading).toBe('boolean');
     });
   });
 
-  it('should validate correct phone number format', () => {
-    expect(service.isValidPhone('1234567890')).toBe(true);
-    expect(service.isValidPhone('12345')).toBe(false);
-  });
+  describe('Search Operations', () => {
+    it('should delegate searchPatients to PatientSearchService', async () => {
+      searchService.search.mockResolvedValue(undefined);
 
-  it('should validate correct email format', () => {
-    expect(service.isValidEmail('test@example.com')).toBe(true);
-    expect(service.isValidEmail('invalid-email')).toBe(false);
-  });
+      await service.searchPatients('john');
 
-  it('should add a visit to a patient', async () => {
-    firebaseServiceMock.addVisit.mockResolvedValue('visit-123');
-
-    const visitId = await service.addVisit('patient-123', {
-      chiefComplaints: 'Fever',
-      diagnosis: 'Viral',
-      examination: 'Normal',
-      treatmentPlan: 'Rest',
-      advice: 'Hydrate'
+      expect(searchService.search).toHaveBeenCalledWith('john', expect.any(String));
     });
 
-    expect(visitId).toBe('visit-123');
+    it('should delegate loadMorePatients to PatientSearchService', async () => {
+      searchService.loadMore.mockResolvedValue(undefined);
+
+      await service.loadMorePatients();
+
+      expect(searchService.loadMore).toHaveBeenCalled();
+    });
+
+    it('should delegate clearSearchResults to PatientSearchService', () => {
+      searchService.clear.mockReturnValue(undefined);
+
+      service.clearSearchResults();
+
+      expect(searchService.clear).toHaveBeenCalled();
+    });
   });
 
-  it('should get patient by ID', async () => {
-    firebaseServiceMock.getPatientById.mockResolvedValue(mockPatient);
+  describe('CRUD Operations', () => {
+    it('should delegate getPatient to PatientCRUDService', async () => {
+      crudService.getPatient.mockResolvedValue(mockPatient);
 
-    const result = await service.getPatient(mockPatient.uniqueId);
+      const result = await service.getPatient('pat-123');
 
-    expect(result).toEqual(mockPatient);
+      expect(crudService.getPatient).toHaveBeenCalledWith('pat-123', expect.any(String));
+      expect(result).toEqual(mockPatient);
+    });
+
+    it('should delegate createPatient to PatientCRUDService', async () => {
+      crudService.createPatient.mockResolvedValue('pat-new');
+
+      const patientData = { name: 'Jane Doe', phone: '5559876543' };
+      const result = await service.createPatient(patientData);
+
+      expect(crudService.createPatient).toHaveBeenCalledWith(
+        patientData,
+        expect.any(String),
+        expect.anything()
+      );
+      expect(result).toBe('pat-new');
+    });
+
+    it('should delegate updatePatient to PatientCRUDService', async () => {
+      crudService.updatePatient.mockResolvedValue(undefined);
+
+      const updates: Partial<Patient> = { email: 'newemail@example.com' };
+      await service.updatePatient('pat-123', updates);
+
+      expect(crudService.updatePatient).toHaveBeenCalledWith('pat-123', updates, expect.any(String));
+    });
+
+    it('should delegate deletePatient to PatientCRUDService', async () => {
+      crudService.deletePatient.mockResolvedValue(undefined);
+
+      await service.deletePatient('pat-123');
+
+      expect(crudService.deletePatient).toHaveBeenCalledWith('pat-123', expect.any(String));
+    });
+
+    it('should delegate selectPatient to PatientCRUDService', () => {
+      crudService.selectPatient.mockReturnValue(undefined);
+
+      service.selectPatient(mockPatient);
+
+      expect(crudService.selectPatient).toHaveBeenCalledWith(mockPatient);
+    });
+
+    it('should delegate selectPatient with null to PatientCRUDService', () => {
+      crudService.selectPatient.mockReturnValue(undefined);
+
+      service.selectPatient(null);
+
+      expect(crudService.selectPatient).toHaveBeenCalledWith(null);
+    });
   });
 
-  it('should get all visits for a patient', async () => {
-    const mockVisits = [
-      {
+  describe('Visit Operations', () => {
+    it('should delegate addVisit to PatientVisitService', async () => {
+      visitService.addVisit.mockResolvedValue('visit-123');
+
+      const visitData = {
+        chiefComplaints: 'Headache',
+        diagnosis: 'Migraine',
+        examination: 'Normal neurological exam',
+        treatmentPlan: 'Pain management',
+        advice: 'Rest and hydration',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      const result = await service.addVisit('pat-123', visitData);
+
+      expect(visitService.addVisit).toHaveBeenCalledWith('pat-123', visitData, expect.any(String));
+      expect(result).toBe('visit-123');
+    });
+
+    it('should delegate getPatientVisits to PatientVisitService', async () => {
+      const mockVisits = [{
         id: 'visit-1',
         chiefComplaints: 'Fever',
-        diagnosis: 'Viral',
+        diagnosis: 'Flu',
         examination: 'Normal',
         treatmentPlan: 'Rest',
         advice: 'Hydrate',
         createdAt: new Date(),
         updatedAt: new Date()
+      }];
+      visitService.getVisits.mockResolvedValue(mockVisits);
+
+      const result = await service.getPatientVisits('pat-123');
+
+      expect(visitService.getVisits).toHaveBeenCalledWith('pat-123', expect.any(String));
+      expect(result).toEqual(mockVisits);
+    });
+
+    it('should delegate deleteVisit to PatientVisitService', async () => {
+      visitService.deleteVisit.mockResolvedValue(undefined);
+
+      await service.deleteVisit('pat-123', 'visit-123');
+
+      expect(visitService.deleteVisit).toHaveBeenCalledWith('pat-123', 'visit-123', expect.any(String));
+    });
+  });
+
+  describe('Validation Operations', () => {
+    it('should delegate isValidPhone to PatientValidationService', () => {
+      validationService.isValidPhone.mockReturnValue(true);
+
+      const result = service.isValidPhone('5551234567');
+
+      expect(validationService.isValidPhone).toHaveBeenCalledWith('5551234567');
+      expect(result).toBe(true);
+    });
+
+    it('should delegate isValidEmail to PatientValidationService', () => {
+      validationService.isValidEmail.mockReturnValue(true);
+
+      const result = service.isValidEmail('test@example.com');
+
+      expect(validationService.isValidEmail).toHaveBeenCalledWith('test@example.com');
+      expect(result).toBe(true);
+    });
+
+    it('should delegate validatePatientData to PatientValidationService', () => {
+      const validationResult = { valid: true, errors: [] };
+      validationService.validatePatientData.mockReturnValue(validationResult);
+
+      const result = service.validatePatientData(mockPatient);
+
+      expect(validationService.validatePatientData).toHaveBeenCalledWith(mockPatient);
+      expect(result).toEqual(validationResult);
+    });
+  });
+
+  describe('Existence Checks', () => {
+    it('should delegate checkUniqueIdExists to PatientCRUDService', async () => {
+      crudService.checkUniqueIdExists.mockResolvedValue(true);
+
+      const result = await service.checkUniqueIdExists('John Doe', '5551234567');
+
+      expect(crudService.checkUniqueIdExists).toHaveBeenCalledWith(
+        'John Doe',
+        '5551234567',
+        expect.any(String)
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should delegate checkFamilyIdExists to PatientCRUDService', async () => {
+      crudService.checkFamilyIdExists.mockResolvedValue(false);
+
+      const result = await service.checkFamilyIdExists('doe_john');
+
+      expect(crudService.checkFamilyIdExists).toHaveBeenCalledWith('doe_john', expect.any(String));
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Backward Compatibility', () => {
+    it('should expose all public methods from original PatientService', () => {
+      const expectedMethods = [
+        'searchPatients',
+        'loadMore',
+        'clearSearchResults',
+        'getPatient',
+        'createPatient',
+        'updatePatient',
+        'deletePatient',
+        'selectPatient',
+        'addVisit',
+        'getPatientVisits',
+        'deleteVisit',
+        'isValidPhone',
+        'isValidEmail',
+        'validatePatientData',
+        'checkUniqueIdExists',
+        'checkFamilyIdExists'
+      ];
+
+      expectedMethods.forEach(method => {
+        expect(service[method as keyof PatientService]).toBeDefined();
+        expect(typeof service[method as keyof PatientService]).toBe('function');
+      });
+    });
+
+    it('should expose all public observables from original PatientService', () => {
+      const expectedObservables = [
+        'searchResults$',
+        'selectedPatient$'
+      ];
+
+      expectedObservables.forEach(observable => {
+        expect(service[observable as keyof PatientService]).toBeDefined();
+      });
+    });
+  });
+
+  describe('Orchestration Scenarios', () => {
+    it('should search and then select patient from results', async () => {
+      searchService.search.mockResolvedValue(undefined);
+      crudService.selectPatient.mockReturnValue(undefined);
+
+      await service.searchPatients('john');
+      service.selectPatient(mockPatient);
+
+      expect(searchService.search).toHaveBeenCalled();
+      expect(crudService.selectPatient).toHaveBeenCalledWith(mockPatient);
+    });
+
+    it('should validate patient data before creation', async () => {
+      validationService.validatePatientData.mockReturnValue({ valid: true, errors: [] });
+      crudService.createPatient.mockResolvedValue('pat-new');
+
+      const patientData = mockPatient;
+      const validation = service.validatePatientData(patientData);
+
+      expect(validation.valid).toBe(true);
+
+      if (validation.valid) {
+        await service.createPatient(patientData);
+        expect(crudService.createPatient).toHaveBeenCalled();
       }
-    ];
+    });
 
-    firebaseServiceMock.getPatientVisits.mockResolvedValue(mockVisits);
+    it('should handle patient addition with visits', async () => {
+      crudService.createPatient.mockResolvedValue('pat-new');
+      visitService.addVisit.mockResolvedValue('visit-123');
 
-    const visits = await service.getPatientVisits('patient-123');
+      const patientData = { name: 'John Doe', phone: '5551234567' };
+      await service.createPatient(patientData);
 
-    expect(visits.length).toBe(1);
-    expect(visits[0].diagnosis).toBe('Viral');
+      const visitData = {
+        chiefComplaints: 'Flu',
+        diagnosis: 'Influenza',
+        examination: 'Normal',
+        treatmentPlan: 'Rest',
+        advice: 'Hydrate',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      await service.addVisit('pat-new', visitData);
+
+      expect(crudService.createPatient).toHaveBeenCalled();
+      expect(visitService.addVisit).toHaveBeenCalled();
+    });
+
+    it('should check existence before creating patient', async () => {
+      crudService.checkUniqueIdExists.mockResolvedValue(true);
+      crudService.createPatient.mockResolvedValue('pat-123');
+
+      const exists = await service.checkUniqueIdExists('John Doe', '5551234567');
+
+      if (exists) {
+        // Patient already exists, fetch instead
+        crudService.getPatient.mockResolvedValue(mockPatient);
+        await service.getPatient('pat-123');
+      }
+
+      expect(crudService.checkUniqueIdExists).toHaveBeenCalled();
+      expect(crudService.getPatient).toHaveBeenCalled();
+    });
   });
 
-  it('should update patient information', async () => {
-    const updateData = {
-      email: 'newemail@example.com',
-      allergies: 'Penicillin'
-    };
+  describe('Error Propagation', () => {
+    it('should propagate search errors', async () => {
+      searchService.search.mockRejectedValue(new Error('Search failed'));
 
-    firebaseServiceMock.updatePatient.mockResolvedValue(undefined);
+      await expect(service.searchPatients('query')).rejects.toThrow('Search failed');
+    });
 
-    await service.updatePatient(mockPatient.uniqueId, updateData);
+    it('should propagate CRUD errors', async () => {
+      crudService.createPatient.mockRejectedValue(new Error('Create failed'));
 
-    expect(firebaseServiceMock.updatePatient).toHaveBeenCalledWith(
-      mockPatient.uniqueId,
-      updateData,
-      'user123'
-    );
-  });
+      await expect(service.createPatient({ name: 'Test', phone: '1234567890' })).rejects.toThrow('Create failed');
+    });
 
-  it('should throw error when user is not authenticated', async () => {
-    authServiceMock.getCurrentUserId.mockReturnValue(null);
+    it('should propagate visit errors', async () => {
+      visitService.addVisit.mockRejectedValue(new Error('Visit failed'));
 
-    await expect(
-      service.createPatient({ name: 'Test', phone: '1234567890' })
-    ).rejects.toThrow('User not authenticated');
-  });
-
-  it('should handle case-insensitive name matching', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-
-    const result = await service.findExistingPatient('JOHN DOE', '1234567890');
-
-    expect(result).toEqual(mockPatient);
-  });
-
-  it('should return null if no name match found', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-
-    const result = await service.findExistingPatient('Different Name', '1234567890');
-
-    expect(result).toBeNull();
+      const visitData = {
+        chiefComplaints: 'Headache',
+        diagnosis: 'Migraine',
+        examination: 'Normal',
+        treatmentPlan: 'Rest',
+        advice: 'Hydrate',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      await expect(service.addVisit('pat-123', visitData)).rejects.toThrow('Visit failed');
+    });
   });
 });

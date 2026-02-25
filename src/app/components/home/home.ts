@@ -1,10 +1,12 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, NgZone, HostListener } from '@angular/core';
+import { Component, OnInit, HostListener, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { Observable } from 'rxjs';
 import { AuthenticationService, User } from '../../services/authenticationService';
 import { PatientService } from '../../services/patient';
+import { ThemeService } from '../../services/themeService';
+import { UIStateService } from '../../services/uiStateService';
 import { Patient } from '../../models/patient.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
 
@@ -15,104 +17,76 @@ import { AddPatientComponent } from '../add-patient/add-patient';
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
-export class HomeComponent implements OnInit, OnDestroy {
-  currentUser: User | null = null;
+export class HomeComponent implements OnInit {
   searchTerm: string = '';
   searchResults: Patient[] = [];
-  showAddPatientForm: boolean = false;
-  isFabOpen: boolean = false;
-  showAddVisitForm: boolean = false;
-  selectedPatientForVisit: Patient | null = null;
-  isEditingPatientForVisit: boolean = false;
+  searchResults$: Observable<Patient[]>;
   errorMessage: string = '';
   isSearching: boolean = false;
-  isDarkTheme: boolean = false;
-  isUserMenuOpen: boolean = false;
+
+  // Observables for template binding
+  currentUser$: Observable<User | null>;
+  isDarkTheme$: Observable<boolean>;
+  uiState$: Observable<any>;
 
   get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
   get isLoadingMore(): boolean { return this.patientService.isLoadingMore; }
 
-  private destroy$ = new Subject<void>();
   private searchTimeout: any;
 
   constructor(
     private authService: AuthenticationService,
     private patientService: PatientService,
+    private themeService: ThemeService,
+    private uiStateService: UIStateService,
     private router: Router,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
+    private cdr: ChangeDetectorRef
   ) {
-    // Subscribe to current user
-    this.authService.currentUser$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(user => {
-        this.ngZone.run(() => {
-          this.currentUser = user;
-          this.cdr.detectChanges();
-        });
-      });
-
-    // Subscribe to search results
-    this.patientService.searchResults$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(results => {
-        this.ngZone.run(() => {
-          this.searchResults = results;
-          this.isSearching = false;
-          console.log('âœ”ï¸ Search results updated:', results.length, 'patients');
-          this.cdr.detectChanges();
-        });
-      });
+    this.currentUser$ = this.authService.currentUser$;
+    this.isDarkTheme$ = this.themeService.isDarkTheme();
+    this.uiState$ = this.uiStateService.getUIState();
+    this.searchResults$ = this.patientService.searchResults$;
   }
 
   ngOnInit(): void {
     this.clearSearch();
-    // Restore saved theme
-    const saved = localStorage.getItem('intellirx-theme');
-    if (saved === 'dark') {
-      this.isDarkTheme = true;
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
+    // Subscribe to search results updates for local tracking
+    this.patientService.searchResults$.subscribe(results => {
+      this.searchResults = results;
+      this.isSearching = false;
+      this.cdr.markForCheck();
+      console.log('✓ Search results updated:', results.length, 'patients');
+    });
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-    if (this.searchTimeout) {
-      clearTimeout(this.searchTimeout);
-    }
-  }
-
+  /**
+   * Handle theme toggle
+   */
   toggleTheme(): void {
-    this.isDarkTheme = !this.isDarkTheme;
-    if (this.isDarkTheme) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('intellirx-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('intellirx-theme', 'light');
-    }
+    this.themeService.toggleTheme();
   }
 
+  /**
+   * Handle user menu toggle
+   */
   toggleUserMenu(): void {
-    this.isUserMenuOpen = !this.isUserMenuOpen;
-    this.cdr.detectChanges();
+    this.uiStateService.toggleUserMenu();
   }
 
-  closeUserMenu(): void {
-    this.isUserMenuOpen = false;
-    this.cdr.detectChanges();
-  }
-
+  /**
+   * Close user menu when clicking outside
+   */
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement;
     if (!target.closest('.nav-avatar-wrap')) {
-      this.isUserMenuOpen = false;
-      this.cdr.detectChanges();
+      this.uiStateService.closeUserMenu();
     }
   }
 
+  /**
+   * Handle search input with debounce
+   */
   onSearchInput(): void {
     this.errorMessage = '';
 
@@ -123,50 +97,46 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (!this.searchTerm.trim()) {
       this.patientService.clearSearchResults();
       this.isSearching = false;
-      this.cdr.detectChanges();
+      this.cdr.markForCheck();
       return;
     }
 
     this.searchTimeout = setTimeout(() => {
-      this.ngZone.run(() => {
-        this.isSearching = true;
-        this.cdr.detectChanges();
-      });
+      this.isSearching = true;
       this.performSearch(this.searchTerm.trim());
     }, 1000);
   }
 
+  /**
+   * Execute search for patients
+   */
   private async performSearch(searchTerm: string): Promise<void> {
     if (!searchTerm) {
       this.patientService.clearSearchResults();
       this.isSearching = false;
-      this.cdr.detectChanges();
       return;
     }
 
     try {
-      console.log('ðŸ”Ž Starting search for:', searchTerm);
+      console.log('🔍 Starting search for:', searchTerm);
       await this.patientService.searchPatients(searchTerm);
 
-      this.ngZone.run(() => {
-        if (this.searchResults.length === 0) {
-          this.errorMessage = 'No patients found';
-        } else {
-          this.errorMessage = '';
-        }
-        this.isSearching = false;
-        this.cdr.detectChanges();
-      });
+      if (this.searchResults.length === 0) {
+        this.errorMessage = 'No patients found';
+      } else {
+        this.errorMessage = '';
+      }
+      this.isSearching = false;
     } catch (error) {
-      this.ngZone.run(() => {
-        this.errorMessage = 'Error searching for patients. Please try again.';
-        this.isSearching = false;
-        console.error('Search error:', error);
-        this.cdr.detectChanges();
-      });
+      this.errorMessage = 'Error searching for patients. Please try again.';
+      this.isSearching = false;
+      console.error('Search error:', error);
     }
   }
 
+  /**
+   * Trigger search immediately
+   */
   async onSearch(): Promise<void> {
     if (!this.searchTerm.trim()) {
       this.patientService.clearSearchResults();
@@ -174,93 +144,112 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
 
     this.isSearching = true;
-    this.cdr.detectChanges();
     await this.performSearch(this.searchTerm.trim());
   }
 
+  /**
+   * Open add patient form
+   */
   openAddPatientForm(): void {
-    this.showAddPatientForm = true;
-    this.isFabOpen = false;
-    this.cdr.detectChanges();
+    this.uiStateService.openAddPatientForm();
   }
 
+  /**
+   * Close add patient form
+   */
+  closeAddPatientForm(): void {
+    this.uiStateService.closeAddPatientForm();
+  }
+
+  /**
+   * Handle patient added event
+   */
+  async onPatientAdded(patientId: string): Promise<void> {
+    console.log('✓ Patient saved to Firebase:', patientId);
+    this.uiStateService.closeAddPatientForm();
+
+    // Wait for Firebase indexing
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Refresh search if term exists
+    if (this.searchTerm.trim()) {
+      console.log('🔄 Refreshing search results...');
+      await this.onSearch();
+    } else {
+      this.isSearching = true;
+      await this.performSearch(this.searchTerm.trim() || '');
+    }
+
+    console.log('✓ Search refreshed, results count:', this.searchResults.length);
+  }
+
+  /**
+   * Toggle floating action button
+   */
   toggleFab(): void {
-    this.isFabOpen = !this.isFabOpen;
-    this.cdr.detectChanges();
+    this.uiStateService.toggleFab();
   }
 
+  /**
+   * Open add visit form for patient
+   */
   openAddVisitForm(patient: Patient): void {
-    this.selectedPatientForVisit = patient;
-    this.showAddVisitForm = true;
-    this.isEditingPatientForVisit = false;
-    this.isFabOpen = false;
-    this.cdr.detectChanges();
+    this.uiStateService.openAddVisitForm(patient);
   }
 
+  /**
+   * Close add visit form
+   */
   closeAddVisitForm(): void {
-    this.showAddVisitForm = false;
-    this.selectedPatientForVisit = null;
-    this.isEditingPatientForVisit = false;
-    this.cdr.detectChanges();
+    this.uiStateService.closeAddVisitForm();
   }
 
+  /**
+   * Toggle visit edit mode
+   */
   toggleVisitEditMode(): void {
-    this.isEditingPatientForVisit = !this.isEditingPatientForVisit;
-    this.cdr.detectChanges();
+    this.uiStateService.toggleVisitEditMode();
   }
 
+  /**
+   * Handle visit added event
+   */
   async onVisitAdded(patientId: string): Promise<void> {
-    console.log('✅ Visit added for patient:', patientId);
+    console.log('✓ Visit added for patient:', patientId);
     this.closeAddVisitForm();
     if (this.searchTerm.trim()) {
       await this.onSearch();
     }
   }
 
-  closeAddPatientForm(): void {
-    this.showAddPatientForm = false;
-    this.cdr.detectChanges();
-  }
-
-  async onPatientAdded(patientId: string): Promise<void> {
-    console.log('âœ… Patient saved to Firebase:', patientId);
-
-    // Wait a bit for Firebase to index the new patient
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    // Always refresh search if there's a search term
-    if (this.searchTerm.trim()) {
-      console.log('ðŸ”„ Refreshing search results...');
-      await this.onSearch();
-    } else {
-      // If no search term, trigger a search with the new patient's phone
-      // This is helpful to show the newly added patient
-      this.isSearching = true;
-      this.cdr.detectChanges();
-      await this.performSearch(this.searchTerm.trim() || '');
-    }
-
-    console.log('âœ… Search refreshed, results count:', this.searchResults.length);
-  }
-
+  /**
+   * Navigate to patient details
+   */
   viewPatientDetails(patient: Patient): void {
     this.clearSearch();
     this.router.navigate(['/patient', patient.uniqueId]);
   }
 
+  /**
+   * Load more patient results for pagination
+   */
   async loadMoreResults(): Promise<void> {
     await this.patientService.loadMorePatients();
-    this.cdr.detectChanges();
   }
 
+  /**
+   * Clear search and reset state
+   */
   clearSearch(): void {
     this.searchTerm = '';
     this.errorMessage = '';
     this.isSearching = false;
     this.patientService.clearSearchResults();
-    this.cdr.detectChanges();
   }
 
+  /**
+   * Handle user logout
+   */
   async logout(): Promise<void> {
     try {
       await this.authService.logout();
@@ -270,6 +259,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Format date for display
+   */
   formatDate(date: Date | undefined | any): string {
     if (!date) return 'N/A';
 
