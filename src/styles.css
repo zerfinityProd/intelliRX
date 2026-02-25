@@ -1067,7 +1067,7 @@ a:hover { text-decoration: underline; }
 }
 .search-wrapper .clear-btn {
   position: absolute;
-  right: 44px;
+  right: 12px;
   background: var(--clr-border-light);
   border: none;
   border-radius: 7px;

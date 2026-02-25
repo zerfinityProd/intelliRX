@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
+import { AuthService } from '../../services/auth';
 import { AddPatientComponent } from '../add-patient/add-patient';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
@@ -41,9 +42,22 @@ export class PatientDetailsComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private patientService: PatientService,
+    private authService: AuthService,
     private cdr: ChangeDetectorRef,
     private ngZone: NgZone
   ) {}
+
+  // ✅ Only these emails can see and use delete buttons — must match Firebase Rules canDelete()
+  private readonly DELETE_ALLOWED_EMAILS: string[] = [
+    'garisharmaa4@gmail.com',
+    'garima.sharma@zerfinity.com'
+    // add more emails here if needed
+  ];
+
+  get canDelete(): boolean {
+    const email = this.authService.currentUserValue?.email?.toLowerCase() || '';
+    return this.DELETE_ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email);
+  }
 
   async ngOnInit(): Promise<void> {
     // Restore saved theme

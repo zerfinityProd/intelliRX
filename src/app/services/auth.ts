@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable, filter, take } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { 
   Auth, 
   User as FirebaseUser,
@@ -12,6 +12,7 @@ import {
   updateProfile,
   sendPasswordResetEmail
 } from '@angular/fire/auth';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 
 export interface User {
   uid: string;
@@ -24,38 +25,24 @@ export interface User {
   providedIn: 'root'
 })
 export class AuthService {
-  // ✅ Add the emails you want to allow access here
-  private readonly ALLOWED_EMAILS: string[] = [
-    'garisharmaa4@gmail.com',
-    'garima.sharma@zerfinity.com',
-    'service@zerfinity.com',
-    'kundra.nakul@gmail.com',
-    'sameersrswt@gmail.com'
-    // add more emails here...
-  ];
-
   private currentUserSubject: BehaviorSubject<User | null>;
   public currentUser$: Observable<User | null>;
   private googleProvider: GoogleAuthProvider;
 
-  // Tracks whether Firebase has resolved the initial auth state (true after first emit)
   private authReady = false;
   private authReadySubject = new BehaviorSubject<boolean>(false);
   public authReady$ = this.authReadySubject.asObservable();
 
-  constructor(private auth: Auth) {
+  constructor(private auth: Auth, private firestore: Firestore) {
     this.googleProvider = new GoogleAuthProvider();
-    
-    // Initialize with null - Firebase Auth will restore session via onAuthStateChanged
     this.currentUserSubject = new BehaviorSubject<User | null>(null);
     this.currentUser$ = this.currentUserSubject.asObservable();
 
-    // Listen to Firebase auth state changes
     onAuthStateChanged(this.auth, async (firebaseUser) => {
       if (firebaseUser) {
         const email = firebaseUser.email || '';
-        if (!this.isEmailAllowed(email)) {
-          // Sign out unauthorized users immediately
+        const allowed = await this.isEmailAllowedInFirestore(email);
+        if (!allowed) {
           await signOut(this.auth);
           this.setCurrentUser(null);
         } else {
@@ -70,7 +57,6 @@ export class AuthService {
       } else {
         this.setCurrentUser(null);
       }
-      // Mark auth as ready after first Firebase response
       if (!this.authReady) {
         this.authReady = true;
         this.authReadySubject.next(true);
@@ -79,47 +65,41 @@ export class AuthService {
   }
 
   /**
-   * Check if an email is in the allowed list
+   * Check Firestore allowedUsers collection.
+   * Add users in Firebase Console → Firestore → allowedUsers → Add document
+   * Document ID = the user's email (e.g. user@example.com)
    */
-  private isEmailAllowed(email: string): boolean {
-    return this.ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email.toLowerCase());
+  private async isEmailAllowedInFirestore(email: string): Promise<boolean> {
+    try {
+      const docRef = doc(this.firestore, 'allowedUsers', email.toLowerCase());
+      const docSnap = await getDoc(docRef);
+      return docSnap.exists();
+    } catch (error) {
+      console.warn('Access check failed for:', email);
+      return false;
+    }
   }
 
-  /**
-   * Get current user value
-   */
   public get currentUserValue(): User | null {
     return this.currentUserSubject.value;
   }
 
-  /**
-   * Set current user and persist to localStorage
-   */
   private setCurrentUser(user: User | null): void {
-    // Do NOT persist user to localStorage - sensitive data (email, uid) must not
-    // be stored in cleartext. Firebase Auth handles session persistence natively.
     this.currentUserSubject.next(user);
   }
 
-  /**
-   * Register new user with email and password
-   */
   async register(email: string, password: string, displayName: string): Promise<User> {
     try {
       const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
-      
-      // Update user profile with display name
       if (userCredential.user) {
         await updateProfile(userCredential.user, { displayName });
       }
-
       const user: User = {
         uid: userCredential.user.uid,
         name: displayName,
         email: userCredential.user.email || email,
         photoURL: userCredential.user.photoURL || undefined
       };
-
       this.setCurrentUser(user);
       return user;
     } catch (error: any) {
@@ -128,23 +108,23 @@ export class AuthService {
     }
   }
 
-  /**
-   * Login with email and password
-   */
   async login(email: string, password: string): Promise<User> {
     try {
-      if (!this.isEmailAllowed(email)) {
+      const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+      const userEmail = userCredential.user.email || email;
+
+      const allowed = await this.isEmailAllowedInFirestore(userEmail);
+      if (!allowed) {
+        await signOut(this.auth);
         throw new Error('Access denied. You are not authorized to log in.');
       }
-      const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-      
+
       const user: User = {
         uid: userCredential.user.uid,
-        name: userCredential.user.displayName || userCredential.user.email?.split('@')[0] || 'User',
-        email: userCredential.user.email || email,
+        name: userCredential.user.displayName || userEmail.split('@')[0] || 'User',
+        email: userEmail,
         photoURL: userCredential.user.photoURL || undefined
       };
-
       this.setCurrentUser(user);
       return user;
     } catch (error: any) {
@@ -153,15 +133,13 @@ export class AuthService {
     }
   }
 
-  /**
-   * Login with Google
-   */
   async loginWithGoogle(): Promise<User> {
     try {
       const userCredential = await signInWithPopup(this.auth, this.googleProvider);
       const email = userCredential.user.email || '';
 
-      if (!this.isEmailAllowed(email)) {
+      const allowed = await this.isEmailAllowedInFirestore(email);
+      if (!allowed) {
         await signOut(this.auth);
         throw new Error('Access denied. You are not authorized to log in.');
       }
@@ -172,7 +150,6 @@ export class AuthService {
         email,
         photoURL: userCredential.user.photoURL || undefined
       };
-
       this.setCurrentUser(user);
       return user;
     } catch (error: any) {
@@ -181,9 +158,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Send password reset email
-   */
   async resetPassword(email: string): Promise<void> {
     try {
       await sendPasswordResetEmail(this.auth, email);
@@ -193,9 +167,6 @@ export class AuthService {
     }
   }
 
-  /**
-   * Logout user
-   */
   async logout(): Promise<void> {
     try {
       await signOut(this.auth);
@@ -206,64 +177,30 @@ export class AuthService {
     }
   }
 
-  /**
-   * Check if user is logged in
-   */
   isLoggedIn(): boolean {
     return this.currentUserValue !== null && this.auth.currentUser !== null;
   }
 
-  /**
-   * Get current Firebase user ID (for database queries)
-   */
   getCurrentUserId(): string | null {
     return this.auth.currentUser?.uid || null;
   }
 
-  /**
-   * Handle Firebase auth errors
-   */
   private handleAuthError(error: any): Error {
     let message = 'An error occurred during authentication';
-
     switch (error.code) {
-      case 'auth/email-already-in-use':
-        message = 'This email is already registered';
-        break;
-      case 'auth/invalid-email':
-        message = 'Invalid email address';
-        break;
-      case 'auth/operation-not-allowed':
-        message = 'This operation is not allowed';
-        break;
-      case 'auth/weak-password':
-        message = 'Password is too weak. Use at least 6 characters';
-        break;
-      case 'auth/user-disabled':
-        message = 'This account has been disabled';
-        break;
-      case 'auth/user-not-found':
-        message = 'No account found with this email';
-        break;
-      case 'auth/wrong-password':
-        message = 'Incorrect password';
-        break;
-      case 'auth/invalid-credential':
-        message = 'Invalid email or password';
-        break;
-      case 'auth/too-many-requests':
-        message = 'Too many attempts. Please try again later';
-        break;
-      case 'auth/network-request-failed':
-        message = 'Network error. Please check your connection';
-        break;
-      case 'auth/popup-closed-by-user':
-        message = 'Sign-in popup was closed';
-        break;
-      default:
-        message = error.message || message;
+      case 'auth/email-already-in-use': message = 'This email is already registered'; break;
+      case 'auth/invalid-email': message = 'Invalid email address'; break;
+      case 'auth/operation-not-allowed': message = 'This operation is not allowed'; break;
+      case 'auth/weak-password': message = 'Password is too weak. Use at least 6 characters'; break;
+      case 'auth/user-disabled': message = 'This account has been disabled'; break;
+      case 'auth/user-not-found': message = 'No account found with this email'; break;
+      case 'auth/wrong-password': message = 'Incorrect password'; break;
+      case 'auth/invalid-credential': message = 'Invalid email or password'; break;
+      case 'auth/too-many-requests': message = 'Too many attempts. Please try again later'; break;
+      case 'auth/network-request-failed': message = 'Network error. Please check your connection'; break;
+      case 'auth/popup-closed-by-user': message = 'Sign-in popup was closed'; break;
+      default: message = error.message || message;
     }
-
     return new Error(message);
   }
 }
