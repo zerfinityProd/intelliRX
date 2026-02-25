@@ -13,12 +13,18 @@ import {
     sendPasswordResetEmail
 } from '@angular/fire/auth';
 import { Firestore } from '@angular/fire/firestore';
-import { UserProfileService, User } from './userProfileService';
-import { AuthErrorService } from './authErrorService';
 import { AuthorizationService } from './authorizationService';
 
-// Re-export User interface for backward compatibility
-export type { User };
+/**
+ * User interface for the application
+ * Merged from UserProfileService
+ */
+export interface User {
+    uid: string;
+    name: string;
+    email: string;
+    photoURL?: string;
+}
 
 @Injectable({
     providedIn: 'root'
@@ -35,8 +41,6 @@ export class AuthenticationService {
     // Inject dependencies using modern inject() function
     private auth = inject(Auth);
     private firestore = inject(Firestore);
-    private userProfileService = inject(UserProfileService);
-    private authErrorService = inject(AuthErrorService);
     private authorizationService = inject(AuthorizationService);
 
     constructor() {
@@ -52,7 +56,7 @@ export class AuthenticationService {
                     await signOut(this.auth);
                     this.setCurrentUser(null);
                 } else {
-                    const user = this.userProfileService.transformFirebaseUser(firebaseUser);
+                    const user = this.transformFirebaseUser(firebaseUser);
                     this.setCurrentUser(user);
                 }
             } else {
@@ -63,6 +67,150 @@ export class AuthenticationService {
                 this.authReadySubject.next(true);
             }
         });
+    }
+
+    /**
+     * Handle Firebase authentication errors and map them to user-friendly messages
+     * Merged from AuthErrorService
+     * @param error - The Firebase authentication error object
+     * @returns Error object with user-friendly message
+     */
+    private handleAuthError(error: any): Error {
+        let message = 'An error occurred during authentication';
+
+        switch (error.code) {
+            case 'auth/email-already-in-use':
+                message = 'This email is already registered';
+                break;
+            case 'auth/invalid-email':
+                message = 'Invalid email address';
+                break;
+            case 'auth/operation-not-allowed':
+                message = 'This operation is not allowed';
+                break;
+            case 'auth/weak-password':
+                message = 'Password is too weak. Use at least 6 characters';
+                break;
+            case 'auth/user-disabled':
+                message = 'This account has been disabled';
+                break;
+            case 'auth/user-not-found':
+                message = 'No account found with this email';
+                break;
+            case 'auth/wrong-password':
+                message = 'Incorrect password';
+                break;
+            case 'auth/invalid-credential':
+                message = 'Invalid email or password';
+                break;
+            case 'auth/too-many-requests':
+                message = 'Too many attempts. Please try again later';
+                break;
+            case 'auth/network-request-failed':
+                message = 'Network error. Please check your connection';
+                break;
+            case 'auth/popup-closed-by-user':
+                message = 'Sign-in popup was closed';
+                break;
+            default:
+                message = error.message || message;
+        }
+
+        return new Error(message);
+    }
+
+    /**
+     * Check if an error is a known auth error
+     * @param error - The error to check
+     * @returns True if it's a Firebase auth error
+     */
+    private isAuthError(error: any): boolean {
+        return error?.code && error.code.startsWith('auth/');
+    }
+
+    /**
+     * Transform Firebase user to application User interface
+     * Merged from UserProfileService
+     * @param firebaseUser - Firebase user object
+     * @returns Transformed User object
+     */
+    private transformFirebaseUser(firebaseUser: FirebaseUser): User {
+        const email = firebaseUser.email || '';
+
+        return {
+            uid: firebaseUser.uid,
+            name: this.extractDisplayName(firebaseUser.displayName, email),
+            email,
+            photoURL: firebaseUser.photoURL || undefined
+        };
+    }
+
+    /**
+     * Create User object from email and optional display name
+     * Merged from UserProfileService
+     * @param uid - Firebase user ID
+     * @param email - User email
+     * @param displayName - Optional display name
+     * @param photoURL - Optional photo URL
+     * @returns User object
+     */
+    private createUser(
+        uid: string,
+        email: string,
+        displayName?: string | null,
+        photoURL?: string | null
+    ): User {
+        return {
+            uid,
+            name: this.extractDisplayName(displayName, email),
+            email,
+            photoURL: photoURL || undefined
+        };
+    }
+
+    /**
+     * Extract a display name from Firebase displayName or email
+     * Falls back to email prefix if displayName is not available
+     * @param displayName - Firebase displayName (can be null)
+     * @param email - User email (fallback)
+     * @returns Display name string
+     */
+    private extractDisplayName(displayName: string | null | undefined, email: string): string {
+        if (displayName && displayName.trim()) {
+            return displayName.trim();
+        }
+
+        if (email) {
+            const nameParts = email.split('@');
+            return nameParts[0] || 'User';
+        }
+
+        return 'User';
+    }
+
+    /**
+     * Check if a user object is valid
+     * @param user - User object to validate
+     * @returns True if user is valid
+     */
+    private isValidUser(user: any): user is User {
+        return (
+            user &&
+            typeof user.uid === 'string' &&
+            typeof user.name === 'string' &&
+            typeof user.email === 'string' &&
+            user.uid.trim().length > 0 &&
+            user.email.trim().length > 0
+        );
+    }
+
+    /**
+     * Extract user ID from email (before @ symbol)
+     * @param email - User email
+     * @returns User ID extracted from email
+     */
+    private extractUserIdFromEmail(email: string): string {
+        return email.split('@')[0] || 'user';
     }
 
 
@@ -81,7 +229,7 @@ export class AuthenticationService {
             if (userCredential.user) {
                 await updateProfile(userCredential.user, { displayName });
             }
-            const user = this.userProfileService.createUser(
+            const user = this.createUser(
                 userCredential.user.uid,
                 userCredential.user.email || email,
                 displayName
@@ -90,7 +238,7 @@ export class AuthenticationService {
             return user;
         } catch (error: any) {
             console.error('Registration error:', error);
-            throw this.authErrorService.handleAuthError(error);
+            throw this.handleAuthError(error);
         }
     }
 
@@ -105,12 +253,12 @@ export class AuthenticationService {
                 throw new Error('Access denied. You are not authorized to log in.');
             }
 
-            const user = this.userProfileService.transformFirebaseUser(userCredential.user);
+            const user = this.transformFirebaseUser(userCredential.user);
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
             console.error('Login error:', error);
-            throw this.authErrorService.handleAuthError(error);
+            throw this.handleAuthError(error);
         }
     }
 
@@ -125,12 +273,12 @@ export class AuthenticationService {
                 throw new Error('Access denied. You are not authorized to log in.');
             }
 
-            const user = this.userProfileService.transformFirebaseUser(userCredential.user);
+            const user = this.transformFirebaseUser(userCredential.user);
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
             console.error('Google login error:', error);
-            throw this.authErrorService.handleAuthError(error);
+            throw this.handleAuthError(error);
         }
     }
 
@@ -139,7 +287,7 @@ export class AuthenticationService {
             await sendPasswordResetEmail(this.auth, email);
         } catch (error: any) {
             console.error('Password reset error:', error);
-            throw this.authErrorService.handleAuthError(error);
+            throw this.handleAuthError(error);
         }
     }
 

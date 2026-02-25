@@ -9,11 +9,12 @@ import { ThemeService } from '../../services/themeService';
 import { UIStateService } from '../../services/uiStateService';
 import { Patient } from '../../models/patient.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
+import { AddVisitComponent } from '../add-visit/add-visit';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddPatientComponent],
+  imports: [CommonModule, FormsModule, AddPatientComponent, AddVisitComponent],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })

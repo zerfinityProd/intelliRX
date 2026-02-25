@@ -228,7 +228,7 @@
 
 <!-- ── Add Visit Modal ── -->
 <ng-container *ngIf="uiState$ | async as uiState">
-  <app-add-patient *ngIf="uiState.showAddVisitForm && uiState.selectedPatientForVisit"
+  <app-add-visit *ngIf="uiState.showAddVisitForm && uiState.selectedPatientForVisit"
     [patientData]="uiState.selectedPatientForVisit" [isEditMode]="false" (close)="closeAddVisitForm()"
-    (patientAdded)="onVisitAdded($event)" (toggleEdit)="toggleVisitEditMode()"></app-add-patient>
+    (visitAdded)="onVisitAdded($event)" (toggleEdit)="toggleVisitEditMode()"></app-add-visit>
 </ng-container>

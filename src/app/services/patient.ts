@@ -1,36 +1,35 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseService } from './firebase';
 import { AuthenticationService } from './authenticationService';
 import { PatientSearchService } from './patientSearchService';
-import { PatientCRUDService } from './patientCRUDService';
-import { PatientVisitService } from './patientVisitService';
-import { PatientValidationService } from './patientValidationService';
 import { Patient, Visit } from '../models/patient.model';
+import {
+  isValidPhone,
+  isValidEmail,
+  validatePatientData
+} from '../utilities/patientValidation';
 
 /**
- * Orchestrates patient operations by delegating to specialized services
- * Maintains backward compatibility with existing components
- *
- * Single responsibility: Coordinate patient-related operations
- * Delegates to:
- * - PatientSearchService: Search and pagination
- * - PatientCRUDService: Create, read, update, delete
- * - PatientVisitService: Visit management
- * - PatientValidationService: Data validation
+ * Orchestrates patient operations
+ * Merged from PatientCRUDService, PatientVisitService, and PatientValidationService
+ * 
+ * Responsibilities:
+ * - Patient CRUD operations
+ * - Visit management
+ * - Patient data validation
+ * - Search and pagination coordination
  */
 @Injectable({
   providedIn: 'root'
 })
 export class PatientService {
+  private readonly selectedPatientSubject = new BehaviorSubject<Patient | null>(null);
+  public readonly selectedPatient$ = this.selectedPatientSubject.asObservable();
+
   // Expose search results from search service
   get searchResults$(): Observable<Patient[]> {
     return this.searchService.searchResults$;
-  }
-
-  // Expose selected patient from CRUD service
-  get selectedPatient$(): Observable<Patient | null> {
-    return this.crudService.selectedPatient$;
   }
 
   // Expose pagination state from search service
@@ -45,10 +44,7 @@ export class PatientService {
   constructor(
     private firebaseService: FirebaseService,
     private authService: AuthenticationService,
-    private searchService: PatientSearchService,
-    private crudService: PatientCRUDService,
-    private visitService: PatientVisitService,
-    private validationService: PatientValidationService
+    private searchService: PatientSearchService
   ) { }
 
   /**
@@ -88,11 +84,20 @@ export class PatientService {
   // ──── CRUD OPERATIONS ────
 
   /**
-   * Get a patient by unique ID
+   * Fetch a patient by unique ID
    */
   async getPatient(uniqueId: string): Promise<Patient | null> {
     const userId = this.getCurrentUserId();
-    return this.crudService.getPatient(uniqueId, userId);
+    try {
+      const patient = await this.firebaseService.getPatientById(uniqueId, userId);
+      if (patient) {
+        this.selectedPatientSubject.next(patient);
+      }
+      return patient;
+    } catch (error) {
+      console.error('❌ Error fetching patient:', error);
+      throw error;
+    }
   }
 
   /**
@@ -102,7 +107,37 @@ export class PatientService {
     patientData: Omit<Patient, 'uniqueId' | 'userId' | 'familyId' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
     const userId = this.getCurrentUserId();
-    return this.crudService.createPatient(patientData, userId, this.firebaseService);
+    try {
+      const existingPatient = await this.findExistingPatient(
+        patientData.name,
+        patientData.phone,
+        userId
+      );
+
+      if (existingPatient) {
+        console.log('✓ Found existing patient, updating:', existingPatient.uniqueId);
+        const updateData: Partial<Patient> = {
+          name: patientData.name,
+          phone: patientData.phone,
+          email: patientData.email || existingPatient.email,
+          dateOfBirth: patientData.dateOfBirth || existingPatient.dateOfBirth,
+          gender: patientData.gender || existingPatient.gender,
+          allergies: patientData.allergies || existingPatient.allergies
+        };
+        await this.updatePatient(existingPatient.uniqueId, updateData);
+        return existingPatient.uniqueId;
+      }
+
+      const familyId = this.firebaseService.generateFamilyId(patientData.name, patientData.phone);
+      const patientWithUserId = { ...patientData, familyId, userId };
+      const uniqueId = await this.firebaseService.addPatient(patientWithUserId, userId);
+
+      console.log('✓ Patient created:', uniqueId);
+      return uniqueId;
+    } catch (error) {
+      console.error('❌ Error creating patient:', error);
+      throw error;
+    }
   }
 
   /**
@@ -110,7 +145,13 @@ export class PatientService {
    */
   async updatePatient(uniqueId: string, patientData: Partial<Patient>): Promise<void> {
     const userId = this.getCurrentUserId();
-    await this.crudService.updatePatient(uniqueId, patientData, userId);
+    try {
+      await this.firebaseService.updatePatient(uniqueId, patientData, userId);
+      console.log('✓ Patient updated successfully');
+    } catch (error) {
+      console.error('❌ Error updating patient:', error);
+      throw error;
+    }
   }
 
   /**
@@ -118,14 +159,21 @@ export class PatientService {
    */
   async deletePatient(uniqueId: string): Promise<void> {
     const userId = this.getCurrentUserId();
-    await this.crudService.deletePatient(uniqueId, userId);
+    try {
+      await this.firebaseService.deletePatient(uniqueId, userId);
+      this.selectedPatientSubject.next(null);
+      console.log('✓ Patient deleted successfully');
+    } catch (error) {
+      console.error('❌ Error deleting patient:', error);
+      throw error;
+    }
   }
 
   /**
    * Select a patient for context
    */
   selectPatient(patient: Patient | null): void {
-    this.crudService.selectPatient(patient);
+    this.selectedPatientSubject.next(patient);
   }
 
   // ──── VISIT MANAGEMENT ────
@@ -138,7 +186,14 @@ export class PatientService {
     visitData: Omit<Visit, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
     const userId = this.getCurrentUserId();
-    return this.visitService.addVisit(patientId, visitData, userId);
+    try {
+      const visitId = await this.firebaseService.addVisit(patientId, visitData, userId);
+      console.log('✓ Visit added successfully:', visitId);
+      return visitId;
+    } catch (error) {
+      console.error('❌ Error adding visit:', error);
+      throw error;
+    }
   }
 
   /**
@@ -146,7 +201,13 @@ export class PatientService {
    */
   async getPatientVisits(patientId: string): Promise<Visit[]> {
     const userId = this.getCurrentUserId();
-    return this.visitService.getVisits(patientId, userId);
+    try {
+      const visits = await this.firebaseService.getPatientVisits(patientId, userId);
+      return visits;
+    } catch (error) {
+      console.error('❌ Error fetching visits:', error);
+      return [];
+    }
   }
 
   /**
@@ -154,27 +215,36 @@ export class PatientService {
    */
   async deleteVisit(patientId: string, visitId: string): Promise<void> {
     const userId = this.getCurrentUserId();
-    await this.visitService.deleteVisit(patientId, visitId, userId);
+    try {
+      await this.firebaseService.deleteVisit(patientId, visitId, userId);
+      console.log('✓ Visit deleted successfully');
+    } catch (error) {
+      console.error('❌ Error deleting visit:', error);
+      throw error;
+    }
   }
 
   // ──── VALIDATION ────
 
   /**
    * Validate phone number format
+   * Uses utility function from patientValidation module
    */
   isValidPhone(phone: string): boolean {
-    return this.validationService.isValidPhone(phone);
+    return isValidPhone(phone);
   }
 
   /**
    * Validate email format
+   * Uses utility function from patientValidation module
    */
   isValidEmail(email: string): boolean {
-    return this.validationService.isValidEmail(email);
+    return isValidEmail(email);
   }
 
   /**
    * Comprehensive patient data validation
+   * Uses utility function from patientValidation module
    */
   validatePatientData(data: {
     name?: string;
@@ -183,7 +253,7 @@ export class PatientService {
     dateOfBirth?: Date | string;
     gender?: string;
   }): { valid: boolean; errors: string[] } {
-    return this.validationService.validatePatientData(data);
+    return validatePatientData(data);
   }
 
   // ──── EXISTENCE CHECKS ────
@@ -193,7 +263,14 @@ export class PatientService {
    */
   async checkUniqueIdExists(name: string, phone: string): Promise<boolean> {
     const userId = this.getCurrentUserId();
-    return this.crudService.checkUniqueIdExists(name, phone, userId);
+    try {
+      if (!name.trim() || !phone.trim()) return false;
+      const existingPatient = await this.findExistingPatient(name, phone, userId);
+      return !!existingPatient;
+    } catch (error) {
+      console.error('❌ Error checking unique ID:', error);
+      return false;
+    }
   }
 
   /**
@@ -201,6 +278,46 @@ export class PatientService {
    */
   async checkFamilyIdExists(familyId: string): Promise<boolean> {
     const userId = this.getCurrentUserId();
-    return this.crudService.checkFamilyIdExists(familyId, userId);
+    try {
+      const normalizedFamilyId = familyId.trim().toLowerCase();
+      if (!normalizedFamilyId) return false;
+      const { results } = await this.firebaseService.searchPatientByFamilyId(normalizedFamilyId, userId);
+      const exactMatch = results.find(p => p.familyId.toLowerCase() === normalizedFamilyId);
+      return !!exactMatch;
+    } catch (error) {
+      console.error('❌ Error checking family ID:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Private: Find existing patient by name and phone
+   */
+  private async findExistingPatient(
+    name: string,
+    phone: string,
+    userId: string
+  ): Promise<Patient | null> {
+    try {
+      const normalizedName = name.trim().toLowerCase();
+      const normalizedPhone = phone.trim();
+
+      const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, userId);
+      if (results.length === 0) return null;
+
+      const exactMatches = results.filter(p => p.name.trim().toLowerCase() === normalizedName);
+      if (exactMatches.length === 0) return null;
+
+      // Return most recently created match
+      const sorted = exactMatches.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
+      return sorted[0];
+    } catch (error) {
+      console.error('❌ Error finding existing patient:', error);
+      return null;
+    }
   }
 }

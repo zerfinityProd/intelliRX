@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ThemeService } from './services/themeService';
 
 @Component({
   selector: 'app-root',
@@ -8,6 +9,12 @@ import { RouterOutlet } from '@angular/router';
   template: '<router-outlet></router-outlet>',
   styleUrls: ['./app.css']
 })
-export class AppComponent {
+export class AppComponent implements OnInit {
   title = 'IntelliRX - Patient Management';
+  private readonly themeService = inject(ThemeService);
+
+  ngOnInit(): void {
+    // Initialize theme on app startup
+    this.themeService.setTheme(this.themeService.getCurrentTheme());
+  }
 }

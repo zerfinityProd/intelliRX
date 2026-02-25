@@ -1,8 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
+import { ThemeService } from '../../services/themeService';
 
 @Component({
   selector: 'app-login',
@@ -26,11 +27,12 @@ export class LoginComponent implements OnInit {
   isLoading: boolean = false;
   showForgotPassword: boolean = false;
 
-  constructor(
-    private authService: AuthenticationService,
-    private router: Router,
-    private cdr: ChangeDetectorRef
-  ) {
+  private readonly authService = inject(AuthenticationService);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly themeService = inject(ThemeService);
+
+  constructor() {
     // Redirect if already logged in
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/home']);
@@ -38,12 +40,8 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Restore saved theme on login page too
-    if (localStorage.getItem('intellirx-theme') === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-    }
+    // Theme is initialized globally in AppComponent
+    // No need for duplicate localStorage access
   }
 
   /**

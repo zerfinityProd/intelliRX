@@ -1,17 +1,19 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
 import { AuthenticationService } from '../../services/authenticationService';
-import { AddPatientComponent } from '../add-patient/add-patient';
+import { ThemeService } from '../../services/themeService';
+import { AddVisitComponent } from '../add-visit/add-visit';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
 
 @Component({
   selector: 'app-patient-details',
   standalone: true,
-  imports: [CommonModule, AddPatientComponent, PatientStatsComponent, EditPatientInfoComponent],
+  imports: [CommonModule, AddVisitComponent, PatientStatsComponent, EditPatientInfoComponent],
   templateUrl: './patient-details.html',
   styleUrl: './patient-details.css'
 })
@@ -22,7 +24,7 @@ export class PatientDetailsComponent implements OnInit {
   isLoadingVisits: boolean = false;
   activeTab: 'info' | 'visits' = 'info';
   errorMessage: string = '';
-  isDarkTheme: boolean = false;
+  isDarkTheme$: Observable<boolean>;
 
   // Properties for visit form
   showAddVisitForm: boolean = false;
@@ -38,14 +40,13 @@ export class PatientDetailsComponent implements OnInit {
   isDeletingVisit: boolean = false;
   isDeletingPatient: boolean = false;
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private patientService: PatientService,
-    private authService: AuthenticationService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) { }
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly patientService = inject(PatientService);
+  private readonly authService = inject(AuthenticationService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
+  private readonly themeService = inject(ThemeService);
 
   // ✅ Only these emails can see and use delete buttons — must match Firebase Rules canDelete()
   private readonly DELETE_ALLOWED_EMAILS: string[] = [
@@ -54,18 +55,16 @@ export class PatientDetailsComponent implements OnInit {
     // add more emails here if needed
   ];
 
+  constructor() {
+    this.isDarkTheme$ = this.themeService.isDarkTheme();
+  }
+
   get canDelete(): boolean {
     const email = this.authService.currentUserValue?.email?.toLowerCase() || '';
     return this.DELETE_ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email);
   }
 
   async ngOnInit(): Promise<void> {
-    // Restore saved theme
-    this.isDarkTheme = localStorage.getItem('intellirx-theme') === 'dark';
-    if (this.isDarkTheme) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-
     const patientId = this.route.snapshot.paramMap.get('id');
 
     console.log('ðŸ” Patient Details - Loading patient:', patientId);
@@ -281,14 +280,7 @@ export class PatientDetailsComponent implements OnInit {
   }
 
   toggleTheme(): void {
-    this.isDarkTheme = !this.isDarkTheme;
-    if (this.isDarkTheme) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('intellirx-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('intellirx-theme', 'light');
-    }
+    this.themeService.toggleTheme();
   }
 
   formatDate(date: Date | undefined | any): string {
