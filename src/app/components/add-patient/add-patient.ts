@@ -49,6 +49,8 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
   @Output() patientAdded = new EventEmitter<string>();
   @Output() toggleEdit = new EventEmitter<void>();
 
+  todayDate: string = new Date().toISOString().split('T')[0];
+
   // Basic Information
   firstName: string = '';
   lastName: string = '';
@@ -459,9 +461,9 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     if (this.isNewVisit) {
-      const hasPresentIllness = this.formatArrayField(this.presentIllnesses).length > 0;
-      if (!hasPresentIllness) {
-        this.errorMessage = 'Present illness is required for new visits';
+      const hasChiefComplaints = this.formatArrayField(this.chiefComplaints).length > 0;
+      if (!hasChiefComplaints) {
+        this.errorMessage = 'Chief complaints are required for new visits';
         return false;
       }
     }
@@ -477,15 +479,15 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private hasVisitData(): boolean {
-    const hasPresentIllness = this.formatArrayField(this.presentIllnesses).length > 0;
+    const hasChiefComplaints = this.formatArrayField(this.chiefComplaints).length > 0;
     
-    if (this.isNewVisit && !hasPresentIllness) {
+    if (this.isNewVisit && !hasChiefComplaints) {
       return false;
     }
     
     const hasAnyData = (
-      hasPresentIllness ||
-      this.formatArrayField(this.chiefComplaints).length > 0 ||
+      this.formatArrayField(this.presentIllnesses).length > 0 ||
+      hasChiefComplaints ||
       this.diagnosis.length > 0 ||
       this.formatExaminations().length > 0 ||
       this.formatMedicines().length > 0 ||
@@ -532,6 +534,33 @@ export class AddPatientComponent implements OnInit, OnChanges, OnDestroy {
 
   onToggleEdit(): void {
     this.toggleEdit.emit();
+  }
+
+  onDateChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.value) {
+      const parts = input.value.split('-');
+      if (parts[0] && parts[0].length > 4) {
+        parts[0] = parts[0].slice(0, 4);
+        this.dateOfBirth = parts.join('-');
+        input.value = this.dateOfBirth;
+      }
+      if (this.dateOfBirth > this.todayDate) {
+        this.dateOfBirth = this.todayDate;
+        input.value = this.todayDate;
+      }
+    }
+  }
+
+  calculateAge(dob: string): string {
+    if (!dob) return '';
+    const birth = new Date(dob);
+    if (isNaN(birth.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age >= 0 ? `${age} yrs` : '';
   }
 
   onClose(): void {

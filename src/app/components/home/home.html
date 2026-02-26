@@ -134,7 +134,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let patient of searchResults">
+            <tr *ngFor="let patient of searchResults" (dblclick)="openAddVisitForm(patient)">
               <td data-label="Patient Name">
                 <div class="d-flex align-items-center gap-2">
                   <div class="table-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>

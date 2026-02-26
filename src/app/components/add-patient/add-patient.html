@@ -1,4 +1,4 @@
-<div class="modal-overlay" (click)="onClose()">
+<div class="modal-overlay">
   <div class="modal-content" (click)="$event.stopPropagation()">
 
     <div class="modal-header">
@@ -58,7 +58,10 @@
             <div class="col-md-4">
               <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth</label>
               <input type="date" id="dateOfBirth" name="dateOfBirth" [(ngModel)]="dateOfBirth"
-                (ngModelChange)="clearSuccessMessage()" class="form-control" />
+                (ngModelChange)="clearSuccessMessage()" (change)="onDateChange($event)" [max]="todayDate" class="form-control" />
+              <small *ngIf="dateOfBirth" style="color:var(--clr-text, #1e293b); font-size:11px; font-weight:600; margin-top:4px; display:block">
+                Age: {{ calculateAge(dateOfBirth) }}
+              </small>
             </div>
             <div class="col-md-4">
               <label for="gender" class="form-label fw-semibold" style="font-size:12px">Gender</label>
@@ -151,9 +154,12 @@
                 </span>
               </label>
               <input type="date" id="dateOfBirth" name="dateOfBirth" [(ngModel)]="dateOfBirth"
-                (ngModelChange)="clearSuccessMessage()"
+                (ngModelChange)="clearSuccessMessage()" (change)="onDateChange($event)" [max]="todayDate"
                 [readonly]="isFieldReadonly('dateOfBirth')"
                 [class.readonly-input]="isFieldReadonly('dateOfBirth')" class="form-control" />
+              <small *ngIf="dateOfBirth" style="color:var(--clr-text, #1e293b); font-size:11px; font-weight:600; margin-top:4px; display:block">
+                Age: {{ calculateAge(dateOfBirth) }}
+              </small>
             </div>
             <div class="col-md-4">
               <label for="gender" class="form-label fw-semibold" style="font-size:12px">
@@ -201,7 +207,7 @@
             </div>
 
             <div class="col-md-6">
-              <h3 class="section-title">Present Illness <span class="required">*</span></h3>
+              <h3 class="section-title">Present Illness</h3>
               <div *ngFor="let illness of presentIllnesses; let i = index" class="dynamic-field">
                 <textarea [(ngModel)]="illness.description" (ngModelChange)="clearSuccessMessage()"
                   [name]="'illness-' + i" placeholder="Describe illness" class="form-control" rows="2"></textarea>
@@ -251,7 +257,7 @@
             </div>
 
             <div class="col-md-6">
-              <h3 class="section-title">Chief Complaints</h3>
+              <h3 class="section-title">Chief Complaints <span class="required">*</span></h3>
               <div *ngFor="let complaint of chiefComplaints; let i = index" class="dynamic-field">
                 <textarea [(ngModel)]="complaint.description" (ngModelChange)="clearSuccessMessage()"
                   [name]="'complaint-' + i" placeholder="Describe chief complaints"
