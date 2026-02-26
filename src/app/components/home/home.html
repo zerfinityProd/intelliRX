@@ -4,8 +4,9 @@
     <!-- Brand: logo only, name appears on hover -->
     <span class="navbar-brand p-0 brand-hover-wrap" style="cursor:default">
       <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="25" cy="25" r="23" stroke="#6366f1" stroke-width="3"/>
-        <path d="M18 25 L23 30 L33 20" stroke="#6366f1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="25" cy="25" r="23" stroke="#6366f1" stroke-width="3" />
+        <path d="M18 25 L23 30 L33 20" stroke="#6366f1" stroke-width="3" stroke-linecap="round"
+          stroke-linejoin="round" />
       </svg>
       <span class="brand-name-hover">IntelliRx</span>
     </span>
@@ -13,22 +14,22 @@
     <!-- User section: single avatar button with dropdown -->
     <div class="nav-avatar-wrap" (click)="toggleUserMenu()">
       <div class="user-avatar nav-avatar-btn">
-        {{ currentUser?.name?.charAt(0)?.toUpperCase() }}
+        {{ (currentUser$ | async)?.name?.charAt(0)?.toUpperCase() }}
       </div>
       <!-- Hover tooltip: name + email -->
       <div class="nav-avatar-tooltip">
-        <span class="nav-avatar-tooltip__name">{{ currentUser?.name }}</span>
-        <span class="nav-avatar-tooltip__email">{{ currentUser?.email }}</span>
+        <span class="nav-avatar-tooltip__name">{{ (currentUser$ | async)?.name }}</span>
+        <span class="nav-avatar-tooltip__email">{{ (currentUser$ | async)?.email }}</span>
       </div>
 
       <!-- Dropdown panel -->
-      <div class="user-dropdown" [class.user-dropdown--open]="isUserMenuOpen">
+      <div class="user-dropdown" [class.user-dropdown--open]="(uiState$ | async)?.isUserMenuOpen">
         <!-- User info header -->
         <div class="user-dropdown__header">
-          <div class="user-dropdown__avatar">{{ currentUser?.name?.charAt(0)?.toUpperCase() }}</div>
+          <div class="user-dropdown__avatar">{{ (currentUser$ | async)?.name?.charAt(0)?.toUpperCase() }}</div>
           <div class="user-dropdown__info">
-            <span class="user-dropdown__name">{{ currentUser?.name }}</span>
-            <span class="user-dropdown__email">{{ currentUser?.email }}</span>
+            <span class="user-dropdown__name">{{ (currentUser$ | async)?.name }}</span>
+            <span class="user-dropdown__email">{{ (currentUser$ | async)?.email }}</span>
           </div>
         </div>
 
@@ -37,7 +38,8 @@
         <!-- Theme Toggle -->
         <button class="user-dropdown__item" (click)="toggleTheme(); $event.stopPropagation()">
           <span class="user-dropdown__item-icon">
-            <svg *ngIf="isDarkTheme" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg *ngIf="isDarkTheme$ | async" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="5"></circle>
               <line x1="12" y1="1" x2="12" y2="3"></line>
               <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -48,17 +50,19 @@
               <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
               <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
             </svg>
-            <svg *ngIf="!isDarkTheme" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg *ngIf="!(isDarkTheme$ | async)" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
           </span>
-          {{ isDarkTheme ? 'Light Mode' : 'Dark Mode' }}
+          {{ (isDarkTheme$ | async) ? 'Light Mode' : 'Dark Mode' }}
         </button>
 
         <!-- Logout -->
         <button class="user-dropdown__item user-dropdown__item--danger" (click)="logout(); $event.stopPropagation()">
           <span class="user-dropdown__item-icon">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -80,21 +84,17 @@
 
     <div class="mx-auto" style="max-width:720px">
       <div class="search-wrapper">
-        <svg class="search-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="search-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"></circle>
           <path d="m21 21-4.35-4.35"></path>
         </svg>
-        <input
-          type="text"
-          [(ngModel)]="searchTerm"
-          (ngModelChange)="onSearchInput()"
-          placeholder="Phone, Family ID or Name"
-          class="form-control form-control-lg"
-          autocomplete="off"
-          style="padding-top:14px; padding-bottom:14px"
-        />
+        <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchInput()"
+          placeholder="Phone, Family ID or Name" class="form-control form-control-lg" autocomplete="off"
+          style="padding-top:14px; padding-bottom:14px" />
         <button *ngIf="searchTerm && !isSearching" class="clear-btn" (click)="clearSearch()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -109,15 +109,17 @@
   </div>
 
   <!-- Search Results -->
-  <div *ngIf="searchResults.length > 0" style="animation: fadeIn 0.4s ease">
-    <div class="d-flex align-items-center mb-3">
-      <h3 class="fw-bold mb-0" style="font-size:20px; color:var(--clr-text)">
-        Search Results
-        <span class="badge ms-2" style="background:var(--clr-primary); font-size:13px; border-radius:20px; vertical-align:middle">
-          {{ searchResults.length }}{{ hasMoreResults ? '+' : '' }}
-        </span>
-      </h3>
-    </div>
+  <div *ngIf="(searchResults$ | async) as searchResults">
+    <div *ngIf="searchResults.length > 0" style="animation: fadeIn 0.4s ease">
+      <div class="d-flex align-items-center mb-3">
+        <h3 class="fw-bold mb-0" style="font-size:20px; color:var(--clr-text)">
+          Search Results
+          <span class="badge ms-2"
+            style="background:var(--clr-primary); font-size:13px; border-radius:20px; vertical-align:middle">
+            {{ searchResults.length }}{{ hasMoreResults ? '+' : '' }}
+          </span>
+        </h3>
+      </div>
 
     <div class="card border-0 shadow-sm" style="border-radius:16px; overflow:hidden">
       <div class="table-responsive">
@@ -172,27 +174,26 @@
       </div>
     </div>
 
-    <!-- Load More -->
-    <div *ngIf="hasMoreResults || isLoadingMore" class="text-center mt-3">
-      <button
-        class="btn btn-outline-primary px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2"
-        (click)="loadMoreResults()"
-        [disabled]="isLoadingMore"
-        style="border-radius:12px">
-        <span *ngIf="isLoadingMore" class="search-spinner" style="width:16px;height:16px;border-width:2px"></span>
-        <span>{{ isLoadingMore ? 'Loading...' : 'Load More' }}</span>
-      </button>
+      <!-- Load More -->
+      <div *ngIf="hasMoreResults || isLoadingMore" class="text-center mt-3">
+        <button class="btn btn-outline-primary px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2"
+          (click)="loadMoreResults()" [disabled]="isLoadingMore" style="border-radius:12px">
+          <span *ngIf="isLoadingMore" class="search-spinner" style="width:16px;height:16px;border-width:2px"></span>
+          <span>{{ isLoadingMore ? 'Loading...' : 'Load More' }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </main>
 
 <!-- ── Floating Action Button ── -->
 <div class="fab-container">
-  <div class="fab-options" [class.fab-options--visible]="isFabOpen">
+  <div class="fab-options" [class.fab-options--visible]="(uiState$ | async)?.isFabOpen">
     <div class="fab-option-row">
       <span class="fab-label">Add New Patient</span>
-      <button class="fab-option-btn fab-patient-btn" (click)="openAddPatientForm(); isFabOpen = false">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <button class="fab-option-btn fab-patient-btn" (click)="openAddPatientForm()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
           <line x1="19" y1="8" x2="19" y2="14"></line>
@@ -202,12 +203,15 @@
     </div>
   </div>
 
-  <button class="fab-main-btn" (click)="toggleFab()" [class.fab-main-btn--open]="isFabOpen" title="Actions">
-    <svg class="fab-icon fab-icon--plus" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+  <button class="fab-main-btn" (click)="toggleFab()" [class.fab-main-btn--open]="(uiState$ | async)?.isFabOpen"
+    title="Actions">
+    <svg class="fab-icon fab-icon--plus" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <line x1="12" y1="5" x2="12" y2="19"></line>
       <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
-    <svg class="fab-icon fab-icon--close" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <svg class="fab-icon fab-icon--close" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>
@@ -215,18 +219,12 @@
 </div>
 
 <!-- ── Add Patient Modal ── -->
-<app-add-patient
-  *ngIf="showAddPatientForm"
-  (close)="closeAddPatientForm()"
-  (patientAdded)="onPatientAdded($event)"
-></app-add-patient>
+<app-add-patient *ngIf="(uiState$ | async)?.showAddPatientForm" (close)="closeAddPatientForm()"
+  (patientAdded)="onPatientAdded($event)"></app-add-patient>
 
 <!-- ── Add Visit Modal ── -->
-<app-add-patient
-  *ngIf="showAddVisitForm && selectedPatientForVisit"
-  [patientData]="selectedPatientForVisit"
-  [isEditMode]="false"
-  (close)="closeAddVisitForm()"
-  (patientAdded)="onVisitAdded($event)"
-  (toggleEdit)="toggleVisitEditMode()"
-></app-add-patient>
+<ng-container *ngIf="uiState$ | async as uiState">
+  <app-add-visit *ngIf="uiState.showAddVisitForm && uiState.selectedPatientForVisit"
+    [patientData]="uiState.selectedPatientForVisit" [isEditMode]="false" (close)="closeAddVisitForm()"
+    (visitAdded)="onVisitAdded($event)" (toggleEdit)="toggleVisitEditMode()"></app-add-visit>
+</ng-container>

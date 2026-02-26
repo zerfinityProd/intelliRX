@@ -3,8 +3,10 @@
   <!-- ── Header ── -->
   <header class="details-header">
     <div class="d-flex align-items-center gap-3 px-3 px-md-4 py-3" style="max-width:1400px; margin:0 auto">
-      <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold" (click)="goBack()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2 fw-semibold"
+        (click)="goBack()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
@@ -13,8 +15,10 @@
       <h1 class="h5 fw-bold mb-0" style="color:var(--clr-text)">Patient Details</h1>
 
       <!-- Theme Toggle -->
-      <button class="theme-toggle-btn ms-auto" (click)="toggleTheme()" [title]="isDarkTheme ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
-        <svg *ngIf="isDarkTheme" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <button class="theme-toggle-btn ms-auto" (click)="toggleTheme()"
+        [title]="(isDarkTheme$ | async) ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+        <svg *ngIf="isDarkTheme$ | async" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="5"></circle>
           <line x1="12" y1="1" x2="12" y2="3"></line>
           <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -25,7 +29,8 @@
           <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
           <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
         </svg>
-        <svg *ngIf="!isDarkTheme" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg *ngIf="!(isDarkTheme$ | async)" width="18" height="18" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
         </svg>
       </button>
@@ -33,13 +38,15 @@
   </header>
 
   <!-- ── Loading ── -->
-  <div *ngIf="isLoadingPatient" class="d-flex flex-column align-items-center justify-content-center" style="padding:100px 20px">
+  <div *ngIf="isLoadingPatient" class="d-flex flex-column align-items-center justify-content-center"
+    style="padding:100px 20px">
     <div class="page-spinner mb-3"></div>
     <p class="text-muted fw-medium">Loading patient details...</p>
   </div>
 
   <!-- ── Error ── -->
-  <div *ngIf="!isLoadingPatient && errorMessage" class="d-flex flex-column align-items-center justify-content-center text-center" style="padding:80px 20px">
+  <div *ngIf="!isLoadingPatient && errorMessage"
+    class="d-flex flex-column align-items-center justify-content-center text-center" style="padding:80px 20px">
     <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" class="mb-3">
       <circle cx="12" cy="12" r="10"></circle>
       <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -50,7 +57,8 @@
   </div>
 
   <!-- ── Patient Details Content ── -->
-  <div *ngIf="!isLoadingPatient && !errorMessage && patient" class="px-3 px-md-4 py-4" style="max-width:1400px; margin:0 auto">
+  <div *ngIf="!isLoadingPatient && !errorMessage && patient" class="px-3 px-md-4 py-4"
+    style="max-width:1400px; margin:0 auto">
 
     <!-- Patient Header Card -->
     <div class="patient-header-card mb-4">
@@ -62,16 +70,20 @@
           <h2 class="patient-name-heading">
             {{ patient.name }}
             <button class="edit-icon-button" (click)="openEditPatientInfo()" title="Edit patient">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
               </svg>
             </button>
-            <button *ngIf="canDelete" class="edit-icon-button delete-patient-btn" (click)="confirmDeletePatient()" title="Delete patient">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button *ngIf="canDelete" class="edit-icon-button delete-patient-btn" (click)="confirmDeletePatient()"
+              title="Delete patient">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-                <path d="M10 11v6"></path><path d="M14 11v6"></path>
+                <path d="M10 11v6"></path>
+                <path d="M14 11v6"></path>
                 <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
               </svg>
             </button>
@@ -79,7 +91,9 @@
           <div class="patient-meta">
             <span class="meta-item">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                <path
+                  d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+                </path>
               </svg>
               {{ patient.phone }}
             </span>
@@ -104,7 +118,8 @@
       </div>
 
       <button class="add-visit-button" (click)="openAddVisitForm()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
           <polyline points="14 2 14 8 20 8"></polyline>
           <line x1="12" y1="11" x2="12" y2="17"></line>
@@ -122,22 +137,14 @@
 
         <!-- Tabs -->
         <div class="detail-tabs">
-          <button
-            class="detail-tab"
-            [class.active]="activeTab === 'info'"
-            (click)="setActiveTab('info')"
-          >
+          <button class="detail-tab" [class.active]="activeTab === 'info'" (click)="setActiveTab('info')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
             Patient Information
           </button>
-          <button
-            class="detail-tab"
-            [class.active]="activeTab === 'visits'"
-            (click)="setActiveTab('visits')"
-          >
+          <button class="detail-tab" [class.active]="activeTab === 'visits'" (click)="setActiveTab('visits')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
@@ -242,11 +249,14 @@
                   <span class="visit-number">Visit #{{ visits.length - i }}</span>
                   <div class="d-flex align-items-center gap-2">
                     <span class="visit-date">{{ formatDateTime(visit.createdAt) }}</span>
-                    <button *ngIf="canDelete" class="delete-visit-btn" (click)="confirmDeleteVisit(visit)" title="Delete visit">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <button *ngIf="canDelete" class="delete-visit-btn" (click)="confirmDeleteVisit(visit)"
+                      title="Delete visit">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
                         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-                        <path d="M10 11v6"></path><path d="M14 11v6"></path>
+                        <path d="M10 11v6"></path>
+                        <path d="M14 11v6"></path>
                         <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
                       </svg>
                     </button>
@@ -256,49 +266,77 @@
                 <div class="d-flex flex-column gap-2">
                   <div class="visit-detail" *ngIf="visit.presentIllness">
                     <span class="detail-label">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                      </svg>
                       Present Illness
                     </span>
                     <span class="detail-value">{{ visit.presentIllness }}</span>
                   </div>
                   <div class="visit-detail" *ngIf="visit.chiefComplaints">
                     <span class="detail-label">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                      </svg>
                       Chief Complaints
                     </span>
                     <span class="detail-value">{{ visit.chiefComplaints }}</span>
                   </div>
                   <div class="visit-detail" *ngIf="visit.diagnosis">
                     <span class="detail-label">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                      </svg>
                       Diagnosis
                     </span>
                     <span class="detail-value">{{ visit.diagnosis }}</span>
                   </div>
                   <div class="visit-detail" *ngIf="visit.examination">
                     <span class="detail-label">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                      </svg>
                       Examination
                     </span>
                     <span class="detail-value">{{ visit.examination }}</span>
                   </div>
                   <div class="visit-detail" *ngIf="visit.medicines">
                     <span class="detail-label">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                      </svg>
                       Medicines Prescribed
                     </span>
                     <span class="detail-value">{{ visit.medicines }}</span>
                   </div>
                   <div class="visit-detail" *ngIf="visit.treatmentPlan">
                     <span class="detail-label">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="9" x2="15" y2="9"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+                        <line x1="9" y1="9" x2="15" y2="9"></line>
+                        <line x1="9" y1="15" x2="15" y2="15"></line>
+                      </svg>
                       Treatment Plan
                     </span>
                     <span class="detail-value">{{ visit.treatmentPlan }}</span>
                   </div>
                   <div class="visit-detail" *ngIf="visit.advice">
                     <span class="detail-label">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                      </svg>
                       Advice
                     </span>
                     <span class="detail-value">{{ visit.advice }}</span>
@@ -312,48 +350,38 @@
 
       <!-- RIGHT: Stats Column -->
       <div class="stats-column">
-        <app-patient-stats
-          [patient]="patient"
-          [visits]="visits"
-        ></app-patient-stats>
+        <app-patient-stats [patient]="patient" [visits]="visits"></app-patient-stats>
       </div>
     </div>
   </div>
 </div>
 
 <!-- ── Add Visit Modal ── -->
-<app-add-patient
-  *ngIf="showAddVisitForm"
-  [patientData]="patient"
-  [isEditMode]="isEditingPatient"
-  (close)="closeAddVisitForm()"
-  (patientAdded)="onVisitAdded($event)"
-  (toggleEdit)="toggleEditMode()"
-></app-add-patient>
+<app-add-visit *ngIf="showAddVisitForm" [patientData]="patient!" [isEditMode]="isEditingPatient"
+  (close)="closeAddVisitForm()" (visitAdded)="onVisitAdded($event)" (toggleEdit)="toggleEditMode()"></app-add-visit>
 
 <!-- ── Edit Patient Info Modal ── -->
-<app-edit-patient-info
-  *ngIf="showEditPatientInfo"
-  [patientData]="patient"
-  (close)="closeEditPatientInfo()"
-  (patientUpdated)="onPatientInfoUpdated($event)"
-></app-edit-patient-info>
+<app-edit-patient-info *ngIf="showEditPatientInfo" [patientData]="patient" (close)="closeEditPatientInfo()"
+  (patientUpdated)="onPatientInfoUpdated($event)"></app-edit-patient-info>
 
 <!-- ── Delete Visit Confirmation Modal ── -->
 <div *ngIf="showDeleteVisitConfirm" class="confirm-overlay">
   <div class="confirm-dialog">
     <div class="confirm-icon confirm-icon--danger">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="3 6 5 6 21 6"></polyline>
         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-        <path d="M10 11v6"></path><path d="M14 11v6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
         <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
       </svg>
     </div>
     <h3 class="confirm-title">Delete Visit?</h3>
     <p class="confirm-message">This visit record will be permanently deleted and cannot be recovered.</p>
     <div class="confirm-actions">
-      <button class="btn btn-outline-secondary" (click)="cancelDeleteVisit()" [disabled]="isDeletingVisit">Cancel</button>
+      <button class="btn btn-outline-secondary" (click)="cancelDeleteVisit()"
+        [disabled]="isDeletingVisit">Cancel</button>
       <button class="btn btn-danger" (click)="executeDeleteVisit()" [disabled]="isDeletingVisit">
         <span *ngIf="isDeletingVisit" class="btn-spinner"></span>
         {{ isDeletingVisit ? 'Deleting...' : 'Delete Visit' }}
@@ -366,19 +394,23 @@
 <div *ngIf="showDeletePatientConfirm" class="confirm-overlay">
   <div class="confirm-dialog">
     <div class="confirm-icon confirm-icon--danger">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
         <polyline points="3 6 5 6 21 6"></polyline>
         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>
-        <path d="M10 11v6"></path><path d="M14 11v6"></path>
+        <path d="M10 11v6"></path>
+        <path d="M14 11v6"></path>
         <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>
       </svg>
     </div>
     <h3 class="confirm-title">Delete Patient?</h3>
     <p class="confirm-message">
-      <strong>{{ patient?.name }}</strong> and all their visit history will be permanently deleted. This cannot be undone.
+      <strong>{{ patient?.name }}</strong> and all their visit history will be permanently deleted. This cannot be
+      undone.
     </p>
     <div class="confirm-actions">
-      <button class="btn btn-outline-secondary" (click)="cancelDeletePatient()" [disabled]="isDeletingPatient">Cancel</button>
+      <button class="btn btn-outline-secondary" (click)="cancelDeletePatient()"
+        [disabled]="isDeletingPatient">Cancel</button>
       <button class="btn btn-danger" (click)="executeDeletePatient()" [disabled]="isDeletingPatient">
         <span *ngIf="isDeletingPatient" class="btn-spinner"></span>
         {{ isDeletingPatient ? 'Deleting...' : 'Delete Patient' }}

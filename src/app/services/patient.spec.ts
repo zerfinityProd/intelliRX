@@ -1,236 +1,260 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { PatientService } from './patient';
+import { PatientSearchService } from './patientSearchService';
+import { AuthenticationService } from './authenticationService';
 import { FirebaseService } from './firebase';
-import { AuthService } from './auth';
-import { NgZone } from '@angular/core';
+import { Patient } from '../models/patient.model';
 
-describe('PatientService', () => {
+describe('PatientService (Merged & Orchestrator)', () => {
   let service: PatientService;
-  let firebaseServiceMock: any;
-  let authServiceMock: any;
-  let ngZoneMock: any;
+  let searchService: any;
+  let firebaseService: any;
+  let authService: any;
 
-  const mockPatient = {
-    uniqueId: 'doe_john_1234567890_user123',
-    userId: 'user123',
-    familyId: 'doe_john',
+  const mockPatient: Patient = {
+    uniqueId: 'pat-123',
+    userId: 'user-001',
     name: 'John Doe',
-    phone: '1234567890',
-    email: 'john@email.com',
-    dateOfBirth: new Date('1990-01-01'),
-    gender: 'Male',
-    allergies: 'None',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    familyId: 'doe_john',
+    phone: '5551234567',
+    email: 'john@example.com',
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01')
   };
 
   beforeEach(() => {
-    firebaseServiceMock = {
-      addPatient: vi.fn(),
-      updatePatient: vi.fn(),
-      searchPatientByPhone: vi.fn(),
-      searchPatientByFamilyId: vi.fn(),
-      getPatientById: vi.fn(),
-      generateFamilyId: vi.fn(),
-      addVisit: vi.fn(),
-      getPatientVisits: vi.fn()
+    searchService = {
+      searchResults$: { subscribe: vi.fn() },
+      hasMoreResults: false,
+      isLoadingMore: false,
+      search: vi.fn().mockResolvedValue(undefined),
+      loadMore: vi.fn().mockResolvedValue(undefined),
+      clear: vi.fn()
     };
 
-    authServiceMock = {
-      getCurrentUserId: vi.fn().mockReturnValue('user123')
+    firebaseService = {
+      getPatientById: vi.fn().mockResolvedValue(mockPatient),
+      addPatient: vi.fn().mockResolvedValue('pat-new'),
+      updatePatient: vi.fn().mockResolvedValue(undefined),
+      deletePatient: vi.fn().mockResolvedValue(undefined),
+      addVisit: vi.fn().mockResolvedValue('visit-123'),
+      getPatientVisits: vi.fn().mockResolvedValue([]),
+      deleteVisit: vi.fn().mockResolvedValue(undefined),
+      searchPatientByPhone: vi.fn().mockResolvedValue({ results: [] }),
+      searchPatientByFamilyId: vi.fn().mockResolvedValue({ results: [] }),
+      generateFamilyId: vi.fn().mockReturnValue('doe_5551234567')
     };
 
-    ngZoneMock = {
-      run: vi.fn((fn) => fn())
+    authService = {
+      currentUser$: { subscribe: vi.fn() },
+      getCurrentUserId: vi.fn(() => 'user-001')
     };
 
     TestBed.configureTestingModule({
       providers: [
         PatientService,
-        { provide: FirebaseService, useValue: firebaseServiceMock },
-        { provide: AuthService, useValue: authServiceMock },
-        { provide: NgZone, useValue: ngZoneMock }
+        { provide: PatientSearchService, useValue: searchService },
+        { provide: FirebaseService, useValue: firebaseService },
+        { provide: AuthenticationService, useValue: authService }
       ]
     });
 
     service = TestBed.inject(PatientService);
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
-  });
-
-  it('should create a new patient when no duplicate exists', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([]);
-    firebaseServiceMock.generateFamilyId.mockReturnValue('doe_john');
-    firebaseServiceMock.addPatient.mockResolvedValue('doe_john_1234567890_user123');
-
-    const result = await service.createPatient({
-      name: 'John Doe',
-      phone: '1234567890'
+  // ──── SEARCH & PAGINATION ────
+  describe('Search & Pagination', () => {
+    it('should search patients via PatientSearchService', async () => {
+      await service.searchPatients('john');
+      expect(searchService.search).toHaveBeenCalledWith('john', 'user-001');
     });
 
-    expect(result).toBe('doe_john_1234567890_user123');
-    expect(firebaseServiceMock.addPatient).toHaveBeenCalled();
-  });
-
-  it('should update existing patient when duplicate found', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-    firebaseServiceMock.updatePatient.mockResolvedValue(undefined);
-
-    const result = await service.createPatient({
-      name: 'John Doe',
-      phone: '1234567890'
+    it('should load more patients via PatientSearchService', async () => {
+      await service.loadMorePatients();
+      expect(searchService.loadMore).toHaveBeenCalledWith('user-001');
     });
 
-    expect(result).toBe(mockPatient.uniqueId);
-    expect(firebaseServiceMock.updatePatient).toHaveBeenCalled();
-  });
+    it('should clear search results via PatientSearchService', () => {
+      service.clearSearchResults();
+      expect(searchService.clear).toHaveBeenCalled();
+    });
 
-  it('should search patients by phone number', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-
-    await service.searchPatients('1234567890');
-
-    expect(firebaseServiceMock.searchPatientByPhone).toHaveBeenCalled();
-  });
-
-  it('should search patients by name', async () => {
-    firebaseServiceMock.searchPatientByFamilyId.mockResolvedValue([mockPatient]);
-
-    await service.searchPatients('john doe');
-
-    expect(firebaseServiceMock.searchPatientByFamilyId).toHaveBeenCalled();
-  });
-
-  it('should detect numeric search terms as phone searches', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([]);
-    
-    await service.searchPatients('9876543210');
-    
-    expect(firebaseServiceMock.searchPatientByPhone).toHaveBeenCalled();
-    expect(firebaseServiceMock.searchPatientByFamilyId).not.toHaveBeenCalled();
-  });
-
-  it('should detect non-numeric search terms as name searches', async () => {
-    firebaseServiceMock.searchPatientByFamilyId.mockResolvedValue([]);
-    
-    await service.searchPatients('Jane Smith');
-    
-    expect(firebaseServiceMock.searchPatientByFamilyId).toHaveBeenCalled();
-    expect(firebaseServiceMock.searchPatientByPhone).not.toHaveBeenCalled();
-  });
-
-  it('should use cached results for repeated searches', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
-
-    await service.searchPatients('1234567890');
-    await service.searchPatients('1234567890');
-
-    expect(firebaseServiceMock.searchPatientByPhone).toHaveBeenCalledTimes(1);
-  });
-
-  it('should clear search results', () => {
-    service.clearSearchResults();
-
-    service.searchResults$.subscribe(results => {
-      expect(results.length).toBe(0);
+    it('should expose hasMoreResults from PatientSearchService', () => {
+      searchService.hasMoreResults = true;
+      expect(service.hasMoreResults).toBe(true);
     });
   });
 
-  it('should validate correct phone number format', () => {
-    expect(service.isValidPhone('1234567890')).toBe(true);
-    expect(service.isValidPhone('12345')).toBe(false);
-  });
-
-  it('should validate correct email format', () => {
-    expect(service.isValidEmail('test@example.com')).toBe(true);
-    expect(service.isValidEmail('invalid-email')).toBe(false);
-  });
-
-  it('should add a visit to a patient', async () => {
-    firebaseServiceMock.addVisit.mockResolvedValue('visit-123');
-
-    const visitId = await service.addVisit('patient-123', {
-      chiefComplaints: 'Fever',
-      diagnosis: 'Viral',
-      examination: 'Normal',
-      treatmentPlan: 'Rest',
-      advice: 'Hydrate'
+  // ──── CRUD OPERATIONS (merged from PatientCRUDService) ────
+  describe('CRUD Operations (Merged from PatientCRUDService)', () => {
+    it('should fetch patient by unique ID', async () => {
+      const result = await service.getPatient('pat-123');
+      expect(firebaseService.getPatientById).toHaveBeenCalledWith('pat-123', 'user-001');
+      expect(result).toEqual(mockPatient);
     });
 
-    expect(visitId).toBe('visit-123');
+    it('should create new patient', async () => {
+      firebaseService.searchPatientByPhone.mockResolvedValue({ results: [] });
+
+      const patientData = { name: 'Jane Doe', phone: '5559876543', email: 'jane@example.com', userId: 'user-001' };
+      const id = await service.createPatient(patientData);
+
+      expect(firebaseService.addPatient).toHaveBeenCalled();
+      expect(id).toBe('pat-new');
+    });
+
+    it('should update existing patient', async () => {
+      const updateData = { name: 'John Updated' };
+      await service.updatePatient('pat-123', updateData);
+
+      expect(firebaseService.updatePatient).toHaveBeenCalledWith('pat-123', updateData, 'user-001');
+    });
+
+    it('should delete patient', async () => {
+      await service.deletePatient('pat-123');
+      expect(firebaseService.deletePatient).toHaveBeenCalledWith('pat-123', 'user-001');
+    });
+
+    it('should select and expose patient via selectedPatient$', () => {
+      service.selectPatient(mockPatient);
+      expect(service.selectedPatient$).toBeDefined();
+    });
   });
 
-  it('should get patient by ID', async () => {
-    firebaseServiceMock.getPatientById.mockResolvedValue(mockPatient);
-
-    const result = await service.getPatient(mockPatient.uniqueId);
-
-    expect(result).toEqual(mockPatient);
-  });
-
-  it('should get all visits for a patient', async () => {
-    const mockVisits = [
-      {
-        id: 'visit-1',
-        chiefComplaints: 'Fever',
-        diagnosis: 'Viral',
+  // ──── VISIT MANAGEMENT (merged from PatientVisitService) ────
+  describe('Visit Management (Merged from PatientVisitService)', () => {
+    it('should add visit to patient', async () => {
+      const visitData = {
+        chiefComplaints: 'Headache',
+        diagnosis: 'Migraine',
         examination: 'Normal',
         treatmentPlan: 'Rest',
-        advice: 'Hydrate',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ];
+        advice: 'Hydrate'
+      };
 
-    firebaseServiceMock.getPatientVisits.mockResolvedValue(mockVisits);
+      const visitId = await service.addVisit('pat-123', visitData);
+      expect(firebaseService.addVisit).toHaveBeenCalledWith('pat-123', visitData, 'user-001');
+      expect(visitId).toBe('visit-123');
+    });
 
-    const visits = await service.getPatientVisits('patient-123');
+    it('should fetch patient visits', async () => {
+      await service.getPatientVisits('pat-123');
+      expect(firebaseService.getPatientVisits).toHaveBeenCalledWith('pat-123', 'user-001');
+    });
 
-    expect(visits.length).toBe(1);
-    expect(visits[0].diagnosis).toBe('Viral');
+    it('should delete visit from patient', async () => {
+      await service.deleteVisit('pat-123', 'visit-456');
+      expect(firebaseService.deleteVisit).toHaveBeenCalledWith('pat-123', 'visit-456', 'user-001');
+    });
   });
 
-  it('should update patient information', async () => {
-    const updateData = {
-      email: 'newemail@example.com',
-      allergies: 'Penicillin'
-    };
+  // ──── VALIDATION (merged from PatientValidationService) ────
+  describe('Validation (Merged from PatientValidationService)', () => {
+    it('should validate phone number', () => {
+      expect(service.isValidPhone('5551234567')).toBe(true);
+      expect(service.isValidPhone('not-a-phone')).toBe(false);
+    });
 
-    firebaseServiceMock.updatePatient.mockResolvedValue(undefined);
+    it('should validate email', () => {
+      expect(service.isValidEmail('test@example.com')).toBe(true);
+      expect(service.isValidEmail('invalid')).toBe(false);
+    });
 
-    await service.updatePatient(mockPatient.uniqueId, updateData);
+    it('should validate patient data comprehensively', () => {
+      const result = service.validatePatientData({
+        name: 'John Doe',
+        phone: '5551234567',
+        email: 'john@example.com'
+      });
 
-    expect(firebaseServiceMock.updatePatient).toHaveBeenCalledWith(
-      mockPatient.uniqueId,
-      updateData,
-      'user123'
-    );
+      expect(result.valid).toBe(true);
+      expect(result.errors.length).toBe(0);
+    });
+
+    it('should report validation errors', () => {
+      const result = service.validatePatientData({
+        name: '',
+        phone: '123',
+        email: 'invalid'
+      });
+
+      expect(result.valid).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+    });
   });
 
-  it('should throw error when user is not authenticated', async () => {
-    authServiceMock.getCurrentUserId.mockReturnValue(null);
+  // ──── EXISTENCE CHECKS (merged from PatientCRUDService) ────
+  describe('Existence Checks', () => {
+    it('should check if unique ID exists', async () => {
+      firebaseService.searchPatientByPhone.mockResolvedValue({ results: [] });
 
-    await expect(
-      service.createPatient({ name: 'Test', phone: '1234567890' })
-    ).rejects.toThrow('User not authenticated');
+      const exists = await service.checkUniqueIdExists('John Doe', '5551234567');
+      expect(exists).toBe(false);
+    });
+
+    it('should check if family ID exists', async () => {
+      firebaseService.searchPatientByFamilyId.mockResolvedValue({ results: [] });
+
+      const exists = await service.checkFamilyIdExists('doe_5551234567');
+      expect(exists).toBe(false);
+    });
   });
 
-  it('should handle case-insensitive name matching', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
+  // ──── BACKWARD COMPATIBILITY ────
+  describe('Backward Compatibility', () => {
+    it('should expose all required public methods', () => {
+      const methods = [
+        'searchPatients',
+        'loadMorePatients',
+        'clearSearchResults',
+        'getPatient',
+        'createPatient',
+        'updatePatient',
+        'deletePatient',
+        'selectPatient',
+        'addVisit',
+        'getPatientVisits',
+        'deleteVisit',
+        'isValidPhone',
+        'isValidEmail',
+        'validatePatientData',
+        'checkUniqueIdExists',
+        'checkFamilyIdExists'
+      ];
 
-    const result = await service.findExistingPatient('JOHN DOE', '1234567890');
+      methods.forEach(method => {
+        expect(typeof service[method as keyof PatientService]).toBe('function');
+      });
+    });
 
-    expect(result).toEqual(mockPatient);
+    it('should expose all required observables', () => {
+      expect(service.searchResults$).toBeDefined();
+      expect(service.selectedPatient$).toBeDefined();
+    });
   });
 
-  it('should return null if no name match found', async () => {
-    firebaseServiceMock.searchPatientByPhone.mockResolvedValue([mockPatient]);
+  // ──── ERROR HANDLING ────
+  describe('Error Handling', () => {
+    it('should handle getPatient errors gracefully', async () => {
+      firebaseService.getPatientById.mockRejectedValue(new Error('Fetch failed'));
 
-    const result = await service.findExistingPatient('Different Name', '1234567890');
+      await expect(service.getPatient('pat-123')).rejects.toThrow('Fetch failed');
+    });
 
-    expect(result).toBeNull();
+    it('should handle createPatient errors', async () => {
+      firebaseService.addPatient.mockRejectedValue(new Error('Create failed'));
+
+      await expect(
+        service.createPatient({ name: 'Test', phone: '1234567890', email: 'test@example.com' })
+      ).rejects.toThrow('Create failed');
+    });
+
+    it('should return empty array when getPatientVisits fails', async () => {
+      firebaseService.getPatientVisits.mockRejectedValue(new Error('Fetch failed'));
+
+      const visits = await service.getPatientVisits('pat-123');
+      expect(visits).toEqual([]);
+    });
   });
 });

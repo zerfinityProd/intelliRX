@@ -1,17 +1,19 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Observable } from 'rxjs';
 import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
-import { AuthService } from '../../services/auth';
-import { AddPatientComponent } from '../add-patient/add-patient';
+import { AuthenticationService } from '../../services/authenticationService';
+import { ThemeService } from '../../services/themeService';
+import { AddVisitComponent } from '../add-visit/add-visit';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
 
 @Component({
   selector: 'app-patient-details',
   standalone: true,
-  imports: [CommonModule, AddPatientComponent, PatientStatsComponent, EditPatientInfoComponent],
+  imports: [CommonModule, AddVisitComponent, PatientStatsComponent, EditPatientInfoComponent],
   templateUrl: './patient-details.html',
   styleUrl: './patient-details.css'
 })
@@ -22,12 +24,12 @@ export class PatientDetailsComponent implements OnInit {
   isLoadingVisits: boolean = false;
   activeTab: 'info' | 'visits' = 'info';
   errorMessage: string = '';
-  isDarkTheme: boolean = false;
-  
+  isDarkTheme$: Observable<boolean>;
+
   // Properties for visit form
   showAddVisitForm: boolean = false;
   isEditingPatient: boolean = false;
-  
+
   // Property for edit patient info modal
   showEditPatientInfo: boolean = false;
 
@@ -38,14 +40,13 @@ export class PatientDetailsComponent implements OnInit {
   isDeletingVisit: boolean = false;
   isDeletingPatient: boolean = false;
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private patientService: PatientService,
-    private authService: AuthService,
-    private cdr: ChangeDetectorRef,
-    private ngZone: NgZone
-  ) {}
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly patientService = inject(PatientService);
+  private readonly authService = inject(AuthenticationService);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
+  private readonly themeService = inject(ThemeService);
 
   // ✅ Only these emails can see and use delete buttons — must match Firebase Rules canDelete()
   private readonly DELETE_ALLOWED_EMAILS: string[] = [
@@ -54,22 +55,20 @@ export class PatientDetailsComponent implements OnInit {
     // add more emails here if needed
   ];
 
+  constructor() {
+    this.isDarkTheme$ = this.themeService.isDarkTheme();
+  }
+
   get canDelete(): boolean {
     const email = this.authService.currentUserValue?.email?.toLowerCase() || '';
     return this.DELETE_ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email);
   }
 
   async ngOnInit(): Promise<void> {
-    // Restore saved theme
-    this.isDarkTheme = localStorage.getItem('intellirx-theme') === 'dark';
-    if (this.isDarkTheme) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-    }
-
     const patientId = this.route.snapshot.paramMap.get('id');
-    
+
     console.log('ðŸ” Patient Details - Loading patient:', patientId);
-    
+
     if (!patientId) {
       this.ngZone.run(() => {
         this.errorMessage = 'Invalid patient ID';
@@ -88,13 +87,13 @@ export class PatientDetailsComponent implements OnInit {
       this.errorMessage = '';
       this.cdr.detectChanges();
     });
-    
+
     try {
       console.log('ðŸ“¡ Fetching patient from service...');
       this.patient = await this.patientService.getPatient(patientId);
-      
+
       console.log('âœ… Patient data received:', this.patient ? 'Success' : 'Not found');
-      
+
       this.ngZone.run(() => {
         if (!this.patient) {
           this.errorMessage = 'Patient not found';
@@ -102,10 +101,10 @@ export class PatientDetailsComponent implements OnInit {
           this.cdr.detectChanges();
           return;
         }
-        
+
         this.isLoadingPatient = false;
         this.cdr.detectChanges();
-        
+
         // Load visits after patient is loaded
         this.loadVisits();
       });
@@ -121,17 +120,17 @@ export class PatientDetailsComponent implements OnInit {
 
   async loadVisits(): Promise<void> {
     if (!this.patient || !this.patient.uniqueId) return;
-    
+
     this.ngZone.run(() => {
       this.isLoadingVisits = true;
       this.cdr.detectChanges();
     });
-    
+
     try {
       console.log('ðŸ“¡ Fetching visits...');
       this.visits = await this.patientService.getPatientVisits(this.patient.uniqueId);
       console.log('âœ… Visits loaded:', this.visits.length);
-      
+
       this.ngZone.run(() => {
         this.isLoadingVisits = false;
         this.cdr.detectChanges();
@@ -173,10 +172,10 @@ export class PatientDetailsComponent implements OnInit {
   // Handle patient info updated
   async onPatientInfoUpdated(patientId: string): Promise<void> {
     console.log('âœ… Patient info updated:', patientId);
-    
+
     // Reload patient data
     await this.loadPatient(patientId);
-    
+
     // Close the edit modal
     this.closeEditPatientInfo();
   }
@@ -201,13 +200,13 @@ export class PatientDetailsComponent implements OnInit {
   // Handle visit added - reload data
   async onVisitAdded(patientId: string): Promise<void> {
     console.log('âœ… Visit added:', patientId);
-    
+
     // Reload patient data (in case it was edited)
     await this.loadPatient(patientId);
-    
+
     // Reload visits to show the new one
     await this.loadVisits();
-    
+
     // Switch to visits tab to show the new visit
     this.setActiveTab('visits');
   }
@@ -281,24 +280,17 @@ export class PatientDetailsComponent implements OnInit {
   }
 
   toggleTheme(): void {
-    this.isDarkTheme = !this.isDarkTheme;
-    if (this.isDarkTheme) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      localStorage.setItem('intellirx-theme', 'dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      localStorage.setItem('intellirx-theme', 'light');
-    }
+    this.themeService.toggleTheme();
   }
 
   formatDate(date: Date | undefined | any): string {
     if (!date) return 'N/A';
-    
+
     // Handle Firestore Timestamp objects
     if (date && typeof date.toDate === 'function') {
       date = date.toDate();
     }
-    
+
     return new Date(date).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -308,12 +300,12 @@ export class PatientDetailsComponent implements OnInit {
 
   formatDateTime(date: Date | undefined | any): string {
     if (!date) return 'N/A';
-    
+
     // Handle Firestore Timestamp objects
     if (date && typeof date.toDate === 'function') {
       date = date.toDate();
     }
-    
+
     return new Date(date).toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',

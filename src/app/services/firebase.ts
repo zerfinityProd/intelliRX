@@ -46,7 +46,8 @@ export class FirebaseService {
       const firstName = nameParts[0].toLowerCase();
       const lastName = nameParts[nameParts.length - 1].toLowerCase();
       const cleanPhone = phone.trim();
-      return `${firstName}_${lastName}_${cleanPhone}_${userId}`;
+      // Match the generateFamilyId format: lastname_firstname_phone
+      return `${lastName}_${firstName}_${cleanPhone}_${userId}`;
     }
     return `${familyId}_${userId}`;
   }
@@ -55,7 +56,15 @@ export class FirebaseService {
     const nameParts = name.trim().split(' ');
     const cleanPhone = phone.trim();
     const lastName = nameParts[nameParts.length - 1].toLowerCase();
-    return `${lastName}_${cleanPhone}`;
+
+    // If single name, return lastname_phone
+    if (nameParts.length === 1) {
+      return `${lastName}_${cleanPhone}`;
+    }
+
+    // If multiple names, return lastname_firstname_phone
+    const firstName = nameParts[0].toLowerCase();
+    return `${lastName}_${firstName}_${cleanPhone}`;
   }
 
   async addPatient(

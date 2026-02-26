@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
-import { AuthService } from '../services/auth';
+import { AuthenticationService } from '../services/authenticationService';
 import { filter, take, map } from 'rxjs';
 
 /**
@@ -9,7 +9,7 @@ import { filter, take, map } from 'rxjs';
  * so hard refresh does not incorrectly redirect to login.
  */
 export const authGuard: CanActivateFn = (route, state) => {
-  const authService = inject(AuthService);
+  const authService = inject(AuthenticationService);
   const router = inject(Router);
 
   // Wait until Firebase has resolved the initial auth state
