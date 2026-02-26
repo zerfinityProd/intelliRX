@@ -25,48 +25,48 @@ const {
     static fromDate(date: Date) { return new MockTimestamp(date); }
   }
   return {
-    mockSetDoc:     vi.fn().mockResolvedValue(undefined),
-    mockGetDoc:     vi.fn(),
-    mockGetDocs:    vi.fn(),
-    mockUpdateDoc:  vi.fn().mockResolvedValue(undefined),
-    mockDoc:        vi.fn(),
+    mockSetDoc: vi.fn().mockResolvedValue(undefined),
+    mockGetDoc: vi.fn(),
+    mockGetDocs: vi.fn(),
+    mockUpdateDoc: vi.fn().mockResolvedValue(undefined),
+    mockDoc: vi.fn(),
     mockCollection: vi.fn(),
-    mockQuery:      vi.fn(),
-    mockWhere:      vi.fn(),
-    mockOrderBy:    vi.fn(),
-    mockLimit:      vi.fn(),
+    mockQuery: vi.fn(),
+    mockWhere: vi.fn(),
+    mockOrderBy: vi.fn(),
+    mockLimit: vi.fn(),
     MockTimestamp,
   };
 });
 
 // ─── Mock @angular/fire/firestore ─────────────────────────────────────────────
 vi.mock('@angular/fire/firestore', () => ({
-  Firestore:  class {},
+  Firestore: class { },
   collection: (...args: any[]) => mockCollection(...args),
-  doc:        (...args: any[]) => mockDoc(...args),
-  setDoc:     (...args: any[]) => mockSetDoc(...args),
-  getDoc:     (...args: any[]) => mockGetDoc(...args),
-  getDocs:    (...args: any[]) => mockGetDocs(...args),
-  updateDoc:  (...args: any[]) => mockUpdateDoc(...args),
-  query:      (...args: any[]) => mockQuery(...args),
-  where:      (...args: any[]) => mockWhere(...args),
-  orderBy:    (...args: any[]) => mockOrderBy(...args),
-  limit:      (...args: any[]) => mockLimit(...args),
-  Timestamp:  MockTimestamp,
+  doc: (...args: any[]) => mockDoc(...args),
+  setDoc: (...args: any[]) => mockSetDoc(...args),
+  getDoc: (...args: any[]) => mockGetDoc(...args),
+  getDocs: (...args: any[]) => mockGetDocs(...args),
+  updateDoc: (...args: any[]) => mockUpdateDoc(...args),
+  query: (...args: any[]) => mockQuery(...args),
+  where: (...args: any[]) => mockWhere(...args),
+  orderBy: (...args: any[]) => mockOrderBy(...args),
+  limit: (...args: any[]) => mockLimit(...args),
+  Timestamp: MockTimestamp,
 }));
 
 // ─── Mock @angular/core (Injectable decorator) ────────────────────────────────
 vi.mock('@angular/core', () => ({
   Injectable: () => (target: any) => target,
-  ɵɵdefineInjectable: (...args: any[]) => {},
-  ɵɵinject: (...args: any[]) => {},
-  ɵsetClassMetadata: (...args: any[]) => {},
-  ɵɵinjectAttribute: (...args: any[]) => {},
+  ɵɵdefineInjectable: (...args: any[]) => { },
+  ɵɵinject: (...args: any[]) => { },
+  ɵsetClassMetadata: (...args: any[]) => { },
+  ɵɵinjectAttribute: (...args: any[]) => { },
 }));
 
 // ─── Import service AFTER mocks are registered ───────────────────────────────
 import { FirebaseService } from './firebase';
-import { Patient, Visit }  from '../models/patient.model';
+import { Patient, Visit } from '../models/patient.model';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function makeService(): FirebaseService {
@@ -76,12 +76,12 @@ function makeService(): FirebaseService {
 
 function makeMockPatient(overrides: Partial<Patient> = {}): Patient {
   return {
-    uniqueId:  'doe_john_1234567890_user1',
-    userId:    'user1',
-    familyId:  'doe_john_1234567890',
-    name:      'John Doe',
-    phone:     '1234567890',
-    email:     'john@example.com',
+    uniqueId: 'doe_john_1234567890_user1',
+    userId: 'user1',
+    familyId: 'doe_john_1234567890',
+    name: 'John Doe',
+    phone: '1234567890',
+    email: 'john@example.com',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     ...overrides,
@@ -216,9 +216,9 @@ describe('FirebaseService', () => {
       mockOrderBy.mockReturnValue({} as any);
       mockGetDocs.mockResolvedValueOnce({ docs: [{ data: () => patient }] });
 
-      const results = await service.searchPatientByPhone('1234567890', 'user1');
-      expect(results).toHaveLength(1);
-      expect(results[0].phone).toBe('1234567890');
+      const result = await service.searchPatientByPhone('1234567890', 'user1');
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].phone).toBe('1234567890');
     });
 
     it('returns empty array when no patients found', async () => {
@@ -227,7 +227,8 @@ describe('FirebaseService', () => {
       mockOrderBy.mockReturnValue({} as any);
       mockGetDocs.mockResolvedValueOnce({ docs: [] });
 
-      expect(await service.searchPatientByPhone('0000000000', 'user1')).toHaveLength(0);
+      const result = await service.searchPatientByPhone('0000000000', 'user1');
+      expect(result.results).toHaveLength(0);
     });
   });
 
@@ -240,9 +241,9 @@ describe('FirebaseService', () => {
       mockOrderBy.mockReturnValue({} as any);
       mockGetDocs.mockResolvedValueOnce({ docs: [{ data: () => patient }] });
 
-      const results = await service.searchPatientByFamilyId('doe_john_1234567890', 'user1');
-      expect(results).toHaveLength(1);
-      expect(results[0].familyId).toBe('doe_john_1234567890');
+      const result = await service.searchPatientByFamilyId('doe_john_1234567890', 'user1');
+      expect(result.results).toHaveLength(1);
+      expect(result.results[0].familyId).toBe('doe_john_1234567890');
     });
   });
 

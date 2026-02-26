@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
@@ -14,6 +15,7 @@ const hoisted = vi.hoisted(() => {
         MockGoogleAuthProvider: class { },
         mockGetDoc: vi.fn(),
         mockDoc: vi.fn(),
+        mockIsEmailAllowed: vi.fn().mockResolvedValue(true),
     };
 });
 
@@ -35,12 +37,23 @@ vi.mock('@angular/fire/firestore', () => ({
     getDoc: (...args: any[]) => hoisted.mockGetDoc(...args),
 }));
 
+vi.mock('./authorizationService', () => ({
+    AuthorizationService: class {
+        isEmailAllowed = () => hoisted.mockIsEmailAllowed();
+    },
+}));
+
 vi.mock('@angular/core', () => ({
     Injectable: () => (target: any) => target,
     ɵɵdefineInjectable: (...args: any[]) => { },
     ɵɵinject: (...args: any[]) => { },
     ɵsetClassMetadata: (...args: any[]) => { },
     ɵɵinjectAttribute: (...args: any[]) => { },
+    inject: vi.fn((token: any) => {
+        if (token.name === 'Auth') return {};
+        if (token.name === 'Firestore') return {};
+        return new token();
+    }),
 }));
 
 import { AuthenticationService } from './authenticationService';
@@ -59,7 +72,11 @@ function mockLocalStorage() {
 
 function makeService() {
     mockLocalStorage();
-    return new AuthenticationService();
+    // Use TestBed for proper Angular dependency injection
+    TestBed.configureTestingModule({
+        providers: [AuthenticationService],
+    });
+    return TestBed.inject(AuthenticationService);
 }
 
 function makeFirebaseUser(overrides = {}) {
