@@ -58,31 +58,38 @@ export class PatientSearchService {
             let allResults: Patient[] = [];
 
             if (this.currentIsNumeric) {
-                const { results, lastDoc, hasMore } = await this.firebaseService.searchPatientByPhone(
-                    trimmedTerm,
-                    userId
-                );
-                allResults = results;
-                this.paginationState.lastPhoneDoc = lastDoc;
-                this.paginationState.hasMore = hasMore;
+                // Run phone prefix search AND contains search in parallel
+                const [phoneSettled, containsSettled] = await Promise.allSettled([
+                    this.firebaseService.searchPatientByPhone(trimmedTerm, userId),
+                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId)
+                ]);
+
+                const phoneResult = phoneSettled.status === 'fulfilled' ? phoneSettled.value : { results: [], lastDoc: null, hasMore: false };
+                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastDoc: null, hasMore: false };
+
+                this.paginationState.lastPhoneDoc = phoneResult.lastDoc;
+                this.paginationState.hasMore = phoneResult.hasMore;
+
+                allResults = this.mergeAndDeduplicateResults(phoneResult.results, containsResult.results);
             } else {
-                const [familySettled, nameSettled] = await Promise.allSettled([
+                // Run family, name prefix searches AND contains search in parallel
+                const [familySettled, nameSettled, containsSettled] = await Promise.allSettled([
                     this.firebaseService.searchPatientByFamilyId(trimmedTerm.toLowerCase(), userId),
-                    this.firebaseService.searchPatientByName(trimmedTerm, userId)
+                    this.firebaseService.searchPatientByName(trimmedTerm, userId),
+                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId)
                 ]);
 
                 const familyResult = familySettled.status === 'fulfilled' ? familySettled.value : { results: [], lastDoc: null, hasMore: false };
                 const nameResult = nameSettled.status === 'fulfilled' ? nameSettled.value : { results: [], lastDoc: null, hasMore: false };
+                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastDoc: null, hasMore: false };
 
                 this.paginationState.lastFamilyDoc = familyResult.lastDoc;
                 this.paginationState.lastNameDoc = nameResult.lastDoc;
                 this.paginationState.hasMore = familyResult.hasMore || nameResult.hasMore;
 
-                // Merge and deduplicate results
-                allResults = this.mergeAndDeduplicateResults(
-                    familyResult.results,
-                    nameResult.results
-                );
+                // Merge and deduplicate results from all sources
+                const prefixResults = this.mergeAndDeduplicateResults(familyResult.results, nameResult.results);
+                allResults = this.mergeAndDeduplicateResults(prefixResults, containsResult.results);
             }
 
             this.updateResults(allResults);

@@ -250,9 +250,9 @@ export class AddVisitComponent {
     }
 
     validateForm(): boolean {
-        const hasPresentIllness = this.formatArrayField(this.presentIllnesses).length > 0;
-        if (!hasPresentIllness) {
-            this.errorMessage = 'Present illness is required for new visits';
+        const hasChiefComplaints = this.formatArrayField(this.chiefComplaints).length > 0;
+        if (!hasChiefComplaints) {
+            this.errorMessage = 'Chief complaints is required';
             return false;
         }
 

@@ -36,6 +36,8 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   // Patient allergies on initial creation
   allergies: DynamicField[] = [{ description: '' }];
 
+  todayDate: string = new Date().toISOString().split('T')[0];
+
   errorMessage: string = '';
   successMessage: string = '';
   warningMessage: string = '';
@@ -231,6 +233,18 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     if (this.email.trim() && !this.patientService.isValidEmail(this.email.trim())) {
       this.errorMessage = 'Please enter a valid email address';
       return false;
+    }
+
+    if (this.dateOfBirth) {
+      const year = new Date(this.dateOfBirth).getFullYear();
+      if (year > 9999 || year < 1000) {
+        this.errorMessage = 'Please enter a valid year (4 digits)';
+        return false;
+      }
+      if (this.dateOfBirth > this.todayDate) {
+        this.errorMessage = 'Date of birth cannot be a future date';
+        return false;
+      }
     }
 
     return true;

@@ -1,0 +1,87 @@
+<nav class="navbar app-navbar px-4 py-3">
+  <div class="container-fluid px-0 d-flex justify-content-between align-items-center">
+
+    <!-- Left side: back button (if showBack) + brand -->
+    <div class="d-flex align-items-center gap-3">
+      <button *ngIf="showBack" class="navbar-back-btn" (click)="goBack()" title="Back">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+      </button>
+
+      <!-- Brand: logo only, name appears on hover -->
+      <span class="navbar-brand p-0 brand-hover-wrap" style="cursor:default">
+        <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="25" cy="25" r="23" stroke="#6366f1" stroke-width="3" />
+          <path d="M18 25 L23 30 L33 20" stroke="#6366f1" stroke-width="3" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+        <span class="brand-name-hover">IntelliRx</span>
+      </span>
+    </div>
+
+    <!-- User section: single avatar button with dropdown -->
+    <div class="nav-avatar-wrap" (click)="toggleUserMenu()">
+      <div class="user-avatar nav-avatar-btn">
+        {{ (currentUser$ | async)?.name?.charAt(0)?.toUpperCase() }}
+      </div>
+      <!-- Hover tooltip: name + email -->
+      <div class="nav-avatar-tooltip">
+        <span class="nav-avatar-tooltip__name">{{ (currentUser$ | async)?.name }}</span>
+        <span class="nav-avatar-tooltip__email">{{ (currentUser$ | async)?.email }}</span>
+      </div>
+
+      <!-- Dropdown panel -->
+      <div class="user-dropdown" [class.user-dropdown--open]="(uiState$ | async)?.isUserMenuOpen">
+        <!-- User info header -->
+        <div class="user-dropdown__header">
+          <div class="user-dropdown__avatar">{{ (currentUser$ | async)?.name?.charAt(0)?.toUpperCase() }}</div>
+          <div class="user-dropdown__info">
+            <span class="user-dropdown__name">{{ (currentUser$ | async)?.name }}</span>
+            <span class="user-dropdown__email">{{ (currentUser$ | async)?.email }}</span>
+          </div>
+        </div>
+
+        <div class="user-dropdown__divider"></div>
+
+        <!-- Theme Toggle -->
+        <button class="user-dropdown__item" (click)="toggleTheme(); $event.stopPropagation()">
+          <span class="user-dropdown__item-icon">
+            <svg *ngIf="isDarkTheme$ | async" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="5"></circle>
+              <line x1="12" y1="1" x2="12" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="23"></line>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+              <line x1="1" y1="12" x2="3" y2="12"></line>
+              <line x1="21" y1="12" x2="23" y2="12"></line>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <svg *ngIf="!(isDarkTheme$ | async)" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+          {{ (isDarkTheme$ | async) ? 'Light Mode' : 'Dark Mode' }}
+        </button>
+
+        <!-- Logout -->
+        <button class="user-dropdown__item user-dropdown__item--danger" (click)="logout(); $event.stopPropagation()">
+          <span class="user-dropdown__item-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+              <polyline points="16 17 21 12 16 7"></polyline>
+              <line x1="21" y1="12" x2="9" y2="12"></line>
+            </svg>
+          </span>
+          Logout
+        </button>
+      </div>
+    </div>
+  </div>
+</nav>

@@ -5,15 +5,15 @@ import { Observable } from 'rxjs';
 import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
 import { AuthenticationService } from '../../services/authenticationService';
-import { ThemeService } from '../../services/themeService';
 import { AddVisitComponent } from '../add-visit/add-visit';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
+import { NavbarComponent } from '../navbar/navbar';
 
 @Component({
   selector: 'app-patient-details',
   standalone: true,
-  imports: [CommonModule, AddVisitComponent, PatientStatsComponent, EditPatientInfoComponent],
+  imports: [CommonModule, AddVisitComponent, PatientStatsComponent, EditPatientInfoComponent, NavbarComponent],
   templateUrl: './patient-details.html',
   styleUrl: './patient-details.css'
 })
@@ -24,8 +24,6 @@ export class PatientDetailsComponent implements OnInit {
   isLoadingVisits: boolean = false;
   activeTab: 'info' | 'visits' = 'info';
   errorMessage: string = '';
-  isDarkTheme$: Observable<boolean>;
-
   // Properties for visit form
   showAddVisitForm: boolean = false;
   isEditingPatient: boolean = false;
@@ -46,18 +44,12 @@ export class PatientDetailsComponent implements OnInit {
   private readonly authService = inject(AuthenticationService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  private readonly themeService = inject(ThemeService);
-
   // ✅ Only these emails can see and use delete buttons — must match Firebase Rules canDelete()
   private readonly DELETE_ALLOWED_EMAILS: string[] = [
     'garisharmaa4@gmail.com',
     'garima.sharma@zerfinity.com'
     // add more emails here if needed
   ];
-
-  constructor() {
-    this.isDarkTheme$ = this.themeService.isDarkTheme();
-  }
 
   get canDelete(): boolean {
     const email = this.authService.currentUserValue?.email?.toLowerCase() || '';
@@ -277,10 +269,6 @@ export class PatientDetailsComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/home']);
-  }
-
-  toggleTheme(): void {
-    this.themeService.toggleTheme();
   }
 
   formatDate(date: Date | undefined | any): string {

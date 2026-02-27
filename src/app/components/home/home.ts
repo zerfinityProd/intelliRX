@@ -1,20 +1,19 @@
-import { Component, OnInit, HostListener, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
-import { AuthenticationService, User } from '../../services/authenticationService';
 import { PatientService } from '../../services/patient';
-import { ThemeService } from '../../services/themeService';
 import { UIStateService } from '../../services/uiStateService';
 import { Patient } from '../../models/patient.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
 import { AddVisitComponent } from '../add-visit/add-visit';
+import { NavbarComponent } from '../navbar/navbar';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddPatientComponent, AddVisitComponent],
+  imports: [CommonModule, FormsModule, AddPatientComponent, AddVisitComponent, NavbarComponent],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
@@ -26,8 +25,6 @@ export class HomeComponent implements OnInit {
   isSearching: boolean = false;
 
   // Observables for template binding
-  currentUser$: Observable<User | null>;
-  isDarkTheme$: Observable<boolean>;
   uiState$: Observable<any>;
 
   get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
@@ -36,15 +33,11 @@ export class HomeComponent implements OnInit {
   private searchTimeout: any;
 
   constructor(
-    private authService: AuthenticationService,
     private patientService: PatientService,
-    private themeService: ThemeService,
     private uiStateService: UIStateService,
     private router: Router,
     private cdr: ChangeDetectorRef
   ) {
-    this.currentUser$ = this.authService.currentUser$;
-    this.isDarkTheme$ = this.themeService.isDarkTheme();
     this.uiState$ = this.uiStateService.getUIState();
     this.searchResults$ = this.patientService.searchResults$;
   }
@@ -60,31 +53,11 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  /**
-   * Handle theme toggle
-   */
-  toggleTheme(): void {
-    this.themeService.toggleTheme();
-  }
 
-  /**
-   * Handle user menu toggle
-   */
-  toggleUserMenu(): void {
-    this.uiStateService.toggleUserMenu();
-  }
 
   /**
    * Close user menu when clicking outside
    */
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement;
-    if (!target.closest('.nav-avatar-wrap')) {
-      this.uiStateService.closeUserMenu();
-    }
-  }
-
   /**
    * Handle search input with debounce
    */
@@ -248,17 +221,6 @@ export class HomeComponent implements OnInit {
     this.patientService.clearSearchResults();
   }
 
-  /**
-   * Handle user logout
-   */
-  async logout(): Promise<void> {
-    try {
-      await this.authService.logout();
-      this.router.navigate(['/login']);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  }
 
   /**
    * Format date for display

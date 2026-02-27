@@ -205,6 +205,38 @@ export class FirebaseService {
     }
   }
 
+  /**
+   * Fetch all patients for user and filter client-side for "contains" matching
+   * Used as a fallback to support mid-string search on phone and name
+   */
+  async searchPatientsContaining(
+    term: string,
+    userId: string
+  ): Promise<PagedResult> {
+    try {
+      const lowerTerm = term.toLowerCase().trim();
+      // No orderBy — avoids composite index requirement; filter client-side
+      const snapshot = await getDocs(
+        query(this.patientsCollection, where('userId', '==', userId), limit(500))
+      );
+      const allPatients = snapshot.docs.map(d => this.convertFromFirestore(d.data()));
+
+      const results = allPatients.filter(p => {
+        const nameMatch = p.name && p.name.toLowerCase().includes(lowerTerm);
+        const phoneMatch = p.phone && p.phone.toString().includes(lowerTerm);
+        const familyIdMatch = p.familyId && p.familyId.toLowerCase().includes(lowerTerm);
+        return nameMatch || phoneMatch || familyIdMatch;
+      });
+
+      results.forEach(p => this.addToCache(p.uniqueId, p));
+      console.log(`Contains search "${term}": ${results.length} result(s)`);
+      return { results, lastDoc: null, hasMore: false };
+    } catch (error) {
+      console.error('Error in contains search:', error);
+      return { results: [], lastDoc: null, hasMore: false };
+    }
+  }
+
   async getPatientById(uniqueId: string, userId: string): Promise<Patient | null> {
     try {
       const cached = this.getFromCache(uniqueId);
