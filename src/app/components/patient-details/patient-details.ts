@@ -312,6 +312,22 @@ export class PatientDetailsComponent implements OnInit {
     return name.substring(0, 2).toUpperCase();
   }
 
+  calculateAge(dob: Date | undefined | any): string {
+    if (!dob) return '';
+    if (dob && typeof dob.toDate === 'function') {
+      dob = dob.toDate();
+    }
+    const birth = new Date(dob);
+    if (isNaN(birth.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age >= 0 ? `${age} yrs` : '';
+  }
+
   setActiveTab(tab: 'info' | 'visits'): void {
     this.ngZone.run(() => {
       this.activeTab = tab;
