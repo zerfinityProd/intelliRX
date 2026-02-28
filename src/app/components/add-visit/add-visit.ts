@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, NgZone, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, NgZone, inject, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PatientService } from '../../services/patient';
@@ -32,7 +32,7 @@ interface Medicine {
     templateUrl: './add-visit.html',
     styleUrl: './add-visit.css'
 })
-export class AddVisitComponent {
+export class AddVisitComponent implements OnChanges {
     @Input() patientData!: Patient;
     @Input() isEditMode: boolean = false;
 
@@ -41,15 +41,29 @@ export class AddVisitComponent {
     @Output() toggleEdit = new EventEmitter<void>();
 
     // Medical Information - Visit specific
-    presentIllnesses: DynamicField[] = [{ description: '' }];
-    existingAllergies: DynamicField[] = [];
-    newAllergies: DynamicField[] = [{ description: '' }];
-    chiefComplaints: DynamicField[] = [{ description: '' }];
+    // Present Illness chips
+    presentIllnesses: DynamicField[] = [];
+    newIllnessInput: string = '';
+    // Chief Complaints chips
+    chiefComplaints: DynamicField[] = [];
+    newComplaintInput: string = '';
+    // Allergies & Ailments
+    existingAllergies: string[] = [];
+    newAllergyInput: string = '';
+    existingAilments: string[] = [];
+    newAilmentInput: string = '';
+    // Other fields
     diagnosis: string = '';
-    examinations: Examination[] = [{ testName: '', result: '' }];
-    medicines: Medicine[] = [{ name: '', dosage: '', frequency: '' }];
+    examinations: Examination[] = [];
+    newExamTestName: string = '';
+    newExamResult: string = '';
     treatmentPlan: string = '';
     advice: string = '';
+    // Medicine chip inputs
+    medicines: Medicine[] = [];
+    newMedicineName: string = '';
+    newMedicineDosage: string = '';
+    newMedicineFrequency: string = '';
 
     errorMessage: string = '';
     successMessage: string = '';
@@ -58,33 +72,48 @@ export class AddVisitComponent {
     private readonly patientService = inject(PatientService);
     private readonly ngZone = inject(NgZone);
 
-    constructor() {
-        this.initializeForm();
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['patientData'] && this.patientData) {
+            this.initializeAllergies();
+            this.resetVisitForm();
+        }
     }
 
-    private initializeForm(): void {
+    private initializeAllergies(): void {
         if (this.patientData?.allergies) {
             this.existingAllergies = this.patientData.allergies
                 .split(',')
                 .map(a => a.trim())
-                .filter(a => a.length > 0)
-                .map(a => ({ description: a }));
-
-            if (this.existingAllergies.length === 0) {
-                this.existingAllergies = [{ description: '' }];
-            }
+                .filter(a => a.length > 0);
+        } else {
+            this.existingAllergies = [];
         }
+        this.newAllergyInput = '';
 
-        this.newAllergies = [{ description: '' }];
-        this.resetVisitForm();
+        if (this.patientData?.ailments) {
+            this.existingAilments = this.patientData.ailments
+                .split(',')
+                .map(a => a.trim())
+                .filter(a => a.length > 0);
+        } else {
+            this.existingAilments = [];
+        }
+        this.newAilmentInput = '';
     }
 
     private resetVisitForm(): void {
-        this.presentIllnesses = [{ description: '' }];
-        this.chiefComplaints = [{ description: '' }];
+        this.presentIllnesses = [];
+        this.newIllnessInput = '';
+        this.chiefComplaints = [];
+        this.newComplaintInput = '';
         this.diagnosis = '';
-        this.examinations = [{ testName: '', result: '' }];
-        this.medicines = [{ name: '', dosage: '', frequency: '' }];
+        this.examinations = [];
+        this.newExamTestName = '';
+        this.newExamResult = '';
+        this.medicines = [];
+        this.newMedicineName = '';
+        this.newMedicineDosage = '';
+        this.newMedicineFrequency = '';
         this.treatmentPlan = '';
         this.advice = '';
 
@@ -92,76 +121,124 @@ export class AddVisitComponent {
         this.successMessage = '';
     }
 
-    addIllness(): void {
-        this.presentIllnesses.push({ description: '' });
+    // ── Present Illness chips ──
+    onIllnessKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const trimmed = this.newIllnessInput.trim();
+            if (trimmed) {
+                this.presentIllnesses.push({ description: trimmed });
+                this.newIllnessInput = '';
+            }
+        }
     }
 
     removeIllness(index: number): void {
-        if (this.presentIllnesses.length > 1) {
-            this.presentIllnesses.splice(index, 1);
-        }
+        this.presentIllnesses.splice(index, 1);
     }
 
-    addAllergy(): void {
-        if (this.isEditMode) {
-            this.existingAllergies.push({ description: '' });
-        } else {
-            this.newAllergies.push({ description: '' });
-        }
-    }
-
-    removeAllergy(index: number): void {
-        if (this.isEditMode) {
-            if (this.existingAllergies.length > 1) {
-                this.existingAllergies.splice(index, 1);
-            }
-        } else {
-            if (this.newAllergies.length > 1) {
-                this.newAllergies.splice(index, 1);
+    // ── Chief Complaints chips ──
+    onComplaintKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const trimmed = this.newComplaintInput.trim();
+            if (trimmed) {
+                this.chiefComplaints.push({ description: trimmed });
+                this.newComplaintInput = '';
+                if (this.errorMessage === 'Chief complaints is required') {
+                    this.errorMessage = '';
+                }
             }
         }
-    }
-
-    removeExistingAllergy(index: number): void {
-        if (this.existingAllergies.length > 1) {
-            this.existingAllergies.splice(index, 1);
-        }
-    }
-
-    removeNewAllergy(index: number): void {
-        if (this.newAllergies.length > 1) {
-            this.newAllergies.splice(index, 1);
-        }
-    }
-
-    addChiefComplaint(): void {
-        this.chiefComplaints.push({ description: '' });
     }
 
     removeChiefComplaint(index: number): void {
-        if (this.chiefComplaints.length > 1) {
-            this.chiefComplaints.splice(index, 1);
+        this.chiefComplaints.splice(index, 1);
+    }
+
+    // ── Allergies chips ──
+    addNewAllergy(): void {
+        const trimmed = this.newAllergyInput.trim();
+        if (trimmed && !this.existingAllergies.includes(trimmed)) {
+            this.existingAllergies.push(trimmed);
+        }
+        this.newAllergyInput = '';
+    }
+
+    removeAllergy(index: number): void {
+        this.existingAllergies.splice(index, 1);
+    }
+
+    onAllergyKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            this.addNewAllergy();
         }
     }
 
-    addExamination(): void {
-        this.examinations.push({ testName: '', result: '' });
+    // ── Ailments chips ──
+    addNewAilment(): void {
+        const trimmed = this.newAilmentInput.trim();
+        if (trimmed && !this.existingAilments.includes(trimmed)) {
+            this.existingAilments.push(trimmed);
+        }
+        this.newAilmentInput = '';
     }
 
-    removeExamination(index: number): void {
-        if (this.examinations.length > 1) {
-            this.examinations.splice(index, 1);
+    removeAilment(index: number): void {
+        this.existingAilments.splice(index, 1);
+    }
+
+    onAilmentKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            this.addNewAilment();
         }
     }
 
-    addMedicine(): void {
-        this.medicines.push({ name: '', dosage: '', frequency: '' });
+    // ── Medicine chips ──
+    addMedicineChip(): void {
+        const name = this.newMedicineName.trim();
+        if (!name) return;
+        this.medicines.push({
+            name,
+            dosage: this.newMedicineDosage.trim(),
+            frequency: this.newMedicineFrequency.trim()
+        });
+        this.newMedicineName = '';
+        this.newMedicineDosage = '';
+        this.newMedicineFrequency = '';
+    }
+
+    onMedicineKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            this.addMedicineChip();
+        }
     }
 
     removeMedicine(index: number): void {
-        if (this.medicines.length > 1) {
-            this.medicines.splice(index, 1);
+        this.medicines.splice(index, 1);
+    }
+
+    // ── Examinations chips ──
+    addExaminationChip(): void {
+        const name = this.newExamTestName.trim();
+        if (!name) return;
+        this.examinations.push({ testName: name, result: this.newExamResult.trim() });
+        this.newExamTestName = '';
+        this.newExamResult = '';
+    }
+
+    onExaminationKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            this.addExaminationChip();
         }
+    }
+
+    removeExamination(index: number): void {
+        this.examinations.splice(index, 1);
     }
 
     async onSubmit(): Promise<void> {
@@ -188,19 +265,18 @@ export class AddVisitComponent {
                 if (this.patientData.gender) patientUpdateData.gender = this.patientData.gender;
 
                 await this.patientService.updatePatient(patientId, patientUpdateData);
+            }
 
-                const allAllergies = this.combineAllergies();
-                const allergiesText = this.formatArrayField(allAllergies);
-                if (allergiesText !== this.patientData?.allergies) {
-                    await this.patientService.updatePatient(patientId, { allergies: allergiesText });
-                }
-            } else {
-                // Add allergies if not in edit mode
-                const allAllergies = this.combineAllergies();
-                const allergiesText = this.formatArrayField(allAllergies);
-                if (allergiesText && allergiesText !== this.patientData?.allergies) {
-                    await this.patientService.updatePatient(patientId, { allergies: allergiesText });
-                }
+            // Always update allergies (combines existing + newly added)
+            const allergiesText = this.existingAllergies.join(', ');
+            if (allergiesText !== (this.patientData?.allergies || '').trim()) {
+                await this.patientService.updatePatient(patientId, { allergies: allergiesText });
+            }
+
+            // Always update ailments (combines existing + newly added)
+            const ailmentsText = this.existingAilments.join(', ');
+            if (ailmentsText !== (this.patientData?.ailments || '').trim()) {
+                await this.patientService.updatePatient(patientId, { ailments: ailmentsText });
             }
 
             // Save visit data
@@ -250,20 +326,12 @@ export class AddVisitComponent {
     }
 
     validateForm(): boolean {
-        const hasChiefComplaints = this.formatArrayField(this.chiefComplaints).length > 0;
-        if (!hasChiefComplaints) {
+        if (this.chiefComplaints.length === 0) {
             this.errorMessage = 'Chief complaints is required';
             return false;
         }
 
         return true;
-    }
-
-    private combineAllergies(): DynamicField[] {
-        const combined = [...this.existingAllergies];
-        const newWithContent = this.newAllergies.filter(a => a.description.trim().length > 0);
-        combined.push(...newWithContent);
-        return combined;
     }
 
     private formatArrayField(fields: DynamicField[]): string {
@@ -297,6 +365,16 @@ export class AddVisitComponent {
 
         const readonlyFields = ['firstName', 'lastName', 'phone', 'dateOfBirth', 'gender', 'email'];
         return readonlyFields.includes(field);
+    }
+
+    getPatientAge(): number | null {
+        if (!this.patientData?.dateOfBirth) return null;
+        const dob = new Date(this.patientData.dateOfBirth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        return age;
     }
 
     onToggleEdit(): void {

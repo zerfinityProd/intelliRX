@@ -164,6 +164,10 @@ export class HomeComponent implements OnInit {
     this.uiStateService.toggleFab();
   }
 
+  closeFab(): void {
+    this.uiStateService.closeFab();
+  }
+
   /**
    * Open add visit form for patient
    */

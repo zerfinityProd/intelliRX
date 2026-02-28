@@ -4,10 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { PatientService } from '../../services/patient';
 import Swal from 'sweetalert2';
 
-interface DynamicField {
-  description: string;
-}
-
 /**
  * AddPatientComponent: Handles ONLY new patient creation
  * Responsible for: Basic patient information (name, contact, DOB, gender, etc.)
@@ -26,6 +22,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
   // Basic Information
   firstName: string = '';
+  middleName: string = '';
   lastName: string = '';
   phone: string = '';
   dateOfBirth: string = '';
@@ -33,8 +30,11 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   gender: string = '';
   familyId: string = '';
 
-  // Patient allergies on initial creation
-  allergies: DynamicField[] = [{ description: '' }];
+  // Patient allergies & ailments as chips
+  allergyChips: string[] = [];
+  newAllergyInput: string = '';
+  ailmentChips: string[] = [];
+  newAilmentInput: string = '';
 
   todayDate: string = new Date().toISOString().split('T')[0];
 
@@ -59,13 +59,17 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
   private resetForm(): void {
     this.firstName = '';
+    this.middleName = '';
     this.lastName = '';
     this.phone = '';
     this.dateOfBirth = '';
     this.email = '';
     this.gender = '';
     this.familyId = '';
-    this.allergies = [{ description: '' }];
+    this.allergyChips = [];
+    this.newAllergyInput = '';
+    this.ailmentChips = [];
+    this.newAilmentInput = '';
     this.errorMessage = '';
     this.successMessage = '';
     this.warningMessage = '';
@@ -138,14 +142,36 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     return cleanPhone ? `${lastName}_${cleanPhone}` : lastName;
   }
 
-  addAllergy(): void {
-    this.allergies.push({ description: '' });
+  // ── Allergy chips ──
+  onAllergyKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const trimmed = this.newAllergyInput.trim();
+      if (trimmed && !this.allergyChips.includes(trimmed)) {
+        this.allergyChips.push(trimmed);
+        this.newAllergyInput = '';
+      }
+    }
   }
 
   removeAllergy(index: number): void {
-    if (this.allergies.length > 1) {
-      this.allergies.splice(index, 1);
+    this.allergyChips.splice(index, 1);
+  }
+
+  // ── Ailment chips ──
+  onAilmentKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const trimmed = this.newAilmentInput.trim();
+      if (trimmed && !this.ailmentChips.includes(trimmed)) {
+        this.ailmentChips.push(trimmed);
+        this.newAilmentInput = '';
+      }
     }
+  }
+
+  removeAilment(index: number): void {
+    this.ailmentChips.splice(index, 1);
   }
 
   async onSubmit(): Promise<void> {
@@ -167,14 +193,16 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     try {
       // Create new patient
       const patientData: any = {
-        name: `${this.firstName.trim()} ${this.lastName.trim()}`,
+        name: [this.firstName.trim(), this.middleName.trim(), this.lastName.trim()].filter(p => p).join(' '),
         phone: this.phone.trim()
       };
       if (this.email.trim()) patientData.email = this.email.trim();
       if (this.dateOfBirth) patientData.dateOfBirth = new Date(this.dateOfBirth);
       if (this.gender) patientData.gender = this.gender;
-      const allergiesText = this.formatArrayField(this.allergies);
+      const allergiesText = this.allergyChips.join(', ');
       if (allergiesText) patientData.allergies = allergiesText;
+      const ailmentsText = this.ailmentChips.join(', ');
+      if (ailmentsText) patientData.ailments = ailmentsText;
 
       const patientId = await this.patientService.createPatient(patientData);
 
@@ -248,13 +276,6 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     }
 
     return true;
-  }
-
-  private formatArrayField(fields: DynamicField[]): string {
-    return fields
-      .map(f => f.description.trim())
-      .filter(d => d.length > 0)
-      .join(', ');
   }
 
   onClose(): void {

@@ -7,7 +7,8 @@ export interface Patient {
   email?: string;
   dateOfBirth?: Date;
   gender?: string;
-  allergies?: string; 
+  allergies?: string;
+  ailments?: string;
   createdAt: Date;
   updatedAt: Date;
 }

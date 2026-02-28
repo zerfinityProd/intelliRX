@@ -3077,3 +3077,186 @@ a:hover {
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
+/* ══════════════════════════════════════════════════════════════
+   CHIP INPUT COMPONENTS  —  Add Patient & Add Visit forms
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Chip input box (inline chips + text input together) ── */
+.chip-input-box {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 8px 10px;
+    min-height: 48px;
+    background: #fff;
+    cursor: text;
+    transition: border-color 0.15s;
+}
+
+.chip-input-box:focus-within {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.chip-input-error {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
+.chips-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+}
+
+/* ── Chip badge ── */
+.allergy-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 2px 8px 2px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #334155;
+    white-space: nowrap;
+}
+
+.chip-remove-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #94a3b8;
+    font-size: 15px;
+    line-height: 1;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
+}
+
+.chip-remove-btn:hover {
+    color: #ef4444;
+}
+
+/* ── Inline text input inside chip box ── */
+.chip-inline-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 13px;
+    color: #334155;
+    flex: 1;
+    min-width: 140px;
+    padding: 2px 0;
+}
+
+.chip-inline-input::placeholder {
+    color: #94a3b8;
+}
+
+/* ── Medicine / Examination chip variant ── */
+.medicine-chip {
+    border-radius: 6px;
+    padding: 3px 8px 3px 10px;
+    font-size: 12px;
+}
+
+.medicine-chip-text {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+/* ── Medicine/Exam chip box (column layout) ── */
+.medicines-chip-box {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ── Inline inputs row (medicine name / dosage / frequency) ── */
+.medicine-inline-inputs {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.medicine-part-input {
+    flex: 1;
+    min-width: 80px;
+}
+
+/* ── + Add button inside chip box ── */
+.add-medicine-btn {
+    background-color: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6366f1;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+
+.add-medicine-btn:hover {
+    background-color: #e0e7ff;
+    border-color: #6366f1;
+}
+
+/* ── Dark theme — chip components ── */
+[data-theme="dark"] .chip-input-box {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-theme="dark"] .chip-input-box:focus-within {
+    border-color: #818cf8;
+    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+}
+
+[data-theme="dark"] .allergy-chip {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .chip-remove-btn {
+    color: #64748b;
+}
+
+[data-theme="dark"] .chip-remove-btn:hover {
+    color: #f87171;
+}
+
+[data-theme="dark"] .chip-inline-input {
+    color: #cbd5e1;
+}
+
+[data-theme="dark"] .chip-inline-input::placeholder {
+    color: #475569;
+}
+
+[data-theme="dark"] .add-medicine-btn {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #818cf8;
+}
+
+[data-theme="dark"] .add-medicine-btn:hover {
+    background-color: #312e81;
+    border-color: #818cf8;
+}
+
+/* ── FAB backdrop (closes FAB on outside click) ── */
+.fab-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 998;
+  background: transparent;
+}

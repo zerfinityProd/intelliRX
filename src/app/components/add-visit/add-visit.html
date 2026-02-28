@@ -2,7 +2,7 @@
     <div class="modal-content" (click)="$event.stopPropagation()">
 
         <div class="modal-header">
-            <h2>Add New Visit</h2>
+            <h2>New Visit for {{ patientData.name }}<span *ngIf="getPatientAge() !== null"> ({{ getPatientAge() }} years)</span></h2>
             <div class="d-flex align-items-center gap-2">
                 <button class="close-button" (click)="onClose()">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -17,181 +17,167 @@
         <div class="modal-body">
             <form (ngSubmit)="onSubmit()" #visitForm="ngForm" novalidate>
 
-                <!-- Email + Present Illness -->
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <h3 class="section-title">Email</h3>
-                        <label for="email" class="form-label fw-semibold" style="font-size:12px">
-                            Email Address
-                            <span *ngIf="isFieldReadonly('email')" class="locked-label">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
-                            </span>
-                        </label>
-                        <input type="email" id="email" name="email" [(ngModel)]="patientData.email"
-                            placeholder="patient@example.com" [readonly]="isFieldReadonly('email')"
-                            [class.readonly-input]="isFieldReadonly('email')" class="form-control" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <h3 class="section-title">Present Illness <span class="required">*</span></h3>
-                        <div *ngFor="let illness of presentIllnesses; let i = index" class="dynamic-field">
-                            <textarea [(ngModel)]="illness.description" [name]="'illness-' + i"
-                                placeholder="Describe illness" class="form-control" rows="2"></textarea>
-                            <button *ngIf="presentIllnesses.length > 1" type="button" class="remove-btn"
-                                (click)="removeIllness(i)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
+                <!-- Row 1: Chief Complaints | Present Illness | Allergies -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <h3 class="section-title">Chief Complaints <span class="required">*</span></h3>
+                        <div class="chip-input-box" [class.chip-input-error]="errorMessage === 'Chief complaints is required'">
+                            <div class="chips-wrap">
+                                <span *ngFor="let complaint of chiefComplaints; let i = index" class="allergy-chip">
+                                    {{ complaint.description }}
+                                    <button type="button" class="chip-remove-btn" (click)="removeChiefComplaint(i)" title="Remove">&times;</button>
+                                </span>
+                                <input
+                                    type="text"
+                                    class="chip-inline-input"
+                                    [(ngModel)]="newComplaintInput"
+                                    name="newComplaintInput"
+                                    placeholder="Type and press Enter..."
+                                    (keydown)="onComplaintKeydown($event)"
+                                />
+                            </div>
                         </div>
-                        <button type="button" class="add-field-btn" (click)="addIllness()">+ Add Illness</button>
+                        <div *ngIf="errorMessage === 'Chief complaints is required'" class="text-danger small mt-1">⚠ Chief complaints is required.</div>
                     </div>
-                </div>
 
-                <!-- Allergies + Chief Complaints -->
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
+                        <h3 class="section-title">Present Illness</h3>
+                        <div class="chip-input-box">
+                            <div class="chips-wrap">
+                                <span *ngFor="let illness of presentIllnesses; let i = index" class="allergy-chip">
+                                    {{ illness.description }}
+                                    <button type="button" class="chip-remove-btn" (click)="removeIllness(i)" title="Remove">&times;</button>
+                                </span>
+                                <input
+                                    type="text"
+                                    class="chip-inline-input"
+                                    [(ngModel)]="newIllnessInput"
+                                    name="newIllnessInput"
+                                    placeholder="Type and press Enter..."
+                                    (keydown)="onIllnessKeydown($event)"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
                         <h3 class="section-title">Allergies</h3>
-
-                        <ng-container *ngIf="existingAllergies.length > 0">
-                            <div class="existing-allergies-label">Existing Allergies</div>
-                            <ng-container *ngFor="let allergy of existingAllergies; let i = index">
-                                <div class="dynamic-field" *ngIf="isEditMode">
-                                    <textarea [(ngModel)]="allergy.description" [name]="'existing-allergy-' + i"
-                                        placeholder="Allergy description" class="form-control" rows="2"></textarea>
-                                    <button *ngIf="existingAllergies.length > 1" type="button" class="remove-btn"
-                                        (click)="removeExistingAllergy(i)">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                            stroke="currentColor" stroke-width="2">
-                                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                                            <line x1="6" y1="6" x2="18" y2="18"></line>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div *ngIf="!isEditMode" class="readonly-allergy-badge">{{ allergy.description }}</div>
-                            </ng-container>
-                        </ng-container>
-
-                        <div class="new-allergies-label" *ngIf="existingAllergies.length > 0 && !isEditMode">New
-                            Allergies</div>
-                        <ng-container *ngIf="!isEditMode">
-                            <div *ngFor="let allergy of newAllergies; let i = index" class="dynamic-field">
-                                <textarea [(ngModel)]="allergy.description" [name]="'new-allergy-' + i"
-                                    placeholder="Add new allergy" class="form-control" rows="2"></textarea>
-                                <button *ngIf="newAllergies.length > 1" type="button" class="remove-btn"
-                                    (click)="removeNewAllergy(i)">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                        stroke-width="2">
-                                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                                    </svg>
-                                </button>
+                        <div class="chip-input-box">
+                            <div class="chips-wrap">
+                                <span *ngFor="let allergy of existingAllergies; let i = index" class="allergy-chip">
+                                    {{ allergy }}
+                                    <button type="button" class="chip-remove-btn" (click)="removeAllergy(i)" title="Remove">&times;</button>
+                                </span>
+                                <input
+                                    type="text"
+                                    class="chip-inline-input"
+                                    [(ngModel)]="newAllergyInput"
+                                    name="newAllergyInput"
+                                    placeholder="Type and press Enter..."
+                                    (keydown)="onAllergyKeydown($event)"
+                                />
                             </div>
-                        </ng-container>
-
-                        <button type="button" class="add-field-btn" (click)="addAllergy()">
-                            + Add Allergy
-                        </button>
-                    </div>
-
-                    <div class="col-md-6">
-                        <h3 class="section-title">Chief Complaints</h3>
-                        <div *ngFor="let complaint of chiefComplaints; let i = index" class="dynamic-field">
-                            <textarea [(ngModel)]="complaint.description" [name]="'complaint-' + i"
-                                placeholder="Describe chief complaints" class="form-control" rows="2"></textarea>
-                            <button *ngIf="chiefComplaints.length > 1" type="button" class="remove-btn"
-                                (click)="removeChiefComplaint(i)">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
                         </div>
-                        <button type="button" class="add-field-btn" (click)="addChiefComplaint()">+ Add
-                            Complaint</button>
                     </div>
                 </div>
 
-                <!-- Diagnosis + Examinations -->
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <h3 class="section-title">Diagnosis</h3>
-                        <textarea id="diagnosis" name="diagnosis" [(ngModel)]="diagnosis" placeholder="Enter diagnosis"
-                            class="form-control" rows="3"></textarea>
+                <!-- Row 2: Ailments | Examinations | Diagnosis -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <h3 class="section-title">Ailments</h3>
+                        <div class="chip-input-box">
+                            <div class="chips-wrap">
+                                <span *ngFor="let ailment of existingAilments; let i = index" class="allergy-chip">
+                                    {{ ailment }}
+                                    <button type="button" class="chip-remove-btn" (click)="removeAilment(i)" title="Remove">&times;</button>
+                                </span>
+                                <input
+                                    type="text"
+                                    class="chip-inline-input"
+                                    [(ngModel)]="newAilmentInput"
+                                    name="newAilmentInput"
+                                    placeholder="Type and press Enter..."
+                                    (keydown)="onAilmentKeydown($event)"
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <h3 class="section-title">Examinations</h3>
-                        <div *ngFor="let exam of examinations; let i = index" class="exam-field">
-                            <div class="exam-inputs">
-                                <input type="text" [(ngModel)]="exam.testName" [name]="'examName-' + i"
-                                    placeholder="Test name" class="form-control" />
-                                <input type="text" [(ngModel)]="exam.result" [name]="'examResult-' + i"
-                                    placeholder="Result" class="form-control" />
+                        <div class="chip-input-box medicines-chip-box">
+                            <div class="chips-wrap" *ngIf="examinations.length > 0">
+                                <span *ngFor="let exam of examinations; let i = index" class="allergy-chip medicine-chip">
+                                    <span class="medicine-chip-text">
+                                        <strong>{{ exam.testName }}</strong>
+                                        <span *ngIf="exam.result"> · {{ exam.result }}</span>
+                                    </span>
+                                    <button type="button" class="chip-remove-btn" (click)="removeExamination(i)" title="Remove">&times;</button>
+                                </span>
                             </div>
-                            <button *ngIf="examinations.length > 1" type="button" class="remove-btn"
-                                (click)="removeExamination(i)">
-                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
+                            <div class="medicine-inline-inputs">
+                                <input type="text" [(ngModel)]="newExamTestName" name="newExamTestName"
+                                    placeholder="Test name" class="form-control form-control-sm medicine-part-input" />
+                                <input type="text" [(ngModel)]="newExamResult" name="newExamResult"
+                                    placeholder="Result" class="form-control form-control-sm medicine-part-input"
+                                    (keydown)="onExaminationKeydown($event)" />
+                                <button type="button" class="add-medicine-btn" (click)="addExaminationChip()">+ Add</button>
+                            </div>
                         </div>
-                        <button type="button" class="add-field-btn" (click)="addExamination()">+ Add
-                            Examination</button>
+                    </div>
+
+                    <div class="col-md-4">
+                        <h3 class="section-title">Diagnosis</h3>
+                        <textarea id="diagnosis" name="diagnosis" [(ngModel)]="diagnosis"
+                            placeholder="Enter diagnosis" class="form-control" rows="1"></textarea>
                     </div>
                 </div>
 
-                <!-- Medicines (Full Width) -->
-                <div class="mb-4">
-                    <h3 class="section-title">Medicines</h3>
-                    <div *ngFor="let medicine of medicines; let i = index" class="medicine-field">
-                        <div class="medicine-inputs-fullwidth">
-                            <input type="text" [(ngModel)]="medicine.name" [name]="'medicineName-' + i"
-                                placeholder="Medicine name" class="form-control" />
-                            <input type="text" [(ngModel)]="medicine.dosage" [name]="'medicineDosage-' + i"
-                                placeholder="Dosage" class="form-control" />
-                            <input type="text" [(ngModel)]="medicine.frequency" [name]="'medicineFrequency-' + i"
-                                placeholder="Frequency" class="form-control" />
-                        </div>
-                        <button *ngIf="medicines.length > 1" type="button" class="remove-btn"
-                            (click)="removeMedicine(i)">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-                    <button type="button" class="add-field-btn" (click)="addMedicine()">+ Add Medicine</button>
-                </div>
-
-                <!-- Treatment Plan + Advice -->
-                <div class="row g-4 mb-2">
-                    <div class="col-md-6">
+                <!-- Row 3: Treatment Plan | Medicines | Advice -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
                         <h3 class="section-title">Treatment Plan</h3>
                         <textarea id="treatmentPlan" name="treatmentPlan" [(ngModel)]="treatmentPlan"
-                            placeholder="Outline the treatment plan" class="form-control" rows="3"></textarea>
+                            placeholder="Outline the treatment plan" class="form-control" rows="1"></textarea>
                     </div>
-                    <div class="col-md-6">
+
+                    <div class="col-md-4">
+                        <h3 class="section-title">Medicines</h3>
+                        <div class="chip-input-box medicines-chip-box">
+                            <div class="chips-wrap" *ngIf="medicines.length > 0">
+                                <span *ngFor="let medicine of medicines; let i = index" class="allergy-chip medicine-chip">
+                                    <span class="medicine-chip-text">
+                                        <strong>{{ medicine.name }}</strong>
+                                        <span *ngIf="medicine.dosage"> · {{ medicine.dosage }}</span>
+                                        <span *ngIf="medicine.frequency"> · {{ medicine.frequency }}</span>
+                                    </span>
+                                    <button type="button" class="chip-remove-btn" (click)="removeMedicine(i)" title="Remove">&times;</button>
+                                </span>
+                            </div>
+                            <div class="medicine-inline-inputs">
+                                <input type="text" [(ngModel)]="newMedicineName" name="newMedicineName"
+                                    placeholder="Name" class="form-control form-control-sm medicine-part-input" />
+                                <input type="text" [(ngModel)]="newMedicineDosage" name="newMedicineDosage"
+                                    placeholder="Dosage" class="form-control form-control-sm medicine-part-input" />
+                                <input type="text" [(ngModel)]="newMedicineFrequency" name="newMedicineFrequency"
+                                    placeholder="Frequency" class="form-control form-control-sm medicine-part-input"
+                                    (keydown)="onMedicineKeydown($event)" />
+                                <button type="button" class="add-medicine-btn" (click)="addMedicineChip()">+ Add</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
                         <h3 class="section-title">Advice</h3>
                         <textarea id="advice" name="advice" [(ngModel)]="advice"
-                            placeholder="Additional advice for the patient" class="form-control" rows="3"></textarea>
+                            placeholder="Additional advice for the patient" class="form-control" rows="1"></textarea>
                     </div>
                 </div>
 
-                <!-- ── Form Actions ── -->
+                <!-- Form Actions -->
                 <div class="form-actions">
                     <span *ngIf="successMessage" class="success-msg">✓ {{ successMessage }}</span>
-                    <span *ngIf="errorMessage" class="error-msg">⚠ {{ errorMessage }}</span>
+                    <span *ngIf="errorMessage && errorMessage !== 'Chief complaints is required'" class="error-msg">⚠ {{ errorMessage }}</span>
                     <button type="button" class="btn btn-outline-secondary fw-semibold px-4" (click)="onClose()"
                         [disabled]="isSubmitting">
                         Cancel

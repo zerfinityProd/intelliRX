@@ -2,7 +2,7 @@
   <div class="modal-content" (click)="$event.stopPropagation()">
 
     <div class="modal-header">
-      <h2>Add New Patient</h2>
+      <h2>New Patient</h2>
       <div class="d-flex align-items-center gap-2">
         <button class="close-button" (click)="onClose()">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -30,6 +30,13 @@
                 (ngModelChange)="onNameChange()" placeholder="Enter first name" required class="form-control" />
             </div>
             <div class="col-md-4">
+              <label for="middleName" class="form-label fw-semibold" style="font-size:12px">
+                Middle Name
+              </label>
+              <input type="text" id="middleName" name="middleName" [(ngModel)]="middleName"
+                (ngModelChange)="clearSuccessMessage()" placeholder="Enter middle name" class="form-control" />
+            </div>
+            <div class="col-md-4">
               <label for="lastName" class="form-label fw-semibold" style="font-size:12px">
                 Last Name <span class="required">*</span>
               </label>
@@ -37,6 +44,9 @@
                 (ngModelChange)="onNameChange(); clearSuccessMessage()" placeholder="Enter last name" required
                 class="form-control" />
             </div>
+          </div>
+
+          <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label for="phone" class="form-label fw-semibold" style="font-size:12px">
                 Phone Number <span class="required">*</span>
@@ -45,21 +55,21 @@
                 (ngModelChange)="onPhoneChange(); clearSuccessMessage()" placeholder="10-digit number" required
                 maxlength="10" class="form-control" />
             </div>
-          </div>
-
-          <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label for="familyId" class="form-label fw-semibold" style="font-size:12px">
                 Family ID <span class="auto-label">(Auto)</span>
               </label>
               <input type="text" id="familyId" name="familyId" [(ngModel)]="familyId"
-                placeholder="Generated from name and phone" readonly class="form-control readonly-input" />
+                placeholder="Auto generated" readonly class="form-control readonly-input" />
             </div>
             <div class="col-md-4">
               <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth</label>
               <input type="date" id="dateOfBirth" name="dateOfBirth" [(ngModel)]="dateOfBirth"
                 [max]="todayDate" (ngModelChange)="clearSuccessMessage()" class="form-control" />
             </div>
+          </div>
+
+          <div class="row g-3 mb-3">
             <div class="col-md-4">
               <label for="gender" class="form-label fw-semibold" style="font-size:12px">Gender</label>
               <select id="gender" name="gender" [(ngModel)]="gender" (ngModelChange)="clearSuccessMessage()"
@@ -70,28 +80,53 @@
                 <option value="Other">Other</option>
               </select>
             </div>
-          </div>
-
-          <div class="mb-3">
-            <label for="email" class="form-label fw-semibold" style="font-size:12px">Email</label>
-            <input type="email" id="email" name="email" [(ngModel)]="email" (ngModelChange)="clearSuccessMessage()"
-              placeholder="patient@example.com" class="form-control" />
-          </div>
-
-          <div class="mb-0">
-            <label class="form-label fw-semibold" style="font-size:12px">Allergies</label>
-            <div *ngFor="let allergy of allergies; let i = index" class="dynamic-field">
-              <textarea [(ngModel)]="allergy.description" (ngModelChange)="clearSuccessMessage()"
-                [name]="'allergy-' + i" placeholder="Enter any known allergies" class="form-control"
-                rows="2"></textarea>
-              <button *ngIf="allergies.length > 1" type="button" class="remove-btn" (click)="removeAllergy(i)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
+            <div class="col-md-8">
+              <label for="email" class="form-label fw-semibold" style="font-size:12px">Email</label>
+              <input type="email" id="email" name="email" [(ngModel)]="email" (ngModelChange)="clearSuccessMessage()"
+                placeholder="patient@example.com" class="form-control" />
             </div>
-            <button type="button" class="add-field-btn" (click)="addAllergy()">+ Add Allergy</button>
+          </div>
+
+          <div class="row g-3 mb-0">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="font-size:12px">Allergies</label>
+              <div class="chip-input-box">
+                <div class="chips-wrap">
+                  <span *ngFor="let allergy of allergyChips; let i = index" class="allergy-chip">
+                    {{ allergy }}
+                    <button type="button" class="chip-remove-btn" (click)="removeAllergy(i)" title="Remove">&times;</button>
+                  </span>
+                  <input
+                    type="text"
+                    class="chip-inline-input"
+                    [(ngModel)]="newAllergyInput"
+                    name="newAllergyInput"
+                    placeholder="Type and press Enter..."
+                    (keydown)="onAllergyKeydown($event)"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold" style="font-size:12px">Ailments</label>
+              <div class="chip-input-box">
+                <div class="chips-wrap">
+                  <span *ngFor="let ailment of ailmentChips; let i = index" class="allergy-chip">
+                    {{ ailment }}
+                    <button type="button" class="chip-remove-btn" (click)="removeAilment(i)" title="Remove">&times;</button>
+                  </span>
+                  <input
+                    type="text"
+                    class="chip-inline-input"
+                    [(ngModel)]="newAilmentInput"
+                    name="newAilmentInput"
+                    placeholder="Type and press Enter..."
+                    (keydown)="onAilmentKeydown($event)"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
