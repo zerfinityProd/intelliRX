@@ -1,0 +1,282 @@
+<div class="avp-page">
+
+  <!-- ── Navbar ── -->
+  <app-navbar [showBack]="true" pageTitle="New Visit"></app-navbar>
+
+  <!-- ── Loading ── -->
+  <div *ngIf="isLoadingPatient" class="d-flex flex-column align-items-center justify-content-center avp-loading">
+    <div class="page-spinner mb-3"></div>
+    <p class="text-muted fw-medium">Loading patient...</p>
+  </div>
+
+  <!-- ── Main Layout ── -->
+  <div *ngIf="!isLoadingPatient && patient" class="avp-layout">
+
+    <!-- ════════════════════ LEFT PANEL — Form ════════════════════ -->
+    <div class="avp-form-panel">
+
+      <!-- Patient mini-header -->
+      <div class="avp-patient-header">
+        <div class="avp-patient-avatar">
+          {{ getInitials(patient.name) }}
+        </div>
+        <div class="avp-patient-info">
+          <h2 class="avp-patient-name">
+            New Visit for <span>{{ patient.name }}</span>
+            <span *ngIf="getPatientAge() !== null" class="avp-age-badge">{{ getPatientAge() }} yrs</span>
+          </h2>
+          <p class="avp-patient-sub">{{ patient.phone }}<span *ngIf="patient.email"> · {{ patient.email }}</span></p>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form (ngSubmit)="onSubmit()" #visitForm="ngForm" novalidate class="avp-form">
+
+        <!-- ── Row 1: Present Illness · Allergies · Ailments ── -->
+        <div class="avp-form-row avp-three-col">
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Present Illness</div>
+            <div class="chip-input-box" (click)="$any($event.currentTarget).querySelector('input').focus()">
+              <div class="chips-wrap">
+                <span *ngFor="let ill of presentIllnesses; let i = index" class="allergy-chip">
+                  {{ ill.description }}
+                  <button type="button" class="chip-remove-btn" (click)="removeIllness(i)">&times;</button>
+                </span>
+                <input type="text" class="chip-inline-input" [(ngModel)]="newIllnessInput" name="newIllnessInput"
+                  placeholder="Type and press Enter..." (keydown)="onIllnessKeydown($event)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Allergies</div>
+            <div class="chip-input-box" (click)="$any($event.currentTarget).querySelector('input').focus()">
+              <div class="chips-wrap">
+                <span *ngFor="let allergy of existingAllergies; let i = index" class="allergy-chip">
+                  {{ allergy }}
+                  <button type="button" class="chip-remove-btn" (click)="removeAllergy(i)">&times;</button>
+                </span>
+                <input type="text" class="chip-inline-input" [(ngModel)]="newAllergyInput" name="newAllergyInput"
+                  placeholder="Type and press Enter..." (keydown)="onAllergyKeydown($event)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Ailments</div>
+            <div class="chip-input-box" (click)="$any($event.currentTarget).querySelector('input').focus()">
+              <div class="chips-wrap">
+                <span *ngFor="let ailment of existingAilments; let i = index" class="allergy-chip">
+                  {{ ailment }}
+                  <button type="button" class="chip-remove-btn" (click)="removeAilment(i)">&times;</button>
+                </span>
+                <input type="text" class="chip-inline-input" [(ngModel)]="newAilmentInput" name="newAilmentInput"
+                  placeholder="Type and press Enter..." (keydown)="onAilmentKeydown($event)" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Row 2: Chief Complaints · Diagnosis · Treatment Plan ── -->
+        <div class="avp-form-row avp-three-col">
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Chief Complaints <span class="required">*</span></div>
+            <textarea name="chiefComplaintsText" [(ngModel)]="chiefComplaintsText"
+              placeholder="Enter chief complaints"
+              class="form-control avp-textarea"
+              [class.is-invalid]="errorMessage === 'Chief complaints is required' || chiefComplaintsText.length > 200"
+              maxlength="200"
+              rows="1"></textarea>
+            <div class="avp-char-row">
+              <span *ngIf="errorMessage === 'Chief complaints is required'" class="avp-field-error">⚠ Chief complaints is required.</span>
+              <span *ngIf="chiefComplaintsText.length >= 180" [class.avp-char-warn]="chiefComplaintsText.length < 200" [class.avp-char-error]="chiefComplaintsText.length === 200" class="avp-char-count">{{ chiefComplaintsText.length }}/200</span>
+            </div>
+          </div>
+
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Diagnosis</div>
+            <textarea id="diagnosis" name="diagnosis" [(ngModel)]="diagnosis"
+              placeholder="Enter diagnosis" class="form-control avp-textarea"
+              [class.is-invalid]="diagnosis.length > 200"
+              maxlength="200"
+              rows="1"></textarea>
+            <div class="avp-char-row">
+              <span *ngIf="diagnosis.length >= 180" [class.avp-char-warn]="diagnosis.length < 200" [class.avp-char-error]="diagnosis.length === 200" class="avp-char-count">{{ diagnosis.length }}/200</span>
+            </div>
+          </div>
+
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Treatment Plan</div>
+            <textarea id="treatmentPlan" name="treatmentPlan" [(ngModel)]="treatmentPlan"
+              placeholder="Outline the treatment plan" class="form-control avp-textarea"
+              [class.is-invalid]="treatmentPlan.length > 200"
+              maxlength="200"
+              rows="1"></textarea>
+            <div class="avp-char-row">
+              <span *ngIf="treatmentPlan.length >= 180" [class.avp-char-warn]="treatmentPlan.length < 200" [class.avp-char-error]="treatmentPlan.length === 200" class="avp-char-count">{{ treatmentPlan.length }}/200</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Row 3: Examinations · Medicines ── -->
+        <div class="avp-form-row">
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Examinations</div>
+            <div class="chip-input-box medicines-chip-box">
+              <div class="chips-wrap" *ngIf="examinations.length > 0">
+                <span *ngFor="let exam of examinations; let i = index" class="allergy-chip medicine-chip">
+                  <span class="medicine-chip-text">
+                    <strong>{{ exam.testName }}</strong>
+                    <span *ngIf="exam.result"> · {{ exam.result }}</span>
+                  </span>
+                  <button type="button" class="chip-remove-btn" (click)="removeExamination(i)">&times;</button>
+                </span>
+              </div>
+              <div class="medicine-inline-inputs">
+                <input type="text" [(ngModel)]="newExamTestName" name="newExamTestName"
+                  placeholder="Test name" class="form-control form-control-sm medicine-part-input" />
+                <input type="text" [(ngModel)]="newExamResult" name="newExamResult"
+                  placeholder="Result" class="form-control form-control-sm medicine-part-input"
+                  (keydown)="onExaminationKeydown($event)" />
+                <button type="button" class="add-medicine-btn" (click)="addExaminationChip()">+ Add</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Medicines</div>
+            <div class="chip-input-box medicines-chip-box">
+              <div class="chips-wrap" *ngIf="medicines.length > 0">
+                <span *ngFor="let med of medicines; let i = index" class="allergy-chip medicine-chip">
+                  <span class="medicine-chip-text">
+                    <strong>{{ med.name }}</strong>
+                    <span *ngIf="med.dosage"> · {{ med.dosage }}</span>
+                    <span *ngIf="med.frequency"> · {{ med.frequency }}</span>
+                  </span>
+                  <button type="button" class="chip-remove-btn" (click)="removeMedicine(i)">&times;</button>
+                </span>
+              </div>
+              <div class="medicine-inline-inputs">
+                <input type="text" [(ngModel)]="newMedicineName" name="newMedicineName"
+                  placeholder="Name" class="form-control form-control-sm medicine-part-input" />
+                <input type="text" [(ngModel)]="newMedicineDosage" name="newMedicineDosage"
+                  placeholder="Dosage" class="form-control form-control-sm medicine-part-input" />
+                <input type="text" [(ngModel)]="newMedicineFrequency" name="newMedicineFrequency"
+                  placeholder="Frequency" class="form-control form-control-sm medicine-part-input"
+                  (keydown)="onMedicineKeydown($event)" />
+                <button type="button" class="add-medicine-btn" (click)="addMedicineChip()">+ Add</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Form Actions ── -->
+        <div class="avp-form-actions">
+          <span *ngIf="errorMessage && errorMessage !== 'Chief complaints is required'" class="avp-error-msg">
+            ⚠ {{ errorMessage }}
+          </span>
+          <div class="avp-action-btns">
+            <button type="button" class="btn btn-outline-secondary fw-semibold px-4"
+              (click)="onCancel()" [disabled]="isSubmitting">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting">
+              <span *ngIf="!isSubmitting">Save Visit</span>
+              <span *ngIf="isSubmitting" class="loading-content">
+                <span class="loading-spinner"></span>
+                Saving...
+              </span>
+            </button>
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+    <!-- ════════════════════ RIGHT PANEL — Visit History ════════════════════ -->
+    <div class="avp-history-panel">
+      <div class="avp-history-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        <h3 class="avp-history-title">Visit History</h3>
+        <span class="avp-history-count" *ngIf="!isLoadingVisits">{{ visits.length }}</span>
+      </div>
+
+      <!-- Loading visits -->
+      <div *ngIf="isLoadingVisits" class="avp-history-loading">
+        <div class="page-spinner"></div>
+        <p class="text-muted">Loading visits...</p>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!isLoadingVisits && visits.length === 0" class="avp-history-empty">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <p>No visit history yet.</p>
+        <span>This will be the first visit.</span>
+      </div>
+
+      <!-- Visit cards -->
+      <div *ngIf="!isLoadingVisits && visits.length > 0" class="avp-history-list">
+        <div *ngFor="let visit of visits; let i = index" class="avp-visit-card">
+
+          <!-- Card header (always visible) -->
+          <div class="avp-visit-header" (click)="toggleVisitExpand(visit.id!)">
+            <div class="avp-visit-meta">
+              <span class="avp-visit-num">Visit #{{ visits.length - i }}</span>
+              <span class="avp-visit-date">{{ formatDateTime(visit.createdAt) }}</span>
+            </div>
+            <div class="avp-visit-preview" *ngIf="!isVisitExpanded(visit.id)">
+              {{ visit.chiefComplaints }}
+            </div>
+            <button class="avp-expand-btn" [class.expanded]="isVisitExpanded(visit.id)" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Expanded details -->
+          <div class="avp-visit-details" *ngIf="isVisitExpanded(visit.id)">
+            <div class="avp-visit-detail" *ngIf="visit.presentIllness">
+              <span class="avp-detail-label">Present Illness</span>
+              <span class="avp-detail-value">{{ visit.presentIllness }}</span>
+            </div>
+            <div class="avp-visit-detail" *ngIf="visit.chiefComplaints">
+              <span class="avp-detail-label">Chief Complaints</span>
+              <span class="avp-detail-value">{{ visit.chiefComplaints }}</span>
+            </div>
+            <div class="avp-visit-detail" *ngIf="visit.diagnosis">
+              <span class="avp-detail-label">Diagnosis</span>
+              <span class="avp-detail-value">{{ visit.diagnosis }}</span>
+            </div>
+            <div class="avp-visit-detail" *ngIf="visit.examination">
+              <span class="avp-detail-label">Examination</span>
+              <span class="avp-detail-value">{{ visit.examination }}</span>
+            </div>
+            <div class="avp-visit-detail" *ngIf="visit.medicines">
+              <span class="avp-detail-label">Medicines</span>
+              <span class="avp-detail-value">{{ visit.medicines }}</span>
+            </div>
+            <div class="avp-visit-detail" *ngIf="visit.treatmentPlan">
+              <span class="avp-detail-label">Treatment Plan</span>
+              <span class="avp-detail-value">{{ visit.treatmentPlan }}</span>
+            </div>
+            <div class="avp-visit-detail" *ngIf="visit.advice">
+              <span class="avp-detail-label">Advice</span>
+              <span class="avp-detail-value">{{ visit.advice }}</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>

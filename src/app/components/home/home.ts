@@ -7,13 +7,12 @@ import { PatientService } from '../../services/patient';
 import { UIStateService } from '../../services/uiStateService';
 import { Patient } from '../../models/patient.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
-import { AddVisitComponent } from '../add-visit/add-visit';
 import { NavbarComponent } from '../navbar/navbar';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddPatientComponent, AddVisitComponent, NavbarComponent],
+  imports: [CommonModule, FormsModule, AddPatientComponent, NavbarComponent],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
@@ -169,10 +168,10 @@ export class HomeComponent implements OnInit {
   }
 
   /**
-   * Open add visit form for patient
+   * Navigate to add visit page for patient
    */
   openAddVisitForm(patient: Patient): void {
-    this.uiStateService.openAddVisitForm(patient);
+    this.router.navigate(['/patient', patient.uniqueId, 'add-visit']);
   }
 
   /**

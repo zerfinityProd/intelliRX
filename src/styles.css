@@ -3260,3 +3260,995 @@ a:hover {
   z-index: 998;
   background: transparent;
 }
+/* ══════════════════════════════════════════════════════════════
+   ADD VISIT PAGE  —  /patient/:id/add-visit
+   Full-page layout: form (left) + visit history (right)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ── */
+.avp-page {
+  min-height: 100vh;
+  background: var(--clr-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.avp-loading {
+  flex: 1;
+  padding: 100px 20px;
+}
+
+/* ── Main two-column layout ── */
+.avp-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 24px 20px;
+  align-items: start;
+  gap: 20px;
+}
+
+/* ════ LEFT PANEL — Form ════ */
+.avp-form-panel {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 16px;
+  padding: 28px 32px;
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Patient mini-header ── */
+.avp-patient-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.avp-patient-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.avp-patient-info {
+  min-width: 0;
+}
+
+.avp-patient-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.avp-patient-name span {
+  color: var(--clr-primary);
+}
+
+.avp-age-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+
+.avp-patient-sub {
+  font-size: 0.85rem;
+  color: var(--clr-text-muted);
+  margin: 0;
+}
+
+/* ── Form layout ── */
+.avp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.avp-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.avp-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.avp-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.avp-section-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 2px;
+}
+
+.avp-section-label .required {
+  color: var(--clr-error);
+  margin-left: 2px;
+}
+
+.avp-textarea {
+  resize: vertical;
+  min-height: 64px;
+}
+
+.avp-field-error {
+  font-size: 0.8rem;
+  color: var(--clr-error);
+  margin-top: 2px;
+}
+
+/* ── Form actions ── */
+.avp-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--clr-border);
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.avp-action-btns {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.avp-error-msg {
+  font-size: 0.85rem;
+  color: var(--clr-error);
+  flex: 1;
+}
+
+/* ════ RIGHT PANEL — Visit History ════ */
+.avp-history-panel {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 100px);
+  position: sticky;
+  top: 84px;
+  overflow: hidden;
+}
+
+.avp-history-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--clr-border);
+  flex-shrink: 0;
+  color: var(--clr-primary);
+}
+
+.avp-history-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin: 0;
+  flex: 1;
+}
+
+.avp-history-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.avp-history-loading,
+.avp-history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  gap: 10px;
+  color: var(--clr-text-muted);
+  text-align: center;
+}
+
+.avp-history-empty svg {
+  color: var(--clr-border);
+  opacity: 0.7;
+}
+
+.avp-history-empty p {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0;
+  color: var(--clr-text-muted);
+}
+
+.avp-history-empty span {
+  font-size: 0.82rem;
+  color: var(--clr-text-light);
+}
+
+/* ── Scrollable visit list ── */
+.avp-history-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.avp-history-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.avp-history-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.avp-history-list::-webkit-scrollbar-thumb {
+  background: var(--clr-border);
+  border-radius: 4px;
+}
+
+/* ── Individual visit card ── */
+.avp-visit-card {
+  border: 1px solid var(--clr-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.avp-visit-card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+.avp-visit-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  background: var(--clr-bg);
+  user-select: none;
+  transition: background var(--t-fast);
+}
+
+.avp-visit-header:hover {
+  background: var(--clr-border-light);
+}
+
+.avp-visit-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.avp-visit-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.avp-visit-date {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+}
+
+.avp-visit-preview {
+  font-size: 0.78rem;
+  color: var(--clr-text-muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.avp-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--clr-text-light);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color var(--t-fast), background var(--t-fast), transform var(--t-fast);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.avp-expand-btn svg {
+  transition: transform var(--t-normal);
+}
+
+.avp-expand-btn.expanded svg {
+  transform: rotate(180deg);
+}
+
+/* ── Expanded detail rows ── */
+.avp-visit-details {
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--clr-surface);
+  border-top: 1px solid var(--clr-border);
+  animation: avp-details-in 0.18s ease;
+}
+
+@keyframes avp-details-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.avp-visit-detail {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  font-size: 0.8rem;
+  align-items: baseline;
+}
+
+.avp-detail-label {
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  font-size: 0.75rem;
+}
+
+.avp-detail-value {
+  color: var(--clr-text);
+  line-height: 1.5;
+}
+
+/* ── Dark theme ── */
+[data-theme="dark"] .avp-form-panel,
+[data-theme="dark"] .avp-history-panel {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .avp-patient-header {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-patient-name {
+  color: var(--dk-text1);
+}
+
+[data-theme="dark"] .avp-section-label {
+  color: var(--dk-text2);
+}
+
+[data-theme="dark"] .avp-form-actions {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-history-header {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-history-title {
+  color: var(--dk-text1);
+}
+
+[data-theme="dark"] .avp-history-count {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="dark"] .avp-visit-card {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-visit-card:hover {
+  border-color: #4f46e5;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .avp-visit-header {
+  background: var(--dk-bg1);
+}
+
+[data-theme="dark"] .avp-visit-header:hover {
+  background: var(--dk-bg3);
+}
+
+[data-theme="dark"] .avp-visit-details {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-detail-value {
+  color: var(--dk-text1);
+}
+
+[data-theme="dark"] .avp-detail-label {
+  color: var(--dk-text2);
+}
+
+[data-theme="dark"] .avp-age-badge {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="dark"] .avp-history-list::-webkit-scrollbar-thumb {
+  background: var(--dk-border);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .avp-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .avp-history-panel {
+    position: static;
+    max-height: 500px;
+  }
+}
+
+@media (max-width: 640px) {
+  .avp-form-panel {
+    padding: 20px 16px;
+  }
+
+  .avp-form-row {
+    grid-template-columns: 1fr;
+  }
+}
+/* ══════════════════════════════════════════════════════════════
+   ADD VISIT PAGE  —  /patient/:id/add-visit
+   Full-page layout: form (left) + visit history (right)
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper ── */
+.avp-page {
+  min-height: 100vh;
+  background: var(--clr-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.avp-loading {
+  flex: 1;
+  padding: 100px 20px;
+}
+
+/* ── Main two-column layout ── */
+.avp-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  flex: 1;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 14px 20px;
+  align-items: start;
+  gap: 16px;
+}
+
+/* ════ LEFT PANEL — Form ════ */
+.avp-form-panel {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Patient mini-header ── */
+.avp-patient-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.avp-patient-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  letter-spacing: 0.5px;
+}
+
+.avp-patient-info {
+  min-width: 0;
+}
+
+.avp-patient-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin: 0 0 3px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.avp-patient-name span {
+  color: var(--clr-primary);
+}
+
+.avp-age-badge {
+  font-size: 0.73rem;
+  font-weight: 600;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  padding: 2px 9px;
+  border-radius: 20px;
+}
+
+.avp-patient-sub {
+  font-size: 0.82rem;
+  color: var(--clr-text-muted);
+  margin: 0;
+}
+
+/* ── Form layout ── */
+.avp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.avp-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.avp-form-row.avp-three-col {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.avp-form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.avp-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.avp-section-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 1px;
+}
+
+.avp-section-label .required {
+  color: var(--clr-error);
+  margin-left: 2px;
+}
+
+.avp-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.avp-char-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 16px;
+}
+
+.avp-char-count {
+  font-size: 0.72rem;
+  margin-left: auto;
+}
+
+.avp-char-warn {
+  color: var(--clr-warning);
+}
+
+.avp-char-error {
+  color: var(--clr-error);
+  font-weight: 600;
+}
+
+.avp-field-error {
+  font-size: 0.78rem;
+  color: var(--clr-error);
+  margin-top: 1px;
+}
+
+/* ── Form actions ── */
+.avp-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--clr-border);
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.avp-action-btns {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.avp-error-msg {
+  font-size: 0.85rem;
+  color: var(--clr-error);
+  flex: 1;
+}
+
+/* ════ RIGHT PANEL — Visit History ════ */
+.avp-history-panel {
+  background: var(--clr-surface);
+  border: 1px solid var(--clr-border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 100px);
+  position: sticky;
+  top: 84px;
+  overflow: hidden;
+}
+
+.avp-history-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--clr-border);
+  flex-shrink: 0;
+  color: var(--clr-primary);
+}
+
+.avp-history-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  margin: 0;
+  flex: 1;
+}
+
+.avp-history-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  background: var(--clr-primary-light);
+  color: var(--clr-primary);
+  border-radius: 12px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.avp-history-loading,
+.avp-history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 20px;
+  gap: 10px;
+  color: var(--clr-text-muted);
+  text-align: center;
+}
+
+.avp-history-empty svg {
+  color: var(--clr-border);
+  opacity: 0.7;
+}
+
+.avp-history-empty p {
+  font-weight: 600;
+  font-size: 0.95rem;
+  margin: 0;
+  color: var(--clr-text-muted);
+}
+
+.avp-history-empty span {
+  font-size: 0.82rem;
+  color: var(--clr-text-light);
+}
+
+/* ── Scrollable visit list ── */
+.avp-history-list {
+  overflow-y: auto;
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.avp-history-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.avp-history-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.avp-history-list::-webkit-scrollbar-thumb {
+  background: var(--clr-border);
+  border-radius: 4px;
+}
+
+/* ── Individual visit card ── */
+.avp-visit-card {
+  border: 1px solid var(--clr-border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.avp-visit-card:hover {
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+.avp-visit-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  background: var(--clr-bg);
+  user-select: none;
+  transition: background var(--t-fast);
+}
+
+.avp-visit-header:hover {
+  background: var(--clr-border-light);
+}
+
+.avp-visit-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.avp-visit-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.avp-visit-date {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+}
+
+.avp-visit-preview {
+  font-size: 0.78rem;
+  color: var(--clr-text-muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.avp-expand-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--clr-text-light);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color var(--t-fast), background var(--t-fast), transform var(--t-fast);
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.avp-expand-btn svg {
+  transition: transform var(--t-normal);
+}
+
+.avp-expand-btn.expanded svg {
+  transform: rotate(180deg);
+}
+
+/* ── Expanded detail rows ── */
+.avp-visit-details {
+  padding: 10px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--clr-surface);
+  border-top: 1px solid var(--clr-border);
+  animation: avp-details-in 0.18s ease;
+}
+
+@keyframes avp-details-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.avp-visit-detail {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  font-size: 0.8rem;
+  align-items: baseline;
+}
+
+.avp-detail-label {
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  font-size: 0.75rem;
+}
+
+.avp-detail-value {
+  color: var(--clr-text);
+  line-height: 1.5;
+}
+
+/* ── Dark theme ── */
+[data-theme="dark"] .avp-form-panel,
+[data-theme="dark"] .avp-history-panel {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+  box-shadow: none;
+}
+
+[data-theme="dark"] .avp-patient-header {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-patient-name {
+  color: var(--dk-text1);
+}
+
+[data-theme="dark"] .avp-section-label {
+  color: var(--dk-text2);
+}
+
+[data-theme="dark"] .avp-form-actions {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-history-header {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-history-title {
+  color: var(--dk-text1);
+}
+
+[data-theme="dark"] .avp-history-count {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="dark"] .avp-visit-card {
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-visit-card:hover {
+  border-color: #4f46e5;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .avp-visit-header {
+  background: var(--dk-bg1);
+}
+
+[data-theme="dark"] .avp-visit-header:hover {
+  background: var(--dk-bg3);
+}
+
+[data-theme="dark"] .avp-visit-details {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .avp-detail-value {
+  color: var(--dk-text1);
+}
+
+[data-theme="dark"] .avp-detail-label {
+  color: var(--dk-text2);
+}
+
+[data-theme="dark"] .avp-age-badge {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+[data-theme="dark"] .avp-history-list::-webkit-scrollbar-thumb {
+  background: var(--dk-border);
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .avp-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .avp-history-panel {
+    position: static;
+    max-height: 500px;
+  }
+}
+
+@media (max-width: 640px) {
+  .avp-form-panel {
+    padding: 20px 16px;
+  }
+
+  .avp-form-row {
+    grid-template-columns: 1fr;
+  }
+}

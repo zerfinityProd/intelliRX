@@ -322,10 +322,6 @@
   </div>
 </div>
 
-<!-- ── Add Visit Modal ── -->
-<app-add-visit *ngIf="showAddVisitForm" [patientData]="patient!" [isEditMode]="isEditingPatient"
-  (close)="closeAddVisitForm()" (visitAdded)="onVisitAdded($event)" (toggleEdit)="toggleEditMode()"></app-add-visit>
-
 <!-- ── Edit Patient Info Modal ── -->
 <app-edit-patient-info *ngIf="showEditPatientInfo" [patientData]="patient" (close)="closeEditPatientInfo()"
   (patientUpdated)="onPatientInfoUpdated($event)"></app-edit-patient-info>

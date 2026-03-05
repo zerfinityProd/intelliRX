@@ -34,6 +34,26 @@ export class AuthorizationService {
     }
 
     /**
+     * Check if a user has delete permission based on canDelete field in Firestore
+     * Reads the canDelete field from the allowedUsers/{email} document
+     *
+     * @param email - User email to check
+     * @returns Promise<boolean> - True if user has delete permission
+     */
+    async canUserDelete(email: string): Promise<boolean> {
+        try {
+            const docRef = doc(this.firestore, 'allowedUsers', email.toLowerCase());
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) return false;
+            const data = docSnap.data();
+            return data?.['canDelete'] === true;
+        } catch (error) {
+            console.warn('canDelete check failed for:', email);
+            return false;
+        }
+    }
+
+    /**
      * Check if multiple emails are allowed
      * @param emails - Array of emails to check
      * @returns Promise<Record<string, boolean>> - Map of email -> allowed status

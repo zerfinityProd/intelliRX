@@ -157,10 +157,3 @@
 <!-- ── Add Patient Modal ── -->
 <app-add-patient *ngIf="(uiState$ | async)?.showAddPatientForm" (close)="closeAddPatientForm()"
   (patientAdded)="onPatientAdded($event)"></app-add-patient>
-
-<!-- ── Add Visit Modal ── -->
-<ng-container *ngIf="uiState$ | async as uiState">
-  <app-add-visit *ngIf="uiState.showAddVisitForm && uiState.selectedPatientForVisit"
-    [patientData]="uiState.selectedPatientForVisit" [isEditMode]="false" (close)="closeAddVisitForm()"
-    (visitAdded)="onVisitAdded($event)" (toggleEdit)="toggleVisitEditMode()"></app-add-visit>
-</ng-container>

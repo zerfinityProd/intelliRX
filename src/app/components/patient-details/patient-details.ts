@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
 import { AuthenticationService } from '../../services/authenticationService';
-import { AddVisitComponent } from '../add-visit/add-visit';
+import { AuthorizationService } from '../../services/authorizationService';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
 import { NavbarComponent } from '../navbar/navbar';
@@ -13,7 +13,7 @@ import { NavbarComponent } from '../navbar/navbar';
 @Component({
   selector: 'app-patient-details',
   standalone: true,
-  imports: [CommonModule, AddVisitComponent, PatientStatsComponent, EditPatientInfoComponent, NavbarComponent],
+  imports: [CommonModule, PatientStatsComponent, EditPatientInfoComponent, NavbarComponent],
   templateUrl: './patient-details.html',
   styleUrl: './patient-details.css'
 })
@@ -24,9 +24,6 @@ export class PatientDetailsComponent implements OnInit {
   isLoadingVisits: boolean = false;
   activeTab: 'info' | 'visits' = 'info';
   errorMessage: string = '';
-  // Properties for visit form
-  showAddVisitForm: boolean = false;
-  isEditingPatient: boolean = false;
 
   // Property for edit patient info modal
   showEditPatientInfo: boolean = false;
@@ -38,28 +35,25 @@ export class PatientDetailsComponent implements OnInit {
   isDeletingVisit: boolean = false;
   isDeletingPatient: boolean = false;
 
+  // ✅ Driven by Firestore canDelete field — no hardcoded emails
+  canDelete: boolean = false;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly patientService = inject(PatientService);
   private readonly authService = inject(AuthenticationService);
+  private readonly authorizationService = inject(AuthorizationService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  // ✅ Only these emails can see and use delete buttons — must match Firebase Rules canDelete()
-  private readonly DELETE_ALLOWED_EMAILS: string[] = [
-    'garisharmaa4@gmail.com',
-    'garima.sharma@zerfinity.com'
-    // add more emails here if needed
-  ];
-
-  get canDelete(): boolean {
-    const email = this.authService.currentUserValue?.email?.toLowerCase() || '';
-    return this.DELETE_ALLOWED_EMAILS.map(e => e.toLowerCase()).includes(email);
-  }
 
   async ngOnInit(): Promise<void> {
+    // ✅ Fetch canDelete permission from Firestore
+    const email = this.authService.currentUserValue?.email || '';
+    this.canDelete = await this.authorizationService.canUserDelete(email);
+
     const patientId = this.route.snapshot.paramMap.get('id');
 
-    console.log('ðŸ” Patient Details - Loading patient:', patientId);
+    console.log('🔍 Patient Details - Loading patient:', patientId);
 
     if (!patientId) {
       this.ngZone.run(() => {
@@ -81,10 +75,10 @@ export class PatientDetailsComponent implements OnInit {
     });
 
     try {
-      console.log('ðŸ“¡ Fetching patient from service...');
+      console.log('📡 Fetching patient from service...');
       this.patient = await this.patientService.getPatient(patientId);
 
-      console.log('âœ… Patient data received:', this.patient ? 'Success' : 'Not found');
+      console.log('✅ Patient data received:', this.patient ? 'Success' : 'Not found');
 
       this.ngZone.run(() => {
         if (!this.patient) {
@@ -101,7 +95,7 @@ export class PatientDetailsComponent implements OnInit {
         this.loadVisits();
       });
     } catch (error) {
-      console.error('âŒ Error loading patient:', error);
+      console.error('❌ Error loading patient:', error);
       this.ngZone.run(() => {
         this.errorMessage = 'Error loading patient details';
         this.isLoadingPatient = false;
@@ -119,16 +113,16 @@ export class PatientDetailsComponent implements OnInit {
     });
 
     try {
-      console.log('ðŸ“¡ Fetching visits...');
+      console.log('📡 Fetching visits...');
       this.visits = await this.patientService.getPatientVisits(this.patient.uniqueId);
-      console.log('âœ… Visits loaded:', this.visits.length);
+      console.log('✅ Visits loaded:', this.visits.length);
 
       this.ngZone.run(() => {
         this.isLoadingVisits = false;
         this.cdr.detectChanges();
       });
     } catch (error) {
-      console.error('âŒ Error loading visits:', error);
+      console.error('❌ Error loading visits:', error);
       this.ngZone.run(() => {
         this.isLoadingVisits = false;
         this.cdr.detectChanges();
@@ -136,13 +130,11 @@ export class PatientDetailsComponent implements OnInit {
     }
   }
 
-  // Open visit form with patient data pre-filled
+  // Navigate to the dedicated Add Visit page
   openAddVisitForm(): void {
-    this.ngZone.run(() => {
-      this.showAddVisitForm = true;
-      this.isEditingPatient = false; // Start with locked fields
-      this.cdr.detectChanges();
-    });
+    if (this.patient) {
+      this.router.navigate(['/patient', this.patient.uniqueId, 'add-visit']);
+    }
   }
 
   // Open separate modal to edit patient information
@@ -163,44 +155,13 @@ export class PatientDetailsComponent implements OnInit {
 
   // Handle patient info updated
   async onPatientInfoUpdated(patientId: string): Promise<void> {
-    console.log('âœ… Patient info updated:', patientId);
+    console.log('✅ Patient info updated:', patientId);
 
     // Reload patient data
     await this.loadPatient(patientId);
 
     // Close the edit modal
     this.closeEditPatientInfo();
-  }
-
-  // Close visit form
-  closeAddVisitForm(): void {
-    this.ngZone.run(() => {
-      this.showAddVisitForm = false;
-      this.isEditingPatient = false;
-      this.cdr.detectChanges();
-    });
-  }
-
-  // Toggle edit mode for patient fields
-  toggleEditMode(): void {
-    this.ngZone.run(() => {
-      this.isEditingPatient = !this.isEditingPatient;
-      this.cdr.detectChanges();
-    });
-  }
-
-  // Handle visit added - reload data
-  async onVisitAdded(patientId: string): Promise<void> {
-    console.log('âœ… Visit added:', patientId);
-
-    // Reload patient data (in case it was edited)
-    await this.loadPatient(patientId);
-
-    // Reload visits to show the new one
-    await this.loadVisits();
-
-    // Switch to visits tab to show the new visit
-    this.setActiveTab('visits');
   }
 
   // Delete Visit
