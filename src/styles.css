@@ -1,29 +1,31 @@
 /* ============================================================
-   INTELLIRX — MASTER STYLESHEET  (src/styles.css)
+   INTELLIRX  MASTER STYLESHEET  (src/styles.css)
    All component CSS files are empty; every custom rule lives here.
    Bootstrap 5 must be loaded BEFORE this file (via index.html CDN
    or angular.json styles array).
    ============================================================ */
 
-/* ── 1. Google Fonts ─────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap');
+/*  1. Google Fonts  */
+/* Google Fonts loaded via index.html preload  no @import needed here */
 
-/* ── 2. Bootstrap CSS Variable Overrides ─────────────────── */
+/*  2. Bootstrap CSS Variable Overrides  */
 :root {
-  /* ── Font: override Bootstrap's default system-font stack ── */
+  /*  Font: override Bootstrap's default system-font stack  */
   --bs-font-sans-serif: 'Roboto', sans-serif;
   --bs-body-font-family: 'Roboto', sans-serif;
+  --bs-body-font-size: 1rem;
 
-  /* ── Colors: replace Bootstrap's #212529 / #000000 with our single dark token ──
+  /*  Colors: replace Bootstrap's #212529 / #000000 with our single dark token 
      This eliminates the rogue #212529, #212529bf, #000000 from DevTools Colors.  */
   --bs-body-color: #1e293b;
+  --bs-form-label-font-size: var(--fs-sm);
   /* replaces Bootstrap default #212529     */
   --bs-body-color-rgb: 30, 41, 59;
   --bs-emphasis-color: #1e293b;
   /* replaces Bootstrap default #000000     */
   --bs-emphasis-color-rgb: 30, 41, 59;
   --bs-secondary-color: #64748b;
-  /* replaces rgba(33,37,41,.75) → no more #212529bf */
+  /* replaces rgba(33,37,41,.75)  no more #212529bf */
   --bs-secondary-color-rgb: 100, 116, 139;
   --bs-heading-color: inherit;
   /* headings inherit body color             */
@@ -45,6 +47,18 @@
   --bs-border-radius-sm: 0.5rem;
   --bs-border-radius-lg: 0.875rem;
   --bs-border-radius-xl: 1.25rem;
+
+  /*  Type scale (4 levels)  */
+  --fs-xs:   12px;   /* labels, badges, captions              */
+  --fs-sm:   13px;   /* secondary text, table cells, metadata */
+  --fs-base: 16px;   /* body text, form inputs, buttons       */
+  --fs-lg:   20px;   /* section headings, card titles         */
+  --fs-xl:   24px;   /* display headings, patient name          */
+
+  /*  Line-height scale (3 levels)  */
+  --lh-tight:  1.2;   /* headings, compact UI                 */
+  --lh-normal: 1.5;   /* body text, inputs                    */
+  --lh-loose:  1.8;   /* readable paragraphs, textareas       */
 
   /* App-specific tokens */
   --clr-primary: #6366f1;
@@ -68,9 +82,9 @@
   --t-normal: 0.25s ease;
 }
 
-/* ════════════════════════════════════════════════════════════
-   DARK THEME  —  3 background levels · 2 text tones · 1 accent
-   ────────────────────────────────────────────────────────────
+/* 
+   DARK THEME    3 background levels  2 text tones  1 accent
+   
    BG-1  #141414  page background
    BG-2  #1e1e1e  surfaces (cards, navbar, modals)
    BG-3  #2a2a2a  elevated / hover states
@@ -78,7 +92,7 @@
    TEXT-1 #e0e0e0  primary text
    TEXT-2 #777777  muted / labels
    ACCENT #6366f1  indigo (unchanged)
-   ════════════════════════════════════════════════════════════ */
+    */
 [data-theme="dark"] {
   --dk-bg1: #141414;
   --dk-bg2: #1e1e1e;
@@ -106,19 +120,19 @@
   color-scheme: dark;
 }
 
-/* ── Base ── */
+/*  Base  */
 [data-theme="dark"] body {
   background: var(--dk-bg1);
   color: var(--dk-text1);
 }
 
-/* ── Navbar ── */
+/*  Navbar  */
 [data-theme="dark"] .app-navbar {
   background: var(--dk-bg2) !important;
   border-bottom: 1px solid var(--dk-border);
   box-shadow: none;
 }
-/* ── Navbar Back Button (shown on inner pages) ── */
+/*  Navbar Back Button (shown on inner pages)  */
 .navbar-back-btn {
   display: inline-flex;
   align-items: center;
@@ -161,7 +175,7 @@
   color: #ffffff;
 }
 
-/* ── Buttons ── */
+/*  Buttons  */
 [data-theme="dark"] .btn-outline-secondary {
   --bs-btn-color: var(--dk-text1);
   --bs-btn-border-color: var(--dk-border);
@@ -170,7 +184,7 @@
   --bs-btn-hover-border-color: var(--dk-border);
 }
 
-/* ── All cards / surfaces ── */
+/*  All cards / surfaces  */
 [data-theme="dark"] .card,
 [data-theme="dark"] .info-card,
 [data-theme="dark"] .visit-card,
@@ -182,7 +196,7 @@
   box-shadow: none !important;
 }
 
-/* ── Inputs (global) ── */
+/*  Inputs (global)  */
 [data-theme="dark"] .form-control,
 [data-theme="dark"] .form-select {
   background: var(--dk-bg1);
@@ -212,7 +226,7 @@
   color: var(--dk-text2);
 }
 
-/* ── Search clear btn ── */
+/*  Search clear btn  */
 [data-theme="dark"] .search-wrapper .clear-btn {
   background: var(--dk-bg3);
   color: var(--dk-text2);
@@ -223,7 +237,7 @@
   color: var(--dk-text1);
 }
 
-/* ── Table ── */
+/*  Table  */
 [data-theme="dark"] .patients-table {
   --bs-table-bg: transparent;
   --bs-table-color: var(--dk-text1);
@@ -251,7 +265,7 @@
   color: #6366f1 !important;
 }
 
-/* ── Details header ── */
+/*  Details header  */
 [data-theme="dark"] .details-header {
   background: var(--dk-bg2);
   border-bottom: 1px solid var(--dk-border);
@@ -262,12 +276,12 @@
   border-bottom: 1px solid var(--dk-border);
 }
 
-/* ── Patient header card ── */
+/*  Patient header card  */
 [data-theme="dark"] .patient-header-card {
   background: linear-gradient(135deg, #2d3a8c, #3730a3) !important;
 }
 
-/* ── Tabs ── */
+/*  Tabs  */
 [data-theme="dark"] .detail-tabs {
   background: var(--dk-bg2);
   border-color: var(--dk-border);
@@ -287,7 +301,7 @@
   color: #fff;
 }
 
-/* ── Text ── */
+/*  Text  */
 [data-theme="dark"] h1,
 [data-theme="dark"] h2,
 [data-theme="dark"] h3 {
@@ -312,7 +326,7 @@
   border-color: var(--dk-border);
 }
 
-/* ── Stats ── */
+/*  Stats  */
 [data-theme="dark"] .stat-value {
   color: #ffffff;
 }
@@ -329,7 +343,7 @@
   background: rgba(239, 68, 68, 0.15);
 }
 
-/* ── Modals ── */
+/*  Modals  */
 [data-theme="dark"] .modal-content,
 [data-theme="dark"] .stats-modal-content {
   background: var(--dk-bg2);
@@ -374,22 +388,14 @@
   --bs-btn-hover-color: #ffffff;
 }
 
-/* ── Modal section titles ── */
+/*  Modal section titles  */
 [data-theme="dark"] .modal-body .section-title {
   color: #ffffff;
   border-bottom: 1px solid var(--dk-border);
 }
 
 [data-theme="dark"] .modal-body .section-title::before {
-  content: '';
-  display: inline-block;
-  width: 3px;
-  height: 16px;
-  background: #6366f1;
-  border-radius: 4px;
-  margin-right: 10px;
-  vertical-align: middle;
-  flex-shrink: 0;
+  display: none;
 }
 
 [data-theme="dark"] .modal-body .form-label {
@@ -404,18 +410,28 @@
   color: var(--dk-text1);
 }
 
+[data-theme="dark"] .modal-body .chip-input-box {
+  background: var(--dk-bg1);
+  border: 1px solid var(--dk-border);
+}
+
+[data-theme="dark"] .modal-body .chip-input-box:focus-within {
+  border-color: var(--dk-border);
+  box-shadow: none;
+}
+
 [data-theme="dark"] .modal-body .form-control::placeholder {
   color: var(--dk-text2);
 }
 
 [data-theme="dark"] .modal-body .form-control:focus,
 [data-theme="dark"] .modal-body .form-select:focus {
-  border-color: #6366f1;
+  border-color: #4b5563;
   color: #ffffff;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+  box-shadow: 0 0 0 3px rgba(75, 85, 99, 0.2);
 }
 
-/* ── Readonly inputs ── */
+/*  Readonly inputs  */
 [data-theme="dark"] .readonly-input,
 [data-theme="dark"] .form-control.readonly-input,
 [data-theme="dark"] .modal-body .readonly-input {
@@ -441,7 +457,7 @@
   color: #6366f1;
 }
 
-/* ── Dynamic field buttons ── */
+/*  Dynamic field buttons  */
 [data-theme="dark"] .add-field-btn,
 [data-theme="dark"] .modal-body .add-field-btn {
   background: var(--dk-bg1);
@@ -462,7 +478,7 @@
   color: #f87171;
 }
 
-/* ── Visit cards ── */
+/*  Visit cards  */
 [data-theme="dark"] .visit-details-card {
   background: var(--dk-bg1);
   border-left-color: #6366f1;
@@ -496,12 +512,12 @@
   border-color: rgba(225, 29, 72, 0.25) !important;
 }
 
-/* ── Last visit strip ── */
+/*  Last visit strip  */
 [data-theme="dark"] .last-visit-strip {
   background: linear-gradient(135deg, #2d3a8c, #3730a3);
 }
 
-/* ── Tippy ── */
+/*  Tippy  */
 [data-theme="dark"] .tippy-box[data-theme~='medical'] {
   background: var(--dk-bg2);
   border-color: var(--dk-border);
@@ -516,14 +532,14 @@
   filter: none;
 }
 
-/* ── FAB label ── */
+/*  FAB label  */
 [data-theme="dark"] .fab-label {
   background: var(--dk-bg2);
   color: var(--dk-text1);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-/* ── Scrollbar ── */
+/*  Scrollbar  */
 [data-theme="dark"] ::-webkit-scrollbar-track {
   background: var(--dk-bg1);
 }
@@ -536,7 +552,7 @@
   background: var(--dk-border);
 }
 
-/* ── Login page ── */
+/*  Login page  */
 [data-theme="dark"] .login-page {
   background: var(--dk-bg1);
 }
@@ -596,7 +612,7 @@
   color: #ffffff;
 }
 
-/* ── Edit toggle buttons ── */
+/*  Edit toggle buttons  */
 [data-theme="dark"] .edit-toggle-button {
   background: var(--dk-bg3);
   border-color: var(--dk-border);
@@ -608,14 +624,14 @@
   color: #ffffff;
 }
 
-/* ── Brand ── */
+/*  Brand  */
 .brand-hover-wrap {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   color: var(--clr-text);
   font-weight: 700;
-  font-size: 19px;
+  font-size: var(--fs-lg);
   letter-spacing: -0.3px;
 }
 
@@ -627,7 +643,7 @@
   color: #ffffff;
 }
 
-/* ── Nav avatar wrapper (relative for dropdown positioning) ── */
+/*  Nav avatar wrapper (relative for dropdown positioning)  */
 .nav-avatar-wrap {
   position: relative;
   cursor: pointer;
@@ -644,7 +660,7 @@
   transform: scale(1.05);
 }
 
-/* ── Hover tooltip: name + email ── */
+/*  Hover tooltip: name + email  */
 .nav-avatar-tooltip {
   position: absolute;
   top: calc(100% + 10px);
@@ -680,12 +696,12 @@
 
 .nav-avatar-tooltip__name {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--clr-text);
 }
 
 .nav-avatar-tooltip__email {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--clr-text-muted);
 }
 
@@ -703,7 +719,7 @@
   color: var(--dk-text2);
 }
 
-/* ── User dropdown panel ── */
+/*  User dropdown panel  */
 .user-dropdown {
   position: absolute;
   top: calc(100% + 10px);
@@ -743,7 +759,7 @@
   background: var(--clr-primary);
   color: #fff;
   font-weight: 700;
-  font-size: 15px;
+  font-size: var(--fs-base);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -758,7 +774,7 @@
 
 .user-dropdown__name {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--clr-text);
   white-space: nowrap;
   overflow: hidden;
@@ -766,7 +782,7 @@
 }
 
 .user-dropdown__email {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   color: var(--clr-text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -788,7 +804,7 @@
   background: none;
   border: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 500;
   color: var(--clr-text);
   cursor: pointer;
@@ -854,7 +870,7 @@
 }
 
 
-/* ── Theme toggle button ── */
+/*  Theme toggle button  */
 .theme-toggle-btn {
   width: 38px;
   height: 38px;
@@ -889,7 +905,7 @@
 }
 
 
-/* ── 3. Bootstrap btn-primary overrides ──────────────────── */
+/*  3. Bootstrap btn-primary overrides  */
 .btn-primary {
   --bs-btn-bg: #6366f1;
   --bs-btn-border-color: #6366f1;
@@ -915,18 +931,18 @@
   --bs-btn-active-border-color: #4f46e5;
 }
 
-/* ── Suppress Bootstrap's unused vertical-align declarations ─────────────────
+/*  Suppress Bootstrap's unused vertical-align declarations 
    Bootstrap reboot sets vertical-align:middle on svg and .btn (inline-block).
    Both become unused declarations when the element is a flex child or block.
    We use flexbox for all alignment, so vertical-align is never needed here.  */
 
-/* 1) SVG — Bootstrap sets svg { vertical-align: middle } but all our SVGs sit
+/* 1) SVG  Bootstrap sets svg { vertical-align: middle } but all our SVGs sit
       inside flex containers, making it unused. Reset globally and use flex.   */
 svg {
   vertical-align: unset;
 }
 
-/* 2) .btn — Bootstrap sets vertical-align:middle on .btn. When btn is w-100,
+/* 2) .btn  Bootstrap sets vertical-align:middle on .btn. When btn is w-100,
       d-block, or a flex child, it's block-level and the property is ignored.  */
 .btn.d-block,
 .btn.w-100,
@@ -940,28 +956,34 @@ svg {
   vertical-align: unset;
 }
 
-/* ── 4. Base typography ──────────────────────────────────── */
+/*  4. Base typography  */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
-/* Single font throughout — Roboto, with sans-serif as browser last-resort only */
+/* Single font throughout  Roboto, with sans-serif as browser last-resort only */
 html {
   font-family: 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  line-height: var(--lh-normal);
+}
+
+.form-label, label {
+  font-size: var(--fs-sm);
 }
 
 body {
   font-family: inherit;
+  line-height: inherit;
   background-color: var(--clr-bg);
   color: var(--clr-text);
   min-height: 100vh;
 }
 
-/* Ensure all elements inherit Roboto — prevents browser injecting system fonts */
+/* Ensure all elements inherit Roboto  prevents browser injecting system fonts */
 *,
 *::before,
 *::after {
@@ -977,7 +999,27 @@ a:hover {
   text-decoration: underline;
 }
 
-/* ── 5. Focus ring ───────────────────────────────────────── */
+/*  Skip link for keyboard/screen reader accessibility  */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 0;
+  background: var(--clr-primary);
+  color: #fff;
+  padding: 8px 16px;
+  z-index: 9999;
+  font-size: var(--fs-sm);
+  border-radius: 0 0 4px 0;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+main {
+  display: block;
+}
+
+/*  5. Focus ring  */
 :focus-visible {
   outline: 2px solid var(--clr-primary);
   outline-offset: 2px;
@@ -993,7 +1035,7 @@ a:hover {
   box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15);
 }
 
-/* ── 6. Scrollbar ────────────────────────────────────────── */
+/*  6. Scrollbar  */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -1013,7 +1055,7 @@ a:hover {
   background: var(--clr-text-light);
 }
 
-/* ── 7. Shared Animations ────────────────────────────────── */
+/*  7. Shared Animations  */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -1068,7 +1110,7 @@ a:hover {
   }
 }
 
-/* ── 8. Shared Loading Spinner ───────────────────────────── */
+/*  8. Shared Loading Spinner  */
 .loading-spinner {
   display: inline-block;
   width: 16px;
@@ -1092,7 +1134,7 @@ a:hover {
   gap: 8px;
 }
 
-/* ── 9. Shared Readonly Input ────────────────────────────── */
+/*  9. Shared Readonly Input  */
 .readonly-input,
 .form-control.readonly-input {
   background: #f8fafc !important;
@@ -1108,13 +1150,13 @@ a:hover {
   box-shadow: 0 0 0 0.2rem rgba(245, 158, 11, 0.12) !important;
 }
 
-/* ── 10. Shared Labels ───────────────────────────────────── */
+/*  10. Shared Labels  */
 .required {
   color: var(--clr-error);
 }
 
 .auto-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--clr-primary);
   margin-left: 4px;
@@ -1124,7 +1166,7 @@ a:hover {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--clr-warning);
   background: #fef3c7;
@@ -1140,7 +1182,7 @@ a:hover {
 }
 
 .info-badge {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #10b981;
   background: #d1fae5;
@@ -1149,10 +1191,10 @@ a:hover {
   margin-left: 8px;
 }
 
-/* ── 11. Shared Alert Tweaks ─────────────────────────────── */
+/*  11. Shared Alert Tweaks  */
 .alert {
   border-radius: var(--bs-border-radius-lg);
-  font-size: 0.875rem;
+  font-size: var(--fs-sm);
   font-weight: 500;
 }
 
@@ -1160,9 +1202,9 @@ a:hover {
   animation: slideInSuccess 0.3s ease;
 }
 
-/* ── 12. Shared Section Title ────────────────────────────── */
+/*  12. Shared Section Title  */
 .section-title {
-  font-size: 15px;
+  font-size: var(--fs-base);
   font-weight: 600;
   color: var(--clr-text);
   margin: 0 0 14px;
@@ -1173,7 +1215,7 @@ a:hover {
   gap: 10px;
 }
 
-/* ── 13. Shared Modal Overlay ────────────────────────────── */
+/*  13. Shared Modal Overlay  */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1190,6 +1232,7 @@ a:hover {
 .modal-content {
   background: #ffffff;
   border-radius: 20px;
+  overflow: hidden;
   width: 100%;
   max-width: 1400px;
   max-height: 90vh;
@@ -1210,7 +1253,7 @@ a:hover {
 
 .modal-header h2,
 .modal-header h3 {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--clr-text);
   margin: 0;
@@ -1243,7 +1286,7 @@ a:hover {
   color: var(--clr-text);
 }
 
-/* ── 14. Shared Form Actions Bar ─────────────────────────── */
+/*  14. Shared Form Actions Bar  */
 .form-actions {
   display: flex;
   align-items: center;
@@ -1257,25 +1300,25 @@ a:hover {
 .form-actions .success-msg {
   color: var(--clr-success);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   margin-right: auto;
 }
 
 .form-actions .warning-msg {
   color: var(--clr-warning);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   margin-right: auto;
 }
 
 .form-actions .error-msg {
   color: var(--clr-error);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   margin-right: auto;
 }
 
-/* ── 15. Shared Dynamic Fields ───────────────────────────── */
+/*  15. Shared Dynamic Fields  */
 .dynamic-field {
   display: flex;
   gap: 10px;
@@ -1334,7 +1377,7 @@ a:hover {
   width: 100%;
   margin-top: 4px;
   padding: 8px 14px;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--clr-primary);
   background: var(--clr-border-light);
@@ -1349,10 +1392,10 @@ a:hover {
   border-color: #94a3b8;
 }
 
-/* ── 16. Allergy helpers ─────────────────────────────────── */
+/*  16. Allergy helpers  */
 .existing-allergies-label,
 .new-allergies-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: #64748b;
   margin: 10px 0 6px;
@@ -1371,7 +1414,7 @@ a:hover {
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   color: #1e293b;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   margin: 0 6px 6px 0;
 }
 
@@ -1385,7 +1428,7 @@ a:hover {
   border: 2px solid var(--clr-border);
   border-radius: 10px;
   color: var(--clr-secondary);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: all var(--t-fast);
@@ -1405,7 +1448,7 @@ a:hover {
 
 .edit-toggle-button-inline {
   padding: 5px 10px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   background: transparent;
   border: 1px solid var(--clr-border);
@@ -1430,9 +1473,9 @@ a:hover {
   color: #ffffff;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* 
    LOGIN COMPONENT
-   ══════════════════════════════════════════════════════════ */
+    */
 .login-page {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #f1f5f9 100%);
@@ -1482,7 +1525,7 @@ a:hover {
   padding: 0 14px;
   background: #ffffff;
   color: var(--clr-text-light);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
 }
 
@@ -1497,7 +1540,7 @@ a:hover {
   color: var(--clr-text);
   border: 2px solid var(--clr-border);
   border-radius: 12px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
@@ -1518,9 +1561,9 @@ a:hover {
   flex-shrink: 0;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* 
    HOME / NAVBAR
-   ══════════════════════════════════════════════════════════ */
+    */
 .app-navbar {
   background: #ffffff;
   border-bottom: 1px solid var(--clr-border);
@@ -1531,7 +1574,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--clr-text);
 }
@@ -1546,7 +1589,7 @@ a:hover {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   flex-shrink: 0;
 }
 
@@ -1560,7 +1603,7 @@ a:hover {
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   flex-shrink: 0;
 }
 
@@ -1584,7 +1627,7 @@ a:hover {
   padding-right: 80px;
   border-radius: 14px;
   border: 2px solid var(--clr-border);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 
@@ -1631,7 +1674,7 @@ a:hover {
 }
 
 .patients-table thead th {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1641,7 +1684,7 @@ a:hover {
 
 .patients-table tbody td {
   padding: 14px 18px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: #1e293b;
   vertical-align: middle;
 }
@@ -1659,6 +1702,18 @@ a:hover {
   border-bottom: none;
 }
 
+.patients-table tbody {
+  border-bottom: none !important;
+}
+
+.patients-table {
+  border-bottom: none !important;
+}
+
+.patients-table tbody tr:last-child td {
+  border-bottom: none !important;
+}
+
 .family-id-cell {
   color: var(--clr-primary);
   font-weight: 600;
@@ -1670,7 +1725,7 @@ a:hover {
   color: var(--clr-text);
 }
 
-/* ── FAB (Floating Action Button) ────────────────────────── */
+/*  FAB (Floating Action Button)  */
 .fab-container {
   position: fixed;
   bottom: 32px;
@@ -1755,7 +1810,7 @@ a:hover {
 .fab-label {
   background: #ffffff;
   color: var(--clr-text);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   padding: 5px 12px;
   border-radius: 20px;
@@ -1791,9 +1846,9 @@ a:hover {
   box-shadow: 0 6px 18px rgba(99, 102, 241, 0.55);
 }
 
-/* ══════════════════════════════════════════════════════════
+/* 
    PATIENT DETAILS
-   ══════════════════════════════════════════════════════════ */
+    */
 .details-page {
   min-height: 100vh;
   background: var(--clr-bg);
@@ -1807,7 +1862,7 @@ a:hover {
   border-bottom: 1px solid var(--clr-border);
   box-shadow: var(--shadow-sm);
 }
-/* ── Page Title Bar (replaces details-subheader) ── */
+/*  Page Title Bar (replaces details-subheader)  */
 .page-title-bar {
   background: var(--clr-surface);
   border-bottom: 1px solid var(--clr-border);
@@ -1847,7 +1902,7 @@ a:hover {
 }
 
 .breadcrumb-link {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--clr-primary);
   cursor: pointer;
@@ -1865,17 +1920,17 @@ a:hover {
 }
 
 .breadcrumb-current {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   color: var(--clr-text-muted);
 }
 
 .page-title-heading {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--clr-text);
   margin: 0;
-  line-height: 1.2;
+  line-height: var(--lh-tight);
 }
 
 /* Dark mode */
@@ -1940,7 +1995,7 @@ a:hover {
 }
 
 .patient-name-heading {
-  font-size: 28px;
+  font-size: var(--fs-xl);
   font-weight: 700;
   color: #ffffff;
   margin: 0 0 12px;
@@ -1982,7 +2037,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 15px;
+  font-size: var(--fs-base);
 }
 
 .add-visit-button {
@@ -1995,7 +2050,7 @@ a:hover {
   color: #ffffff;
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 12px;
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background var(--t-fast), transform var(--t-fast), box-shadow var(--t-fast);
@@ -2008,7 +2063,7 @@ a:hover {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
-/* ── Details Grid Layout ─────────────────────────────────── */
+/*  Details Grid Layout  */
 .details-grid {
   display: grid;
   grid-template-columns: 1fr 400px;
@@ -2026,7 +2081,7 @@ a:hover {
   display: block;
 }
 
-/* ── Tabs ────────────────────────────────────────────────── */
+/*  Tabs  */
 .detail-tabs {
   background: #ffffff;
   border-radius: 16px;
@@ -2046,7 +2101,7 @@ a:hover {
   border: none;
   background: transparent;
   color: var(--clr-secondary);
-  font-size: 14px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   border-radius: 12px;
@@ -2072,7 +2127,7 @@ a:hover {
   animation: fadeIn 0.3s ease;
 }
 
-/* ── Info Grid ───────────────────────────────────────────── */
+/*  Info Grid  */
 .info-card {
   background: #ffffff;
   border-radius: 16px;
@@ -2082,7 +2137,7 @@ a:hover {
 }
 
 .info-section-title {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--clr-text);
   margin: 0 0 22px;
@@ -2094,7 +2149,7 @@ a:hover {
 }
 
 .info-label {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--clr-text-muted);
   text-transform: uppercase;
@@ -2104,7 +2159,7 @@ a:hover {
 }
 
 .info-value {
-  font-size: 15px;
+  font-size: var(--fs-base);
   font-weight: 500;
   color: var(--clr-text);
 }
@@ -2113,14 +2168,14 @@ a:hover {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 20px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   background: #fce7f3;
   color: #be185d;
   letter-spacing: 0.2px;
 }
 
-/* ── Visit Cards ─────────────────────────────────────────── */
+/*  Visit Cards  */
 .visit-card {
   background: #ffffff;
   border-radius: 16px;
@@ -2145,7 +2200,7 @@ a:hover {
 }
 
 .visit-number {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
   background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark));
   -webkit-background-clip: text;
@@ -2154,7 +2209,7 @@ a:hover {
 }
 
 .visit-date {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   color: var(--clr-text-muted);
   font-weight: 500;
 }
@@ -2175,7 +2230,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--clr-text-muted);
   text-transform: uppercase;
@@ -2188,12 +2243,12 @@ a:hover {
 }
 
 .detail-value {
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: var(--fs-sm);
+  line-height: var(--lh-loose);
   color: var(--clr-text);
 }
 
-/* ── Empty & Loading states ──────────────────────────────── */
+/*  Empty & Loading states  */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -2212,14 +2267,14 @@ a:hover {
 }
 
 .empty-state h3 {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   font-weight: 600;
   color: var(--clr-text);
   margin-bottom: 8px;
 }
 
 .empty-state p {
-  font-size: 14px;
+  font-size: var(--fs-sm);
   color: var(--clr-text-muted);
   margin: 0;
 }
@@ -2233,9 +2288,9 @@ a:hover {
   animation: spin 0.8s linear infinite;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* 
    PATIENT STATS WIDGET
-   ══════════════════════════════════════════════════════════ */
+    */
 .stat-card {
   background: #ffffff;
   border-radius: 14px;
@@ -2282,7 +2337,7 @@ a:hover {
 }
 
 .stat-label {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--clr-text-muted);
   text-transform: uppercase;
@@ -2306,7 +2361,7 @@ a:hover {
 }
 
 .calendar-title {
-  font-size: 16px;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--clr-text);
   margin: 0;
@@ -2339,7 +2394,7 @@ a:hover {
 
 .calendar-day-header {
   text-align: center;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--clr-text-muted);
   padding: 6px 0;
@@ -2385,7 +2440,7 @@ a:hover {
 }
 
 .day-number {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--clr-text);
 }
@@ -2422,7 +2477,7 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -2431,7 +2486,7 @@ a:hover {
 }
 
 .last-visit-strip .lv-value {
-  font-size: 18px;
+  font-size: var(--fs-lg);
   font-weight: 700;
 }
 
@@ -2484,7 +2539,7 @@ a:hover {
 }
 
 .visit-time {
-  font-size: 13px;
+  font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--clr-primary);
   margin-bottom: 12px;
@@ -2503,9 +2558,9 @@ a:hover {
   margin-bottom: 0;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* 
    TIPPY.JS MEDICAL THEME
-   ══════════════════════════════════════════════════════════ */
+    */
 .tippy-box[data-theme~='medical'] {
   background: #ffffff;
   border: 1px solid var(--clr-border);
@@ -2537,7 +2592,7 @@ a:hover {
   gap: 6px;
   padding: 4px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-weight: 500;
   white-space: nowrap;
 }
@@ -2573,17 +2628,17 @@ a:hover {
 
 .tippy-none {
   color: var(--clr-secondary);
-  font-size: 12px;
+  font-size: var(--fs-xs);
   font-style: italic;
   display: block;
   padding: 2px 0;
 }
 
-/* ══════════════════════════════════════════════════════════
+/* 
    RESPONSIVE
-   ══════════════════════════════════════════════════════════ */
+    */
 
-/* ── 1200px: single-column details grid ── */
+/*  1200px: single-column details grid  */
 @media (max-width: 1200px) {
   .details-grid {
     grid-template-columns: 1fr;
@@ -2594,7 +2649,7 @@ a:hover {
   }
 }
 
-/* ── 992px: form grids collapse ── */
+/*  992px: form grids collapse  */
 @media (max-width: 992px) {
   .exam-inputs {
     grid-template-columns: 1fr;
@@ -2605,12 +2660,12 @@ a:hover {
   }
 }
 
-/* ── 768px: tablet / large mobile ── */
+/*  768px: tablet / large mobile  */
 @media (max-width: 768px) {
 
-  /* Navbar — hide name/email text, keep avatar + icons tight */
+  /* Navbar  hide name/email text, keep avatar + icons tight */
   .app-navbar .navbar-brand {
-    font-size: 17px;
+    font-size: var(--fs-lg);
     gap: 7px;
   }
 
@@ -2626,7 +2681,7 @@ a:hover {
   .user-avatar {
     width: 34px;
     height: 34px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 
   .theme-toggle-btn {
@@ -2639,7 +2694,7 @@ a:hover {
     height: 16px;
   }
 
-  /* Logout — icon only on mobile */
+  /* Logout  icon only on mobile */
   .app-navbar .btn span.d-none {
     display: none !important;
   }
@@ -2656,84 +2711,53 @@ a:hover {
 
   /* Search heading */
   .text-center h2 {
-    font-size: 20px !important;
+    font-size: var(--fs-lg) !important;
     margin-bottom: 16px !important;
   }
 
   /* Search box */
   .search-wrapper .form-control {
-    font-size: 14px;
+    font-size: var(--fs-sm);
     padding-top: 12px !important;
     padding-bottom: 12px !important;
   }
 
-  /* Table → card list on mobile */
-  .patients-table thead {
-    display: none;
-  }
-
-  .patients-table tbody td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 16px;
-    font-size: 13px;
-    border-bottom: none;
-  }
-
-  .patients-table tbody td::before {
-    content: attr(data-label);
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--clr-text-muted);
-    min-width: 100px;
-    flex-shrink: 0;
-  }
-
+  /* Table -> card list on mobile */
+  .table-responsive { overflow: visible !important; }
+  .patients-table { display: block; width: 100%; }
+  .patients-table thead { display: none; }
+  .patients-table tbody { display: block; width: 100%; }
   .patients-table tbody tr {
-    display: block;
-    border: 1px solid var(--clr-border);
-    border-radius: 14px;
-    margin-bottom: 12px;
-    padding: 8px 0;
-    background: var(--clr-surface);
+    display: block; border: 1px solid var(--clr-border);
+    border-radius: 14px; margin-bottom: 12px; padding: 6px 0;
+    background: var(--clr-surface); width: 100%; box-sizing: border-box; overflow: hidden;
   }
-
-  .patients-table tbody tr:hover {
-    background: var(--clr-surface);
+  .patients-table tbody tr:hover { background: var(--clr-surface); }
+  .patients-table tbody tr:last-child { border-bottom: 1px solid var(--clr-border); }
+  .patients-table tbody td {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 14px; font-size: var(--fs-sm); border-bottom: none;
+    width: 100%; box-sizing: border-box;
   }
-
-  .patients-table tbody tr:last-child {
-    border-bottom: 1px solid var(--clr-border);
+  .patients-table tbody td::before {
+    content: attr(data-label); font-size: var(--fs-xs); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--clr-text-muted); min-width: 90px; flex-shrink: 0;
   }
-
-  /* Actions cell — full width, buttons centered */
+  .patients-table tbody td:first-child {
+    justify-content: flex-start; padding-top: 12px; padding-bottom: 8px;
+    font-weight: 600; border-bottom: 1px solid var(--clr-border-light);
+  }
+  .patients-table tbody td:first-child::before { display: none; }
   .patients-table tbody td:last-child {
-    justify-content: center;
-    padding-top: 12px;
-    padding-bottom: 12px;
-    border-top: 1px solid var(--clr-border-light);
-    margin: 0 8px;
-    gap: 10px;
+    justify-content: center; padding: 10px 14px;
+    border-top: 1px solid var(--clr-border-light); gap: 10px;
   }
+  .patients-table tbody td:last-child::before { display: none; }
+  .patients-table tbody td:last-child .d-flex { width: 100%; justify-content: center; }
+  .patients-table tbody td:last-child .btn { flex: 1; justify-content: center; }
 
-  .patients-table tbody td:last-child::before {
-    display: none;
-  }
-
-  .patients-table tbody td:last-child .d-flex {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .patients-table tbody td:last-child .btn {
-    flex: 1;
-    justify-content: center;
-  }
-
-  /* Modal — sheet from bottom */
+  /* Modal  sheet from bottom */
   .modal-content {
     max-height: 95vh;
     border-radius: 20px 20px 0 0;
@@ -2761,7 +2785,7 @@ a:hover {
   /* Tabs */
   .detail-tab {
     padding: 12px 14px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
 
   /* Visit cards */
@@ -2778,7 +2802,7 @@ a:hover {
 
   /* Details header */
   .details-header .h5 {
-    font-size: 16px !important;
+    font-size: var(--fs-base) !important;
   }
 
   /* FAB */
@@ -2797,7 +2821,7 @@ a:hover {
     height: 44px;
   }
 
-  /* Stat cards — force 2 columns, compact layout */
+  /* Stat cards  force 2 columns, compact layout */
   .stats-column .row {
     --bs-gutter-x: 0.75rem;
   }
@@ -2826,20 +2850,20 @@ a:hover {
   }
 
   .stat-value {
-    font-size: 22px !important;
+    font-size: var(--fs-lg) !important;
     margin-bottom: 1px;
   }
 
   .stat-label {
-    font-size: 10px !important;
+    font-size: var(--fs-xs) !important;
     letter-spacing: 0.3px;
   }
 }
 
-/* ── 576px: small mobile ── */
+/*  576px: small mobile  */
 @media (max-width: 576px) {
 
-  /* Navbar brand — just logo + name, no extra gap */
+  /* Navbar brand  just logo + name, no extra gap */
   .app-navbar .px-4 {
     padding-left: 14px !important;
     padding-right: 14px !important;
@@ -2858,7 +2882,7 @@ a:hover {
   }
 
   .patient-name-heading {
-    font-size: 18px;
+    font-size: var(--fs-lg);
   }
 
   .patient-meta {
@@ -2904,22 +2928,22 @@ a:hover {
     padding: 16px 18px;
   }
 
-  /* Info card grid — single column */
+  /* Info card grid  single column */
   .info-card .row.row-cols-md-2 {
     --bs-gutter-x: 0.75rem;
   }
 
   /* Search results badge */
   .badge {
-    font-size: 11px !important;
+    font-size: var(--fs-xs) !important;
   }
 
   /* Section titles smaller */
   .section-title {
-    font-size: 14px;
+    font-size: var(--fs-sm);
   }
 
-  /* Stat cards — slightly smaller */
+  /* Stat cards  slightly smaller */
   .stat-card {
     padding: 14px 12px !important;
   }
@@ -2929,7 +2953,7 @@ a:hover {
   }
 }
 
-/* ── Print ───────────────────────────────────────────────── */
+/*  Print  */
 @media print {
 
   html,
@@ -2941,7 +2965,7 @@ a:hover {
   }
 }
 
-/* ── Delete Visit Button ─────────────────────────────────── */
+/*  Delete Visit Button  */
 .delete-visit-btn {
   display: inline-flex;
   align-items: center;
@@ -2971,7 +2995,7 @@ a:hover {
   border-color: rgba(239, 68, 68, 0.4);
 }
 
-/* ── Delete Patient Button (in header) ───────────────────── */
+/*  Delete Patient Button (in header)  */
 .delete-patient-btn {
   background: rgba(255, 255, 255, 0.15) !important;
   border-color: rgba(255, 255, 255, 0.2) !important;
@@ -2982,7 +3006,7 @@ a:hover {
   border-color: rgba(239, 68, 68, 0.9) !important;
 }
 
-/* ── Confirmation Modal ──────────────────────────────────── */
+/*  Confirmation Modal  */
 .confirm-overlay {
   position: fixed;
   inset: 0;
@@ -3038,17 +3062,17 @@ a:hover {
 }
 
 .confirm-title {
-  font-size: 1.2rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   color: var(--clr-text);
   margin-bottom: 10px;
 }
 
 .confirm-message {
-  font-size: 0.9rem;
+  font-size: var(--fs-base);
   color: var(--clr-text-muted, #64748b);
   margin-bottom: 28px;
-  line-height: 1.6;
+  line-height: var(--lh-normal);
 }
 
 .confirm-actions {
@@ -3077,11 +3101,11 @@ a:hover {
   animation: spin 0.7s linear infinite;
   display: inline-block;
 }
-/* ══════════════════════════════════════════════════════════════
-   CHIP INPUT COMPONENTS  —  Add Patient & Add Visit forms
-   ══════════════════════════════════════════════════════════════ */
+/* 
+   CHIP INPUT COMPONENTS    Add Patient & Add Visit forms
+    */
 
-/* ── Chip input box (inline chips + text input together) ── */
+/*  Chip input box (inline chips + text input together)  */
 .chip-input-box {
     border: 1px solid #e2e8f0;
     border-radius: 8px;
@@ -3109,7 +3133,7 @@ a:hover {
     align-items: center;
 }
 
-/* ── Chip badge ── */
+/*  Chip badge  */
 .allergy-chip {
     display: inline-flex;
     align-items: center;
@@ -3118,7 +3142,7 @@ a:hover {
     border: 1px solid #e2e8f0;
     border-radius: 20px;
     padding: 2px 8px 2px 10px;
-    font-size: 12px;
+    font-size: var(--fs-xs);
     font-weight: 500;
     color: #334155;
     white-space: nowrap;
@@ -3129,7 +3153,7 @@ a:hover {
     border: none;
     cursor: pointer;
     color: #94a3b8;
-    font-size: 15px;
+    font-size: var(--fs-base);
     line-height: 1;
     padding: 0;
     display: flex;
@@ -3141,12 +3165,12 @@ a:hover {
     color: #ef4444;
 }
 
-/* ── Inline text input inside chip box ── */
+/*  Inline text input inside chip box  */
 .chip-inline-input {
     border: none;
     outline: none;
     background: transparent;
-    font-size: 13px;
+    font-size: var(--fs-sm);
     color: #334155;
     flex: 1;
     min-width: 140px;
@@ -3157,11 +3181,11 @@ a:hover {
     color: #94a3b8;
 }
 
-/* ── Medicine / Examination chip variant ── */
+/*  Medicine / Examination chip variant  */
 .medicine-chip {
     border-radius: 6px;
     padding: 3px 8px 3px 10px;
-    font-size: 12px;
+    font-size: var(--fs-xs);
 }
 
 .medicine-chip-text {
@@ -3170,14 +3194,14 @@ a:hover {
     align-items: center;
 }
 
-/* ── Medicine/Exam chip box (column layout) ── */
+/*  Medicine/Exam chip box (column layout)  */
 .medicines-chip-box {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-/* ── Inline inputs row (medicine name / dosage / frequency) ── */
+/*  Inline inputs row (medicine name / dosage / frequency)  */
 .medicine-inline-inputs {
     display: flex;
     gap: 8px;
@@ -3190,13 +3214,13 @@ a:hover {
     min-width: 80px;
 }
 
-/* ── + Add button inside chip box ── */
+/*  + Add button inside chip box  */
 .add-medicine-btn {
     background-color: #f1f5f9;
     border: 1px solid #e2e8f0;
     border-radius: 6px;
     padding: 4px 14px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
     font-weight: 600;
     color: #6366f1;
     cursor: pointer;
@@ -3209,21 +3233,21 @@ a:hover {
     border-color: #6366f1;
 }
 
-/* ── Dark theme — chip components ── */
+/*  Dark theme  chip components  */
 [data-theme="dark"] .chip-input-box {
-    background: #1e293b;
-    border-color: #334155;
+    background: var(--dk-bg2);
+    border-color: var(--dk-border);
 }
 
 [data-theme="dark"] .chip-input-box:focus-within {
-    border-color: #818cf8;
-    box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
+    border-color: #4b5563;
+    box-shadow: none;
 }
 
 [data-theme="dark"] .allergy-chip {
-    background-color: #1e293b;
-    border-color: #334155;
-    color: #cbd5e1;
+    background-color: var(--dk-bg3);
+    border-color: var(--dk-border);
+    color: var(--dk-text1);
 }
 
 [data-theme="dark"] .chip-remove-btn {
@@ -3253,19 +3277,19 @@ a:hover {
     border-color: #818cf8;
 }
 
-/* ── FAB backdrop (closes FAB on outside click) ── */
+/*  FAB backdrop (closes FAB on outside click)  */
 .fab-backdrop {
   position: fixed;
   inset: 0;
   z-index: 998;
   background: transparent;
 }
-/* ══════════════════════════════════════════════════════════════
-   ADD VISIT PAGE  —  /patient/:id/add-visit
+/* 
+   ADD VISIT PAGE    /patient/:id/add-visit
    Full-page layout: form (left) + visit history (right)
-   ══════════════════════════════════════════════════════════════ */
+    */
 
-/* ── Page wrapper ── */
+/*  Page wrapper  */
 .avp-page {
   min-height: 100vh;
   background: var(--clr-bg);
@@ -3278,7 +3302,7 @@ a:hover {
   padding: 100px 20px;
 }
 
-/* ── Main two-column layout ── */
+/*  Main two-column layout  */
 .avp-layout {
   display: grid;
   grid-template-columns: 1fr 380px;
@@ -3292,7 +3316,7 @@ a:hover {
   gap: 20px;
 }
 
-/* ════ LEFT PANEL — Form ════ */
+/*  LEFT PANEL  Form  */
 .avp-form-panel {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
@@ -3301,7 +3325,7 @@ a:hover {
   box-shadow: var(--shadow-md);
 }
 
-/* ── Patient mini-header ── */
+/*  Patient mini-header  */
 .avp-patient-header {
   display: flex;
   align-items: center;
@@ -3320,7 +3344,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
   flex-shrink: 0;
   letter-spacing: 0.5px;
@@ -3331,9 +3355,9 @@ a:hover {
 }
 
 .avp-patient-name {
-  font-size: 1.15rem;
+  font-size: var(--fs-lg);
   font-weight: 700;
-  color: var(--clr-text);
+  color: var(--clr-primary);
   margin: 0 0 4px;
   display: flex;
   align-items: center;
@@ -3346,7 +3370,7 @@ a:hover {
 }
 
 .avp-age-badge {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   background: var(--clr-primary-light);
   color: var(--clr-primary);
@@ -3355,12 +3379,12 @@ a:hover {
 }
 
 .avp-patient-sub {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--clr-text-muted);
   margin: 0;
 }
 
-/* ── Form layout ── */
+/*  Form layout  */
 .avp-form {
   display: flex;
   flex-direction: column;
@@ -3385,7 +3409,7 @@ a:hover {
 }
 
 .avp-section-label {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--clr-text-muted);
   text-transform: uppercase;
@@ -3404,12 +3428,12 @@ a:hover {
 }
 
 .avp-field-error {
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   color: var(--clr-error);
   margin-top: 2px;
 }
 
-/* ── Form actions ── */
+/*  Form actions  */
 .avp-form-actions {
   display: flex;
   align-items: center;
@@ -3428,12 +3452,12 @@ a:hover {
 }
 
 .avp-error-msg {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--clr-error);
   flex: 1;
 }
 
-/* ════ RIGHT PANEL — Visit History ════ */
+/*  RIGHT PANEL  Visit History  */
 .avp-history-panel {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
@@ -3458,7 +3482,7 @@ a:hover {
 }
 
 .avp-history-title {
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--clr-text);
   margin: 0;
@@ -3474,7 +3498,7 @@ a:hover {
   background: var(--clr-primary-light);
   color: var(--clr-primary);
   border-radius: 12px;
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   padding: 0 8px;
 }
@@ -3498,17 +3522,17 @@ a:hover {
 
 .avp-history-empty p {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   margin: 0;
   color: var(--clr-text-muted);
 }
 
 .avp-history-empty span {
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   color: var(--clr-text-light);
 }
 
-/* ── Scrollable visit list ── */
+/*  Scrollable visit list  */
 .avp-history-list {
   overflow-y: auto;
   flex: 1;
@@ -3531,7 +3555,7 @@ a:hover {
   border-radius: 4px;
 }
 
-/* ── Individual visit card ── */
+/*  Individual visit card  */
 .avp-visit-card {
   border: 1px solid var(--clr-border);
   border-radius: 12px;
@@ -3568,7 +3592,7 @@ a:hover {
 }
 
 .avp-visit-num {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--clr-primary);
   text-transform: uppercase;
@@ -3576,12 +3600,12 @@ a:hover {
 }
 
 .avp-visit-date {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--clr-text-muted);
 }
 
 .avp-visit-preview {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   color: var(--clr-text-muted);
   max-width: 160px;
   overflow: hidden;
@@ -3614,7 +3638,7 @@ a:hover {
   transform: rotate(180deg);
 }
 
-/* ── Expanded detail rows ── */
+/*  Expanded detail rows  */
 .avp-visit-details {
   padding: 10px 14px 14px;
   display: flex;
@@ -3634,22 +3658,22 @@ a:hover {
   display: grid;
   grid-template-columns: 110px 1fr;
   gap: 8px;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   align-items: baseline;
 }
 
 .avp-detail-label {
   font-weight: 600;
   color: var(--clr-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
 }
 
 .avp-detail-value {
   color: var(--clr-text);
-  line-height: 1.5;
+  line-height: var(--lh-normal);
 }
 
-/* ── Dark theme ── */
+/*  Dark theme  */
 [data-theme="dark"] .avp-form-panel,
 [data-theme="dark"] .avp-history-panel {
   background: var(--dk-bg2);
@@ -3723,7 +3747,7 @@ a:hover {
   background: var(--dk-border);
 }
 
-/* ── Responsive ── */
+/*  Responsive  */
 @media (max-width: 1024px) {
   .avp-layout {
     grid-template-columns: 1fr;
@@ -3736,20 +3760,24 @@ a:hover {
 }
 
 @media (max-width: 640px) {
-  .avp-form-panel {
-    padding: 20px 16px;
-  }
-
-  .avp-form-row {
-    grid-template-columns: 1fr;
-  }
+  .avp-layout { padding: 10px 12px; gap: 12px; }
+  .avp-form-panel { padding: 16px 14px; border-radius: 12px; }
+  .avp-form-row, .avp-form-row.avp-three-col { grid-template-columns: 1fr; gap: 10px; }
+  .medicine-inline-inputs { flex-direction: column; align-items: stretch; }
+  .medicine-part-input { width: 100%; min-width: unset; }
+  .add-medicine-btn { width: 100%; }
+  .avp-patient-avatar { width: 40px; height: 40px; font-size: var(--fs-sm); }
+  .avp-patient-name { font-size: var(--fs-sm); gap: 6px; }
+  .avp-history-panel { max-height: 300px; border-radius: 12px; }
+  .avp-form-actions { gap: 8px; }
+  .avp-form-actions .btn { flex: 1; }
 }
-/* ══════════════════════════════════════════════════════════════
-   ADD VISIT PAGE  —  /patient/:id/add-visit
+/* 
+   ADD VISIT PAGE    /patient/:id/add-visit
    Full-page layout: form (left) + visit history (right)
-   ══════════════════════════════════════════════════════════════ */
+    */
 
-/* ── Page wrapper ── */
+/*  Page wrapper  */
 .avp-page {
   min-height: 100vh;
   background: var(--clr-bg);
@@ -3762,7 +3790,7 @@ a:hover {
   padding: 100px 20px;
 }
 
-/* ── Main two-column layout ── */
+/*  Main two-column layout  */
 .avp-layout {
   display: grid;
   grid-template-columns: 1fr 360px;
@@ -3775,7 +3803,7 @@ a:hover {
   gap: 16px;
 }
 
-/* ════ LEFT PANEL — Form ════ */
+/*  LEFT PANEL  Form  */
 .avp-form-panel {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
@@ -3784,7 +3812,7 @@ a:hover {
   box-shadow: var(--shadow-md);
 }
 
-/* ── Patient mini-header ── */
+/*  Patient mini-header  */
 .avp-patient-header {
   display: flex;
   align-items: center;
@@ -3803,7 +3831,7 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   flex-shrink: 0;
   letter-spacing: 0.5px;
@@ -3814,7 +3842,7 @@ a:hover {
 }
 
 .avp-patient-name {
-  font-size: 1.05rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--clr-text);
   margin: 0 0 3px;
@@ -3829,7 +3857,7 @@ a:hover {
 }
 
 .avp-age-badge {
-  font-size: 0.73rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   background: var(--clr-primary-light);
   color: var(--clr-primary);
@@ -3838,12 +3866,12 @@ a:hover {
 }
 
 .avp-patient-sub {
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   color: var(--clr-text-muted);
   margin: 0;
 }
 
-/* ── Form layout ── */
+/*  Form layout  */
 .avp-form {
   display: flex;
   flex-direction: column;
@@ -3872,7 +3900,7 @@ a:hover {
 }
 
 .avp-section-label {
-  font-size: 0.74rem;
+  font-size: var(--fs-xs);
   font-weight: 600;
   color: var(--clr-text-muted);
   text-transform: uppercase;
@@ -3898,7 +3926,7 @@ a:hover {
 }
 
 .avp-char-count {
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
   margin-left: auto;
 }
 
@@ -3912,12 +3940,12 @@ a:hover {
 }
 
 .avp-field-error {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   color: var(--clr-error);
   margin-top: 1px;
 }
 
-/* ── Form actions ── */
+/*  Form actions  */
 .avp-form-actions {
   display: flex;
   align-items: center;
@@ -3936,12 +3964,12 @@ a:hover {
 }
 
 .avp-error-msg {
-  font-size: 0.85rem;
+  font-size: var(--fs-sm);
   color: var(--clr-error);
   flex: 1;
 }
 
-/* ════ RIGHT PANEL — Visit History ════ */
+/*  RIGHT PANEL  Visit History  */
 .avp-history-panel {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
@@ -3966,7 +3994,7 @@ a:hover {
 }
 
 .avp-history-title {
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   font-weight: 700;
   color: var(--clr-text);
   margin: 0;
@@ -3982,7 +4010,7 @@ a:hover {
   background: var(--clr-primary-light);
   color: var(--clr-primary);
   border-radius: 12px;
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   padding: 0 8px;
 }
@@ -4006,17 +4034,17 @@ a:hover {
 
 .avp-history-empty p {
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: var(--fs-base);
   margin: 0;
   color: var(--clr-text-muted);
 }
 
 .avp-history-empty span {
-  font-size: 0.82rem;
+  font-size: var(--fs-sm);
   color: var(--clr-text-light);
 }
 
-/* ── Scrollable visit list ── */
+/*  Scrollable visit list  */
 .avp-history-list {
   overflow-y: auto;
   flex: 1;
@@ -4039,7 +4067,7 @@ a:hover {
   border-radius: 4px;
 }
 
-/* ── Individual visit card ── */
+/*  Individual visit card  */
 .avp-visit-card {
   border: 1px solid var(--clr-border);
   border-radius: 12px;
@@ -4076,7 +4104,7 @@ a:hover {
 }
 
 .avp-visit-num {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   font-weight: 700;
   color: var(--clr-primary);
   text-transform: uppercase;
@@ -4084,12 +4112,12 @@ a:hover {
 }
 
 .avp-visit-date {
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
   color: var(--clr-text-muted);
 }
 
 .avp-visit-preview {
-  font-size: 0.78rem;
+  font-size: var(--fs-xs);
   color: var(--clr-text-muted);
   max-width: 160px;
   overflow: hidden;
@@ -4122,7 +4150,7 @@ a:hover {
   transform: rotate(180deg);
 }
 
-/* ── Expanded detail rows ── */
+/*  Expanded detail rows  */
 .avp-visit-details {
   padding: 10px 14px 14px;
   display: flex;
@@ -4142,22 +4170,22 @@ a:hover {
   display: grid;
   grid-template-columns: 110px 1fr;
   gap: 8px;
-  font-size: 0.8rem;
+  font-size: var(--fs-sm);
   align-items: baseline;
 }
 
 .avp-detail-label {
   font-weight: 600;
   color: var(--clr-text-muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-xs);
 }
 
 .avp-detail-value {
   color: var(--clr-text);
-  line-height: 1.5;
+  line-height: var(--lh-normal);
 }
 
-/* ── Dark theme ── */
+/*  Dark theme  */
 [data-theme="dark"] .avp-form-panel,
 [data-theme="dark"] .avp-history-panel {
   background: var(--dk-bg2);
@@ -4231,7 +4259,7 @@ a:hover {
   background: var(--dk-border);
 }
 
-/* ── Responsive ── */
+/*  Responsive  */
 @media (max-width: 1024px) {
   .avp-layout {
     grid-template-columns: 1fr;
@@ -4244,11 +4272,15 @@ a:hover {
 }
 
 @media (max-width: 640px) {
-  .avp-form-panel {
-    padding: 20px 16px;
-  }
-
-  .avp-form-row {
-    grid-template-columns: 1fr;
-  }
+  .avp-layout { padding: 10px 12px; gap: 12px; }
+  .avp-form-panel { padding: 16px 14px; border-radius: 12px; }
+  .avp-form-row, .avp-form-row.avp-three-col { grid-template-columns: 1fr; gap: 10px; }
+  .medicine-inline-inputs { flex-direction: column; align-items: stretch; }
+  .medicine-part-input { width: 100%; min-width: unset; }
+  .add-medicine-btn { width: 100%; }
+  .avp-patient-avatar { width: 40px; height: 40px; font-size: var(--fs-sm); }
+  .avp-patient-name { font-size: var(--fs-sm); gap: 6px; }
+  .avp-history-panel { max-height: 300px; border-radius: 12px; }
+  .avp-form-actions { gap: 8px; }
+  .avp-form-actions .btn { flex: 1; }
 }

@@ -8,11 +8,12 @@ import { UIStateService } from '../../services/uiStateService';
 import { Patient } from '../../models/patient.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
 import { NavbarComponent } from '../navbar/navbar';
+import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddPatientComponent, NavbarComponent],
+  imports: [CommonModule, FormsModule, AddPatientComponent, NavbarComponent, MomentDatePipe],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
@@ -171,7 +172,7 @@ export class HomeComponent implements OnInit {
    * Navigate to add visit page for patient
    */
   openAddVisitForm(patient: Patient): void {
-    this.router.navigate(['/patient', patient.uniqueId, 'add-visit']);
+    this.router.navigate(['/patient', patient.uniqueId, 'add-visit'], { state: { origin: 'home' } });
   }
 
   /**
@@ -225,20 +226,4 @@ export class HomeComponent implements OnInit {
   }
 
 
-  /**
-   * Format date for display
-   */
-  formatDate(date: Date | undefined | any): string {
-    if (!date) return 'N/A';
-
-    if (date && typeof date.toDate === 'function') {
-      date = date.toDate();
-    }
-
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
 }

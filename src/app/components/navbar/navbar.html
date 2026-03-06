@@ -1,19 +1,19 @@
-<nav class="navbar app-navbar px-4 py-3">
+<nav class="navbar app-navbar px-4 py-2" role="navigation" aria-label="Main navigation">
   <div class="container-fluid px-0 d-flex justify-content-between align-items-center">
 
     <!-- Left side: back button (if showBack) + brand -->
     <div class="d-flex align-items-center gap-3">
-      <button *ngIf="showBack" class="navbar-back-btn" (click)="goBack()" title="Back">
+      <button *ngIf="showBack" class="navbar-back-btn" (click)="goBack()" aria-label="Go back">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-          stroke-linecap="round" stroke-linejoin="round">
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
       </button>
 
-      <!-- Brand: logo only, name appears on hover -->
-      <span class="navbar-brand p-0 brand-hover-wrap" style="cursor:default">
-        <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Brand -->
+      <span class="navbar-brand p-0 brand-hover-wrap" style="cursor:default" role="img" aria-label="IntelliRx logo">
+        <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
           <circle cx="25" cy="25" r="23" stroke="#6366f1" stroke-width="3" />
           <path d="M18 25 L23 30 L33 20" stroke="#6366f1" stroke-width="3" stroke-linecap="round"
             stroke-linejoin="round" />
@@ -22,21 +22,25 @@
       </span>
     </div>
 
-    <!-- User section: single avatar button with dropdown -->
-    <div class="nav-avatar-wrap" (click)="toggleUserMenu()">
-      <div class="user-avatar nav-avatar-btn">
+    <!-- User section -->
+    <div class="nav-avatar-wrap" (click)="toggleUserMenu()" role="button" tabindex="0"
+      [attr.aria-expanded]="(uiState$ | async)?.isUserMenuOpen"
+      aria-label="User menu" aria-haspopup="true"
+      (keydown.enter)="toggleUserMenu()" (keydown.space)="toggleUserMenu()">
+      <div class="user-avatar nav-avatar-btn" aria-hidden="true">
         {{ (currentUser$ | async)?.name?.charAt(0)?.toUpperCase() }}
       </div>
-      <!-- Hover tooltip: name + email -->
-      <div class="nav-avatar-tooltip">
+      <!-- Hover tooltip -->
+      <div class="nav-avatar-tooltip" aria-hidden="true">
         <span class="nav-avatar-tooltip__name">{{ (currentUser$ | async)?.name }}</span>
         <span class="nav-avatar-tooltip__email">{{ (currentUser$ | async)?.email }}</span>
       </div>
 
       <!-- Dropdown panel -->
-      <div class="user-dropdown" [class.user-dropdown--open]="(uiState$ | async)?.isUserMenuOpen">
-        <!-- User info header -->
-        <div class="user-dropdown__header">
+      <div class="user-dropdown" role="menu"
+        [class.user-dropdown--open]="(uiState$ | async)?.isUserMenuOpen"
+        [attr.aria-hidden]="!(uiState$ | async)?.isUserMenuOpen">
+        <div class="user-dropdown__header" aria-hidden="true">
           <div class="user-dropdown__avatar">{{ (currentUser$ | async)?.name?.charAt(0)?.toUpperCase() }}</div>
           <div class="user-dropdown__info">
             <span class="user-dropdown__name">{{ (currentUser$ | async)?.name }}</span>
@@ -44,13 +48,15 @@
           </div>
         </div>
 
-        <div class="user-dropdown__divider"></div>
+        <div class="user-dropdown__divider" role="separator"></div>
 
         <!-- Theme Toggle -->
-        <button class="user-dropdown__item" (click)="toggleTheme(); $event.stopPropagation()">
-          <span class="user-dropdown__item-icon">
+        <button class="user-dropdown__item" role="menuitem"
+          [attr.aria-label]="(isDarkTheme$ | async) ? 'Switch to Light Mode' : 'Switch to Dark Mode'"
+          (click)="toggleTheme(); $event.stopPropagation()">
+          <span class="user-dropdown__item-icon" aria-hidden="true">
             <svg *ngIf="isDarkTheme$ | async" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
               <circle cx="12" cy="12" r="5"></circle>
               <line x1="12" y1="1" x2="12" y2="3"></line>
               <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -62,7 +68,7 @@
               <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
             </svg>
             <svg *ngIf="!(isDarkTheme$ | async)" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
             </svg>
           </span>
@@ -70,10 +76,11 @@
         </button>
 
         <!-- Logout -->
-        <button class="user-dropdown__item user-dropdown__item--danger" (click)="logout(); $event.stopPropagation()">
-          <span class="user-dropdown__item-icon">
+        <button class="user-dropdown__item user-dropdown__item--danger" role="menuitem" aria-label="Logout"
+          (click)="logout(); $event.stopPropagation()">
+          <span class="user-dropdown__item-icon" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
               <polyline points="16 17 21 12 16 7"></polyline>
               <line x1="21" y1="12" x2="9" y2="12"></line>

@@ -1,12 +1,12 @@
-<div class="modal-overlay">
+<div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="new-patient-title">
   <div class="modal-content" (click)="$event.stopPropagation()">
 
     <div class="modal-header">
-      <h2>New Patient</h2>
+      <h2 id="new-patient-title">New Patient</h2>
       <div class="d-flex align-items-center gap-2">
-        <button class="close-button" (click)="onClose()">
+        <button class="close-button" (click)="onClose()" aria-label="Close new patient form">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
@@ -89,40 +89,46 @@
 
           <div class="row g-3 mb-0">
             <div class="col-md-6">
-              <label class="form-label fw-semibold" style="font-size:12px">Allergies</label>
-              <div class="chip-input-box">
+              <label for="allergyInput" class="form-label fw-semibold" style="font-size:12px">Allergies</label>
+              <div class="chip-input-box" role="group" aria-label="Allergies">
                 <div class="chips-wrap">
                   <span *ngFor="let allergy of allergyChips; let i = index" class="allergy-chip">
                     {{ allergy }}
-                    <button type="button" class="chip-remove-btn" (click)="removeAllergy(i)" title="Remove">&times;</button>
+                    <button type="button" class="chip-remove-btn" (click)="removeAllergy(i)" [attr.aria-label]="'Remove allergy ' + allergy">&times;</button>
                   </span>
                   <input
+                    id="allergyInput"
                     type="text"
                     class="chip-inline-input"
                     [(ngModel)]="newAllergyInput"
                     name="newAllergyInput"
                     placeholder="Type and press Enter..."
+                    aria-label="Add allergy"
                     (keydown)="onAllergyKeydown($event)"
+                    (blur)="onAllergyBlur()"
                   />
                 </div>
               </div>
             </div>
 
             <div class="col-md-6">
-              <label class="form-label fw-semibold" style="font-size:12px">Ailments</label>
-              <div class="chip-input-box">
+              <label for="ailmentInput" class="form-label fw-semibold" style="font-size:12px">Ailments</label>
+              <div class="chip-input-box" role="group" aria-label="Ailments">
                 <div class="chips-wrap">
                   <span *ngFor="let ailment of ailmentChips; let i = index" class="allergy-chip">
                     {{ ailment }}
-                    <button type="button" class="chip-remove-btn" (click)="removeAilment(i)" title="Remove">&times;</button>
+                    <button type="button" class="chip-remove-btn" (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ailment">&times;</button>
                   </span>
                   <input
+                    id="ailmentInput"
                     type="text"
                     class="chip-inline-input"
                     [(ngModel)]="newAilmentInput"
                     name="newAilmentInput"
                     placeholder="Type and press Enter..."
+                    aria-label="Add ailment"
                     (keydown)="onAilmentKeydown($event)"
+                    (blur)="onAilmentBlur()"
                   />
                 </div>
               </div>
@@ -132,17 +138,18 @@
 
         <!-- ── Form Actions ── -->
         <div class="form-actions">
-          <span *ngIf="successMessage" class="success-msg">✓ {{ successMessage }}</span>
-          <span *ngIf="warningMessage" class="warning-msg">{{ warningMessage }}</span>
-          <span *ngIf="errorMessage" class="error-msg">⚠ {{ errorMessage }}</span>
+          <span *ngIf="successMessage" class="success-msg" role="status" aria-live="polite">✓ {{ successMessage }}</span>
+          <span *ngIf="warningMessage" class="warning-msg" role="alert" aria-live="assertive">{{ warningMessage }}</span>
+          <span *ngIf="errorMessage" class="error-msg" role="alert" aria-live="assertive">⚠ {{ errorMessage }}</span>
           <button type="button" class="btn btn-outline-secondary fw-semibold px-4" (click)="onClose()"
-            [disabled]="isSubmitting">
+            [disabled]="isSubmitting" aria-label="Cancel and close form">
             Cancel
           </button>
-          <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting || warningMessage">
-            <span *ngIf="!isSubmitting">Save Patient</span>
-            <span *ngIf="isSubmitting" class="loading-content">
-              <span class="loading-spinner"></span>
+          <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting || warningMessage"
+            aria-label="Save new patient">
+            <span *ngIf="!isSubmitting">Save</span>
+            <span *ngIf="isSubmitting" class="loading-content" aria-live="polite">
+              <span class="loading-spinner" aria-hidden="true"></span>
               Saving...
             </span>
           </button>

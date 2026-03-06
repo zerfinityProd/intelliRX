@@ -39,9 +39,19 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  ngOnInit(): void {
-    // Theme is initialized globally in AppComponent
-    // No need for duplicate localStorage access
+  async ngOnInit(): Promise<void> {
+    // Handle Google redirect result on page load
+    try {
+      const user = await this.authService.handleGoogleRedirectResult();
+      if (user) {
+        this.router.navigate(['/home']);
+      }
+    } catch (error: any) {
+      if (error.message && !error.message.includes('popup was closed')) {
+        this.errorMessage = error.message;
+        this.cdr.detectChanges();
+      }
+    }
   }
 
   /**
@@ -150,22 +160,14 @@ export class LoginComponent implements OnInit {
   }
 
   /**
-   * Handle Google login
+   * Handle Google login — triggers redirect, result handled in ngOnInit
    */
   async onGoogleLogin(): Promise<void> {
     this.errorMessage = '';
     this.isLoading = true;
-
-    try {
-      await this.authService.loginWithGoogle();
-      this.router.navigate(['/home']);
-    } catch (error: any) {
-      this.errorMessage = error.message || 'Google sign-in failed. Please try again.';
-      this.cdr.detectChanges();
-    } finally {
-      this.isLoading = false;
-      this.cdr.detectChanges();
-    }
+    this.cdr.detectChanges();
+    await this.authService.loginWithGoogle();
+    // Page will redirect to Google — no further code runs here
   }
 
   /**

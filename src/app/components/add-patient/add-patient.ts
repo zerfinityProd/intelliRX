@@ -1,14 +1,13 @@
-import { Component, OnInit, OnDestroy, Output, EventEmitter, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, Output, EventEmitter, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { PatientService } from '../../services/patient';
-import Swal from 'sweetalert2';
 
-/**
- * AddPatientComponent: Handles ONLY new patient creation
- * Responsible for: Basic patient information (name, contact, DOB, gender, etc.)
- * Does NOT handle visits - use AddVisitComponent for that
- */
+// SweetAlert2 is NOT imported at the top level.
+// It is dynamically imported only when a dialog is actually needed,
+// keeping it out of the initial JS bundle (~934ms CPU saving).
+
 @Component({
   selector: 'app-add-patient',
   standalone: true,
@@ -45,13 +44,14 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
   private checkDebounceTimer: any = null;
   private readonly patientService = inject(PatientService);
+  private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
     this.resetForm();
   }
 
   ngOnDestroy(): void {
-    // Clean up the debounce timer
     if (this.checkDebounceTimer) {
       clearTimeout(this.checkDebounceTimer);
     }
@@ -87,58 +87,43 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     const fullName = `${this.firstName.trim()} ${this.lastName.trim()}`.trim();
     const phoneNumber = this.phone.trim();
 
-    // Always generate family ID, even if partial
     this.familyId = this.generateFamilyIdPreview(fullName, phoneNumber);
 
-    // Clear any pending check
     if (this.checkDebounceTimer) {
       clearTimeout(this.checkDebounceTimer);
     }
 
-    // Check if patient already exists
     if (fullName && phoneNumber && phoneNumber.length === 10) {
-      // Debounce the check by 300ms to avoid excessive API calls
       this.checkDebounceTimer = setTimeout(async () => {
         try {
           const exists = await this.patientService.checkUniqueIdExists(fullName, phoneNumber);
-
           if (exists) {
             this.warningMessage = '⚠️ This patient already exists in the system';
           } else {
             this.warningMessage = '';
           }
+          this.cdr.detectChanges();
         } catch (error) {
           console.error('Error checking unique ID:', error);
           this.warningMessage = '';
         }
-      }, 300);
+      }, 0);
     } else {
-      // Clear warning if conditions not met
       this.warningMessage = '';
     }
   }
 
   clearSuccessMessage(): void {
-    if (this.successMessage) {
-      this.successMessage = '';
-    }
-    if (this.errorMessage) {
-      this.errorMessage = '';
-    }
-    if (this.warningMessage) {
-      this.warningMessage = '';
-    }
+    if (this.successMessage) this.successMessage = '';
+    if (this.errorMessage) this.errorMessage = '';
+    if (this.warningMessage) this.warningMessage = '';
   }
 
   private generateFamilyIdPreview(name: string, phone: string): string {
     const nameParts = name.trim().split(' ').filter(part => part.length > 0);
     const cleanPhone = phone.trim();
-
-    // Need at least both first and last name to generate family ID
     if (nameParts.length < 2) return '';
-
     const lastName = nameParts[nameParts.length - 1].toLowerCase();
-
     return cleanPhone ? `${lastName}_${cleanPhone}` : lastName;
   }
 
@@ -151,6 +136,14 @@ export class AddPatientComponent implements OnInit, OnDestroy {
         this.allergyChips.push(trimmed);
         this.newAllergyInput = '';
       }
+    }
+  }
+
+  onAllergyBlur(): void {
+    const trimmed = this.newAllergyInput.trim();
+    if (trimmed && !this.allergyChips.includes(trimmed)) {
+      this.allergyChips.push(trimmed);
+      this.newAllergyInput = '';
     }
   }
 
@@ -170,6 +163,14 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     }
   }
 
+  onAilmentBlur(): void {
+    const trimmed = this.newAilmentInput.trim();
+    if (trimmed && !this.ailmentChips.includes(trimmed)) {
+      this.ailmentChips.push(trimmed);
+      this.newAilmentInput = '';
+    }
+  }
+
   removeAilment(index: number): void {
     this.ailmentChips.splice(index, 1);
   }
@@ -178,7 +179,6 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.successMessage = '';
 
-    // Check if patient already exists
     if (this.warningMessage) {
       this.errorMessage = 'This patient already exists. Please search for the existing patient to add a new visit.';
       return;
@@ -191,7 +191,6 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     this.isSubmitting = true;
 
     try {
-      // Create new patient
       const patientData: any = {
         name: [this.firstName.trim(), this.middleName.trim(), this.lastName.trim()].filter(p => p).join(' '),
         phone: this.phone.trim()
@@ -206,32 +205,34 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
       const patientId = await this.patientService.createPatient(patientData);
 
-      // Success - close form first, then show popup
       this.isSubmitting = false;
-
-      // Emit so parent component can refresh
       this.patientAdded.emit(patientId);
-
-      // Close the form immediately
       this.onClose();
 
-      // Show success popup AFTER form closes
+      // Dynamically import Swal only at the point it is needed
+      const { default: Swal } = await import('sweetalert2');
       const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-      await Swal.fire({
+      const result = await Swal.fire({
         title: 'Patient Added Successfully!',
-        text: 'The patient has been added to the system.',
         icon: 'success',
-        confirmButtonText: 'OK',
+        showConfirmButton: true,
+        confirmButtonText: 'Add Visit',
         confirmButtonColor: '#6366f1',
+        showDenyButton: true,
+        denyButtonText: 'OK',
+        denyButtonColor: '#94a3b8',
         timer: 2000,
         timerProgressBar: true,
         background: isDark ? '#1f1f1f' : '#ffffff',
         color: isDark ? '#e0e0e0' : '#1e293b',
       });
+
+      if (result.isConfirmed) {
+        this.router.navigate(['/patient', patientId, 'add-visit'], { state: { origin: 'home' } });
+      }
     } catch (error: any) {
       console.error('Error in onSubmit:', error);
       this.isSubmitting = false;
-
       const errorMessage = error?.message || 'An unexpected error occurred';
       this.errorMessage = `Failed to save patient: ${errorMessage}`;
     }
@@ -279,6 +280,34 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   }
 
   onClose(): void {
-    this.close.emit();
+    const hasData = this.firstName.trim() || this.lastName.trim() || this.phone.trim() ||
+        this.middleName.trim() || this.email.trim() || this.dateOfBirth ||
+        this.gender || this.allergyChips.length || this.ailmentChips.length;
+
+    if (hasData) {
+      // Dynamically import Swal only when the dialog is actually needed
+      import('sweetalert2').then(({ default: Swal }) => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        Swal.fire({
+          title: 'Discard changes?',
+          text: 'All unsaved data will be lost.',
+          icon: 'warning',
+          showConfirmButton: true,
+          confirmButtonText: 'Yes, cancel',
+          confirmButtonColor: '#ef4444',
+          showDenyButton: true,
+          denyButtonText: 'Keep editing',
+          denyButtonColor: '#6366f1',
+          background: isDark ? '#1f1f1f' : '#ffffff',
+          color: isDark ? '#e0e0e0' : '#1e293b',
+        }).then(result => {
+          if (result.isConfirmed) {
+            this.close.emit();
+          }
+        });
+      });
+    } else {
+      this.close.emit();
+    }
   }
 }

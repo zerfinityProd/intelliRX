@@ -1,9 +1,5 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
-import { LoginComponent } from './components/login/login';
-import { HomeComponent } from './components/home/home';
-import { PatientDetailsComponent } from './components/patient-details/patient-details';
-import { AddVisitPageComponent } from './components/add-visit-page/add-visit-page';
 import { authGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
@@ -13,22 +9,31 @@ export const routes: Routes = [
     pathMatch: 'full'
   },
   {
+    // Login loaded eagerly — it's the entry point
     path: 'login',
-    component: LoginComponent
+    loadComponent: () =>
+      import('./components/login/login').then(m => m.LoginComponent)
   },
   {
     path: 'home',
-    component: HomeComponent,
+    loadComponent: () =>
+      import('./components/home/home').then(m => m.HomeComponent),
     canActivate: [authGuard]
   },
   {
     path: 'patient/:id',
-    component: PatientDetailsComponent,
+    loadComponent: () =>
+      import('./components/patient-details/patient-details').then(
+        m => m.PatientDetailsComponent
+      ),
     canActivate: [authGuard]
   },
   {
     path: 'patient/:id/add-visit',
-    component: AddVisitPageComponent,
+    loadComponent: () =>
+      import('./components/add-visit-page/add-visit-page').then(
+        m => m.AddVisitPageComponent
+      ),
     canActivate: [authGuard]
   },
   {

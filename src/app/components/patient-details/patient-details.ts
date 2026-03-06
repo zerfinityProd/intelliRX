@@ -9,6 +9,7 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
 import { NavbarComponent } from '../navbar/navbar';
+import moment from 'moment';
 
 @Component({
   selector: 'app-patient-details',
@@ -133,7 +134,7 @@ export class PatientDetailsComponent implements OnInit {
   // Navigate to the dedicated Add Visit page
   openAddVisitForm(): void {
     if (this.patient) {
-      this.router.navigate(['/patient', this.patient.uniqueId, 'add-visit']);
+      this.router.navigate(['/patient', this.patient.uniqueId, 'add-visit'], { state: { origin: 'patient' } });
     }
   }
 
@@ -234,34 +235,16 @@ export class PatientDetailsComponent implements OnInit {
 
   formatDate(date: Date | undefined | any): string {
     if (!date) return 'N/A';
-
-    // Handle Firestore Timestamp objects
-    if (date && typeof date.toDate === 'function') {
-      date = date.toDate();
-    }
-
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    if (date && typeof date.toDate === 'function') date = date.toDate();
+    const m = moment(date);
+    return m.isValid() ? m.format('DD MMMM YYYY') : 'N/A';
   }
 
   formatDateTime(date: Date | undefined | any): string {
     if (!date) return 'N/A';
-
-    // Handle Firestore Timestamp objects
-    if (date && typeof date.toDate === 'function') {
-      date = date.toDate();
-    }
-
-    return new Date(date).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (date && typeof date.toDate === 'function') date = date.toDate();
+    const m = moment(date);
+    return m.isValid() ? m.format('DD MMM YYYY, hh:mm A') : 'N/A';
   }
 
   getInitials(name: string): string {

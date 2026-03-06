@@ -5,7 +5,8 @@ import {
     User as FirebaseUser,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
     signOut,
     onAuthStateChanged,
@@ -110,6 +111,9 @@ export class AuthenticationService {
                 message = 'Network error. Please check your connection';
                 break;
             case 'auth/popup-closed-by-user':
+                message = 'Sign-in popup was closed';
+                break;
+            case 'auth/cancelled-popup-request':
                 message = 'Sign-in popup was closed';
                 break;
             default:
@@ -262,22 +266,27 @@ export class AuthenticationService {
         }
     }
 
-    async loginWithGoogle(): Promise<User> {
-        try {
-            const userCredential = await signInWithPopup(this.auth, this.googleProvider);
-            const email = userCredential.user.email || '';
+    async loginWithGoogle(): Promise<void> {
+        await signInWithRedirect(this.auth, this.googleProvider);
+    }
 
+    async handleGoogleRedirectResult(): Promise<User | null> {
+        try {
+            const result = await getRedirectResult(this.auth);
+            if (!result) return null;
+
+            const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
                 await signOut(this.auth);
                 throw new Error('Access denied. You are not authorized to log in.');
             }
 
-            const user = this.transformFirebaseUser(userCredential.user);
+            const user = this.transformFirebaseUser(result.user);
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            console.error('Google login error:', error);
+            console.error('Google redirect result error:', error);
             throw this.handleAuthError(error);
         }
     }

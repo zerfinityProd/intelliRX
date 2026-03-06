@@ -4,6 +4,7 @@ import { Patient, Visit } from '../../models/patient.model';
 import { Chart, ChartConfiguration, registerables } from 'chart.js';
 import tippy, { Instance as TippyInstance } from 'tippy.js';
 import 'tippy.js/animations/shift-away.css';
+import moment from 'moment';
 
 Chart.register(...registerables);
 
@@ -546,46 +547,23 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
 
   formatDate(date: Date | any): string {
     if (!date) return 'N/A';
-    
-    if (date && typeof date.toDate === 'function') {
-      date = date.toDate();
-    }
-    
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    if (date && typeof date.toDate === 'function') date = date.toDate();
+    const m = moment(date);
+    return m.isValid() ? m.format('DD MMM YYYY') : 'N/A';
   }
 
   formatDateTime(date: Date | any): string {
     if (!date) return 'N/A';
-    
-    if (date && typeof date.toDate === 'function') {
-      date = date.toDate();
-    }
-    
-    return new Date(date).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    if (date && typeof date.toDate === 'function') date = date.toDate();
+    const m = moment(date);
+    return m.isValid() ? m.format('DD MMM YYYY, hh:mm A') : 'N/A';
   }
 
   formatDateOfBirth(date: Date | any): string {
     if (!date) return 'N/A';
-    
-    if (date && typeof date.toDate === 'function') {
-      date = date.toDate();
-    }
-    
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    if (date && typeof date.toDate === 'function') date = date.toDate();
+    const m = moment(date);
+    return m.isValid() ? m.format('DD MMMM YYYY') : 'N/A';
   }
 
   /**

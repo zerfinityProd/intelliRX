@@ -1,4 +1,4 @@
-import { Component, HostListener, Input } from '@angular/core';
+import { Component, HostListener, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
@@ -16,6 +16,7 @@ import { UIStateService } from '../../services/uiStateService';
 export class NavbarComponent {
   @Input() showBack: boolean = false;
   @Input() pageTitle: string = '';
+  @Output() backClick = new EventEmitter<void>();
   currentUser$: Observable<User | null>;
   isDarkTheme$: Observable<boolean>;
   uiState$: Observable<any>;
@@ -48,7 +49,11 @@ export class NavbarComponent {
   }
 
   goBack(): void {
-    this.router.navigate(['/home']);
+    if (this.backClick.observed) {
+      this.backClick.emit();
+    } else {
+      this.router.navigate(['/home']);
+    }
   }
 
   async logout(): Promise<void> {

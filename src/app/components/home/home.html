@@ -5,38 +5,40 @@
 <main class="py-5 px-3 px-md-4" style="max-width:1400px; margin:0 auto">
 
   <!-- Search Section -->
-  <div class="text-center mb-5">
-    <h2 class="fw-bold mb-4" style="color:var(--clr-text)">Search Patient</h2>
+  <section class="text-center mb-5" style="padding-top:36px" aria-label="Patient search">
+    <h1 class="fw-semibold mb-3" style="color:var(--clr-text);font-size:var(--fs-lg)">Search Patient</h1>
 
     <div class="mx-auto" style="max-width:720px">
       <div class="search-wrapper">
+        <label for="patient-search" class="visually-hidden">Search by Phone, Family ID or Name</label>
         <svg class="search-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <circle cx="11" cy="11" r="8"></circle>
           <path d="m21 21-4.35-4.35"></path>
         </svg>
-        <input type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchInput()"
+        <input id="patient-search" type="text" [(ngModel)]="searchTerm" (ngModelChange)="onSearchInput()"
           placeholder="Phone, Family ID or Name" class="form-control form-control-lg" autocomplete="off"
+          aria-label="Search patients by phone, family ID or name"
           style="padding-top:14px; padding-bottom:14px" />
-        <button *ngIf="searchTerm && !isSearching" class="clear-btn" (click)="clearSearch()">
+        <button *ngIf="searchTerm && !isSearching" class="clear-btn" (click)="clearSearch()" aria-label="Clear search">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
           </svg>
         </button>
-        <div *ngIf="isSearching" class="search-spinner"></div>
+        <div *ngIf="isSearching" class="search-spinner" role="status" aria-label="Searching..."></div>
       </div>
     </div>
 
-    <div *ngIf="errorMessage" class="alert alert-danger mt-3 mx-auto" style="max-width:720px">
+    <div *ngIf="errorMessage" class="alert alert-danger mt-3 mx-auto" role="alert" style="max-width:720px">
       {{ errorMessage }}
     </div>
-  </div>
+  </section>
 
   <!-- Search Results -->
   <div *ngIf="(searchResults$ | async) as searchResults">
-    <div *ngIf="searchResults.length > 0" style="animation: fadeIn 0.4s ease">
+    <div *ngIf="searchResults.length > 0" style="animation: fadeIn 0.4s ease; max-width:1200px; margin:0 auto; padding: 0 16px">
       <div class="d-flex align-items-center mb-3">
         <h3 class="fw-bold mb-0" style="font-size:20px; color:var(--clr-text)">
           Search Results
@@ -47,39 +49,40 @@
         </h3>
       </div>
 
-      <div class="card border-0 shadow-sm" style="border-radius:16px; overflow:hidden">
+      <div class="card shadow-sm" style="border-radius:16px; overflow:hidden; border: 1px solid var(--clr-border)">
         <div class="table-responsive">
-          <table class="table patients-table mb-0">
+          <table class="table patients-table mb-0" role="table" aria-label="Patient search results">
             <thead>
               <tr>
-                <th>Patient Name</th>
-                <th>Family ID</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Date of Birth</th>
-                <th>Gender</th>
-                <th>Actions</th>
+                <th scope="col">Patient Name</th>
+                <th scope="col">Family ID</th>
+                <th scope="col">Phone</th>
+                <th scope="col">Email</th>
+                <th scope="col">Date of Birth</th>
+                <th scope="col">Gender</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr *ngFor="let patient of searchResults" (dblclick)="openAddVisitForm(patient)">
                 <td data-label="Patient Name">
                   <div class="d-flex align-items-center gap-2">
-                    <div class="table-avatar">{{ patient.name.charAt(0).toUpperCase() }}</div>
+                    <div class="table-avatar" aria-hidden="true">{{ patient.name.charAt(0).toUpperCase() }}</div>
                     <span class="patient-name-text">{{ patient.name }}</span>
                   </div>
                 </td>
                 <td data-label="Family ID" class="family-id-cell">{{ patient.familyId }}</td>
                 <td data-label="Phone">{{ patient.phone }}</td>
                 <td data-label="Email">{{ patient.email || 'N/A' }}</td>
-                <td data-label="Date of Birth">{{ formatDate(patient.dateOfBirth) }}</td>
+                <td data-label="Date of Birth">{{ patient.dateOfBirth | momentDate }}</td>
                 <td data-label="Gender">{{ patient.gender || 'N/A' }}</td>
                 <td data-label="Actions">
                   <div class="d-flex align-items-center gap-2">
                     <button class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1"
+                      [attr.aria-label]="'Add visit for ' + patient.name"
                       (click)="openAddVisitForm(patient); $event.stopPropagation()">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
                         <line x1="12" y1="11" x2="12" y2="17"></line>
@@ -88,9 +91,10 @@
                       Add Visit
                     </button>
                     <button class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                      [attr.aria-label]="'View details for ' + patient.name"
                       (click)="viewPatientDetails(patient); $event.stopPropagation()">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                       </svg>
@@ -116,20 +120,23 @@
   </div>
 </main>
 
-<!-- ── FAB backdrop (closes FAB when clicking outside) ── -->
+<!-- ── FAB backdrop ── -->
 <div *ngIf="(uiState$ | async)?.isFabOpen"
   class="fab-backdrop"
-  (click)="closeFab()">
+  (click)="closeFab()"
+  aria-hidden="true">
 </div>
 
 <!-- ── Floating Action Button ── -->
-<div class="fab-container">
-  <div class="fab-options" [class.fab-options--visible]="(uiState$ | async)?.isFabOpen">
+<div class="fab-container" role="region" aria-label="Quick actions">
+  <div class="fab-options" [class.fab-options--visible]="(uiState$ | async)?.isFabOpen"
+    [attr.aria-hidden]="!(uiState$ | async)?.isFabOpen">
     <div class="fab-option-row">
-      <span class="fab-label">New Patient</span>
-      <button class="fab-option-btn fab-patient-btn" (click)="openAddPatientForm()">
+      <span class="fab-label" aria-hidden="true">New Patient</span>
+      <button class="fab-option-btn fab-patient-btn" (click)="openAddPatientForm()" aria-label="Add new patient"
+        [attr.tabindex]="(uiState$ | async)?.isFabOpen ? 0 : -1">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-          stroke-linecap="round" stroke-linejoin="round">
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
           <line x1="19" y1="8" x2="19" y2="14"></line>
@@ -140,14 +147,15 @@
   </div>
 
   <button class="fab-main-btn" (click)="toggleFab()" [class.fab-main-btn--open]="(uiState$ | async)?.isFabOpen"
-    title="Actions">
+    [attr.aria-label]="(uiState$ | async)?.isFabOpen ? 'Close actions menu' : 'Open actions menu'"
+    [attr.aria-expanded]="(uiState$ | async)?.isFabOpen">
     <svg class="fab-icon fab-icon--plus" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
       <line x1="12" y1="5" x2="12" y2="19"></line>
       <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
     <svg class="fab-icon fab-icon--close" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
       <line x1="18" y1="6" x2="6" y2="18"></line>
       <line x1="6" y1="6" x2="18" y2="18"></line>
     </svg>

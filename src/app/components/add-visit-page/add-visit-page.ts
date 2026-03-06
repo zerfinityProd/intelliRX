@@ -66,6 +66,11 @@ export class AddVisitPageComponent implements OnInit {
     // ── Expanded visit tracking ───────────────────────────────
     expandedVisitIds: Set<string> = new Set();
 
+    // ── Navigation origin ─────────────────────────────────────
+    private origin: 'home' | 'patient' = 'home';
+    private originalAllergies: string[] = [];
+    private originalAilments: string[] = [];
+
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly patientService = inject(PatientService);
@@ -73,6 +78,9 @@ export class AddVisitPageComponent implements OnInit {
     private readonly ngZone = inject(NgZone);
 
     async ngOnInit(): Promise<void> {
+        const state = history.state as { origin?: string } | undefined;
+        this.origin = (state?.origin === 'patient') ? 'patient' : 'home';
+
         const patientId = this.route.snapshot.paramMap.get('id');
         if (!patientId) {
             this.router.navigate(['/home']);
@@ -114,6 +122,8 @@ export class AddVisitPageComponent implements OnInit {
         this.existingAilments = this.patient.ailments
             ? this.patient.ailments.split(',').map(a => a.trim()).filter(a => a.length > 0)
             : [];
+        this.originalAllergies = [...this.existingAllergies];
+        this.originalAilments = [...this.existingAilments];
     }
 
     async loadVisits(): Promise<void> {
@@ -144,12 +154,17 @@ export class AddVisitPageComponent implements OnInit {
             if (trimmed) { this.presentIllnesses.push({ description: trimmed }); this.newIllnessInput = ''; }
         }
     }
+    onIllnessBlur(): void {
+        const trimmed = this.newIllnessInput.trim();
+        if (trimmed) { this.presentIllnesses.push({ description: trimmed }); this.newIllnessInput = ''; }
+    }
     removeIllness(index: number): void { this.presentIllnesses.splice(index, 1); }
 
     // ── Allergies ─────────────────────────────────────────────
     onAllergyKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') { event.preventDefault(); this.addNewAllergy(); }
     }
+    onAllergyBlur(): void { this.addNewAllergy(); }
     addNewAllergy(): void {
         const trimmed = this.newAllergyInput.trim();
         if (trimmed && !this.existingAllergies.includes(trimmed)) { this.existingAllergies.push(trimmed); }
@@ -161,6 +176,7 @@ export class AddVisitPageComponent implements OnInit {
     onAilmentKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') { event.preventDefault(); this.addNewAilment(); }
     }
+    onAilmentBlur(): void { this.addNewAilment(); }
     addNewAilment(): void {
         const trimmed = this.newAilmentInput.trim();
         if (trimmed && !this.existingAilments.includes(trimmed)) { this.existingAilments.push(trimmed); }
@@ -178,6 +194,7 @@ export class AddVisitPageComponent implements OnInit {
     onMedicineKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') { event.preventDefault(); this.addMedicineChip(); }
     }
+    onMedicineBlur(): void { this.addMedicineChip(); }
     removeMedicine(index: number): void { this.medicines.splice(index, 1); }
 
     // ── Examinations ──────────────────────────────────────────
@@ -190,6 +207,7 @@ export class AddVisitPageComponent implements OnInit {
     onExaminationKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') { event.preventDefault(); this.addExaminationChip(); }
     }
+    onExaminationBlur(): void { this.addExaminationChip(); }
     removeExamination(index: number): void { this.examinations.splice(index, 1); }
 
     // ── Visit History helpers ─────────────────────────────────
@@ -274,11 +292,46 @@ export class AddVisitPageComponent implements OnInit {
         }
     }
 
-    onCancel(): void {
-        if (this.patient) {
+    private navigateBack(): void {
+        if (this.origin === 'patient' && this.patient) {
             this.router.navigate(['/patient', this.patient.uniqueId]);
         } else {
             this.router.navigate(['/home']);
+        }
+    }
+
+    onCancel(): void {
+        const allergiesChanged = this.existingAllergies.length !== this.originalAllergies.length ||
+            this.existingAllergies.some(a => !this.originalAllergies.includes(a));
+        const ailmentsChanged = this.existingAilments.length !== this.originalAilments.length ||
+            this.existingAilments.some(a => !this.originalAilments.includes(a));
+
+        const hasData = this.chiefComplaintsText.trim() || this.presentIllnesses.length ||
+            allergiesChanged || ailmentsChanged ||
+            this.diagnosis.trim() || this.treatmentPlan.trim() ||
+            this.examinations.length || this.medicines.length;
+
+        if (hasData) {
+            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            Swal.fire({
+                title: 'Discard changes?',
+                text: 'All unsaved data will be lost.',
+                icon: 'warning',
+                showConfirmButton: true,
+                confirmButtonText: 'Yes, cancel',
+                confirmButtonColor: '#ef4444',
+                showDenyButton: true,
+                denyButtonText: 'Keep editing',
+                denyButtonColor: '#6366f1',
+                background: isDark ? '#1f1f1f' : '#ffffff',
+                color: isDark ? '#e0e0e0' : '#1e293b',
+            }).then(result => {
+                if (result.isConfirmed) {
+                    this.navigateBack();
+                }
+            });
+        } else {
+            this.navigateBack();
         }
     }
 
