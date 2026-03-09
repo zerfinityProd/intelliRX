@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { ThemeService } from '../../services/themeService';
+import { filter, take } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -13,15 +14,10 @@ import { ThemeService } from '../../services/themeService';
   styleUrl: './login.css'
 })
 export class LoginComponent implements OnInit {
-  // Login mode
   isLoginMode: boolean = true;
-
-  // Form fields
   email: string = '';
   password: string = '';
   displayName: string = '';
-
-  // UI state
   errorMessage: string = '';
   successMessage: string = '';
   isLoading: boolean = false;
@@ -33,30 +29,36 @@ export class LoginComponent implements OnInit {
   private readonly themeService = inject(ThemeService);
 
   constructor() {
-    // Redirect if already logged in
     if (this.authService.isLoggedIn()) {
       this.router.navigate(['/home']);
     }
   }
 
   async ngOnInit(): Promise<void> {
-    // Handle Google redirect result on page load
     try {
       const user = await this.authService.handleGoogleRedirectResult();
       if (user) {
         this.router.navigate(['/home']);
+        return;
       }
     } catch (error: any) {
       if (error.message && !error.message.includes('popup was closed')) {
         this.errorMessage = error.message;
         this.cdr.detectChanges();
+        return;
       }
     }
+
+    this.authService.authReady$.pipe(
+      filter(ready => ready),
+      take(1)
+    ).subscribe(() => {
+      if (this.authService.isLoggedIn()) {
+        this.router.navigate(['/home']);
+      }
+    });
   }
 
-  /**
-   * Toggle between login and register mode
-   */
   toggleMode(): void {
     this.isLoginMode = !this.isLoginMode;
     this.errorMessage = '';
@@ -64,36 +66,16 @@ export class LoginComponent implements OnInit {
     this.showForgotPassword = false;
   }
 
-  /**
-   * Handle email/password login
-   */
   async onLogin(): Promise<void> {
     this.errorMessage = '';
     this.successMessage = '';
 
-    // Validation
-    if (!this.email.trim()) {
-      this.errorMessage = 'Please enter your email';
-      return;
-    }
-
-    if (!this.isValidEmail(this.email)) {
-      this.errorMessage = 'Please enter a valid email address';
-      return;
-    }
-
-    if (!this.password) {
-      this.errorMessage = 'Please enter your password';
-      return;
-    }
-
-    if (this.password.length < 6) {
-      this.errorMessage = 'Password must be at least 6 characters';
-      return;
-    }
+    if (!this.email.trim()) { this.errorMessage = 'Please enter your email'; return; }
+    if (!this.isValidEmail(this.email)) { this.errorMessage = 'Please enter a valid email address'; return; }
+    if (!this.password) { this.errorMessage = 'Please enter your password'; return; }
+    if (this.password.length < 6) { this.errorMessage = 'Password must be at least 6 characters'; return; }
 
     this.isLoading = true;
-
     try {
       await this.authService.login(this.email.trim(), this.password);
       this.router.navigate(['/home']);
@@ -106,50 +88,22 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  /**
-   * Handle user registration
-   */
   async onRegister(): Promise<void> {
     this.errorMessage = '';
     this.successMessage = '';
 
-    // Validation
-    if (!this.displayName.trim()) {
-      this.errorMessage = 'Please enter your name';
-      return;
-    }
-
-    if (!this.email.trim()) {
-      this.errorMessage = 'Please enter your email';
-      return;
-    }
-
-    if (!this.isValidEmail(this.email)) {
-      this.errorMessage = 'Please enter a valid email address';
-      return;
-    }
-
-    if (!this.password) {
-      this.errorMessage = 'Please enter a password';
-      return;
-    }
-
-    if (this.password.length < 6) {
-      this.errorMessage = 'Password must be at least 6 characters';
-      return;
-    }
+    if (!this.displayName.trim()) { this.errorMessage = 'Please enter your name'; return; }
+    if (!this.email.trim()) { this.errorMessage = 'Please enter your email'; return; }
+    if (!this.isValidEmail(this.email)) { this.errorMessage = 'Please enter a valid email address'; return; }
+    if (!this.password) { this.errorMessage = 'Please enter a password'; return; }
+    if (this.password.length < 6) { this.errorMessage = 'Password must be at least 6 characters'; return; }
 
     this.isLoading = true;
-
     try {
       await this.authService.register(this.email.trim(), this.password, this.displayName.trim());
       this.successMessage = 'Account created successfully!';
       this.cdr.detectChanges();
-
-      // Redirect after short delay
-      setTimeout(() => {
-        this.router.navigate(['/home']);
-      }, 1000);
+      setTimeout(() => { this.router.navigate(['/home']); }, 1000);
     } catch (error: any) {
       this.errorMessage = error.message || 'Registration failed. Please try again.';
       this.cdr.detectChanges();
@@ -159,51 +113,69 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  /**
-   * Handle Google login — triggers redirect, result handled in ngOnInit
-   */
   async onGoogleLogin(): Promise<void> {
     this.errorMessage = '';
     this.isLoading = true;
     this.cdr.detectChanges();
-    await this.authService.loginWithGoogle();
-    // Page will redirect to Google — no further code runs here
+    try {
+      await this.authService.loginWithGoogle();
+    } catch (error: any) {
+      this.errorMessage = error.message || 'Google login failed.';
+      this.cdr.detectChanges();
+    } finally {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
-  /**
-   * Toggle forgot password view
-   */
+  async onMicrosoftLogin(): Promise<void> {
+    this.errorMessage = '';
+    this.isLoading = true;
+    this.cdr.detectChanges();
+    try {
+      await this.authService.loginWithMicrosoft();
+    } catch (error: any) {
+      this.errorMessage = error.message || 'Microsoft login failed.';
+      this.cdr.detectChanges();
+    } finally {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async onAppleLogin(): Promise<void> {
+    this.errorMessage = '';
+    this.isLoading = true;
+    this.cdr.detectChanges();
+    try {
+      await this.authService.loginWithApple();
+    } catch (error: any) {
+      this.errorMessage = error.message || 'Apple login failed.';
+      this.cdr.detectChanges();
+    } finally {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
   toggleForgotPassword(): void {
     this.showForgotPassword = !this.showForgotPassword;
     this.errorMessage = '';
     this.successMessage = '';
   }
 
-  /**
-   * Handle password reset
-   */
   async onResetPassword(): Promise<void> {
     this.errorMessage = '';
     this.successMessage = '';
 
-    if (!this.email.trim()) {
-      this.errorMessage = 'Please enter your email';
-      return;
-    }
-
-    if (!this.isValidEmail(this.email)) {
-      this.errorMessage = 'Please enter a valid email address';
-      return;
-    }
+    if (!this.email.trim()) { this.errorMessage = 'Please enter your email'; return; }
+    if (!this.isValidEmail(this.email)) { this.errorMessage = 'Please enter a valid email address'; return; }
 
     this.isLoading = true;
-
     try {
       await this.authService.resetPassword(this.email.trim());
       this.successMessage = 'Password reset email sent! Check your inbox.';
       this.cdr.detectChanges();
-
-      // Reset form after delay
       setTimeout(() => {
         this.showForgotPassword = false;
         this.successMessage = '';
@@ -218,9 +190,6 @@ export class LoginComponent implements OnInit {
     }
   }
 
-  /**
-   * Validate email format
-   */
   private isValidEmail(email: string): boolean {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);

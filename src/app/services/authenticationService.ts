@@ -1,12 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, EnvironmentInjector, runInInjectionContext } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import {
     Auth,
     User as FirebaseUser,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithRedirect,
-    getRedirectResult,
+    signInWithPopup,
     GoogleAuthProvider,
     signOut,
     onAuthStateChanged,
@@ -14,12 +13,9 @@ import {
     sendPasswordResetEmail
 } from '@angular/fire/auth';
 import { Firestore } from '@angular/fire/firestore';
+import { Router } from '@angular/router';
 import { AuthorizationService } from './authorizationService';
 
-/**
- * User interface for the application
- * Merged from UserProfileService
- */
 export interface User {
     uid: string;
     name: string;
@@ -39,108 +35,62 @@ export class AuthenticationService {
     private authReadySubject = new BehaviorSubject<boolean>(false);
     public authReady$ = this.authReadySubject.asObservable();
 
-    // Inject dependencies using modern inject() function
     private auth = inject(Auth);
     private firestore = inject(Firestore);
     private authorizationService = inject(AuthorizationService);
+    private injector = inject(EnvironmentInjector);
+    private router = inject(Router);
 
     constructor() {
         this.googleProvider = new GoogleAuthProvider();
         this.currentUserSubject = new BehaviorSubject<User | null>(null);
         this.currentUser$ = this.currentUserSubject.asObservable();
 
-        onAuthStateChanged(this.auth, async (firebaseUser) => {
-            if (firebaseUser) {
-                const email = firebaseUser.email || '';
-                const allowed = await this.authorizationService.isEmailAllowed(email);
-                if (!allowed) {
-                    await signOut(this.auth);
-                    this.setCurrentUser(null);
+        onAuthStateChanged(this.auth, (firebaseUser) => {
+            runInInjectionContext(this.injector, async () => {
+                if (firebaseUser) {
+                    const email = firebaseUser.email || '';
+                    const allowed = await this.authorizationService.isEmailAllowed(email);
+                    if (!allowed) {
+                        await signOut(this.auth);
+                        this.setCurrentUser(null);
+                    } else {
+                        const user = this.transformFirebaseUser(firebaseUser);
+                        this.setCurrentUser(user);
+                    }
                 } else {
-                    const user = this.transformFirebaseUser(firebaseUser);
-                    this.setCurrentUser(user);
+                    this.setCurrentUser(null);
                 }
-            } else {
-                this.setCurrentUser(null);
-            }
-            if (!this.authReady) {
-                this.authReady = true;
-                this.authReadySubject.next(true);
-            }
+                if (!this.authReady) {
+                    this.authReady = true;
+                    this.authReadySubject.next(true);
+                }
+            });
         });
     }
 
-    /**
-     * Handle Firebase authentication errors and map them to user-friendly messages
-     * Merged from AuthErrorService
-     * @param error - The Firebase authentication error object
-     * @returns Error object with user-friendly message
-     */
     private handleAuthError(error: any): Error {
         let message = 'An error occurred during authentication';
-
         switch (error.code) {
-            case 'auth/email-already-in-use':
-                message = 'This email is already registered';
-                break;
-            case 'auth/invalid-email':
-                message = 'Invalid email address';
-                break;
-            case 'auth/operation-not-allowed':
-                message = 'This operation is not allowed';
-                break;
-            case 'auth/weak-password':
-                message = 'Password is too weak. Use at least 6 characters';
-                break;
-            case 'auth/user-disabled':
-                message = 'This account has been disabled';
-                break;
-            case 'auth/user-not-found':
-                message = 'No account found with this email';
-                break;
-            case 'auth/wrong-password':
-                message = 'Incorrect password';
-                break;
-            case 'auth/invalid-credential':
-                message = 'Invalid email or password';
-                break;
-            case 'auth/too-many-requests':
-                message = 'Too many attempts. Please try again later';
-                break;
-            case 'auth/network-request-failed':
-                message = 'Network error. Please check your connection';
-                break;
-            case 'auth/popup-closed-by-user':
-                message = 'Sign-in popup was closed';
-                break;
-            case 'auth/cancelled-popup-request':
-                message = 'Sign-in popup was closed';
-                break;
-            default:
-                message = error.message || message;
+            case 'auth/email-already-in-use': message = 'This email is already registered'; break;
+            case 'auth/invalid-email': message = 'Invalid email address'; break;
+            case 'auth/operation-not-allowed': message = 'This operation is not allowed'; break;
+            case 'auth/weak-password': message = 'Password is too weak. Use at least 6 characters'; break;
+            case 'auth/user-disabled': message = 'This account has been disabled'; break;
+            case 'auth/user-not-found': message = 'No account found with this email'; break;
+            case 'auth/wrong-password': message = 'Incorrect password'; break;
+            case 'auth/invalid-credential': message = 'Invalid email or password'; break;
+            case 'auth/too-many-requests': message = 'Too many attempts. Please try again later'; break;
+            case 'auth/network-request-failed': message = 'Network error. Please check your connection'; break;
+            case 'auth/popup-closed-by-user': message = 'Sign-in popup was closed'; break;
+            case 'auth/cancelled-popup-request': message = 'Sign-in popup was closed'; break;
+            default: message = error.message || message;
         }
-
         return new Error(message);
     }
 
-    /**
-     * Check if an error is a known auth error
-     * @param error - The error to check
-     * @returns True if it's a Firebase auth error
-     */
-    private isAuthError(error: any): boolean {
-        return error?.code && error.code.startsWith('auth/');
-    }
-
-    /**
-     * Transform Firebase user to application User interface
-     * Merged from UserProfileService
-     * @param firebaseUser - Firebase user object
-     * @returns Transformed User object
-     */
     private transformFirebaseUser(firebaseUser: FirebaseUser): User {
         const email = firebaseUser.email || '';
-
         return {
             uid: firebaseUser.uid,
             name: this.extractDisplayName(firebaseUser.displayName, email),
@@ -149,21 +99,7 @@ export class AuthenticationService {
         };
     }
 
-    /**
-     * Create User object from email and optional display name
-     * Merged from UserProfileService
-     * @param uid - Firebase user ID
-     * @param email - User email
-     * @param displayName - Optional display name
-     * @param photoURL - Optional photo URL
-     * @returns User object
-     */
-    private createUser(
-        uid: string,
-        email: string,
-        displayName?: string | null,
-        photoURL?: string | null
-    ): User {
+    private createUser(uid: string, email: string, displayName?: string | null, photoURL?: string | null): User {
         return {
             uid,
             name: this.extractDisplayName(displayName, email),
@@ -172,52 +108,20 @@ export class AuthenticationService {
         };
     }
 
-    /**
-     * Extract a display name from Firebase displayName or email
-     * Falls back to email prefix if displayName is not available
-     * @param displayName - Firebase displayName (can be null)
-     * @param email - User email (fallback)
-     * @returns Display name string
-     */
     private extractDisplayName(displayName: string | null | undefined, email: string): string {
-        if (displayName && displayName.trim()) {
-            return displayName.trim();
-        }
-
-        if (email) {
-            const nameParts = email.split('@');
-            return nameParts[0] || 'User';
-        }
-
+        if (displayName && displayName.trim()) return displayName.trim();
+        if (email) return email.split('@')[0] || 'User';
         return 'User';
     }
 
-    /**
-     * Check if a user object is valid
-     * @param user - User object to validate
-     * @returns True if user is valid
-     */
     private isValidUser(user: any): user is User {
-        return (
-            user &&
-            typeof user.uid === 'string' &&
-            typeof user.name === 'string' &&
-            typeof user.email === 'string' &&
-            user.uid.trim().length > 0 &&
-            user.email.trim().length > 0
-        );
+        return user && typeof user.uid === 'string' && typeof user.name === 'string'
+            && typeof user.email === 'string' && user.uid.trim().length > 0 && user.email.trim().length > 0;
     }
 
-    /**
-     * Extract user ID from email (before @ symbol)
-     * @param email - User email
-     * @returns User ID extracted from email
-     */
     private extractUserIdFromEmail(email: string): string {
         return email.split('@')[0] || 'user';
     }
-
-
 
     public get currentUserValue(): User | null {
         return this.currentUserSubject.value;
@@ -250,45 +154,86 @@ export class AuthenticationService {
         try {
             const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
             const userEmail = userCredential.user.email || email;
-
             const allowed = await this.authorizationService.isEmailAllowed(userEmail);
             if (!allowed) {
                 await signOut(this.auth);
                 throw new Error('Access denied. You are not authorized to log in.');
             }
-
             const user = this.transformFirebaseUser(userCredential.user);
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
+            if (error.message?.includes('Access denied')) throw error;
             console.error('Login error:', error);
             throw this.handleAuthError(error);
         }
     }
 
     async loginWithGoogle(): Promise<void> {
-        await signInWithRedirect(this.auth, this.googleProvider);
-    }
-
-    async handleGoogleRedirectResult(): Promise<User | null> {
         try {
-            const result = await getRedirectResult(this.auth);
-            if (!result) return null;
-
+            const result = await signInWithPopup(this.auth, this.googleProvider);
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
                 await signOut(this.auth);
                 throw new Error('Access denied. You are not authorized to log in.');
             }
-
             const user = this.transformFirebaseUser(result.user);
             this.setCurrentUser(user);
-            return user;
+            this.router.navigate(['/home']);
         } catch (error: any) {
-            console.error('Google redirect result error:', error);
+            if (error.message?.includes('Access denied')) throw error;
+            if (error.code === 'auth/popup-closed-by-user') return;
+            console.error('Google login error:', error);
             throw this.handleAuthError(error);
         }
+    }
+    async loginWithMicrosoft(): Promise<void> {
+    try {
+        const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
+        const provider = new OAuthProvider('microsoft.com');
+        const result = await signInWithPopup(this.auth, provider);
+        const email = result.user.email || '';
+        const allowed = await this.authorizationService.isEmailAllowed(email);
+        if (!allowed) {
+            await signOut(this.auth);
+            throw new Error('Access denied. You are not authorized to log in.');
+        }
+        const user = this.transformFirebaseUser(result.user);
+        this.setCurrentUser(user);
+        this.router.navigate(['/home']);
+    } catch (error: any) {
+        if (error.message?.includes('Access denied')) throw error;
+        if (error.code === 'auth/popup-closed-by-user') return;
+        console.error('Microsoft login error:', error);
+        throw this.handleAuthError(error);
+    }
+}
+
+async loginWithApple(): Promise<void> {
+    try {
+        const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
+        const provider = new OAuthProvider('apple.com');
+        const result = await signInWithPopup(this.auth, provider);
+        const email = result.user.email || '';
+        const allowed = await this.authorizationService.isEmailAllowed(email);
+        if (!allowed) {
+            await signOut(this.auth);
+            throw new Error('Access denied. You are not authorized to log in.');
+        }
+        const user = this.transformFirebaseUser(result.user);
+        this.setCurrentUser(user);
+        this.router.navigate(['/home']);
+    } catch (error: any) {
+        if (error.message?.includes('Access denied')) throw error;
+        if (error.code === 'auth/popup-closed-by-user') return;
+        console.error('Apple login error:', error);
+        throw this.handleAuthError(error);
+    }
+}
+
+    async handleGoogleRedirectResult(): Promise<User | null> {
+        return null;
     }
 
     async resetPassword(email: string): Promise<void> {

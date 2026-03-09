@@ -1561,6 +1561,57 @@ main {
   flex-shrink: 0;
 }
 
+.microsoft-btn,
+.apple-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 11px;
+  background: #ffffff;
+  color: var(--clr-text);
+  border: 2px solid var(--clr-border);
+  border-radius: 12px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+  margin-top: 10px;
+}
+
+.microsoft-btn:hover:not(:disabled),
+.apple-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-sm);
+}
+
+.microsoft-btn:disabled,
+.apple-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.microsoft-btn svg,
+.apple-btn svg {
+  flex-shrink: 0;
+}
+
+/* Dark mode for new social buttons */
+[data-theme="dark"] .microsoft-btn,
+[data-theme="dark"] .apple-btn {
+  background: var(--dk-bg3);
+  border-color: var(--dk-border);
+  color: var(--dk-text1);
+}
+
+[data-theme="dark"] .microsoft-btn:hover:not(:disabled),
+[data-theme="dark"] .apple-btn:hover:not(:disabled) {
+  background: var(--dk-bg2);
+  border-color: #6366f1;
+}
+
 /* 
    HOME / NAVBAR
     */
