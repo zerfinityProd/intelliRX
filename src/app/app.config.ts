@@ -3,7 +3,7 @@ import { ApplicationConfig, provideZoneChangeDetection } from '@angular/core';
 import {
   provideRouter,
   withPreloading,
-  PreloadAllModules,
+  NoPreloading,
   withInMemoryScrolling,
   withComponentInputBinding
 } from '@angular/router';
@@ -18,8 +18,8 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(
       routes,
-      // Preload lazy chunks in the background after initial load
-      withPreloading(PreloadAllModules),
+      // Load lazy chunks only on demand — avoids unused JS penalised by Lighthouse
+      withPreloading(NoPreloading),
       // Restore scroll position on back navigation
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled' }),
       // Bind route params directly to component @Input()

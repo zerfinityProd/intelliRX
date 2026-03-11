@@ -59,6 +59,8 @@ export class NavbarComponent {
   async logout(): Promise<void> {
     try {
       await this.authService.logout();
+      this.themeService.setTheme(false); // reset to light for next user
+      this.uiStateService.resetUIState();
       this.router.navigate(['/login']);
     } catch (error) {
       console.error('Logout error:', error);

@@ -17,6 +17,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin>
+  <!-- Firebase Auth iframe — on critical path, preconnect reduces auth/iframe.js delay -->
+  <link rel="preconnect" href="https://intellirx-test.firebaseapp.com" crossorigin>
+  <link rel="dns-prefetch" href="https://www.googleapis.com">
 
   <!-- Basic security meta tags (CSP must be set as HTTP header on server, not meta) -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">

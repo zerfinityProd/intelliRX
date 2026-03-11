@@ -1,15 +1,21 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { FirebaseService } from './firebase';
+import { AuthenticationService } from './authenticationService';
 
 /**
- * Manages application theme (light/dark mode) with localStorage persistence
- * Handles DOM updates and observability for theme state changes
+ * Manages application theme (light/dark mode).
+ * Persists to Firestore under users/{uid}/preferences.theme
+ * Falls back to system preference before Firebase loads.
  */
 @Injectable({
     providedIn: 'root'
 })
 export class ThemeService {
-    private readonly isDarkTheme$ = new BehaviorSubject<boolean>(this.loadTheme());
+    private readonly isDarkTheme$ = new BehaviorSubject<boolean>(this.loadThemeFromLocal());
+
+    private firebaseService = inject(FirebaseService);
+    private authService = inject(AuthenticationService);
 
     /**
      * Observable that emits when theme changes
@@ -23,6 +29,27 @@ export class ThemeService {
      */
     getCurrentTheme(): boolean {
         return this.isDarkTheme$.value;
+    }
+
+    /**
+     * Load theme from Firebase for the logged-in user.
+     * Falls back to localStorage / system preference.
+     * Call this once after login.
+     */
+    async loadThemeFromFirebase(): Promise<void> {
+        const uid = this.authService.getCurrentUserId();
+        if (!uid) return;
+        const prefs = await this.firebaseService.getUserPreferences(uid);
+        if (prefs?.theme) {
+            // Firebase has a saved preference — apply it
+            const isDark = prefs.theme === 'dark';
+            this.isDarkTheme$.next(isDark);
+            this.applyTheme(isDark);
+        } else {
+            // No preference saved yet — persist current theme (local/system default) to Firebase
+            const currentTheme = this.isDarkTheme$.value ? 'dark' : 'light';
+            await this.firebaseService.saveUserPreferences(uid, { theme: currentTheme });
+        }
     }
 
     /**
@@ -45,13 +72,9 @@ export class ThemeService {
     }
 
     /**
-     * Load theme from localStorage or system preference
+     * Load theme from system preference (synchronous, used at startup before Firebase loads)
      */
-    private loadTheme(): boolean {
-        const saved = localStorage.getItem('intellirx-theme');
-        if (saved === 'dark') return true;
-        if (saved === 'light') return false;
-        // Fallback to system preference
+    private loadThemeFromLocal(): boolean {
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
@@ -67,9 +90,13 @@ export class ThemeService {
     }
 
     /**
-     * Persist theme preference to localStorage
+     * Persist theme preference to Firestore
      */
     private persistTheme(isDark: boolean): void {
-        localStorage.setItem('intellirx-theme', isDark ? 'dark' : 'light');
+        const theme = isDark ? 'dark' : 'light';
+        const uid = this.authService.getCurrentUserId();
+        if (uid) {
+            this.firebaseService.saveUserPreferences(uid, { theme });
+        }
     }
 }

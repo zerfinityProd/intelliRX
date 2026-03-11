@@ -29,9 +29,6 @@ export class LoginComponent implements OnInit {
   private readonly themeService = inject(ThemeService);
 
   constructor() {
-    if (this.authService.isLoggedIn()) {
-      this.router.navigate(['/home']);
-    }
   }
 
   async ngOnInit(): Promise<void> {
@@ -54,7 +51,7 @@ export class LoginComponent implements OnInit {
       take(1)
     ).subscribe(() => {
       if (this.authService.isLoggedIn()) {
-        this.router.navigate(['/home']);
+        this.authService.logout();
       }
     });
   }
@@ -78,6 +75,7 @@ export class LoginComponent implements OnInit {
     this.isLoading = true;
     try {
       await this.authService.login(this.email.trim(), this.password);
+      await this.themeService.loadThemeFromFirebase();
       this.router.navigate(['/home']);
     } catch (error: any) {
       this.errorMessage = error.message || 'Login failed. Please try again.';

@@ -183,6 +183,12 @@
               (click)="onCancel()" [disabled]="isSubmitting" aria-label="Cancel visit">
               Cancel
             </button>
+            <button type="button" class="btn btn-outline-secondary fw-semibold px-4" disabled aria-label="Print visit" title="Coming soon">
+              Print
+            </button>
+            <button type="button" class="btn btn-outline-secondary fw-semibold px-4" disabled aria-label="Save and print visit" title="Coming soon">
+              Save &amp; Print
+            </button>
             <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting" aria-label="Save visit">
               <span *ngIf="!isSubmitting">Save</span>
               <span *ngIf="isSubmitting" class="loading-content" aria-live="polite">

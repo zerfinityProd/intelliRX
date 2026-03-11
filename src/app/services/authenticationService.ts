@@ -16,11 +16,16 @@ import { Firestore } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { AuthorizationService } from './authorizationService';
 
+export interface UserPreferences {
+    theme: 'light' | 'dark';
+}
+
 export interface User {
     uid: string;
     name: string;
     email: string;
     photoURL?: string;
+    preferences?: UserPreferences;
 }
 
 @Injectable({

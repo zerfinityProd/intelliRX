@@ -354,6 +354,30 @@ export class FirebaseService {
     return converted;
   }
 
+  async getUserPreferences(uid: string): Promise<{ theme: 'light' | 'dark' } | null> {
+    try {
+      const userDoc = doc(this.db, 'users', uid);
+      const snap = await getDoc(userDoc);
+      if (snap.exists()) {
+        const data = snap.data();
+        return data['preferences'] ?? null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting user preferences:', error);
+      return null;
+    }
+  }
+
+  async saveUserPreferences(uid: string, preferences: { theme: 'light' | 'dark' }): Promise<void> {
+    try {
+      const userDoc = doc(this.db, 'users', uid);
+      await setDoc(userDoc, { preferences }, { merge: true });
+    } catch (error) {
+      console.error('Error saving user preferences:', error);
+    }
+  }
+
   async deleteVisit(patientId: string, visitId: string, userId: string): Promise<void> {
     const patientDoc = doc(this.patientsCollection, patientId);
     const visitDoc = doc(collection(patientDoc, 'visits'), visitId);
