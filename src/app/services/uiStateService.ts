@@ -12,6 +12,7 @@ interface UIState {
     selectedPatientForVisit: Patient | null;
     isEditingPatientForVisit: boolean;
     isUserMenuOpen: boolean;
+    showAddAppointmentForm: boolean;
 }
 
 /**
@@ -28,7 +29,8 @@ export class UIStateService {
         showAddVisitForm: false,
         selectedPatientForVisit: null,
         isEditingPatientForVisit: false,
-        isUserMenuOpen: false
+        isUserMenuOpen: false,
+        showAddAppointmentForm: false
     };
 
     private readonly uiState$ = new BehaviorSubject<UIState>(this.initialState);
@@ -124,6 +126,23 @@ export class UIStateService {
      */
     closeUserMenu(): void {
         this.updateUIState({ isUserMenuOpen: false });
+    }
+
+    /**
+     * Open add appointment form and close FAB
+     */
+    openAddAppointmentForm(): void {
+        this.updateUIState({
+            showAddAppointmentForm: true,
+            isFabOpen: false
+        });
+    }
+
+    /**
+     * Close add appointment form
+     */
+    closeAddAppointmentForm(): void {
+        this.updateUIState({ showAddAppointmentForm: false });
     }
 
     /**

@@ -1,0 +1,276 @@
+/* ── Dashboard layout ── */
+.dash-row {
+  display: grid;
+  grid-template-columns: 290px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 768px) {
+  .dash-row { grid-template-columns: 1fr; }
+}
+
+/* ── Calendar card ── */
+.cal-card {
+  background: var(--clr-bg, #fff);
+  border: 1px solid var(--clr-border, #e2e8f0) !important;
+}
+
+.cal-nav-btn {
+  width: 30px; height: 30px;
+  border: 1px solid var(--clr-border, #e2e8f0);
+  background: transparent;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--clr-text, #1e293b);
+  transition: all 0.15s;
+}
+.cal-nav-btn:hover {
+  background: #6366f1;
+  border-color: #6366f1;
+  color: #fff;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.cal-day-header {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--clr-text-muted, #94a3b8);
+  padding: 2px 0 6px;
+  letter-spacing: 0.04em;
+}
+
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid transparent;
+  user-select: none;
+}
+.cal-cell:hover {
+  background: #ede9fe;
+  border-color: #6366f1;
+  transform: scale(1.1);
+}
+.cal-cell:active { transform: scale(0.95); }
+.cal-cell--empty { cursor: default; border: none; }
+.cal-cell--empty:hover { background: none; transform: none; border-color: transparent; }
+
+.cal-cell--today {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  box-shadow: 0 3px 10px rgba(99,102,241,0.4);
+}
+.cal-cell--today .cal-day-num { color: #fff !important; font-weight: 700; }
+.cal-cell--today:hover { background: #4f46e5 !important; }
+
+.cal-cell--selected {
+  background: #4f46e5 !important;
+  border-color: #4f46e5 !important;
+  box-shadow: 0 3px 10px rgba(79,70,229,0.4);
+}
+.cal-cell--selected .cal-day-num { color: #fff !important; font-weight: 700; }
+
+.cal-cell--has-appts {
+  background: #f0fdf4;
+  border-color: #6ee7b7;
+}
+
+.cal-day-num {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--clr-text, #1e293b);
+  line-height: 1;
+}
+
+.cal-dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.cal-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 10px;
+  color: var(--clr-text-muted, #94a3b8);
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--clr-border, #e2e8f0);
+}
+
+/* ── Stats column ── */
+.stats-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Purple banner — standalone full-width block */
+.stat-banner {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-radius: 16px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 6px 20px rgba(99,102,241,0.28);
+  width: 100%;
+}
+
+.stat-banner-icon {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.18);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-banner-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.stat-banner-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+  margin-top: 3px;
+}
+
+/* Two-column small stats row */
+.stats-small-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--clr-bg, #fff);
+  border: 1px solid var(--clr-border, #e2e8f0);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.stat-card:hover {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  transform: translateY(-1px);
+}
+
+.stat-icon-wrap {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--clr-text, #1e293b);
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--clr-text-muted, #64748b);
+  margin-top: 3px;
+}
+
+/* ── Day panel ── */
+.day-panel {
+  background: var(--clr-bg, #fff);
+  border: 1px solid var(--clr-border, #e2e8f0);
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  flex: 1;
+}
+
+.day-panel-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 16px;
+  text-align: center;
+}
+
+.appt-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.appt-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--clr-surface, #f8fafc);
+  border: 1px solid var(--clr-border, #e2e8f0);
+  transition: box-shadow 0.12s;
+}
+.appt-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.07); }
+
+.appt-item-avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+  flex-shrink: 0;
+}
+
+.appt-item-info { flex: 1; min-width: 0; }
+.appt-item-name {
+  font-size: 13px; font-weight: 600;
+  color: var(--clr-text, #1e293b);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.appt-item-meta {
+  font-size: 11px;
+  color: var(--clr-text-muted, #64748b);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.appt-item-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}

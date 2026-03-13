@@ -7,7 +7,6 @@
   <!-- Search Section -->
   <section class="text-center mb-5" style="padding-top:36px" aria-label="Patient search">
     <h1 class="fw-semibold mb-3" style="color:var(--clr-text);font-size:var(--fs-lg)">Search Patient</h1>
-
     <div class="mx-auto" style="max-width:720px">
       <div class="search-wrapper">
         <label for="patient-search" class="visually-hidden">Search by Phone, Family ID or Name</label>
@@ -30,7 +29,6 @@
         <div *ngIf="isSearching" class="search-spinner" role="status" aria-label="Searching..."></div>
       </div>
     </div>
-
     <div *ngIf="errorMessage" class="alert alert-danger mt-3 mx-auto" role="alert" style="max-width:720px">
       {{ errorMessage }}
     </div>
@@ -38,7 +36,8 @@
 
   <!-- Search Results -->
   <div *ngIf="(searchResults$ | async) as searchResults">
-    <div *ngIf="searchResults.length > 0" style="animation: fadeIn 0.4s ease; max-width:1200px; margin:0 auto; padding: 0 16px">
+    <div *ngIf="searchResults.length > 0"
+      style="animation: fadeIn 0.4s ease; max-width:1200px; margin:0 auto; padding: 0 16px">
       <div class="d-flex align-items-center mb-3">
         <h3 class="fw-bold mb-0" style="font-size:20px; color:var(--clr-text)">
           Search Results
@@ -48,7 +47,6 @@
           </span>
         </h3>
       </div>
-
       <div class="card shadow-sm" style="border-radius:16px; overflow:hidden; border: 1px solid var(--clr-border)">
         <div class="table-responsive">
           <table class="table patients-table mb-0" role="table" aria-label="Patient search results">
@@ -107,8 +105,6 @@
           </table>
         </div>
       </div>
-
-      <!-- Load More -->
       <div *ngIf="hasMoreResults || isLoadingMore" class="text-center mt-3">
         <button class="btn btn-outline-primary px-4 py-2 fw-semibold d-inline-flex align-items-center gap-2"
           (click)="loadMoreResults()" [disabled]="isLoadingMore" style="border-radius:12px">
@@ -118,6 +114,186 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Dashboard Row ── -->
+  <div class="dash-row mx-auto mt-5" style="max-width:1060px">
+
+    <!-- LEFT: Calendar -->
+    <div class="card shadow-sm border-0 rounded-4 p-3 cal-card">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <button class="cal-nav-btn" (click)="prevMonth()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span class="fw-bold" style="font-size:13px;color:var(--clr-text)">{{ calendarMonthLabel }}</span>
+        <button class="cal-nav-btn" (click)="nextMonth()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+
+      <div class="cal-grid mb-1">
+        <div *ngFor="let d of ['S','M','T','W','T','F','S']" class="cal-day-header">{{ d }}</div>
+      </div>
+
+      <div class="cal-grid">
+        <ng-container *ngFor="let day of calendarDays">
+          <div *ngIf="!day" class="cal-cell cal-cell--empty"></div>
+          <div *ngIf="day" class="cal-cell"
+            [class.cal-cell--today]="isToday(day)"
+            [class.cal-cell--selected]="isSelected(day)"
+            [class.cal-cell--has-appts]="appointmentsOnDate(day).length > 0 && !isToday(day) && !isSelected(day)"
+            (click)="onDayClick(day)"
+            [title]="'Click to view — ' + appointmentsOnDate(day).length + ' appointment(s)'">
+            <span class="cal-day-num">{{ day.getDate() }}</span>
+            <span *ngIf="appointmentsOnDate(day).length > 0" class="cal-dot"
+              [style.background]="isToday(day)||isSelected(day) ? 'rgba(255,255,255,0.85)' : '#10b981'"></span>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="cal-legend">
+        <div class="d-flex align-items-center gap-1">
+          <div style="width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0"></div> Today
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0"></div> Has appointments
+        </div>
+        <div class="d-flex align-items-center gap-1">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Click to book
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Stats + Day Panel -->
+    <div class="stats-col">
+
+      <!-- Purple today banner -->
+      <div class="stat-banner">
+        <div class="stat-banner-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <div style="flex:1">
+          <div class="stat-banner-value">
+            <span *ngIf="!isLoadingAppts">{{ todayAppointmentCount }}</span>
+            <span *ngIf="isLoadingAppts" class="spinner-border spinner-border-sm"
+              style="color:#fff;width:18px;height:18px;border-width:2px"></span>
+          </div>
+          <div class="stat-banner-label">Today's Appointments</div>
+        </div>
+        <!-- VIEW ALL button -->
+        <button class="btn btn-sm flex-shrink-0"
+          style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3);
+          font-size:12px;font-weight:600;border-radius:10px;padding:6px 16px"
+          (click)="goToAppointments()">
+          View All →
+        </button>
+      </div>
+
+      <!-- Two stat cards -->
+      <div class="stats-small-row">
+        <div class="stat-card">
+          <div class="stat-icon-wrap" style="background:#dbeafe">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+          </div>
+          <div>
+            <div class="stat-value">{{ totalPatients }}</div>
+            <div class="stat-label">Total Patients</div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-icon-wrap" style="background:#d1fae5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <div>
+            <div class="stat-value">
+              <span *ngIf="!isLoadingAppts">{{ thisMonthCount }}</span>
+              <span *ngIf="isLoadingAppts">—</span>
+            </div>
+            <div class="stat-label">This Month</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Day panel — only shown when a date is selected -->
+      <div *ngIf="selectedDate" class="day-panel">
+        <div class="d-flex align-items-start justify-content-between mb-3 gap-2">
+          <div>
+            <div class="fw-bold" style="font-size:15px;color:var(--clr-text)">{{ selectedDateLabel }}</div>
+            <div style="font-size:12px;color:var(--clr-text-muted,#64748b);margin-top:2px">
+              <span *ngIf="selectedDateAppointments.length === 0">No appointments scheduled</span>
+              <span *ngIf="selectedDateAppointments.length > 0">
+                {{ selectedDateAppointments.length }}
+                appointment{{ selectedDateAppointments.length !== 1 ? 's' : '' }} scheduled
+              </span>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm d-flex align-items-center gap-1 flex-shrink-0"
+            style="border-radius:10px;font-size:12px;font-weight:600;padding:6px 14px"
+            (click)="bookOnDate(selectedDate)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Book
+          </button>
+        </div>
+
+        <div *ngIf="selectedDateAppointments.length > 0" class="appt-items">
+          <div *ngFor="let appt of selectedDateAppointments" class="appt-item">
+            <div class="appt-item-avatar">{{ appt.patientName.charAt(0).toUpperCase() }}</div>
+            <div class="appt-item-info">
+              <div class="appt-item-name">{{ appt.patientName }}</div>
+              <div class="appt-item-meta">
+                🕐 {{ formatTime(appt.appointmentTime) }}
+                <span *ngIf="appt.reason"> · {{ appt.reason }}</span>
+              </div>
+            </div>
+            <span class="appt-item-badge"
+              [style.background]="appt.status==='scheduled'?'#ede9fe':appt.status==='completed'?'#d1fae5':'#fee2e2'"
+              [style.color]="appt.status==='scheduled'?'#6366f1':appt.status==='completed'?'#059669':'#dc2626'">
+              {{ appt.status }}
+            </span>
+          </div>
+        </div>
+
+        <div *ngIf="selectedDateAppointments.length === 0" class="day-panel-empty" style="padding:18px 0 4px">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <p class="mt-2 mb-0" style="font-size:12px;color:var(--clr-text-muted,#94a3b8)">
+            No appointments — click Book to add one
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
 </main>
 
 <!-- ── FAB backdrop ── -->
@@ -131,6 +307,21 @@
 <div class="fab-container" role="region" aria-label="Quick actions">
   <div class="fab-options" [class.fab-options--visible]="(uiState$ | async)?.isFabOpen"
     [attr.aria-hidden]="!(uiState$ | async)?.isFabOpen">
+
+    <div class="fab-option-row">
+      <span class="fab-label" aria-hidden="true">Appointment</span>
+      <button class="fab-option-btn fab-visit-btn" (click)="openAddAppointmentForm()" aria-label="Book appointment"
+        [attr.tabindex]="(uiState$ | async)?.isFabOpen ? 0 : -1">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </button>
+    </div>
+
     <div class="fab-option-row">
       <span class="fab-label" aria-hidden="true">New Patient</span>
       <button class="fab-option-btn fab-patient-btn" (click)="openAddPatientForm()" aria-label="Add new patient"
@@ -144,6 +335,7 @@
         </svg>
       </button>
     </div>
+
   </div>
 
   <button class="fab-main-btn" (click)="toggleFab()" [class.fab-main-btn--open]="(uiState$ | async)?.isFabOpen"

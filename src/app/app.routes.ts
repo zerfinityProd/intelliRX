@@ -9,7 +9,6 @@ export const routes: Routes = [
     pathMatch: 'full'
   },
   {
-    // Login loaded eagerly — it's the entry point
     path: 'login',
     loadComponent: () =>
       import('./components/login/login').then(m => m.LoginComponent)
@@ -18,6 +17,12 @@ export const routes: Routes = [
     path: 'home',
     loadComponent: () =>
       import('./components/home/home').then(m => m.HomeComponent),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'add-appointment',
+    loadComponent: () =>
+      import('./components/add-appointment/add-appointment').then(m => m.AddAppointmentComponent),
     canActivate: [authGuard]
   },
   {
@@ -33,6 +38,14 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./components/add-visit-page/add-visit-page').then(
         m => m.AddVisitPageComponent
+      ),
+    canActivate: [authGuard]
+  },
+  {
+    path: 'appointments',
+    loadComponent: () =>
+      import('./components/appointments-list/appointments-list').then(
+        m => m.AppointmentsListComponent
       ),
     canActivate: [authGuard]
   },
