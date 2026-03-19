@@ -8,6 +8,14 @@ import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
 import { Patient } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
+import doctorsData from '../../data/doctors.json';
+
+export interface Doctor {
+  id: string;
+  name: string;
+  specialty: string;
+  avatar: string;
+}
 
 @Component({
   selector: 'app-add-appointment',
@@ -33,9 +41,13 @@ export class AddAppointmentComponent implements OnInit {
   // Appointment details
   appointmentDate: string = '';
   selectedTimeSlot: string = '';
+  selectedDoctorId: string = '';
   reason: string = '';
   notes: string = '';
   minDate: string = new Date().toISOString().split('T')[0];
+
+  // Doctors list
+  doctors: Doctor[] = doctorsData as Doctor[];
 
   // Time slots
   allTimeSlots: string[] = this.generateTimeSlots();
@@ -54,7 +66,6 @@ export class AddAppointmentComponent implements OnInit {
   private cdr = inject(ChangeDetectorRef);
 
   ngOnInit(): void {
-    // Pre-fill date from query param if coming from calendar
     this.route.queryParams.subscribe(params => {
       if (params['date']) {
         this.appointmentDate = params['date'];
@@ -63,9 +74,12 @@ export class AddAppointmentComponent implements OnInit {
     });
   }
 
+  get selectedDoctor(): Doctor | null {
+    return this.doctors.find(d => d.id === this.selectedDoctorId) ?? null;
+  }
+
   generateTimeSlots(): string[] {
     const slots: string[] = [];
-    // 9:00 AM to 6:00 PM, every 30 minutes
     for (let hour = 9; hour < 18; hour++) {
       for (const min of [0, 30]) {
         const h = hour.toString().padStart(2, '0');
@@ -143,7 +157,6 @@ export class AddAppointmentComponent implements OnInit {
 
     this.isCheckingPhone = false;
     this.step = 'appointment-details';
-    // Load slots if date already prefilled
     if (this.appointmentDate) await this.onDateChange();
     this.cdr.markForCheck();
   }
@@ -154,6 +167,11 @@ export class AddAppointmentComponent implements OnInit {
     this.isSubmitting = true;
     this.errorMessage = '';
 
+    const doctorNote = this.selectedDoctor
+      ? `Doctor: ${this.selectedDoctor.name} (${this.selectedDoctor.specialty})`
+      : '';
+    const combinedNotes = [doctorNote, this.notes.trim()].filter(Boolean).join('\n');
+
     try {
       await this.appointmentService.createAppointment({
         patientId:       this.isExistingPatient ? (this.matchedPatient?.uniqueId ?? '') : '',
@@ -163,7 +181,7 @@ export class AddAppointmentComponent implements OnInit {
         appointmentDate: new Date(this.appointmentDate),
         appointmentTime: this.selectedTimeSlot,
         reason:  this.reason.trim(),
-        notes:   this.notes.trim(),
+        notes:   combinedNotes,
         status:  'scheduled',
         isNewPatient: !this.isExistingPatient
       });

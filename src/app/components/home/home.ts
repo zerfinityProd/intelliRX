@@ -38,6 +38,12 @@ export class HomeComponent implements OnInit {
   isLoadingAppts: boolean = true;
   totalPatients: number = 0;
 
+  // Slot viewer
+  showSlots: boolean = false;
+  bookedSlotsForSelected: string[] = [];
+  isLoadingSlots: boolean = false;
+  readonly allTimeSlots: string[] = this.generateTimeSlots();
+
   get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
   get isLoadingMore(): boolean { return this.patientService.isLoadingMore; }
 
@@ -173,7 +179,21 @@ export class HomeComponent implements OnInit {
   }
 
   onDayClick(date: Date): void {
+    // If clicking a different date, close the slot viewer
+    if (this.selectedDate && !this.isSelected(date)) {
+      this.showSlots = false;
+      this.bookedSlotsForSelected = [];
+    }
     this.selectedDate = date;
+  }
+
+  onPageClick(event: MouseEvent): void {
+    // Deselect date when clicking anywhere outside the calendar/day panel
+    if (this.selectedDate) {
+      this.selectedDate = null;
+      this.showSlots = false;
+      this.bookedSlotsForSelected = [];
+    }
   }
 
   bookOnDate(date: Date): void {
@@ -183,6 +203,62 @@ export class HomeComponent implements OnInit {
 
   goToAppointments(): void {
     this.router.navigate(['/appointments']);
+  }
+
+  // ── Slot viewer ──
+
+  generateTimeSlots(): string[] {
+    const slots: string[] = [];
+    for (let hour = 9; hour < 18; hour++) {
+      for (const min of [0, 30]) {
+        slots.push(`${hour.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')}`);
+      }
+    }
+    return slots;
+  }
+
+  formatSlotLabel(time: string): string {
+    const [h, m] = time.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${m.toString().padStart(2,'0')} ${period}`;
+  }
+
+  get freeSlotCount(): number {
+    return this.allTimeSlots.filter(s => !this.bookedSlotsForSelected.includes(s)).length;
+  }
+
+  async toggleSlots(): Promise<void> {
+    this.showSlots = !this.showSlots;
+    if (this.showSlots && this.selectedDate) {
+      await this.loadSlotsForDate(this.selectedDate);
+    }
+  }
+
+  private async loadSlotsForDate(date: Date): Promise<void> {
+    this.isLoadingSlots = true;
+    this.cdr.markForCheck();
+    try {
+      const all = await this.appointmentService.getAppointments();
+      this.bookedSlotsForSelected = all
+        .filter(a => {
+          const d = new Date(a.appointmentDate);
+          return d.getFullYear() === date.getFullYear()
+            && d.getMonth() === date.getMonth()
+            && d.getDate() === date.getDate()
+            && a.status !== 'cancelled';
+        })
+        .map(a => a.appointmentTime);
+    } catch {
+      this.bookedSlotsForSelected = [];
+    }
+    this.isLoadingSlots = false;
+    this.cdr.markForCheck();
+  }
+
+  bookSpecificSlot(slot: string): void {
+    if (!this.selectedDate) return;
+    const iso = this.selectedDate.toISOString().split('T')[0];
+    this.router.navigate(['/add-appointment'], { queryParams: { date: iso, time: slot } });
   }
 
   formatTime(time: string): string {

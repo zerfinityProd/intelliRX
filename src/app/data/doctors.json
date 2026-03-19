@@ -1,0 +1,38 @@
+[
+  {
+    "id": "dr_001",
+    "name": "Dr. Aisha Sharma",
+    "specialty": "General Physician",
+    "avatar": "AS"
+  },
+  {
+    "id": "dr_002",
+    "name": "Dr. Rajiv Mehta",
+    "specialty": "Cardiologist",
+    "avatar": "RM"
+  },
+  {
+    "id": "dr_003",
+    "name": "Dr. Priya Kapoor",
+    "specialty": "Dermatologist",
+    "avatar": "PK"
+  },
+  {
+    "id": "dr_004",
+    "name": "Dr. Suresh Nair",
+    "specialty": "Orthopedist",
+    "avatar": "SN"
+  },
+  {
+    "id": "dr_005",
+    "name": "Dr. Neha Verma",
+    "specialty": "Pediatrician",
+    "avatar": "NV"
+  },
+  {
+    "id": "dr_006",
+    "name": "Dr. Arjun Patel",
+    "specialty": "ENT Specialist",
+    "avatar": "AP"
+  }
+]
