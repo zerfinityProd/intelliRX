@@ -3,7 +3,100 @@
    Columns: Scheduled | Completed | Cancelled | No-Show
 ═══════════════════════════════════════════════════════════ */
 
-/* ── Page Shell ── */
+/* ── Search Box ── */
+.kb-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--clr-surface, #fff);
+  border: 1.5px solid var(--clr-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 6px 10px 6px 12px;
+  gap: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.kb-search-wrap:focus-within {
+  border-color: var(--clr-primary, #6366f1);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+.kb-search-icon {
+  color: var(--clr-text-light, #94a3b8);
+  flex-shrink: 0;
+}
+.kb-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--clr-text, #1e293b);
+  width: 180px;
+  font-family: inherit;
+}
+.kb-search-input::placeholder { color: var(--clr-text-light, #94a3b8); }
+.kb-search-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--clr-text-light, #94a3b8);
+  font-size: 12px;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.kb-search-clear:hover { color: var(--clr-text, #1e293b); }
+
+[data-theme="dark"] .kb-search-wrap {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+}
+[data-theme="dark"] .kb-search-input { color: var(--dk-text1); }
+
+/* ── Date Filter ── */
+.kb-date-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--clr-surface, #fff);
+  border: 1.5px solid var(--clr-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 6px 12px;
+  color: var(--clr-text-muted, #64748b);
+}
+
+.kb-date-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--clr-text, #1e293b);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.kb-today-chip {
+  background: var(--clr-primary, #6366f1);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.kb-today-chip:hover { opacity: 0.85; }
+
+[data-theme="dark"] .kb-date-filter {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+  color: var(--dk-text2);
+}
+[data-theme="dark"] .kb-date-input {
+  color: var(--dk-text1);
+  color-scheme: dark;
+}
 .kb-page {
   max-width: 1440px;
   margin: 0 auto;

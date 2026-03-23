@@ -134,7 +134,7 @@
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
             <circle cx="12" cy="7" r="4"></circle>
           </svg>
-          <select [(ngModel)]="selectedDoctorId" class="appt-select">
+          <select [(ngModel)]="selectedDoctorId" class="appt-select" (ngModelChange)="onDoctorChange()">
             <option value="">— Choose a doctor —</option>
             <option *ngFor="let doc of doctors" [value]="doc.id">
               {{ doc.name }} · {{ doc.specialty }}

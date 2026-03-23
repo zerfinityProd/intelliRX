@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PatientService } from '../../services/patient';
+import { AppointmentService } from '../../services/appointmentService';
 import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import Swal from 'sweetalert2';
@@ -74,6 +75,7 @@ export class AddVisitPageComponent implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
     private readonly patientService = inject(PatientService);
+    private readonly appointmentService = inject(AppointmentService);
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly ngZone = inject(NgZone);
 
@@ -270,6 +272,34 @@ export class AddVisitPageComponent implements OnInit {
             if (medicinesText) visitData.medicines = medicinesText;
 
             await this.patientService.addVisit(patientId, visitData);
+
+            // ── Auto-complete matching appointment ──────────────
+            try {
+                const allAppts = await this.appointmentService.getAppointments();
+                const patientName = (this.patient.name || '').trim().toLowerCase();
+                const patientPhone = (this.patient.phone || '').trim();
+                const today = new Date();
+                const matchingAppt = allAppts.find(a => {
+                    if (a.status !== 'scheduled') return false;
+                    const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
+                    const phoneMatch = (a.patientPhone || '').trim() === patientPhone;
+                    const apptDate = new Date(a.appointmentDate);
+                    const sameOrPast =
+                        apptDate.getFullYear() < today.getFullYear() ||
+                        (apptDate.getFullYear() === today.getFullYear() &&
+                            apptDate.getMonth() < today.getMonth()) ||
+                        (apptDate.getFullYear() === today.getFullYear() &&
+                            apptDate.getMonth() === today.getMonth() &&
+                            apptDate.getDate() <= today.getDate());
+                    return nameMatch && phoneMatch && sameOrPast;
+                });
+                if (matchingAppt && matchingAppt.id) {
+                    await this.appointmentService.updateAppointmentStatus(matchingAppt.id, 'completed');
+                }
+            } catch {
+                // Silent — don't block visit save if appointment update fails
+            }
+
             this.isSubmitting = false;
 
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';

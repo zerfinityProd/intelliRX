@@ -21,26 +21,30 @@
       </div>
     </div>
     <div class="kb-page-header__actions">
-      <!-- Stats pills -->
-      <div *ngIf="!isLoading" class="kb-stat-pills">
-        <div class="kb-stat-pill kb-stat-pill--total">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
-          <span>{{ appointments.length }} total</span>
-        </div>
-        <div class="kb-stat-pill kb-stat-pill--today">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          <span>{{ totalToday }} today</span>
-        </div>
+      <!-- Search -->
+      <div class="kb-search-wrap">
+        <svg class="kb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input type="text" [(ngModel)]="searchTerm" class="kb-search-input"
+          placeholder="Search name or phone…" />
+        <button *ngIf="searchTerm" class="kb-search-clear" (click)="searchTerm = ''" aria-label="Clear search">✕</button>
+      </div>
+      <!-- Date picker -->
+      <div class="kb-date-filter">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <input type="date" [(ngModel)]="selectedDate" class="kb-date-input"
+          min="2000-01-01" max="2099-12-31"
+          (ngModelChange)="onDateInput($event)" />
+        <button *ngIf="!isSelectedToday" class="kb-today-chip" (click)="goToday()">Today</button>
       </div>
       <button class="kb-btn kb-btn--primary" (click)="bookNew()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -220,7 +224,7 @@
                 stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
-              Done
+              Completed
             </button>
             <button class="kb-card__action-btn kb-card__action-btn--cancel"
               (click)="updateStatus(appt, 'cancelled')"

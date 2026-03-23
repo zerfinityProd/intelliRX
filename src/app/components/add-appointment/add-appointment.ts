@@ -15,6 +15,7 @@ export interface Doctor {
   name: string;
   specialty: string;
   avatar: string;
+  email: string;
 }
 
 @Component({
@@ -105,6 +106,10 @@ export class AddAppointmentComponent implements OnInit {
     return this.allTimeSlots.filter(s => !this.bookedSlots.includes(s));
   }
 
+  async onDoctorChange(): Promise<void> {
+    if (this.appointmentDate) await this.onDateChange();
+  }
+
   async onDateChange(): Promise<void> {
     if (!this.appointmentDate) { this.bookedSlots = []; return; }
     this.isLoadingSlots = true;
@@ -115,8 +120,11 @@ export class AddAppointmentComponent implements OnInit {
         .filter(a => {
           const d = new Date(a.appointmentDate);
           const [y, mo, day] = this.appointmentDate.split('-').map(Number);
-          return d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day
-            && a.status !== 'cancelled';
+          const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
+          const sameDoctor = this.selectedDoctorId
+            ? (a.notes ?? '').includes(this.selectedDoctor?.name ?? '')
+            : true;
+          return sameDay && sameDoctor && a.status !== 'cancelled';
         })
         .map(a => a.appointmentTime);
     } catch {
@@ -183,7 +191,8 @@ export class AddAppointmentComponent implements OnInit {
         reason:  this.reason.trim(),
         notes:   combinedNotes,
         status:  'scheduled',
-        isNewPatient: !this.isExistingPatient
+        isNewPatient: !this.isExistingPatient,
+        doctorId: this.selectedDoctor?.email ?? ''
       });
       this.isSubmitting = false;
 

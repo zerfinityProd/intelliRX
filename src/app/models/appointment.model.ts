@@ -14,7 +14,8 @@ export interface Appointment {
   notes?: string;
   status: AppointmentStatus;
   isNewPatient: boolean;    // true = no patientId yet
-  userId: string;           // Firebase Auth UID
+  userId: string;           // Firebase Auth UID of the user who created this appointment
+  doctorId?: string;        // email of the assigned doctor (links to allowedUsers collection)
   createdAt: Date;
   updatedAt: Date;
 }

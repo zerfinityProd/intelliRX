@@ -31,6 +31,23 @@ export class AuthorizationService {
         }
     }
 
+    /**
+     * Returns the role for a given email.
+     * Defaults to 'doctor' if no role field exists (backward compatible).
+     */
+    async getUserRole(email: string): Promise<'doctor' | 'receptionist'> {
+        try {
+            const docRef = doc(this.firestore, 'allowedUsers', email.toLowerCase());
+            const docSnap = await getDoc(docRef);
+            if (!docSnap.exists()) return 'doctor';
+            const data = docSnap.data();
+            return (data?.['role'] === 'receptionist') ? 'receptionist' : 'doctor';
+        } catch (error) {
+            console.warn('Role check failed for:', email);
+            return 'doctor';
+        }
+    }
+
     async checkEmailsAllowed(emails: string[]): Promise<Record<string, boolean>> {
         const results: Record<string, boolean> = {};
         for (const email of emails) {

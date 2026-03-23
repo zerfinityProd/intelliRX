@@ -25,6 +25,7 @@ export interface User {
     name: string;
     email: string;
     photoURL?: string;
+    role?: 'doctor' | 'receptionist';
     preferences?: UserPreferences;
 }
 
@@ -60,7 +61,9 @@ export class AuthenticationService {
                         await signOut(this.auth);
                         this.setCurrentUser(null);
                     } else {
-                        const user = this.transformFirebaseUser(firebaseUser);
+                        // Fetch role so it's available after page refresh
+                        const role = await this.authorizationService.getUserRole(email);
+                        const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                         this.setCurrentUser(user);
                     }
                 } else {
@@ -119,15 +122,6 @@ export class AuthenticationService {
         return 'User';
     }
 
-    private isValidUser(user: any): user is User {
-        return user && typeof user.uid === 'string' && typeof user.name === 'string'
-            && typeof user.email === 'string' && user.uid.trim().length > 0 && user.email.trim().length > 0;
-    }
-
-    private extractUserIdFromEmail(email: string): string {
-        return email.split('@')[0] || 'user';
-    }
-
     public get currentUserValue(): User | null {
         return this.currentUserSubject.value;
     }
@@ -142,11 +136,11 @@ export class AuthenticationService {
             if (userCredential.user) {
                 await updateProfile(userCredential.user, { displayName });
             }
-            const user = this.createUser(
-                userCredential.user.uid,
-                userCredential.user.email || email,
-                displayName
-            );
+            const role = await this.authorizationService.getUserRole(email);
+            const user: User = {
+                ...this.createUser(userCredential.user.uid, userCredential.user.email || email, displayName),
+                role
+            };
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
@@ -164,7 +158,8 @@ export class AuthenticationService {
                 await signOut(this.auth);
                 throw new Error('Access denied. You are not authorized to log in.');
             }
-            const user = this.transformFirebaseUser(userCredential.user);
+            const role = await this.authorizationService.getUserRole(userEmail);
+            const user: User = { ...this.transformFirebaseUser(userCredential.user), role };
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
@@ -174,7 +169,11 @@ export class AuthenticationService {
         }
     }
 
-    async loginWithGoogle(): Promise<void> {
+    /**
+     * Returns the signed-in User so callers can navigate based on role.
+     * Returns void (undefined) if popup was closed by user.
+     */
+    async loginWithGoogle(): Promise<User | void> {
         try {
             const result = await signInWithPopup(this.auth, this.googleProvider);
             const email = result.user.email || '';
@@ -183,9 +182,10 @@ export class AuthenticationService {
                 await signOut(this.auth);
                 throw new Error('Access denied. You are not authorized to log in.');
             }
-            const user = this.transformFirebaseUser(result.user);
+            const role = await this.authorizationService.getUserRole(email);
+            const user: User = { ...this.transformFirebaseUser(result.user), role };
             this.setCurrentUser(user);
-            this.router.navigate(['/home']);
+            return user;
         } catch (error: any) {
             if (error.message?.includes('Access denied')) throw error;
             if (error.code === 'auth/popup-closed-by-user') return;
@@ -193,49 +193,52 @@ export class AuthenticationService {
             throw this.handleAuthError(error);
         }
     }
-    async loginWithMicrosoft(): Promise<void> {
-    try {
-        const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
-        const provider = new OAuthProvider('microsoft.com');
-        const result = await signInWithPopup(this.auth, provider);
-        const email = result.user.email || '';
-        const allowed = await this.authorizationService.isEmailAllowed(email);
-        if (!allowed) {
-            await signOut(this.auth);
-            throw new Error('Access denied. You are not authorized to log in.');
-        }
-        const user = this.transformFirebaseUser(result.user);
-        this.setCurrentUser(user);
-        this.router.navigate(['/home']);
-    } catch (error: any) {
-        if (error.message?.includes('Access denied')) throw error;
-        if (error.code === 'auth/popup-closed-by-user') return;
-        console.error('Microsoft login error:', error);
-        throw this.handleAuthError(error);
-    }
-}
 
-async loginWithApple(): Promise<void> {
-    try {
-        const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
-        const provider = new OAuthProvider('apple.com');
-        const result = await signInWithPopup(this.auth, provider);
-        const email = result.user.email || '';
-        const allowed = await this.authorizationService.isEmailAllowed(email);
-        if (!allowed) {
-            await signOut(this.auth);
-            throw new Error('Access denied. You are not authorized to log in.');
+    async loginWithMicrosoft(): Promise<User | void> {
+        try {
+            const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
+            const provider = new OAuthProvider('microsoft.com');
+            const result = await signInWithPopup(this.auth, provider);
+            const email = result.user.email || '';
+            const allowed = await this.authorizationService.isEmailAllowed(email);
+            if (!allowed) {
+                await signOut(this.auth);
+                throw new Error('Access denied. You are not authorized to log in.');
+            }
+            const role = await this.authorizationService.getUserRole(email);
+            const user: User = { ...this.transformFirebaseUser(result.user), role };
+            this.setCurrentUser(user);
+            return user;
+        } catch (error: any) {
+            if (error.message?.includes('Access denied')) throw error;
+            if (error.code === 'auth/popup-closed-by-user') return;
+            console.error('Microsoft login error:', error);
+            throw this.handleAuthError(error);
         }
-        const user = this.transformFirebaseUser(result.user);
-        this.setCurrentUser(user);
-        this.router.navigate(['/home']);
-    } catch (error: any) {
-        if (error.message?.includes('Access denied')) throw error;
-        if (error.code === 'auth/popup-closed-by-user') return;
-        console.error('Apple login error:', error);
-        throw this.handleAuthError(error);
     }
-}
+
+    async loginWithApple(): Promise<User | void> {
+        try {
+            const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
+            const provider = new OAuthProvider('apple.com');
+            const result = await signInWithPopup(this.auth, provider);
+            const email = result.user.email || '';
+            const allowed = await this.authorizationService.isEmailAllowed(email);
+            if (!allowed) {
+                await signOut(this.auth);
+                throw new Error('Access denied. You are not authorized to log in.');
+            }
+            const role = await this.authorizationService.getUserRole(email);
+            const user: User = { ...this.transformFirebaseUser(result.user), role };
+            this.setCurrentUser(user);
+            return user;
+        } catch (error: any) {
+            if (error.message?.includes('Access denied')) throw error;
+            if (error.code === 'auth/popup-closed-by-user') return;
+            console.error('Apple login error:', error);
+            throw this.handleAuthError(error);
+        }
+    }
 
     async handleGoogleRedirectResult(): Promise<User | null> {
         return null;

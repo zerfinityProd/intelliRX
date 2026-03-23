@@ -12,6 +12,7 @@ import {
   Timestamp
 } from '@angular/fire/firestore';
 import { AuthenticationService } from './authenticationService';
+import { AuthorizationService } from './authorizationService';
 import { Appointment } from '../models/appointment.model';
 
 @Injectable({ providedIn: 'root' })
@@ -19,16 +20,22 @@ export class AppointmentService {
 
   // In-memory cache — cleared when a new appointment is booked or status updated
   private cache: Appointment[] | null = null;
+  private allCache: Appointment[] | null = null;
 
   constructor(
     private db: Firestore,
-    private authService: AuthenticationService
+    private authService: AuthenticationService,
+    private authorizationService: AuthorizationService
   ) {}
 
   private getCurrentUserId(): string {
     const userId = this.authService.getCurrentUserId();
     if (!userId) throw new Error('User not authenticated');
     return userId;
+  }
+
+  private getCurrentUserEmail(): string {
+    return this.authService.currentUserValue?.email || '';
   }
 
   private removeUndefined(obj: any): any {
@@ -44,6 +51,7 @@ export class AppointmentService {
   /** Invalidate cache — call after any write operation */
   invalidateCache(): void {
     this.cache = null;
+    this.allCache = null;
   }
 
   async createAppointment(
@@ -69,6 +77,8 @@ export class AppointmentService {
         notes: data.notes || '',
         status: data.status,
         isNewPatient: data.isNewPatient,
+        // Store doctorId if provided (email of the assigned doctor)
+        ...(data.doctorId ? { doctorId: data.doctorId.toLowerCase() } : {}),
         createdAt: Timestamp.fromDate(now),
         updatedAt: Timestamp.fromDate(now)
       });
@@ -84,6 +94,39 @@ export class AppointmentService {
     }
   }
 
+  /** Fetch ALL appointments across all users — used for slot collision checks and receptionist view */
+  async getAllAppointments(): Promise<Appointment[]> {
+    if (this.allCache !== null) {
+      return this.allCache;
+    }
+    try {
+      const appointmentsCol = collection(this.db, 'appointments');
+      const snap = await getDocs(appointmentsCol);
+      const appointments = snap.docs.map(d => {
+        const data = d.data() as any;
+        return {
+          ...data,
+          id: d.id,
+          appointmentDate: data.appointmentDate?.toDate?.() ?? new Date(data.appointmentDate),
+          createdAt: data.createdAt?.toDate?.() ?? new Date(data.createdAt),
+          updatedAt: data.updatedAt?.toDate?.() ?? new Date(data.updatedAt),
+        } as Appointment;
+      });
+      this.allCache = appointments.sort((a, b) =>
+        new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime()
+      );
+      return this.allCache;
+    } catch (error) {
+      console.error('✗ Error fetching all appointments:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch appointments for the current user.
+   * - Doctors (role === 'doctor'): see only appointments where doctorId matches their email.
+   * - Receptionists: see all appointments (via getAllAppointments).
+   */
   async getAppointments(): Promise<Appointment[]> {
     // Return cached result instantly if available
     if (this.cache !== null) {
@@ -91,9 +134,19 @@ export class AppointmentService {
     }
 
     try {
-      const userId = this.getCurrentUserId();
+      const email = this.getCurrentUserEmail();
+      const role = await this.authorizationService.getUserRole(email);
+
+      if (role === 'receptionist') {
+        // Receptionists see all appointments
+        const all = await this.getAllAppointments();
+        this.cache = all;
+        return this.cache;
+      }
+
+      // Doctors see only their own appointments (matched by email = doctorId)
       const appointmentsCol = collection(this.db, 'appointments');
-      const q = query(appointmentsCol, where('userId', '==', userId));
+      const q = query(appointmentsCol, where('doctorId', '==', email.toLowerCase()));
       const snap = await getDocs(q);
 
       const appointments = snap.docs.map(d => {

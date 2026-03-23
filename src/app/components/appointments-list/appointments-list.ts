@@ -1,6 +1,7 @@
 // src/app/components/appointments-list/appointments-list.ts
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
 import { AppointmentService } from '../../services/appointmentService';
@@ -17,7 +18,7 @@ export interface KanbanColumn {
 @Component({
   selector: 'app-appointments-list',
   standalone: true,
-  imports: [CommonModule, NavbarComponent],
+  imports: [CommonModule, FormsModule, NavbarComponent],
   templateUrl: './appointments-list.html',
   styleUrl: './appointments-list.css'
 })
@@ -26,6 +27,12 @@ export class AppointmentsListComponent implements OnInit {
   isLoading = true;
   errorMessage = '';
 
+  // Date filter — defaults to today
+  selectedDate: string = new Date().toISOString().split('T')[0];
+
+  // Search
+  searchTerm: string = '';
+
   // Drag state
   draggingCard: Appointment | null = null;
   dragOverColumn: Appointment['status'] | null = null;
@@ -33,6 +40,7 @@ export class AppointmentsListComponent implements OnInit {
 
   private appointmentService = inject(AppointmentService);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
 
   readonly columns: KanbanColumn[] = [
     { id: 'scheduled',  label: 'Scheduled',  color: '#ede9fe', accent: '#6366f1', icon: 'clock'    },
@@ -40,8 +48,30 @@ export class AppointmentsListComponent implements OnInit {
     { id: 'cancelled',  label: 'Cancelled',  color: '#fee2e2', accent: '#ef4444', icon: 'x'        },
   ];
 
+  get filteredAppointments(): Appointment[] {
+    let result = this.appointments;
+
+    if (this.selectedDate) {
+      const [y, mo, day] = this.selectedDate.split('-').map(Number);
+      result = result.filter(a => {
+        const d = new Date(a.appointmentDate);
+        return d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
+      });
+    }
+
+    const term = this.searchTerm.trim().toLowerCase();
+    if (term) {
+      result = result.filter(a =>
+        a.patientName.toLowerCase().includes(term) ||
+        (a.patientPhone ?? '').includes(term)
+      );
+    }
+
+    return result;
+  }
+
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.appointments.filter(a => a.status === status);
+    return this.filteredAppointments.filter(a => a.status === status);
   }
 
   get totalToday(): number {
@@ -54,6 +84,24 @@ export class AppointmentsListComponent implements OnInit {
     }).length;
   }
 
+  get isSelectedToday(): boolean {
+    return this.selectedDate === new Date().toISOString().split('T')[0];
+  }
+
+  goToday(): void {
+    this.selectedDate = new Date().toISOString().split('T')[0];
+  }
+
+  onDateInput(value: string): void {
+    if (!value) return;
+    const year = parseInt(value.split('-')[0], 10);
+    if (year < 2000 || year > 2099) {
+      this.selectedDate = new Date().toISOString().split('T')[0];
+    } else {
+      this.selectedDate = value;
+    }
+  }
+
   async ngOnInit(): Promise<void> {
     try {
       this.appointments = await this.appointmentService.getAppointments();
@@ -62,6 +110,7 @@ export class AppointmentsListComponent implements OnInit {
       this.appointments = [];
     } finally {
       this.isLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -108,6 +157,7 @@ export class AppointmentsListComponent implements OnInit {
       this.errorMessage = 'Failed to update status. Please try again.';
     } finally {
       this.updatingId = null;
+      this.cdr.detectChanges();
     }
   }
 
