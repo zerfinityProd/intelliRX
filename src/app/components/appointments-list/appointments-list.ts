@@ -1,11 +1,15 @@
 // src/app/components/appointments-list/appointments-list.ts
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
 import { AppointmentService } from '../../services/appointmentService';
 import { Appointment } from '../../models/appointment.model';
+import { PatientService } from '../../services/patient';
+import { FirebaseService } from '../../services/firebase';
+import { AuthenticationService } from '../../services/authenticationService';
+import { Patient } from '../../models/patient.model';
 
 export interface KanbanColumn {
   id: Appointment['status'];
@@ -22,7 +26,7 @@ export interface KanbanColumn {
   templateUrl: './appointments-list.html',
   styleUrl: './appointments-list.css'
 })
-export class AppointmentsListComponent implements OnInit {
+export class AppointmentsListComponent implements OnInit, OnDestroy {
   appointments: Appointment[] = [];
   isLoading = true;
   errorMessage = '';
@@ -39,8 +43,14 @@ export class AppointmentsListComponent implements OnInit {
   updatingId: string | null = null;
 
   private appointmentService = inject(AppointmentService);
+  private patientService = inject(PatientService);
+  private firebaseService = inject(FirebaseService);
+  private authService = inject(AuthenticationService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+
+  private autoCancelTimer: ReturnType<typeof setTimeout> | null = null;
+  private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly columns: KanbanColumn[] = [
     { id: 'scheduled',  label: 'Scheduled',  color: '#ede9fe', accent: '#6366f1', icon: 'clock'    },
@@ -51,6 +61,7 @@ export class AppointmentsListComponent implements OnInit {
   get filteredAppointments(): Appointment[] {
     let result = this.appointments;
 
+    // Always respect the date filter (defaults to today).
     if (this.selectedDate) {
       const [y, mo, day] = this.selectedDate.split('-').map(Number);
       result = result.filter(a => {
@@ -59,12 +70,21 @@ export class AppointmentsListComponent implements OnInit {
       });
     }
 
-    const term = this.searchTerm.trim().toLowerCase();
+    const termRaw = this.searchTerm.trim();
+    const term = termRaw.toLowerCase();
     if (term) {
-      result = result.filter(a =>
-        a.patientName.toLowerCase().includes(term) ||
-        (a.patientPhone ?? '').includes(term)
-      );
+      const digitsQuery = this.normalizePhoneDigits(termRaw);
+      result = result.filter(a => {
+        const name = (a.patientName ?? '').toLowerCase();
+        const ailments = (a.ailments ?? '').toLowerCase();
+        const phoneDigits = this.normalizePhoneDigits(a.patientPhone ?? '');
+
+        const matchesNameOrAilments = name.includes(term) || ailments.includes(term);
+        const matchesPhoneDigits = digitsQuery ? phoneDigits.includes(digitsQuery) : false;
+        const matchesPhoneRaw = (a.patientPhone ?? '').includes(termRaw);
+
+        return matchesNameOrAilments || matchesPhoneDigits || matchesPhoneRaw;
+      });
     }
 
     return result;
@@ -112,6 +132,125 @@ export class AppointmentsListComponent implements OnInit {
       this.isLoading = false;
       this.cdr.detectChanges();
     }
+
+    this.scheduleAutoCancelAtCutoff();
+    // Keep UI in sync when appointments are updated from other screens (e.g. adding a visit).
+    this.refreshTimer = setInterval(() => {
+      void this.refreshAppointments();
+    }, 3000);
+  }
+
+  ngOnDestroy(): void {
+    if (this.autoCancelTimer) clearTimeout(this.autoCancelTimer);
+    if (this.refreshTimer) clearInterval(this.refreshTimer);
+  }
+
+  private async refreshAppointments(): Promise<void> {
+    try {
+      this.appointments = await this.appointmentService.getAppointments();
+      this.cdr.detectChanges();
+    } catch {
+      // No-op: avoid breaking UI refresh loop
+    }
+  }
+
+  private scheduleAutoCancelAtCutoff(): void {
+    if (this.autoCancelTimer) clearTimeout(this.autoCancelTimer);
+
+    const now = new Date();
+    const cutoff = new Date(now);
+    cutoff.setHours(23, 0, 0, 0);
+
+    const delay = cutoff.getTime() - now.getTime();
+    if (delay <= 0) {
+      void this.runAutoCancel();
+      return;
+    }
+    this.autoCancelTimer = setTimeout(() => void this.runAutoCancel(), delay);
+  }
+
+  private isSameLocalDay(a: Date, b: Date): boolean {
+    return a.getFullYear() === b.getFullYear()
+      && a.getMonth() === b.getMonth()
+      && a.getDate() === b.getDate();
+  }
+
+  private normalizePhoneDigits(phone: string): string {
+    return String(phone || '').replace(/\D/g, '');
+  }
+
+  private async hasAnyVisitTodayForAppointment(appt: Appointment, today: Date, cache: Map<string, boolean>): Promise<boolean> {
+    const cacheKey = appt.patientId
+      ? `pid:${appt.patientId}`
+      : `np:${(appt.patientName || '').trim().toLowerCase()}|${this.normalizePhoneDigits(appt.patientPhone || '')}`;
+
+    if (cache.has(cacheKey)) return cache.get(cacheKey)!;
+
+    const checkVisitsForPatientId = async (patientId: string): Promise<boolean> => {
+      const visits = await this.patientService.getPatientVisits(patientId);
+      return visits.some(v => this.isSameLocalDay(new Date((v as any).createdAt), today));
+    };
+
+    let result = false;
+    try {
+      if (appt.patientId) {
+        result = await checkVisitsForPatientId(appt.patientId);
+      } else {
+        const userId = this.authService.getCurrentUserId();
+        if (!userId) {
+          result = false;
+        } else {
+          const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
+          if (!phoneDigits) {
+            result = false;
+          } else {
+            const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits, userId);
+            const nameLower = (appt.patientName || '').trim().toLowerCase();
+            const candidates = results.filter(p =>
+              (p.name || '').trim().toLowerCase() === nameLower &&
+              this.normalizePhoneDigits((p as any).phone) === phoneDigits
+            );
+            for (const p of candidates) {
+              if (await checkVisitsForPatientId(p.uniqueId)) {
+                result = true;
+                break;
+              }
+            }
+          }
+        }
+      }
+    } catch {
+      result = false;
+    }
+
+    cache.set(cacheKey, result);
+    return result;
+  }
+
+  private async runAutoCancel(): Promise<void> {
+    const now = new Date();
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+
+    const cache = new Map<string, boolean>();
+    const todaysScheduled = this.appointments.filter(a =>
+      a.status === 'scheduled' && this.isSameLocalDay(new Date(a.appointmentDate), now)
+    );
+
+    for (const appt of todaysScheduled) {
+      if (!appt.id) continue;
+      const hasVisitToday = await this.hasAnyVisitTodayForAppointment(appt, now, cache);
+      if (!hasVisitToday) {
+        try {
+          await this.appointmentService.updateAppointmentStatus(appt.id, 'cancelled');
+          appt.status = 'cancelled';
+        } catch {
+          // keep going
+        }
+      }
+    }
+
+    this.cdr.detectChanges();
   }
 
   // ── Drag & Drop ──
@@ -140,6 +279,7 @@ export class AppointmentsListComponent implements OnInit {
   async onDrop(event: DragEvent, colId: Appointment['status']): Promise<void> {
     event.preventDefault();
     this.dragOverColumn = null;
+    if (colId === 'completed') return;
     if (!this.draggingCard || this.draggingCard.status === colId) return;
 
     const appt = this.draggingCard;
@@ -149,6 +289,11 @@ export class AppointmentsListComponent implements OnInit {
 
   async updateStatus(appt: Appointment, status: Appointment['status']): Promise<void> {
     if (appt.status === status || this.updatingId === appt.id) return;
+    if (status === 'completed') {
+      this.errorMessage = 'Appointments are completed automatically when a visit is added.';
+      this.cdr.detectChanges();
+      return;
+    }
     this.updatingId = appt.id!;
     try {
       await this.appointmentService.updateAppointmentStatus(appt.id!, status);
@@ -163,6 +308,32 @@ export class AppointmentsListComponent implements OnInit {
 
   goHome(): void { this.router.navigate(['/home']); }
   bookNew(): void { this.router.navigate(['/add-appointment']); }
+
+  async openVisitFromAppointment(appt: Appointment): Promise<void> {
+    const directPatientId = (appt.patientId || '').trim();
+    if (directPatientId) {
+      // Keep patient ailments in sync with what was entered during appointment booking.
+      if (appt.ailments && appt.ailments.trim()) {
+        try {
+          await this.patientService.updatePatient(directPatientId, { ailments: appt.ailments });
+        } catch {
+          // Don't block navigation if the update fails.
+        }
+      }
+      this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'home' } });
+      return;
+    }
+
+    // No existing patient link -> open Add Patient with prefilled values
+    this.router.navigate(['/home'], {
+      queryParams: {
+        openAddPatient: '1',
+        name: appt.patientName || '',
+        phone: appt.patientPhone || '',
+        ailments: appt.ailments || ''
+      }
+    });
+  }
 
   formatDate(date: Date): string {
     return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });

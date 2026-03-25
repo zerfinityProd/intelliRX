@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Observable } from 'rxjs';
 import {
   Firestore, collection, query, where, getCountFromServer
@@ -49,6 +49,11 @@ export class HomeComponent implements OnInit {
 
   private searchTimeout: any;
 
+  // Prefill for Add Patient (used from appointment cards)
+  addPatientPrefillName: string = '';
+  addPatientPrefillPhone: string = '';
+  addPatientPrefillAilments: string = '';
+
   constructor(
     private patientService: PatientService,
     private uiStateService: UIStateService,
@@ -56,6 +61,7 @@ export class HomeComponent implements OnInit {
     private authService: AuthenticationService,
     private db: Firestore,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
   ) {
     this.uiState$ = this.uiStateService.getUIState();
@@ -64,6 +70,17 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.clearSearch();
+
+    // If navigated here with prefill query params, open Add Patient modal.
+    const qp = this.route.snapshot.queryParams || {};
+    if (qp['openAddPatient'] === '1') {
+      this.addPatientPrefillName = String(qp['name'] ?? '');
+      this.addPatientPrefillPhone = String(qp['phone'] ?? '');
+      this.addPatientPrefillAilments = String(qp['ailments'] ?? '');
+      this.uiStateService.openAddPatientForm();
+      this.clearAddPatientQueryParams();
+    }
+
     this.patientService.searchResults$.subscribe(results => {
       this.searchResults = results;
       this.isSearching = false;
@@ -71,6 +88,20 @@ export class HomeComponent implements OnInit {
     });
     this.loadAppointments();
     this.loadPatientCount();
+  }
+
+  private clearAddPatientQueryParams(): void {
+    // Prevent re-opening Add Patient modal on browser refresh/back.
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      replaceUrl: true,
+      queryParams: {
+        openAddPatient: null,
+        name: null,
+        phone: null,
+        ailments: null
+      }
+    });
   }
 
   async loadAppointments(): Promise<void> {
@@ -170,6 +201,12 @@ export class HomeComponent implements OnInit {
     return this.appointmentsOnDate(this.selectedDate);
   }
 
+  // Used for slot availability: matches `loadSlotsForDate()` behavior
+  // (cancelled appointments do not consume a slot).
+  get selectedDateBookedAppointments(): Appointment[] {
+    return this.selectedDateAppointments.filter(a => a.status !== 'cancelled');
+  }
+
   prevMonth(): void {
     this.calendarDate = new Date(this.calendarYear, this.calendarMonth - 1, 1);
   }
@@ -185,6 +222,8 @@ export class HomeComponent implements OnInit {
       this.bookedSlotsForSelected = [];
     }
     this.selectedDate = date;
+    // Keep the "slots free" counter accurate even when the slot viewer is collapsed.
+    void this.loadSlotsForDate(date);
   }
 
   onPageClick(event: MouseEvent): void {
@@ -238,7 +277,11 @@ export class HomeComponent implements OnInit {
     this.isLoadingSlots = true;
     this.cdr.markForCheck();
     try {
-      const all = await this.appointmentService.getAppointments();
+      // Use already-loaded appointments when available to avoid extra network calls.
+      const all = this.appointments?.length
+        ? this.appointments
+        : await this.appointmentService.getAppointments();
+
       this.bookedSlotsForSelected = all
         .filter(a => {
           const d = new Date(a.appointmentDate);
@@ -347,7 +390,20 @@ export class HomeComponent implements OnInit {
     this.patientService.clearSearchResults();
   }
 
-  openAddAppointmentForm(): void { this.router.navigate(['/add-appointment']); }
+  openAddAppointmentForm(patient?: Patient): void {
+    if (patient) {
+      this.router.navigate(['/add-appointment'], {
+        queryParams: {
+          patientId: patient.uniqueId,
+          patientName: patient.name,
+          patientPhone: patient.phone,
+          patientFamilyId: patient.familyId
+        }
+      });
+      return;
+    }
+    this.router.navigate(['/add-appointment']);
+  }
   closeAddAppointmentForm(): void { this.uiStateService.closeAddAppointmentForm(); }
   onAppointmentBooked(id: string): void {}
 }

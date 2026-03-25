@@ -618,6 +618,15 @@
   color: #fff;
 }
 
+.kb-card__action-btn--visit {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+.kb-card__action-btn--visit:hover:not(:disabled) {
+  background: #c7d2fe;
+  color: #fff;
+}
+
 .kb-card__action-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;

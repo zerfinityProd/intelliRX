@@ -14,6 +14,7 @@ import {
 import { AuthenticationService } from './authenticationService';
 import { AuthorizationService } from './authorizationService';
 import { Appointment } from '../models/appointment.model';
+import { normalizeEmail } from '../utilities/normalize-email';
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
@@ -35,7 +36,8 @@ export class AppointmentService {
   }
 
   private getCurrentUserEmail(): string {
-    return this.authService.currentUserValue?.email || '';
+    const raw = this.authService.currentUserValue?.email || '';
+    return raw ? normalizeEmail(raw) : '';
   }
 
   private removeUndefined(obj: any): any {
@@ -73,12 +75,16 @@ export class AppointmentService {
         patientFamilyId: data.patientFamilyId || '',
         appointmentDate: Timestamp.fromDate(new Date(data.appointmentDate)),
         appointmentTime: data.appointmentTime,
-        reason: data.reason || '',
-        notes: data.notes || '',
+        // Ailments are captured from the appointment booking form and later
+        // shown in patient + visit.
+        ...(data.ailments ? { ailments: data.ailments } : {}),
+        // Keep legacy fields if they were provided by older flows.
+        ...(data.reason ? { reason: data.reason } : {}),
+        ...(data.notes ? { notes: data.notes } : {}),
         status: data.status,
         isNewPatient: data.isNewPatient,
         // Store doctorId if provided (email of the assigned doctor)
-        ...(data.doctorId ? { doctorId: data.doctorId.toLowerCase() } : {}),
+        ...(data.doctorId ? { doctorId: normalizeEmail(data.doctorId) } : {}),
         createdAt: Timestamp.fromDate(now),
         updatedAt: Timestamp.fromDate(now)
       });
@@ -146,7 +152,7 @@ export class AppointmentService {
 
       // Doctors see only their own appointments (matched by email = doctorId)
       const appointmentsCol = collection(this.db, 'appointments');
-      const q = query(appointmentsCol, where('doctorId', '==', email.toLowerCase()));
+      const q = query(appointmentsCol, where('doctorId', '==', email));
       const snap = await getDocs(q);
 
       const appointments = snap.docs.map(d => {

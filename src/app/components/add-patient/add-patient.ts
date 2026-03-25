@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, Output, EventEmitter, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, OnChanges, Output, EventEmitter, Input, SimpleChanges, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -18,6 +18,11 @@ import { PatientService } from '../../services/patient';
 export class AddPatientComponent implements OnInit, OnDestroy {
   @Output() close = new EventEmitter<void>();
   @Output() patientAdded = new EventEmitter<string>();
+
+  // Optional prefill values (used when opening Add Patient from Appointment cards)
+  @Input() prefillName: string = '';
+  @Input() prefillPhone: string = '';
+  @Input() prefillAilments: string = '';
 
   // Basic Information
   firstName: string = '';
@@ -49,6 +54,15 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.resetForm();
+    this.applyPrefill();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // If prefill changes while modal is open, apply again.
+    if ((changes['prefillName'] || changes['prefillPhone'] || changes['prefillAilments'])
+      && (this.showPrefillAllowed() || this.ailmentChips.length === 0)) {
+      this.applyPrefill();
+    }
   }
 
   ngOnDestroy(): void {
@@ -73,6 +87,50 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     this.errorMessage = '';
     this.successMessage = '';
     this.warningMessage = '';
+  }
+
+  private showPrefillAllowed(): boolean {
+    // Only apply prefill when fields are still empty (or the component was just opened).
+    const hasUserInput = this.firstName.trim() || this.lastName.trim() || this.phone.trim();
+    return !hasUserInput;
+  }
+
+  private applyPrefill(): void {
+    const name = (this.prefillName || '').trim();
+    const phone = (this.prefillPhone || '').trim();
+    const prefillAilmentsText = (this.prefillAilments || '').trim();
+
+    if (!name && !phone && !prefillAilmentsText) return;
+
+    if (phone && !this.phone.trim()) {
+      this.phone = phone;
+    }
+
+    if (name && !this.firstName.trim() && !this.lastName.trim()) {
+      const parts = name.split(/\s+/).filter(Boolean);
+      if (parts.length === 1) {
+        this.firstName = parts[0];
+        this.lastName = '';
+        this.middleName = '';
+      } else {
+        this.firstName = parts[0];
+        this.lastName = parts[parts.length - 1];
+        this.middleName = parts.slice(1, parts.length - 1).join(' ');
+      }
+    }
+
+    // Prefill ailment chips (do not overwrite if user already added ailments).
+    if (prefillAilmentsText && this.ailmentChips.length === 0) {
+      const parsed = prefillAilmentsText
+        .split(',')
+        .map(a => a.trim())
+        .filter(a => a.length > 0);
+      this.ailmentChips = parsed;
+    }
+
+    // Recompute preview familyId + (optionally) uniqueness warning.
+    void this.updateFamilyId();
+    this.cdr.detectChanges();
   }
 
   onNameChange(): void {

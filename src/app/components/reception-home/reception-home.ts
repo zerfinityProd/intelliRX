@@ -1,5 +1,5 @@
 // src/app/components/reception-home/reception-home.ts
-import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -8,6 +8,8 @@ import { AppointmentService } from '../../services/appointmentService';
 import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
 import { Appointment } from '../../models/appointment.model';
+import { PatientService } from '../../services/patient';
+import { Patient } from '../../models/patient.model';
 
 @Component({
     selector: 'app-reception-home',
@@ -16,7 +18,7 @@ import { Appointment } from '../../models/appointment.model';
     templateUrl: './reception-home.html',
     styleUrl: './reception-home.css'
 })
-export class ReceptionHomeComponent implements OnInit {
+export class ReceptionHomeComponent implements OnInit, OnDestroy {
     appointments: Appointment[] = [];
     isLoading = true;
     errorMessage = '';
@@ -48,12 +50,132 @@ export class ReceptionHomeComponent implements OnInit {
 
     private appointmentService = inject(AppointmentService);
     private authService = inject(AuthenticationService);
+    private patientService = inject(PatientService);
+    private firebaseService = inject(FirebaseService);
     private router = inject(Router);
     private cdr = inject(ChangeDetectorRef);
+
+    private autoCancelTimer: ReturnType<typeof setTimeout> | null = null;
+    private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
     ngOnInit(): void {
         this.setGreeting();
         this.loadAppointments();
+        this.scheduleAutoCancelAtCutoff();
+        // Keep UI in sync when appointment status changes from other pages.
+        this.refreshTimer = setInterval(() => {
+            void this.refreshAppointments();
+        }, 3000);
+    }
+
+    ngOnDestroy(): void {
+        if (this.autoCancelTimer) clearTimeout(this.autoCancelTimer);
+        if (this.refreshTimer) clearInterval(this.refreshTimer);
+    }
+
+    private async refreshAppointments(): Promise<void> {
+        try {
+            this.appointments = await this.appointmentService.getAllAppointments();
+            this.cdr.detectChanges();
+        } catch {
+            // No-op
+        }
+    }
+
+    private scheduleAutoCancelAtCutoff(): void {
+        if (this.autoCancelTimer) clearTimeout(this.autoCancelTimer);
+
+        const now = new Date();
+        const cutoff = new Date(now);
+        cutoff.setHours(23, 0, 0, 0);
+
+        const delay = cutoff.getTime() - now.getTime();
+        if (delay <= 0) {
+            void this.runAutoCancel();
+            return;
+        }
+        this.autoCancelTimer = setTimeout(() => void this.runAutoCancel(), delay);
+    }
+
+    private isSameLocalDay(a: Date, b: Date): boolean {
+        return a.getFullYear() === b.getFullYear()
+            && a.getMonth() === b.getMonth()
+            && a.getDate() === b.getDate();
+    }
+
+    private normalizePhoneDigits(phone: string): string {
+        return String(phone || '').replace(/\D/g, '');
+    }
+
+    private async hasAnyVisitTodayForAppointment(appt: Appointment, today: Date, cache: Map<string, boolean>): Promise<boolean> {
+        const cacheKey = appt.patientId
+            ? `pid:${appt.patientId}`
+            : `np:${(appt.patientName || '').trim().toLowerCase()}|${this.normalizePhoneDigits(appt.patientPhone || '')}`;
+
+        if (cache.has(cacheKey)) return cache.get(cacheKey)!;
+
+        const checkVisitsForPatientId = async (patientId: string): Promise<boolean> => {
+            const visits = await this.patientService.getPatientVisits(patientId);
+            return visits.some(v => this.isSameLocalDay(new Date((v as any).createdAt), today));
+        };
+
+        let result = false;
+        try {
+            if (appt.patientId) {
+                result = await checkVisitsForPatientId(appt.patientId);
+            } else {
+                const userId = this.authService.getCurrentUserId();
+                if (!userId) {
+                    result = false;
+                } else {
+                    const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
+                    if (!phoneDigits) {
+                        result = false;
+                    } else {
+                        const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits, userId);
+                        const nameLower = (appt.patientName || '').trim().toLowerCase();
+                        const candidates = results.filter((p: Patient) =>
+                            (p.name || '').trim().toLowerCase() === nameLower &&
+                            this.normalizePhoneDigits((p as any).phone) === phoneDigits
+                        );
+                        for (const p of candidates) {
+                            if (await checkVisitsForPatientId(p.uniqueId)) {
+                                result = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch {
+            result = false;
+        }
+
+        cache.set(cacheKey, result);
+        return result;
+    }
+
+    private async runAutoCancel(): Promise<void> {
+        const now = new Date();
+        const cache = new Map<string, boolean>();
+        const todaysScheduled = this.appointments.filter(a =>
+            a.status === 'scheduled' && this.isSameLocalDay(new Date(a.appointmentDate), now)
+        );
+
+        for (const appt of todaysScheduled) {
+            if (!appt.id) continue;
+            const hasVisitToday = await this.hasAnyVisitTodayForAppointment(appt, now, cache);
+            if (!hasVisitToday) {
+                try {
+                    await this.appointmentService.updateAppointmentStatus(appt.id, 'cancelled');
+                    appt.status = 'cancelled';
+                } catch {
+                    // keep going
+                }
+            }
+        }
+
+        this.cdr.detectChanges();
     }
 
     private setGreeting(): void {
@@ -78,6 +200,7 @@ export class ReceptionHomeComponent implements OnInit {
 
     get filteredAppointments(): Appointment[] {
         let result = this.appointments;
+
         if (this.selectedDate) {
             const [y, mo, d] = this.selectedDate.split('-').map(Number);
             result = result.filter(a => {
@@ -85,12 +208,24 @@ export class ReceptionHomeComponent implements OnInit {
                 return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
             });
         }
-        const term = this.searchTerm.trim().toLowerCase();
+
+        const termRaw = this.searchTerm.trim();
+        const term = termRaw.toLowerCase();
         if (term) {
-            result = result.filter(a =>
-                a.patientName.toLowerCase().includes(term) || (a.patientPhone ?? '').includes(term)
-            );
+            const digitsQuery = this.normalizePhoneDigits(termRaw);
+            result = result.filter(a => {
+                const name = (a.patientName ?? '').toLowerCase();
+                const ailments = (a.ailments ?? '').toLowerCase();
+                const phoneDigits = this.normalizePhoneDigits(a.patientPhone ?? '');
+
+                const matchesNameOrAilments = name.includes(term) || ailments.includes(term);
+                const matchesPhoneDigits = digitsQuery ? phoneDigits.includes(digitsQuery) : false;
+                const matchesPhoneRaw = (a.patientPhone ?? '').includes(termRaw);
+
+                return matchesNameOrAilments || matchesPhoneDigits || matchesPhoneRaw;
+            });
         }
+
         return result;
     }
 
@@ -214,6 +349,7 @@ export class ReceptionHomeComponent implements OnInit {
     async onDrop(event: DragEvent, colId: Appointment['status']): Promise<void> {
         event.preventDefault();
         this.dragOverColumn = null;
+        if (colId === 'completed') return;
         if (!this.draggingCard || this.draggingCard.status === colId) return;
         const appt = this.draggingCard;
         this.draggingCard = null;
@@ -222,6 +358,11 @@ export class ReceptionHomeComponent implements OnInit {
 
     async updateStatus(appt: Appointment, status: Appointment['status']): Promise<void> {
         if (appt.status === status || this.updatingId === appt.id) return;
+        if (status === 'completed') {
+            this.errorMessage = 'Appointments are completed automatically when a visit is added.';
+            this.cdr.detectChanges();
+            return;
+        }
         this.updatingId = appt.id!;
         try {
             await this.appointmentService.updateAppointmentStatus(appt.id!, status);
@@ -232,6 +373,32 @@ export class ReceptionHomeComponent implements OnInit {
             this.updatingId = null;
             this.cdr.detectChanges();
         }
+    }
+
+    async openVisitFromAppointment(appt: Appointment): Promise<void> {
+        const directPatientId = (appt.patientId || '').trim();
+        if (directPatientId) {
+            // Keep patient ailments in sync with what was entered during appointment booking.
+            if (appt.ailments && appt.ailments.trim()) {
+                try {
+                    await this.patientService.updatePatient(directPatientId, { ailments: appt.ailments });
+                } catch {
+                    // Don't block navigation if this fails.
+                }
+            }
+            this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'home' } });
+            return;
+        }
+
+        // Prefill Add Patient via query params
+        this.router.navigate(['/home'], {
+            queryParams: {
+                openAddPatient: '1',
+                name: appt.patientName || '',
+                phone: appt.patientPhone || '',
+                ailments: appt.ailments || ''
+            }
+        });
     }
 
     // ── Navigation ──

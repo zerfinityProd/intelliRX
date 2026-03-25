@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { normalizeEmail } from '../utilities/normalize-email';
 
 @Injectable({
     providedIn: 'root'
@@ -9,7 +10,7 @@ export class AuthorizationService {
 
     async isEmailAllowed(email: string): Promise<boolean> {
         try {
-            const docRef = doc(this.firestore, 'allowedUsers', email.toLowerCase());
+            const docRef = doc(this.firestore, 'allowedUsers', normalizeEmail(email));
             const docSnap = await getDoc(docRef);
             return docSnap.exists();
         } catch (error) {
@@ -20,7 +21,7 @@ export class AuthorizationService {
 
     async canUserDelete(email: string): Promise<boolean> {
         try {
-            const docRef = doc(this.firestore, 'allowedUsers', email.toLowerCase());
+            const docRef = doc(this.firestore, 'allowedUsers', normalizeEmail(email));
             const docSnap = await getDoc(docRef);
             if (!docSnap.exists()) return false;
             const data = docSnap.data();
@@ -37,7 +38,7 @@ export class AuthorizationService {
      */
     async getUserRole(email: string): Promise<'doctor' | 'receptionist'> {
         try {
-            const docRef = doc(this.firestore, 'allowedUsers', email.toLowerCase());
+            const docRef = doc(this.firestore, 'allowedUsers', normalizeEmail(email));
             const docSnap = await getDoc(docRef);
             if (!docSnap.exists()) return 'doctor';
             const data = docSnap.data();
@@ -58,7 +59,7 @@ export class AuthorizationService {
 
     async allowEmail(email: string): Promise<void> {
         try {
-            const docRef = doc(this.firestore, 'allowedUsers', email.toLowerCase());
+            const docRef = doc(this.firestore, 'allowedUsers', normalizeEmail(email));
             await getDoc(docRef);
             console.log('Email allowlisted:', email);
         } catch (error) {

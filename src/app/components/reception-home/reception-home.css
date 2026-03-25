@@ -480,6 +480,8 @@
 
 .rh-card__btn--done { background: #d1fae5; color: #059669; }
 .rh-card__btn--done:hover:not(:disabled) { background: #059669; color: #fff; }
+.rh-card__btn--visit { background: #e0e7ff; color: #4338ca; }
+.rh-card__btn--visit:hover:not(:disabled) { background: #c7d2fe; color: #fff; }
 .rh-card__btn--cancel { background: #fee2e2; color: #ef4444; }
 .rh-card__btn--cancel:hover:not(:disabled) { background: #ef4444; color: #fff; }
 .rh-card__btn:disabled { opacity: 0.4; cursor: not-allowed; }

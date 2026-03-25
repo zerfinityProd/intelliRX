@@ -12,6 +12,11 @@ export interface Appointment {
   appointmentTime: string;  // e.g. "10:30"
   reason?: string;
   notes?: string;
+  /**
+   * Patient ailments captured during appointment booking.
+   * This should later be visible on patient + in "Ailments" section of the visit form.
+   */
+  ailments?: string;
   status: AppointmentStatus;
   isNewPatient: boolean;    // true = no patientId yet
   userId: string;           // Firebase Auth UID of the user who created this appointment

@@ -97,7 +97,7 @@
             <div class="kb-patient-card__actions kb-patient-card__actions--row">
               <button class="kb-action-btn kb-action-btn--appt"
                 [attr.aria-label]="'Book appointment for ' + patient.name"
-                (click)="openAddAppointmentForm(); $event.stopPropagation()">
+                (click)="openAddAppointmentForm(patient); $event.stopPropagation()">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                   stroke-linecap="round" stroke-linejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -334,9 +334,9 @@
 
       <!-- Booked appointments count -->
       <div class="day-panel-subline">
-        <span *ngIf="selectedDateAppointments.length === 0">No appointments scheduled</span>
-        <span *ngIf="selectedDateAppointments.length > 0">
-          {{ selectedDateAppointments.length }} appointment{{ selectedDateAppointments.length !== 1 ? 's' : '' }} booked
+        <span *ngIf="selectedDateBookedAppointments.length === 0">No appointments scheduled</span>
+        <span *ngIf="selectedDateBookedAppointments.length > 0">
+          {{ selectedDateBookedAppointments.length }} appointment{{ selectedDateBookedAppointments.length !== 1 ? 's' : '' }} booked
         </span>
         <span class="day-panel-free-count" *ngIf="!isLoadingSlots">
           · {{ freeSlotCount }} slots free
@@ -395,7 +395,7 @@
             <div class="appt-item-name">{{ appt.patientName }}</div>
             <div class="appt-item-meta">
               🕐 {{ formatTime(appt.appointmentTime) }}
-              <span *ngIf="appt.reason"> · {{ appt.reason }}</span>
+              <span *ngIf="appt.ailments"> · {{ appt.ailments }}</span>
             </div>
           </div>
           <span class="appt-item-badge"
@@ -536,4 +536,7 @@
 
 <!-- ── Add Patient Modal ── -->
 <app-add-patient *ngIf="(uiState$ | async)?.showAddPatientForm" (close)="closeAddPatientForm()"
-  (patientAdded)="onPatientAdded($event)"></app-add-patient>
+  (patientAdded)="onPatientAdded($event)"
+  [prefillName]="addPatientPrefillName"
+  [prefillPhone]="addPatientPrefillPhone"
+  [prefillAilments]="addPatientPrefillAilments"></app-add-patient>

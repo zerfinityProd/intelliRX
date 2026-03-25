@@ -4,41 +4,48 @@
     "name": "Dr. Aisha Sharma",
     "specialty": "General Physician",
     "avatar": "AS",
-    "email": "aisha.sharma@intellirx.app"
+    "email": "bhardwajaaditya1527@gmail.com"
   },
   {
     "id": "dr_002",
     "name": "Dr. Rajiv Mehta",
     "specialty": "Cardiologist",
     "avatar": "RM",
-    "email": "rajiv.mehta@intellirx.app"
+    "email": "drsuryakanthsr@gmail.com"
   },
   {
     "id": "dr_003",
     "name": "Dr. Priya Kapoor",
     "specialty": "Dermatologist",
     "avatar": "PK",
-    "email": "priya.kapoor@intellirx.app"
+    "email": "garima.sharma@zerfinity.com"
   },
   {
     "id": "dr_004",
     "name": "Dr. Suresh Nair",
     "specialty": "Orthopedist",
     "avatar": "SN",
-    "email": "suresh.nair@intellirx.app"
+    "email": "garisharmaa13@gmail.com"
   },
   {
     "id": "dr_005",
     "name": "Dr. Neha Verma",
     "specialty": "Pediatrician",
     "avatar": "NV",
-    "email": "neha.verma@intellirx.app"
+    "email": "garisharmaa4@gmail.com"
   },
   {
     "id": "dr_006",
     "name": "Dr. Arjun Patel",
     "specialty": "ENT Specialist",
     "avatar": "AP",
-    "email": "arjun.patel@intellirx.app"
+    "email": "nakul.kundra@zerfinity.com"
+  },
+  {
+    "id": "dr_007",
+    "name": "Dr. Sameer Singh",
+    "specialty": "General Physician",
+    "avatar": "SS",
+    "email": "sameersrswt@gmail.com"
   }
 ]

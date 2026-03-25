@@ -277,24 +277,23 @@ export class AddVisitPageComponent implements OnInit {
             try {
                 const allAppts = await this.appointmentService.getAppointments();
                 const patientName = (this.patient.name || '').trim().toLowerCase();
-                const patientPhone = (this.patient.phone || '').trim();
-                const today = new Date();
-                const matchingAppt = allAppts.find(a => {
-                    if (a.status !== 'scheduled') return false;
-                    const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
-                    const phoneMatch = (a.patientPhone || '').trim() === patientPhone;
-                    const apptDate = new Date(a.appointmentDate);
-                    const sameOrPast =
-                        apptDate.getFullYear() < today.getFullYear() ||
-                        (apptDate.getFullYear() === today.getFullYear() &&
-                            apptDate.getMonth() < today.getMonth()) ||
-                        (apptDate.getFullYear() === today.getFullYear() &&
-                            apptDate.getMonth() === today.getMonth() &&
-                            apptDate.getDate() <= today.getDate());
-                    return nameMatch && phoneMatch && sameOrPast;
-                });
-                if (matchingAppt && matchingAppt.id) {
-                    await this.appointmentService.updateAppointmentStatus(matchingAppt.id, 'completed');
+                const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
+                const now = new Date();
+
+                const candidates = allAppts
+                    .filter(a => a.status === 'scheduled')
+                    .filter(a => this.isSameLocalDay(new Date(a.appointmentDate), now))
+                    .filter(a => {
+                        const apptPatientId = (a.patientId || '').trim();
+                        if (apptPatientId) return apptPatientId === patientId;
+                        const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
+                        const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
+                        return nameMatch && phoneMatch;
+                    });
+
+                const best = this.pickClosestAppointmentByTime(candidates, now);
+                if (best?.id) {
+                    await this.appointmentService.updateAppointmentStatus(best.id, 'completed');
                 }
             } catch {
                 // Silent — don't block visit save if appointment update fails
@@ -412,5 +411,41 @@ export class AddVisitPageComponent implements OnInit {
             year: 'numeric', month: 'short', day: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
+    }
+
+    private normalizePhoneDigits(phone: string): string {
+        return String(phone).replace(/\D/g, '');
+    }
+
+    private isSameLocalDay(a: Date, b: Date): boolean {
+        return a.getFullYear() === b.getFullYear()
+            && a.getMonth() === b.getMonth()
+            && a.getDate() === b.getDate();
+    }
+
+    private toLocalDateTime(date: Date, time: string): Date {
+        const dt = new Date(date);
+        const [h, m] = String(time || '').split(':').map(Number);
+        if (!Number.isFinite(h) || !Number.isFinite(m)) return dt;
+        dt.setHours(h, m, 0, 0);
+        return dt;
+    }
+
+    private pickClosestAppointmentByTime(appointments: Array<{ appointmentDate: any; appointmentTime: string }>, now: Date) {
+        if (!appointments?.length) return null;
+        let best = appointments[0] as any;
+        let bestDiff = Math.abs(
+            this.toLocalDateTime(new Date(best.appointmentDate), best.appointmentTime).getTime() - now.getTime()
+        );
+        for (const a of appointments.slice(1) as any[]) {
+            const diff = Math.abs(
+                this.toLocalDateTime(new Date(a.appointmentDate), a.appointmentTime).getTime() - now.getTime()
+            );
+            if (diff < bestDiff) {
+                best = a;
+                bestDiff = diff;
+            }
+        }
+        return best;
     }
 }

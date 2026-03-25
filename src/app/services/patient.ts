@@ -122,7 +122,10 @@ export class PatientService {
           email: patientData.email || existingPatient.email,
           dateOfBirth: patientData.dateOfBirth || existingPatient.dateOfBirth,
           gender: patientData.gender || existingPatient.gender,
-          allergies: patientData.allergies || existingPatient.allergies
+          allergies: patientData.allergies || existingPatient.allergies,
+          // Ensure ailments entered/prefilled via Appointment flow are persisted
+          // even when the patient already exists.
+          ailments: patientData.ailments || existingPatient.ailments
         };
         await this.updatePatient(existingPatient.uniqueId, updateData);
         return existingPatient.uniqueId;

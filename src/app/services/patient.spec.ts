@@ -19,6 +19,7 @@ describe('PatientService (Merged & Orchestrator)', () => {
     familyId: 'doe_john',
     phone: '5551234567',
     email: 'john@example.com',
+    ailments: 'old ailments',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01')
   };
@@ -109,6 +110,33 @@ describe('PatientService (Merged & Orchestrator)', () => {
       await service.updatePatient('pat-123', updateData);
 
       expect(firebaseService.updatePatient).toHaveBeenCalledWith('pat-123', updateData, 'user-001');
+    });
+
+    it('should persist ailments when updating existing patient via createPatient', async () => {
+      firebaseService.searchPatientByPhone.mockResolvedValue({
+        results: [
+          {
+            ...mockPatient,
+            // ensure exact match checks pass
+            name: 'John Doe',
+            phone: '5551234567'
+          }
+        ]
+      });
+
+      const id = await service.createPatient({
+        name: 'John Doe',
+        phone: '5551234567',
+        email: 'john@example.com',
+        ailments: 'cough, fever'
+      } as any);
+
+      expect(id).toBe('pat-123');
+      expect(firebaseService.updatePatient).toHaveBeenCalledWith(
+        'pat-123',
+        expect.objectContaining({ ailments: 'cough, fever' }),
+        'user-001'
+      );
     });
 
     it('should delete patient', async () => {

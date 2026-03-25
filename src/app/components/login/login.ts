@@ -59,7 +59,6 @@ export class LoginComponent implements OnInit {
 
     /** Navigate to home or reception-home based on Firestore role */
     private async navigateByRole(email: string): Promise<void> {
-        await this.themeService.loadThemeFromFirebase();
         const role = await this.authorizationService.getUserRole(email);
         if (role === 'receptionist') {
             this.router.navigate(['/reception-home']);

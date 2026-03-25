@@ -50,50 +50,106 @@
       {{ errorMessage }}
     </div>
 
-    <!-- ══════════ STEP 1: Patient Info ══════════ -->
+    <!-- ══════════ STEP 1: Phone lookup & patient ══════════ -->
     <div *ngIf="step === 'new-patient-info'" class="appt-card">
 
       <div class="appt-section-label">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
         </svg>
-        Patient Information
+        Phone & patient
       </div>
 
-      <!-- Name row -->
-      <div class="appt-field-row">
-        <div class="appt-field appt-field--grow2">
-          <label class="appt-label">First Name <span class="appt-required">*</span></label>
-          <input type="text" [(ngModel)]="firstName" class="appt-input" placeholder="e.g. Rahul" />
+      <!-- Phone hint intentionally removed (shown elsewhere in the UI) -->
+
+      <!-- Phone first -->
+      <div class="appt-field appt-field--phone-hero">
+        <label class="appt-label">Mobile number <span class="appt-required">*</span></label>
+        <div class="appt-phone-row">
+          <div class="appt-input-icon-wrap appt-phone-input-wrap">
+            <svg class="appt-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
+            </svg>
+            <input type="tel" [ngModel]="newPatientPhone" (ngModelChange)="onPhoneModelChange($event)"
+              class="appt-input appt-input--with-icon appt-input--phone" inputmode="numeric" autocomplete="tel"
+              placeholder="10-digit mobile number" maxlength="10" />
+          </div>
+          <button type="button" class="appt-search-phone-btn" (click)="lookupPatientsByPhone()"
+            [disabled]="phoneLookupStatus === 'loading' || normalizedPhoneDigits.length !== 10">
+            <span *ngIf="phoneLookupStatus === 'loading'" class="appt-spinner appt-spinner--inline"></span>
+            <span *ngIf="phoneLookupStatus !== 'loading'">Search</span>
+          </button>
         </div>
-        <div class="appt-field appt-field--grow1">
-          <label class="appt-label">Middle <span class="appt-optional">(opt.)</span></label>
-          <input type="text" [(ngModel)]="middleName" class="appt-input" placeholder="M." />
-        </div>
-        <div class="appt-field appt-field--grow2">
-          <label class="appt-label">Last Name <span class="appt-required">*</span></label>
-          <input type="text" [(ngModel)]="lastName" class="appt-input" placeholder="e.g. Sharma" />
+        <div class="appt-phone-meta">
+          <span *ngIf="normalizedPhoneDigits.length > 0 && normalizedPhoneDigits.length < 10" class="appt-phone-meta__warn">
+            {{ 10 - normalizedPhoneDigits.length }} more digit{{ (10 - normalizedPhoneDigits.length) === 1 ? '' : 's' }}
+          </span>
+          <span *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === 10" class="appt-phone-meta__ok">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            Lookup complete
+          </span>
         </div>
       </div>
 
-      <!-- Phone -->
-      <div class="appt-field">
-        <label class="appt-label">Phone Number <span class="appt-required">*</span></label>
-        <div class="appt-input-icon-wrap">
-          <svg class="appt-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
+      <!-- Matching patients -->
+      <div *ngIf="phoneLookupStatus === 'done' && phoneMatches.length > 0" class="appt-lookup-panel">
+        <div class="appt-lookup-panel__head">
+          <span class="appt-lookup-panel__title">{{ phoneMatches.length }} patient{{ phoneMatches.length === 1 ? '' : 's' }} on file</span>
+          <span class="appt-lookup-panel__sub">Tap one to book for that person</span>
+        </div>
+        <ul class="appt-patient-pick-list" role="listbox">
+          <li *ngFor="let p of phoneMatches">
+            <button type="button" class="appt-patient-pick"
+              [class.appt-patient-pick--selected]="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient"
+              (click)="selectExistingPatient(p)">
+              <span class="appt-patient-pick__avatar">{{ p.name.trim().charAt(0).toUpperCase() }}</span>
+              <span class="appt-patient-pick__body">
+                <span class="appt-patient-pick__name">{{ p.name }}</span>
+                <span class="appt-patient-pick__meta" *ngIf="p.familyId">ID · {{ p.familyId }}</span>
+              </span>
+              <span class="appt-patient-pick__check" *ngIf="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </span>
+            </button>
+          </li>
+        </ul>
+        <button type="button" class="appt-link-new" (click)="chooseNewPatientInstead()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          New patient — use this number (enter name below)
+        </button>
+      </div>
+
+      <!-- No matches / new patient names -->
+      <div *ngIf="phoneLookupStatus === 'done' && needsNewPatientNames" class="appt-new-patient-block">
+        <div class="appt-section-label appt-section-label--inline">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
           </svg>
-          <input type="tel" [(ngModel)]="newPatientPhone" class="appt-input appt-input--with-icon"
-            placeholder="10-digit number" maxlength="10" />
+          {{ phoneMatches.length === 0 ? 'New patient' : 'Name for new record' }}
+        </div>
+        <div class="appt-field-row">
+          <div class="appt-field appt-field--grow2">
+            <label class="appt-label">First name <span class="appt-required">*</span></label>
+            <input type="text" [(ngModel)]="firstName" class="appt-input" placeholder="e.g. Rahul" />
+          </div>
+          <div class="appt-field appt-field--grow1">
+            <label class="appt-label">Middle <span class="appt-optional">(opt.)</span></label>
+            <input type="text" [(ngModel)]="middleName" class="appt-input" placeholder="M." />
+          </div>
+          <div class="appt-field appt-field--grow2">
+            <label class="appt-label">Last name <span class="appt-required">*</span></label>
+            <input type="text" [(ngModel)]="lastName" class="appt-input" placeholder="e.g. Sharma" />
+          </div>
         </div>
       </div>
 
-      <button class="appt-cta-btn" (click)="proceedFromNewPatient()" [disabled]="isCheckingPhone">
+      <button class="appt-cta-btn" (click)="proceedFromNewPatient()"
+        [disabled]="isCheckingPhone || !canProceedStep1">
         <span *ngIf="isCheckingPhone" class="appt-spinner"></span>
-        <span>{{ isCheckingPhone ? 'Checking…' : 'Continue to Appointment Details' }}</span>
+        <span>{{ isCheckingPhone ? '…' : 'Continue to appointment' }}</span>
         <svg *ngIf="!isCheckingPhone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -107,10 +163,10 @@
 
       <!-- Patient summary chip -->
       <div class="appt-patient-chip">
-        <div class="appt-patient-chip__avatar">{{ fullName.charAt(0).toUpperCase() }}</div>
+        <div class="appt-patient-chip__avatar">{{ displayPatientName.charAt(0).toUpperCase() }}</div>
         <div class="appt-patient-chip__info">
-          <span class="appt-patient-chip__name">{{ fullName }}</span>
-          <span class="appt-patient-chip__phone">{{ newPatientPhone }}</span>
+          <span class="appt-patient-chip__name">{{ displayPatientName }}</span>
+          <span class="appt-patient-chip__phone">{{ formatPhoneDisplay(normalizedPhoneDigits) }}</span>
         </div>
         <span class="appt-patient-chip__badge" [class.appt-badge--existing]="isExistingPatient"
           [class.appt-badge--new]="!isExistingPatient">
@@ -120,7 +176,7 @@
 
       <!-- Doctor selector -->
       <div class="appt-field">
-        <label class="appt-label">
+        <label class="appt-label" *ngIf="doctorContextReady && canChooseDoctor">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -128,7 +184,7 @@
           </svg>
           Select Doctor
         </label>
-        <div class="appt-select-wrap">
+        <div class="appt-select-wrap" *ngIf="doctorContextReady && canChooseDoctor">
           <svg class="appt-select-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -146,7 +202,7 @@
           </svg>
         </div>
         <!-- Selected doctor pill -->
-        <div *ngIf="selectedDoctor" class="appt-doctor-pill">
+        <div *ngIf="doctorContextReady && selectedDoctor" class="appt-doctor-pill">
           <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
           <div class="appt-doctor-pill__info">
             <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
@@ -173,7 +229,7 @@
             Date <span class="appt-required">*</span>
           </label>
           <input type="date" [(ngModel)]="appointmentDate" class="appt-input"
-            [min]="minDate" (ngModelChange)="onDateChange()" />
+            [min]="minDate" [max]="maxDate" (ngModelChange)="onDateChange()" />
         </div>
         <div class="appt-field appt-field--grow1">
           <label class="appt-label">
@@ -182,9 +238,24 @@
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
             </svg>
-            Reason for Visit
+            Ailments
           </label>
-          <input type="text" [(ngModel)]="reason" class="appt-input" placeholder="e.g. Follow-up, Fever…" />
+          <div class="chip-input-box" role="group" aria-label="Ailments chips"
+            (click)="$any($event.currentTarget).querySelector('input').focus()"
+            [class.chip-input-error]="false">
+            <div class="chips-wrap">
+              <span *ngFor="let ail of ailmentChips; let i = index" class="allergy-chip">
+                {{ ail }}
+                <button type="button" class="chip-remove-btn"
+                  (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ail">&times;</button>
+              </span>
+              <input type="text" class="chip-inline-input"
+                [(ngModel)]="newAilmentInput" name="newAilmentInput"
+                placeholder="Type and press Enter..."
+                aria-label="Add ailment"
+                (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -237,20 +308,6 @@
             <span class="appt-slot-count">{{ availableSlots.length }}/{{ allTimeSlots.length }} free</span>
           </div>
         </div>
-      </div>
-
-      <!-- Notes -->
-      <div class="appt-field">
-        <label class="appt-label">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-          Notes <span class="appt-optional">(opt.)</span>
-        </label>
-        <textarea [(ngModel)]="notes" class="appt-input appt-textarea"
-          rows="2" placeholder="Any additional notes…"></textarea>
       </div>
 
       <button class="appt-cta-btn" (click)="onSubmit()" [disabled]="isSubmitting">

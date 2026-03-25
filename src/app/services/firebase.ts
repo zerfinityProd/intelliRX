@@ -364,7 +364,7 @@ export class FirebaseService {
       }
       return null;
     } catch (error) {
-      console.error('Error getting user preferences:', error);
+      // Preferences might be blocked by Firestore rules; fall back silently.
       return null;
     }
   }
@@ -374,7 +374,7 @@ export class FirebaseService {
       const userDoc = doc(this.db, 'users', uid);
       await setDoc(userDoc, { preferences }, { merge: true });
     } catch (error) {
-      console.error('Error saving user preferences:', error);
+      // Preferences might be blocked by Firestore rules; ignore silently.
     }
   }
 

@@ -5,7 +5,7 @@
 /* ── Page layout: single column ── */
 .appt-page {
   display: block;
-  max-width: 600px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 32px 24px 60px;
 }
@@ -366,6 +366,214 @@
 }
 .appt-badge--existing { background: #d1fae5; color: #059669; }
 .appt-badge--new      { background: #fef3c7; color: #d97706; }
+
+/* ── Phone-first lookup ── */
+.appt-hint {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--clr-text-muted, #64748b);
+  margin: -4px 0 0;
+}
+
+.appt-field--phone-hero {
+  margin-top: 4px;
+}
+
+.appt-phone-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.appt-phone-input-wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.appt-input--phone {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.appt-search-phone-btn {
+  flex-shrink: 0;
+  padding: 0 18px;
+  border-radius: 12px;
+  border: 1.5px solid var(--clr-primary, #6366f1);
+  background: var(--clr-surface, #fff);
+  color: var(--clr-primary, #6366f1);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  min-width: 96px;
+}
+.appt-search-phone-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.08);
+}
+.appt-search-phone-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.appt-phone-meta {
+  min-height: 20px;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.appt-phone-meta__warn { color: var(--clr-text-light, #94a3b8); }
+.appt-phone-meta__ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #059669;
+  font-weight: 600;
+}
+
+.appt-lookup-panel {
+  border: 1px solid var(--clr-border, #e2e8f0);
+  border-radius: 14px;
+  background: var(--clr-bg, #f8fafc);
+  padding: 14px 14px 12px;
+}
+.appt-lookup-panel__head {
+  margin-bottom: 10px;
+}
+.appt-lookup-panel__title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--clr-text, #1e293b);
+}
+.appt-lookup-panel__sub {
+  display: block;
+  font-size: 11px;
+  color: var(--clr-text-muted, #94a3b8);
+  margin-top: 2px;
+}
+
+.appt-patient-pick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.appt-patient-pick {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--clr-border, #e2e8f0);
+  background: var(--clr-surface, #fff);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.appt-patient-pick:hover {
+  border-color: #c7d2fe;
+  background: #fafaff;
+}
+.appt-patient-pick--selected {
+  border-color: var(--clr-primary, #6366f1) !important;
+  background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.06)) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.appt-patient-pick__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.appt-patient-pick__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.appt-patient-pick__name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--clr-text, #1e293b);
+}
+.appt-patient-pick__meta {
+  font-size: 11px;
+  color: var(--clr-text-muted, #94a3b8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appt-patient-pick__check {
+  color: var(--clr-primary, #6366f1);
+  flex-shrink: 0;
+}
+
+.appt-link-new {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--clr-border, #cbd5e1);
+  background: transparent;
+  color: var(--clr-text-muted, #64748b);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.appt-link-new:hover {
+  color: var(--clr-primary, #6366f1);
+  border-color: var(--clr-primary, #6366f1);
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.appt-new-patient-block {
+  padding-top: 4px;
+  border-top: 1px solid var(--clr-border-light, #f1f5f9);
+  margin-top: 4px;
+}
+
+.appt-section-label--inline {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.appt-spinner--inline {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  border-color: rgba(99, 102, 241, 0.25);
+  border-top-color: var(--clr-primary, #6366f1);
+}
+
+.appt-spinner--muted {
+  border-color: var(--clr-border, #e2e8f0);
+  border-top-color: var(--clr-primary, #6366f1);
+}
 
 /* ── CTA Button ── */
 .appt-cta-btn {
@@ -785,3 +993,43 @@
 }
 [data-theme="dark"] .appt-sidebar__doctor-name { color: var(--dk-text1); }
 [data-theme="dark"] .appt-sidebar__doctor-spec { color: var(--dk-text2); }
+
+[data-theme="dark"] .appt-hint { color: var(--dk-text2); }
+[data-theme="dark"] .appt-search-phone-btn {
+  background: var(--dk-bg2);
+  border-color: var(--clr-primary);
+  color: var(--clr-primary);
+}
+[data-theme="dark"] .appt-search-phone-btn:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.12);
+}
+[data-theme="dark"] .appt-lookup-panel {
+  background: var(--dk-bg1);
+  border-color: var(--dk-border);
+}
+[data-theme="dark"] .appt-lookup-panel__title { color: var(--dk-text1); }
+[data-theme="dark"] .appt-lookup-panel__sub { color: var(--dk-text2); }
+[data-theme="dark"] .appt-patient-pick {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+}
+[data-theme="dark"] .appt-patient-pick:hover {
+  background: var(--dk-bg3);
+  border-color: rgba(99, 102, 241, 0.45);
+}
+[data-theme="dark"] .appt-patient-pick__name { color: var(--dk-text1); }
+[data-theme="dark"] .appt-patient-pick__meta { color: var(--dk-text2); }
+[data-theme="dark"] .appt-link-new {
+  border-color: var(--dk-border);
+  color: var(--dk-text2);
+}
+[data-theme="dark"] .appt-link-new:hover {
+  border-color: var(--clr-primary);
+  color: var(--clr-primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+[data-theme="dark"] .appt-new-patient-block {
+  border-color: var(--dk-border);
+}
+[data-theme="dark"] .appt-phone-meta__warn { color: var(--dk-text2); }
+[data-theme="dark"] .appt-phone-meta__ok { color: #34d399; }
