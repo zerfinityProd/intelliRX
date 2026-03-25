@@ -10,6 +10,7 @@ import { PatientService } from '../../services/patient';
 import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
 import { Patient } from '../../models/patient.model';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 
 export interface KanbanColumn {
   id: Appointment['status'];
@@ -33,6 +34,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   // Date filter — defaults to today
   selectedDate: string = new Date().toISOString().split('T')[0];
+
+  readonly appointmentsDateMin: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMin;
+  readonly appointmentsDateMax: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMax;
 
   // Search
   searchTerm: string = '';
@@ -159,7 +163,12 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
     const now = new Date();
     const cutoff = new Date(now);
-    cutoff.setHours(23, 0, 0, 0);
+    cutoff.setHours(
+      DEFAULT_SYSTEM_SETTINGS.autoCancelAt.hour,
+      DEFAULT_SYSTEM_SETTINGS.autoCancelAt.minute,
+      0,
+      0
+    );
 
     const delay = cutoff.getTime() - now.getTime();
     if (delay <= 0) {

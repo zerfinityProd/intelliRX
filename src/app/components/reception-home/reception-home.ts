@@ -10,6 +10,7 @@ import { AuthenticationService } from '../../services/authenticationService';
 import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 
 @Component({
     selector: 'app-reception-home',
@@ -33,6 +34,9 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     // Date filter — today by default
     selectedDate: string = new Date().toISOString().split('T')[0];
+
+    readonly appointmentsDateMin: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMin;
+    readonly appointmentsDateMax: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMax;
 
     // Calendar
     calendarDate: Date = new Date();
@@ -87,7 +91,12 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
         const now = new Date();
         const cutoff = new Date(now);
-        cutoff.setHours(23, 0, 0, 0);
+        cutoff.setHours(
+            DEFAULT_SYSTEM_SETTINGS.autoCancelAt.hour,
+            DEFAULT_SYSTEM_SETTINGS.autoCancelAt.minute,
+            0,
+            0
+        );
 
         const delay = cutoff.getTime() - now.getTime();
         if (delay <= 0) {

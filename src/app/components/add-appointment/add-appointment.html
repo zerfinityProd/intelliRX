@@ -74,19 +74,19 @@
             </svg>
             <input type="tel" [ngModel]="newPatientPhone" (ngModelChange)="onPhoneModelChange($event)"
               class="appt-input appt-input--with-icon appt-input--phone" inputmode="numeric" autocomplete="tel"
-              placeholder="10-digit mobile number" maxlength="10" />
+              placeholder="10-digit mobile number" [attr.maxlength]="phoneMaxDigits" />
           </div>
           <button type="button" class="appt-search-phone-btn" (click)="lookupPatientsByPhone()"
-            [disabled]="phoneLookupStatus === 'loading' || normalizedPhoneDigits.length !== 10">
+            [disabled]="phoneLookupStatus === 'loading' || normalizedPhoneDigits.length !== phoneMaxDigits">
             <span *ngIf="phoneLookupStatus === 'loading'" class="appt-spinner appt-spinner--inline"></span>
             <span *ngIf="phoneLookupStatus !== 'loading'">Search</span>
           </button>
         </div>
         <div class="appt-phone-meta">
-          <span *ngIf="normalizedPhoneDigits.length > 0 && normalizedPhoneDigits.length < 10" class="appt-phone-meta__warn">
-            {{ 10 - normalizedPhoneDigits.length }} more digit{{ (10 - normalizedPhoneDigits.length) === 1 ? '' : 's' }}
+          <span *ngIf="normalizedPhoneDigits.length > 0 && normalizedPhoneDigits.length < phoneMaxDigits" class="appt-phone-meta__warn">
+            {{ phoneMaxDigits - normalizedPhoneDigits.length }} more digit{{ (phoneMaxDigits - normalizedPhoneDigits.length) === 1 ? '' : 's' }}
           </span>
-          <span *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === 10" class="appt-phone-meta__ok">
+          <span *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === phoneMaxDigits" class="appt-phone-meta__ok">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
             Lookup complete
           </span>

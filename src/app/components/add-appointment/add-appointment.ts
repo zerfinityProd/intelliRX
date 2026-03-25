@@ -12,6 +12,8 @@ import { Patient } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import doctorsData from '../../data/doctors.json';
 import { normalizeEmail } from '../../utilities/normalize-email';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 
 export interface Doctor {
   id: string;
@@ -54,6 +56,7 @@ export class AddAppointmentComponent implements OnInit {
   appointmentDate: string = new Date().toISOString().split('T')[0];
   selectedTimeSlot: string = '';
   selectedDoctorId: string = '';
+  readonly phoneMaxDigits: number = DEFAULT_SYSTEM_SETTINGS.patient.phoneMaxDigits;
   // Ailments chips (same style/idea as Add Patient)
   ailmentChips: string[] = [];
   newAilmentInput: string = '';
@@ -68,7 +71,7 @@ export class AddAppointmentComponent implements OnInit {
   doctors: Doctor[] = doctorsData as Doctor[];
 
   // Time slots
-  allTimeSlots: string[] = this.generateTimeSlots();
+  allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
   bookedSlots: string[] = [];
   isLoadingSlots: boolean = false;
 
@@ -189,15 +192,9 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   generateTimeSlots(): string[] {
-    const slots: string[] = [];
-    for (let hour = 9; hour < 18; hour++) {
-      for (const min of [0, 30]) {
-        const h = hour.toString().padStart(2, '0');
-        const m = min.toString().padStart(2, '0');
-        slots.push(`${h}:${m}`);
-      }
-    }
-    return slots;
+    // Kept for backward compatibility inside the component.
+    // Main source of truth is now DEFAULT_SYSTEM_SETTINGS.
+    return generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
   }
 
   formatSlotLabel(time: string): string {
@@ -277,7 +274,7 @@ export class AddAppointmentComponent implements OnInit {
 
   /** Digits only, max 10 — used for search and Firestore matching */
   get normalizedPhoneDigits(): string {
-    return this.newPatientPhone.replace(/\D/g, '').slice(0, 10);
+    return this.newPatientPhone.replace(/\D/g, '').slice(0, this.phoneMaxDigits);
   }
 
   /** Display name for step 2 chip */
@@ -296,7 +293,7 @@ export class AddAppointmentComponent implements OnInit {
 
   /** Can advance: valid phone, lookup done, and either existing selection or new names */
   get canProceedStep1(): boolean {
-    if (this.normalizedPhoneDigits.length !== 10 || this.phoneLookupStatus !== 'done') {
+    if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits || this.phoneLookupStatus !== 'done') {
       return false;
     }
     if (this.phoneMatches.length > 0 && !this.intentNewPatient) {
@@ -306,11 +303,11 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   normalizePhoneDigits(phone: string): string {
-    return String(phone).replace(/\D/g, '');
+    return String(phone).replace(/\D/g, '').slice(0, this.phoneMaxDigits);
   }
 
   onPhoneModelChange(value: string): void {
-    this.newPatientPhone = value.replace(/\D/g, '').slice(0, 10);
+    this.newPatientPhone = value.replace(/\D/g, '').slice(0, this.phoneMaxDigits);
     this.onPhoneInput();
   }
 
@@ -319,7 +316,7 @@ export class AddAppointmentComponent implements OnInit {
     if (this.phoneLookupDebounce) {
       clearTimeout(this.phoneLookupDebounce);
     }
-    if (this.normalizedPhoneDigits.length !== 10) {
+    if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits) {
       this.phoneLookupStatus = 'idle';
       this.phoneMatches = [];
       this.matchedPatient = null;
@@ -334,7 +331,7 @@ export class AddAppointmentComponent implements OnInit {
 
   async lookupPatientsByPhone(): Promise<void> {
     const digits = this.normalizedPhoneDigits;
-    if (digits.length !== 10) {
+    if (digits.length !== this.phoneMaxDigits) {
       this.errorMessage = 'Enter a valid 10-digit phone number';
       return;
     }
@@ -384,7 +381,7 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   async proceedFromNewPatient(): Promise<void> {
-    if (this.normalizedPhoneDigits.length !== 10) {
+    if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits) {
       this.errorMessage = 'Valid 10-digit phone number is required';
       return;
     }
@@ -508,7 +505,7 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   formatPhoneDisplay(digits: string): string {
-    const d = digits.replace(/\D/g, '').slice(0, 10);
+    const d = digits.replace(/\D/g, '').slice(0, this.phoneMaxDigits);
     if (d.length <= 5) return d;
     if (d.length <= 10) return `${d.slice(0, 5)} ${d.slice(5)}`;
     return d;

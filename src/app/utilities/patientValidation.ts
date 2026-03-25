@@ -4,11 +4,15 @@
  * Extracted from PatientValidationService for better performance
  */
 
+import { DEFAULT_SYSTEM_SETTINGS } from '../config/systemSettings';
+
+const PHONE_MAX_DIGITS = DEFAULT_SYSTEM_SETTINGS.patient.phoneMaxDigits;
+
 /**
  * Validate phone number (10 digits)
  */
 export function isValidPhone(phone: string): boolean {
-    return /^\d{10}$/.test(phone.trim());
+    return new RegExp(`^\\d{${PHONE_MAX_DIGITS}}$`).test(phone.trim());
 }
 
 /**
@@ -61,7 +65,7 @@ export function validatePatientData(data: {
     }
 
     if (data.phone && !isValidPhone(data.phone)) {
-        errors.push('Phone must be 10 digits');
+        errors.push(`Phone must be ${PHONE_MAX_DIGITS} digits`);
     }
 
     if (data.email && !isValidEmail(data.email)) {

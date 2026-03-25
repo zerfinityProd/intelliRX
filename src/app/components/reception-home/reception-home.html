@@ -61,7 +61,7 @@
             <line x1="3" y1="10" x2="21" y2="10"></line>
           </svg>
           <input type="date" [(ngModel)]="selectedDate" class="rh-date-input"
-            min="2000-01-01" max="2099-12-31" (ngModelChange)="onDateInput($event)" />
+            [min]="appointmentsDateMin" [max]="appointmentsDateMax" (ngModelChange)="onDateInput($event)" />
           <button *ngIf="!isSelectedToday" class="rh-today-chip" (click)="goToday()">Today</button>
         </div>
 

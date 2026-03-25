@@ -15,6 +15,8 @@ import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
 import { NavbarComponent } from '../navbar/navbar';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 
 @Component({
   selector: 'app-home',
@@ -42,7 +44,7 @@ export class HomeComponent implements OnInit {
   showSlots: boolean = false;
   bookedSlotsForSelected: string[] = [];
   isLoadingSlots: boolean = false;
-  readonly allTimeSlots: string[] = this.generateTimeSlots();
+  readonly allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
 
   get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
   get isLoadingMore(): boolean { return this.patientService.isLoadingMore; }
@@ -247,13 +249,9 @@ export class HomeComponent implements OnInit {
   // ── Slot viewer ──
 
   generateTimeSlots(): string[] {
-    const slots: string[] = [];
-    for (let hour = 9; hour < 18; hour++) {
-      for (const min of [0, 30]) {
-        slots.push(`${hour.toString().padStart(2,'0')}:${min.toString().padStart(2,'0')}`);
-      }
-    }
-    return slots;
+    // Kept for backward compatibility inside the component.
+    // Main source of truth is now DEFAULT_SYSTEM_SETTINGS.
+    return generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
   }
 
   formatSlotLabel(time: string): string {
