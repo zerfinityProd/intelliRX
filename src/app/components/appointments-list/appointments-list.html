@@ -17,7 +17,7 @@
       </div>
       <div>
         <h1 class="kb-page-header__title">Appointments Board</h1>
-        <p class="kb-page-header__sub">Drag cards between columns to update status</p>
+        <p class="kb-page-header__sub">Manage your appointment schedule</p>
       </div>
     </div>
     <div class="kb-page-header__actions">
@@ -86,11 +86,7 @@
   <div *ngIf="!isLoading" class="kb-board">
 
     <div *ngFor="let col of columns"
-      class="kb-column"
-      [class.kb-column--dragover]="dragOverColumn === col.id"
-      (dragover)="onDragOver($event, col.id)"
-      (dragleave)="onDragLeave()"
-      (drop)="onDrop($event, col.id)">
+      class="kb-column">
 
       <!-- Column Header -->
       <div class="kb-column__header" [style.border-top-color]="col.accent">
@@ -137,22 +133,13 @@
         </span>
       </div>
 
-      <!-- Drop zone hint -->
-      <div class="kb-drop-hint" [class.kb-drop-hint--visible]="dragOverColumn === col.id && draggingCard?.status !== col.id">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="8 17 12 21 16 17"></polyline>
-          <line x1="12" y1="12" x2="12" y2="21"></line>
-          <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"></path>
-        </svg>
-        <span>Drop here to mark as {{ col.label }}</span>
-      </div>
+
 
       <!-- Cards -->
       <div class="kb-cards-list">
 
         <!-- Empty column state -->
-        <div *ngIf="cardsFor(col.id).length === 0 && dragOverColumn !== col.id"
+        <div *ngIf="cardsFor(col.id).length === 0"
           class="kb-empty-col">
           <div class="kb-empty-col__dot" [style.background]="col.color"></div>
           <span>No {{ col.label | lowercase }} appointments</span>
@@ -162,10 +149,7 @@
         <div *ngFor="let appt of cardsFor(col.id)"
           class="kb-card"
           [class.kb-card--updating]="updatingId === appt.id"
-          [class.kb-card--today]="isToday(appt.appointmentDate)"
-          draggable="true"
-          (dragstart)="onDragStart($event, appt)"
-          (dragend)="onDragEnd($event)">
+          [class.kb-card--today]="isToday(appt.appointmentDate)">
 
           <!-- Spinner overlay when updating -->
           <div *ngIf="updatingId === appt.id" class="kb-card__overlay">
@@ -183,14 +167,7 @@
               <span *ngIf="appt.isNewPatient" class="kb-new-badge">New</span>
               <span class="kb-card__time">{{ formatTime(appt.appointmentTime) }}</span>
             </div>
-            <!-- Drag handle -->
-            <div class="kb-card__drag-handle" title="Drag to move">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle>
-                <circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle>
-              </svg>
-            </div>
+
           </div>
 
           <!-- Patient name -->
@@ -227,7 +204,7 @@
                 <line x1="12" y1="11" x2="12" y2="17"></line>
                 <line x1="9" y1="14" x2="15" y2="14"></line>
               </svg>
-              {{ appt.patientId ? 'Add Visit' : 'Add Patient' }}
+              Add Visit
             </button>
             <button class="kb-card__action-btn kb-card__action-btn--cancel"
               (click)="updateStatus(appt, 'cancelled')"

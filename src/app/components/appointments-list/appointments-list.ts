@@ -11,6 +11,8 @@ import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
 import { Patient } from '../../models/patient.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { AppointmentCleanupService } from '../../services/appointmentCleanupService';
+import { todayLocalISO } from '../../utilities/local-date';
 
 export interface KanbanColumn {
   id: Appointment['status'];
@@ -33,7 +35,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   errorMessage = '';
 
   // Date filter — defaults to today
-  selectedDate: string = new Date().toISOString().split('T')[0];
+  selectedDate: string = todayLocalISO();
 
   readonly appointmentsDateMin: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMin;
   readonly appointmentsDateMax: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMax;
@@ -41,9 +43,6 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   // Search
   searchTerm: string = '';
 
-  // Drag state
-  draggingCard: Appointment | null = null;
-  dragOverColumn: Appointment['status'] | null = null;
   updatingId: string | null = null;
 
   private appointmentService = inject(AppointmentService);
@@ -52,6 +51,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private authService = inject(AuthenticationService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private cleanupService = inject(AppointmentCleanupService);
 
   private autoCancelTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -109,18 +109,18 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   get isSelectedToday(): boolean {
-    return this.selectedDate === new Date().toISOString().split('T')[0];
+    return this.selectedDate === todayLocalISO();
   }
 
   goToday(): void {
-    this.selectedDate = new Date().toISOString().split('T')[0];
+    this.selectedDate = todayLocalISO();
   }
 
   onDateInput(value: string): void {
     if (!value) return;
     const year = parseInt(value.split('-')[0], 10);
     if (year < 2000 || year > 2099) {
-      this.selectedDate = new Date().toISOString().split('T')[0];
+      this.selectedDate = todayLocalISO();
     } else {
       this.selectedDate = value;
     }
@@ -142,6 +142,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     this.refreshTimer = setInterval(() => {
       void this.refreshAppointments();
     }, 3000);
+
+    // Auto-cleanup first-time patients with no visits (runs once per session).
+    void this.cleanupService.runCleanupIfNeeded();
   }
 
   ngOnDestroy(): void {
@@ -262,39 +265,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  // ── Drag & Drop ──
 
-  onDragStart(event: DragEvent, appt: Appointment): void {
-    this.draggingCard = appt;
-    event.dataTransfer?.setData('text/plain', appt.id ?? '');
-    (event.target as HTMLElement).classList.add('kb-card--dragging');
-  }
-
-  onDragEnd(event: DragEvent): void {
-    (event.target as HTMLElement).classList.remove('kb-card--dragging');
-    this.draggingCard = null;
-    this.dragOverColumn = null;
-  }
-
-  onDragOver(event: DragEvent, colId: Appointment['status']): void {
-    event.preventDefault();
-    this.dragOverColumn = colId;
-  }
-
-  onDragLeave(): void {
-    this.dragOverColumn = null;
-  }
-
-  async onDrop(event: DragEvent, colId: Appointment['status']): Promise<void> {
-    event.preventDefault();
-    this.dragOverColumn = null;
-    if (colId === 'completed') return;
-    if (!this.draggingCard || this.draggingCard.status === colId) return;
-
-    const appt = this.draggingCard;
-    this.draggingCard = null;
-    await this.updateStatus(appt, colId);
-  }
 
   async updateStatus(appt: Appointment, status: Appointment['status']): Promise<void> {
     if (appt.status === status || this.updatingId === appt.id) return;

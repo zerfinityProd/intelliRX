@@ -4,6 +4,7 @@ import { PatientService } from './patient';
 import { PatientSearchService } from './patientSearchService';
 import { AuthenticationService } from './authenticationService';
 import { FirebaseService } from './firebase';
+import { ClinicContextService } from './clinicContextService';
 import { Patient } from '../models/patient.model';
 
 describe('PatientService (Merged & Orchestrator)', () => {
@@ -11,6 +12,7 @@ describe('PatientService (Merged & Orchestrator)', () => {
   let searchService: any;
   let firebaseService: any;
   let authService: any;
+  let clinicContextService: any;
 
   const mockPatient: Patient = {
     uniqueId: 'pat-123',
@@ -52,12 +54,18 @@ describe('PatientService (Merged & Orchestrator)', () => {
       getCurrentUserId: vi.fn(() => 'user-001')
     };
 
+    clinicContextService = {
+      getSelectedClinicId: vi.fn(() => null),
+      getSubscriptionId: vi.fn(() => null)
+    };
+
     TestBed.configureTestingModule({
       providers: [
         PatientService,
         { provide: PatientSearchService, useValue: searchService },
         { provide: FirebaseService, useValue: firebaseService },
-        { provide: AuthenticationService, useValue: authService }
+        { provide: AuthenticationService, useValue: authService },
+        { provide: ClinicContextService, useValue: clinicContextService }
       ]
     });
 

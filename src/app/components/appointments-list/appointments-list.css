@@ -302,11 +302,7 @@
   overflow: hidden;
 }
 
-.kb-column--dragover {
-  border-color: var(--clr-primary, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15), 0 4px 20px rgba(99, 102, 241, 0.1);
-  background: #f5f3ff;
-}
+
 
 /* ── Column Header ── */
 .kb-column__header {
@@ -341,29 +337,7 @@
   text-align: center;
 }
 
-/* ── Drop Hint ── */
-.kb-drop-hint {
-  display: none;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 14px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--clr-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.06);
-  border-bottom: 1px dashed rgba(99, 102, 241, 0.3);
-  animation: kb-hint-in 0.2s ease;
-}
 
-.kb-drop-hint--visible {
-  display: flex;
-}
-
-@keyframes kb-hint-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 /* ── Cards List ── */
 .kb-cards-list {
@@ -406,8 +380,7 @@
   border: 1.5px solid var(--clr-border, #e2e8f0);
   border-radius: 14px;
   padding: 14px;
-  cursor: grab;
-  user-select: none;
+
   transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s, opacity 0.15s;
   animation: kb-card-in 0.28s ease both;
 }
@@ -423,15 +396,7 @@
   transform: translateY(-2px);
 }
 
-.kb-card:active {
-  cursor: grabbing;
-}
 
-.kb-card--dragging {
-  opacity: 0.45;
-  transform: rotate(1.5deg) scale(0.97);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
-}
 
 .kb-card--today {
   border-color: #c7d2fe;
@@ -533,16 +498,7 @@
   color: #d97706;
 }
 
-/* ── Drag handle ── */
-.kb-card__drag-handle {
-  color: var(--clr-text-light, #cbd5e1);
-  flex-shrink: 0;
-  padding: 2px 0;
-  transition: color 0.15s;
-}
-.kb-card:hover .kb-card__drag-handle {
-  color: var(--clr-text-muted, #94a3b8);
-}
+
 
 /* ── Card Body ── */
 .kb-card__name {
@@ -658,10 +614,7 @@
   border-color: var(--dk-border);
 }
 
-[data-theme="dark"] .kb-column--dragover {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: var(--clr-primary);
-}
+
 
 [data-theme="dark"] .kb-column__header {
   background: var(--dk-bg2);
@@ -718,8 +671,4 @@
   border-color: var(--dk-border);
   border-top-color: var(--clr-primary);
 }
-
-[data-theme="dark"] .kb-drop-hint {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.3);
-}
+

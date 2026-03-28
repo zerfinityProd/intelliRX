@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import { AuthenticationService, User } from '../../services/authenticationService';
 import { ThemeService } from '../../services/themeService';
 import { UIStateService } from '../../services/uiStateService';
+import { ClinicContextService } from '../../services/clinicContextService';
 
 @Component({
   selector: 'app-navbar',
@@ -25,6 +26,7 @@ export class NavbarComponent {
     private authService: AuthenticationService,
     private themeService: ThemeService,
     private uiStateService: UIStateService,
+    private clinicContextService: ClinicContextService,
     private router: Router
   ) {
     this.currentUser$ = this.authService.currentUser$;
@@ -61,6 +63,7 @@ export class NavbarComponent {
       await this.authService.logout();
       this.themeService.setTheme(false); // reset to light for next user
       this.uiStateService.resetUIState();
+      this.clinicContextService.clear();
       this.router.navigate(['/login']);
     } catch (error) {
       console.error('Logout error:', error);

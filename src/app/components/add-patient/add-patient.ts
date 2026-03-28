@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PatientService } from '../../services/patient';
+import { ClinicContextService } from '../../services/clinicContextService';
+import { todayLocalISO } from '../../utilities/local-date';
 
 // SweetAlert2 is NOT imported at the top level.
 // It is dynamically imported only when a dialog is actually needed,
@@ -40,7 +42,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   ailmentChips: string[] = [];
   newAilmentInput: string = '';
 
-  todayDate: string = new Date().toISOString().split('T')[0];
+  todayDate: string = todayLocalISO();
 
   errorMessage: string = '';
   successMessage: string = '';
@@ -49,6 +51,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
   private checkDebounceTimer: any = null;
   private readonly patientService = inject(PatientService);
+  private readonly clinicContextService = inject(ClinicContextService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -261,7 +264,10 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       const ailmentsText = this.ailmentChips.join(', ');
       if (ailmentsText) patientData.ailments = ailmentsText;
 
-      const patientId = await this.patientService.createPatient(patientData);
+      const patientId = await this.patientService.createPatient({
+        ...patientData,
+        clinicId: this.clinicContextService.getSelectedClinicId() || undefined
+      });
 
       this.isSubmitting = false;
       this.patientAdded.emit(patientId);

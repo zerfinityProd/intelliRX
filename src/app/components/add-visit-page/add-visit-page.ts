@@ -259,8 +259,40 @@ export class AddVisitPageComponent implements OnInit {
                 await this.patientService.updatePatient(patientId, { ailments: ailmentsText });
             }
 
+            // ── Check for a matching appointment BEFORE saving the visit ──
+            let matchedAppointment: any = null;
+            try {
+                const allAppts = await this.appointmentService.getAppointments();
+                const patientName = (this.patient.name || '').trim().toLowerCase();
+                const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
+                const now = new Date();
+
+                // Match scheduled appointments for today or any future date
+                const todayStart = new Date(now);
+                todayStart.setHours(0, 0, 0, 0);
+
+                const candidates = allAppts
+                    .filter(a => a.status === 'scheduled')
+                    .filter(a => new Date(a.appointmentDate) >= todayStart)
+                    .filter(a => {
+                        const apptPatientId = (a.patientId || '').trim();
+                        if (apptPatientId) return apptPatientId === patientId;
+                        const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
+                        const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
+                        return nameMatch && phoneMatch;
+                    });
+
+                matchedAppointment = this.pickClosestAppointmentByTime(candidates, now);
+            } catch {
+                // Silent — if appointment lookup fails, treat as walk-in
+            }
+
+            // Determine visit type based on whether a matching appointment was found
+            const visitType = matchedAppointment?.id ? 'appointment' : 'walk-in';
+
             // Save visit
             const visitData: any = {
+                visitType,
                 chiefComplaints: this.chiefComplaintsText.trim(),
                 diagnosis: this.diagnosis.trim(),
                 examination: this.formatExaminations(),
@@ -273,30 +305,13 @@ export class AddVisitPageComponent implements OnInit {
 
             await this.patientService.addVisit(patientId, visitData);
 
-            // ── Auto-complete matching appointment ──────────────
-            try {
-                const allAppts = await this.appointmentService.getAppointments();
-                const patientName = (this.patient.name || '').trim().toLowerCase();
-                const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
-                const now = new Date();
-
-                const candidates = allAppts
-                    .filter(a => a.status === 'scheduled')
-                    .filter(a => this.isSameLocalDay(new Date(a.appointmentDate), now))
-                    .filter(a => {
-                        const apptPatientId = (a.patientId || '').trim();
-                        if (apptPatientId) return apptPatientId === patientId;
-                        const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
-                        const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
-                        return nameMatch && phoneMatch;
-                    });
-
-                const best = this.pickClosestAppointmentByTime(candidates, now);
-                if (best?.id) {
-                    await this.appointmentService.updateAppointmentStatus(best.id, 'completed');
+            // ── Auto-complete the matched appointment ──────────────
+            if (matchedAppointment?.id) {
+                try {
+                    await this.appointmentService.updateAppointmentStatus(matchedAppointment.id, 'completed');
+                } catch {
+                    // Silent — don't block visit save if appointment update fails
                 }
-            } catch {
-                // Silent — don't block visit save if appointment update fails
             }
 
             this.isSubmitting = false;

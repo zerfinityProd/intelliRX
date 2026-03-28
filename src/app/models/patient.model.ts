@@ -4,6 +4,7 @@ export interface Patient {
   familyId: string; // lastname_firstname
   name: string;
   phone: string;
+  clinicId?: string;
   email?: string;
   dateOfBirth?: Date;
   gender?: string;
@@ -42,6 +43,7 @@ export interface Medicine {
 
 export interface Visit {
   id?: string;
+  visitType?: 'appointment' | 'walk-in';
   presentIllness?: string;
   chiefComplaints: string;
   diagnosis: string;

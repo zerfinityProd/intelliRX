@@ -14,6 +14,8 @@ import doctorsData from '../../data/doctors.json';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
+import { ClinicContextService } from '../../services/clinicContextService';
+import { todayLocalISO } from '../../utilities/local-date';
 
 export interface Doctor {
   id: string;
@@ -40,6 +42,15 @@ export class AddAppointmentComponent implements OnInit {
   lastName: string = '';
   newPatientPhone: string = '';
 
+  // Additional patient fields (new patient only)
+  dateOfBirth: string = '';
+  gender: string = '';
+  patientEmail: string = '';
+  allergyChips: string[] = [];
+  newAllergyInput: string = '';
+  familyIdPreview: string = '';
+  todayDate: string = todayLocalISO();
+
   /** Patients in DB with this exact phone (after lookup) */
   phoneMatches: Patient[] = [];
   phoneLookupStatus: 'idle' | 'loading' | 'done' = 'idle';
@@ -53,14 +64,14 @@ export class AddAppointmentComponent implements OnInit {
   private phoneLookupDebounce: ReturnType<typeof setTimeout> | null = null;
 
   // Appointment details
-  appointmentDate: string = new Date().toISOString().split('T')[0];
+  appointmentDate: string = todayLocalISO();
   selectedTimeSlot: string = '';
   selectedDoctorId: string = '';
   readonly phoneMaxDigits: number = DEFAULT_SYSTEM_SETTINGS.patient.phoneMaxDigits;
   // Ailments chips (same style/idea as Add Patient)
   ailmentChips: string[] = [];
   newAilmentInput: string = '';
-  minDate: string = new Date().toISOString().split('T')[0];
+  minDate: string = todayLocalISO();
   maxDate: string = '9999-12-31';
 
   userRole: 'doctor' | 'receptionist' = 'doctor';
@@ -70,13 +81,21 @@ export class AddAppointmentComponent implements OnInit {
   // Doctors list
   doctors: Doctor[] = doctorsData as Doctor[];
 
+  // Clinic-first selection (receptionist flow)
+  clinics: Array<{ id: string; label: string }> = [];
+  selectedClinicId: string = '';
+  subscriptionId: string | null = null;
+  private readonly doctorClinicCache = new Map<string, string[]>();
+
   // Time slots
   allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
   bookedSlots: string[] = [];
   isLoadingSlots: boolean = false;
 
   errorMessage: string = '';
+  newPatientWarning: string = '';
   isSubmitting: boolean = false;
+  private duplicateCheckTimer: ReturnType<typeof setTimeout> | null = null;
   isCheckingPhone: boolean = false;
 
   private appointmentService = inject(AppointmentService);
@@ -84,6 +103,7 @@ export class AddAppointmentComponent implements OnInit {
   private authService = inject(AuthenticationService);
   private authorizationService = inject(AuthorizationService);
   private patientService = inject(PatientService);
+  private clinicContextService = inject(ClinicContextService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
@@ -129,14 +149,52 @@ export class AddAppointmentComponent implements OnInit {
 
       this.doctors = match ? [match] : [];
       this.selectedDoctorId = match?.id ?? '';
+
+      // Prefer clinic selected at login; otherwise attempt to load.
+      this.selectedClinicId = this.clinicContextService.getSelectedClinicId() ?? '';
+      this.subscriptionId = this.clinicContextService.getSubscriptionId();
+      if (!this.selectedClinicId && rawEmail) {
+        try {
+          const clinics = await this.authorizationService.getUserClinicIds(rawEmail);
+          if (clinics.length) {
+            this.selectedClinicId = clinics[0];
+          }
+        } catch {
+          // Keep empty — legacy compatibility
+        }
+      }
+      // Persist resolved clinic context so AddPatient and other components use it too.
+      if (this.selectedClinicId) {
+        this.clinicContextService.setClinicContext(
+          this.selectedClinicId,
+          this.subscriptionId
+        );
+      }
     } else {
       // Receptionist: can choose any doctor.
       this.canChooseDoctor = true;
-      const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
-      const match = authEmail
-        ? this.doctors.find(d => normalizeEmail(d.email) === authEmail)
-        : undefined;
-      this.selectedDoctorId = match?.id ?? '';
+
+      this.subscriptionId = rawEmail
+        ? await this.authorizationService.getUserSubscriptionId(rawEmail).catch(() => null)
+        : null;
+
+      // Load clinics (SaaS scoping)
+      if (rawEmail) {
+        try {
+          const clinicIds = await this.authorizationService.getUserClinicIds(rawEmail);
+          this.clinics = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
+          this.selectedClinicId = clinicIds[0] ?? '';
+          this.clinicContextService.setClinicContext(
+            this.selectedClinicId || null,
+            this.subscriptionId ?? null
+          );
+        } catch {
+          this.clinics = [];
+          this.selectedClinicId = '';
+        }
+      }
+
+      await this.refreshDoctorsForSelectedClinic();
     }
 
     this.doctorContextReady = true;
@@ -144,6 +202,47 @@ export class AddAppointmentComponent implements OnInit {
       await this.onDateChange();
     }
     this.cdr.markForCheck();
+  }
+
+  private async getDoctorClinicIds(doctorEmail: string): Promise<string[]> {
+    const key = normalizeEmail(doctorEmail);
+    if (this.doctorClinicCache.has(key)) return this.doctorClinicCache.get(key)!;
+    try {
+      const clinicIds = await this.authorizationService.getUserClinicIds(doctorEmail);
+      this.doctorClinicCache.set(key, clinicIds);
+      return clinicIds;
+    } catch {
+      this.doctorClinicCache.set(key, []);
+      return [];
+    }
+  }
+
+  private async refreshDoctorsForSelectedClinic(): Promise<void> {
+    // If clinic isn't known yet (legacy mode), keep previous behavior.
+    if (!this.selectedClinicId) {
+      this.doctors = doctorsData as Doctor[];
+    } else {
+      const clinicId = this.selectedClinicId;
+      const all = doctorsData as Doctor[];
+      const filtered: Doctor[] = [];
+      for (const doc of all) {
+        const clinicIds = await this.getDoctorClinicIds(doc.email);
+        // Strict: only show doctors explicitly assigned to this clinic.
+        if (clinicIds.includes(clinicId)) {
+          filtered.push(doc);
+        }
+      }
+      this.doctors = filtered;
+    }
+
+    // Preselect doctor if receptionist email matches one of the clinic-scoped doctors.
+    const rawEmail = this.authService.currentUserValue?.email || '';
+    const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
+    const match = authEmail
+      ? this.doctors.find(d => normalizeEmail(d.email) === authEmail)
+      : undefined;
+
+    this.selectedDoctorId = match?.id ?? '';
   }
 
   private applyPatientPrefill(params: any): void {
@@ -208,12 +307,128 @@ export class AddAppointmentComponent implements OnInit {
     return `${h12}:${m.toString().padStart(2,'0')} ${period} – ${endH12}:${endM} ${endPeriod}`;
   }
 
+  /** True when the slot is in the past for today's date */
+  isSlotInPast(slot: string): boolean {
+    if (!this.appointmentDate) return false;
+    const today = new Date();
+    const [y, mo, day] = this.appointmentDate.split('-').map(Number);
+    const isToday = today.getFullYear() === y && today.getMonth() === mo - 1 && today.getDate() === day;
+    if (!isToday) return false;
+    const [h, m] = slot.split(':').map(Number);
+    const slotMinutes = h * 60 + m;
+    const nowMinutes = today.getHours() * 60 + today.getMinutes();
+    return slotMinutes <= nowMinutes;
+  }
+
   get availableSlots(): string[] {
-    return this.allTimeSlots.filter(s => !this.bookedSlots.includes(s));
+    return this.allTimeSlots.filter(s => !this.bookedSlots.includes(s) && !this.isSlotInPast(s));
   }
 
   async onDoctorChange(): Promise<void> {
     if (this.appointmentDate) await this.onDateChange();
+  }
+
+  async onClinicChange(): Promise<void> {
+    // Clinic-first booking: changing clinic resets doctor selection.
+    if (this.canChooseDoctor) {
+      this.selectedDoctorId = '';
+    }
+
+    // Update the shared clinic context so services use the new clinicId.
+    this.clinicContextService.setClinicContext(
+      this.selectedClinicId || null,
+      this.subscriptionId ?? null
+    );
+
+    await this.refreshDoctorsForSelectedClinic();
+
+    // Re-run phone lookup if a phone was already searched — results are clinic-scoped.
+    if (this.phoneLookupStatus === 'done' && this.normalizedPhoneDigits.length === this.phoneMaxDigits) {
+      await this.lookupPatientsByPhone();
+    }
+
+    // Ensure doctor selection refresh triggers updated availability.
+    if (this.appointmentDate) await this.onDateChange();
+  }
+
+  // ── Allergy chips ──
+  onAllergyKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const trimmed = this.newAllergyInput.trim();
+      if (trimmed && !this.allergyChips.includes(trimmed)) {
+        this.allergyChips.push(trimmed);
+        this.newAllergyInput = '';
+      }
+    }
+  }
+
+  onAllergyBlur(): void {
+    const trimmed = this.newAllergyInput.trim();
+    if (trimmed && !this.allergyChips.includes(trimmed)) {
+      this.allergyChips.push(trimmed);
+      this.newAllergyInput = '';
+    }
+  }
+
+  removeAllergy(index: number): void {
+    this.allergyChips.splice(index, 1);
+  }
+
+  /** Normalize a name for comparison: trim, lowercase, collapse whitespace */
+  private normalizeName(name: string): string {
+    return (name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  /** Check if the entered name matches any patient already in phoneMatches */
+  private isDuplicateOfPhoneMatch(): import('../../models/patient.model').Patient | null {
+    const enteredName = this.normalizeName(this.fullName);
+    if (!enteredName) return null;
+    return this.phoneMatches.find(p => this.normalizeName(p.name) === enteredName) ?? null;
+  }
+
+  /** Update family ID preview and check for duplicate patients */
+  updateFamilyIdPreview(): void {
+    const name = this.fullName.trim();
+    const phone = this.normalizedPhoneDigits;
+    const parts = name.split(' ').filter(Boolean);
+    if (parts.length < 2 || !phone) {
+      this.familyIdPreview = '';
+      this.newPatientWarning = '';
+      return;
+    }
+    const lastName = parts[parts.length - 1].toLowerCase();
+    this.familyIdPreview = `${lastName}_${phone}`;
+
+    // Cancel any pending Firestore check first
+    if (this.duplicateCheckTimer) clearTimeout(this.duplicateCheckTimer);
+
+    // Instant client-side check against already-loaded phone matches
+    const dup = this.isDuplicateOfPhoneMatch();
+    if (dup) {
+      this.newPatientWarning = `Patient "${dup.name}" already exists. Please select them from the list above.`;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Debounce the Firestore duplicate check as fallback
+    this.duplicateCheckTimer = setTimeout(async () => {
+      // Re-check local matches before overwriting — avoids race condition
+      if (this.isDuplicateOfPhoneMatch()) return;
+      try {
+        const exists = await this.patientService.checkUniqueIdExists(name, phone);
+        // Re-check again after await — user may have typed more
+        if (this.isDuplicateOfPhoneMatch()) return;
+        this.newPatientWarning = exists
+          ? 'This patient already exists. Please select them from the list above instead.'
+          : '';
+        this.cdr.markForCheck();
+      } catch {
+        if (!this.isDuplicateOfPhoneMatch()) {
+          this.newPatientWarning = '';
+        }
+      }
+    }, 300);
   }
 
   // ── Ailment chips ──
@@ -257,7 +472,10 @@ export class AddAppointmentComponent implements OnInit {
           const sameDoctor = (this.selectedDoctorId && selectedDoctorEmail)
             ? normalizeEmail(a.doctorId || '') === selectedDoctorEmail
             : true;
-          return sameDay && sameDoctor && a.status !== 'cancelled';
+          const sameClinic = this.selectedClinicId
+            ? (a.clinicId ? a.clinicId === this.selectedClinicId : true)
+            : true;
+          return sameDay && sameDoctor && sameClinic && a.status !== 'cancelled';
         })
         .map(a => a.appointmentTime);
     } catch {
@@ -291,9 +509,19 @@ export class AddAppointmentComponent implements OnInit {
       (this.phoneMatches.length === 0 || this.intentNewPatient);
   }
 
-  /** Can advance: valid phone, lookup done, and either existing selection or new names */
+  /** Can advance: valid phone, lookup done, and either existing selection or new names.
+   *  Receptionist must also have clinic + doctor selected.
+   *  Blocked when duplicate patient warning is active. */
   get canProceedStep1(): boolean {
+    // Receptionist must pick clinic & doctor first.
+    if (this.canChooseDoctor && (!this.selectedClinicId || !this.selectedDoctorId)) {
+      return false;
+    }
     if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits || this.phoneLookupStatus !== 'done') {
+      return false;
+    }
+    // Block if duplicate patient detected (only when entering new patient names).
+    if (this.newPatientWarning && this.needsNewPatientNames) {
       return false;
     }
     if (this.phoneMatches.length > 0 && !this.intentNewPatient) {
@@ -308,6 +536,7 @@ export class AddAppointmentComponent implements OnInit {
 
   onPhoneModelChange(value: string): void {
     this.newPatientPhone = value.replace(/\D/g, '').slice(0, this.phoneMaxDigits);
+    this.updateFamilyIdPreview();
     this.onPhoneInput();
   }
 
@@ -343,18 +572,71 @@ export class AddAppointmentComponent implements OnInit {
     this.firstName = '';
     this.middleName = '';
     this.lastName = '';
+    this.dateOfBirth = '';
+    this.gender = '';
+    this.patientEmail = '';
+    this.allergyChips = [];
+    this.newAllergyInput = '';
+    this.familyIdPreview = '';
 
+    const userId = this.authService.getCurrentUserId();
+    if (!userId) {
+      this.phoneLookupStatus = 'done';
+      this.cdr.markForCheck();
+      return;
+    }
+    const clinicId = this.selectedClinicId || undefined;
+    let exact: import('../../models/patient.model').Patient[] = [];
+
+    // Attempt 1: search with clinicId
     try {
-      const userId = this.authService.getCurrentUserId();
-      if (!userId) throw new Error('Not authenticated');
-      const { results } = await this.firebaseService.searchPatientByPhone(digits, userId);
-      const exact = results.filter(p => this.normalizePhoneDigits(p.phone) === digits);
-      this.phoneMatches = exact;
-      if (exact.length === 1) {
-        this.selectExistingPatient(exact[0]);
+      const { results } = await this.firebaseService.searchPatientByPhone(digits, userId, null, clinicId);
+      exact = results.filter(p => this.normalizePhoneDigits(p.phone) === digits);
+      console.log(`📞 Phone lookup (clinic=${clinicId}): ${results.length} raw, ${exact.length} exact`);
+    } catch (err) {
+      console.warn('Phone lookup (clinic-scoped) failed:', err);
+    }
+
+    // Attempt 2: clinic-scoped contains search (no composite index needed)
+    // This finds patients created by ANY user within the same clinic (doctor ↔ receptionist)
+    if (exact.length === 0 && clinicId) {
+      try {
+        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, userId, clinicId);
+        exact = containsResults.filter(p => this.normalizePhoneDigits(p.phone) === digits);
+        console.log(`📞 Phone lookup (clinic contains): ${exact.length} exact match(es)`);
+      } catch (err) {
+        console.warn('Phone lookup (clinic contains) failed:', err);
       }
-    } catch {
-      this.phoneMatches = [];
+    }
+
+    // Attempt 3: retry WITHOUT clinicId to find legacy patients (no clinicId field)
+    if (exact.length === 0 && clinicId) {
+      try {
+        const { results: fallbackResults } = await this.firebaseService.searchPatientByPhone(digits, userId, null, undefined);
+        // Only include legacy patients (no clinicId) — NEVER patients from other clinics
+        exact = fallbackResults.filter(p =>
+          this.normalizePhoneDigits(p.phone) === digits && !p.clinicId
+        );
+      } catch (err) {
+        console.warn('Phone lookup (legacy fallback) failed:', err);
+      }
+    }
+
+    // Attempt 4: ultimate fallback — userId-scoped contains search
+    if (exact.length === 0) {
+      try {
+        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, userId, undefined);
+        exact = containsResults.filter(p =>
+          this.normalizePhoneDigits(p.phone) === digits && !p.clinicId
+        );
+      } catch (err) {
+        console.warn('Phone lookup (userId contains fallback) failed:', err);
+      }
+    }
+
+    this.phoneMatches = exact;
+    if (exact.length === 1) {
+      this.selectExistingPatient(exact[0]);
     }
 
     this.phoneLookupStatus = 'done';
@@ -369,6 +651,7 @@ export class AddAppointmentComponent implements OnInit {
     this.middleName = '';
     this.lastName = '';
     this.errorMessage = '';
+    this.newPatientWarning = '';
     this.cdr.markForCheck();
   }
 
@@ -396,6 +679,17 @@ export class AddAppointmentComponent implements OnInit {
     if (this.phoneMatches.length > 0 && !this.intentNewPatient && !this.matchedPatient) {
       this.errorMessage = 'Select a patient from the list, or choose “New patient” to enter a name.';
       return;
+    }
+
+    // Block if user typed the same name as an existing patient in the phone matches
+    if (this.intentNewPatient && this.phoneMatches.length > 0) {
+      const dup = this.isDuplicateOfPhoneMatch();
+      if (dup) {
+        this.errorMessage = `Patient "${dup.name}" already exists with this phone number. Please select them from the list above instead of creating a duplicate.`;
+        this.newPatientWarning = this.errorMessage;
+        this.cdr.markForCheck();
+        return;
+      }
     }
 
     if (this.needsNewPatientNames) {
@@ -436,18 +730,56 @@ export class AddAppointmentComponent implements OnInit {
 
     try {
       const ailmentsText = this.ailmentChips.join(', ');
+      const allergiesText = this.allergyChips.join(', ');
 
       const rawEmail = this.authService.currentUserValue?.email || '';
       const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
       const authDoctor = this.doctors.find(d => normalizeEmail(d.email) === authEmail);
 
+      let patientId = '';
+      let patientName = this.fullName;
+      let patientPhone = this.normalizedPhoneDigits;
+      let patientFamilyId = '';
+
+      if (this.isExistingPatient && this.matchedPatient) {
+        // Existing patient
+        patientId = this.matchedPatient.uniqueId;
+        patientName = this.matchedPatient.name ?? this.fullName;
+        patientPhone = this.matchedPatient.phone ?? this.normalizedPhoneDigits;
+        patientFamilyId = this.matchedPatient.familyId ?? '';
+
+        // Persist ailments/allergies to existing patient record
+        const updateData: any = {};
+        if (ailmentsText.trim()) updateData.ailments = ailmentsText;
+        if (allergiesText.trim()) updateData.allergies = allergiesText;
+        if (Object.keys(updateData).length > 0) {
+          await this.patientService.updatePatient(patientId, updateData);
+        }
+      } else {
+        // New patient — create the patient record in the database
+        const patientData: any = {
+          name: this.fullName,
+          phone: this.normalizedPhoneDigits
+        };
+        if (this.patientEmail.trim()) patientData.email = this.patientEmail.trim();
+        if (this.dateOfBirth) patientData.dateOfBirth = new Date(this.dateOfBirth);
+        if (this.gender) patientData.gender = this.gender;
+        if (allergiesText) patientData.allergies = allergiesText;
+        if (ailmentsText) patientData.ailments = ailmentsText;
+
+        patientId = await this.patientService.createPatient({ ...patientData, clinicId: this.selectedClinicId || undefined });
+        // After creation, fetch the familyId generated by the service
+        const createdPatient = await this.patientService.getPatient(patientId);
+        patientFamilyId = createdPatient?.familyId ?? '';
+        patientName = createdPatient?.name ?? this.fullName;
+        patientPhone = createdPatient?.phone ?? this.normalizedPhoneDigits;
+      }
+
       await this.appointmentService.createAppointment({
-        patientId:       this.isExistingPatient ? (this.matchedPatient?.uniqueId ?? '') : '',
-        patientName:     this.isExistingPatient ? (this.matchedPatient?.name ?? this.fullName) : this.fullName,
-        patientPhone:    this.isExistingPatient
-          ? (this.matchedPatient?.phone ?? this.normalizedPhoneDigits)
-          : this.normalizedPhoneDigits,
-        patientFamilyId: this.isExistingPatient ? (this.matchedPatient?.familyId ?? '') : '',
+        patientId,
+        patientName,
+        patientPhone,
+        patientFamilyId,
         appointmentDate: new Date(this.appointmentDate),
         appointmentTime: this.selectedTimeSlot,
         ailments: ailmentsText,
@@ -455,14 +787,10 @@ export class AddAppointmentComponent implements OnInit {
         isNewPatient: !this.isExistingPatient,
         doctorId: this.selectedDoctor?.email
           ? normalizeEmail(this.selectedDoctor.email)
-          : (authDoctor?.email ? normalizeEmail(authDoctor.email) : '')
+          : (authDoctor?.email ? normalizeEmail(authDoctor.email) : ''),
+        clinicId: this.selectedClinicId || undefined,
+        subscriptionId: this.subscriptionId || this.clinicContextService.getSubscriptionId() || undefined
       });
-
-      // If patient already exists, immediately persist ailments to the patient record
-      // so they appear on "Add Visit" right after.
-      if (ailmentsText.trim() && this.isExistingPatient && this.matchedPatient?.uniqueId) {
-        await this.patientService.updatePatient(this.matchedPatient.uniqueId, { ailments: ailmentsText });
-      }
 
       this.isSubmitting = false;
 

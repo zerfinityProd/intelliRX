@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseService } from './firebase';
+import { ClinicContextService } from './clinicContextService';
 import { Patient } from '../models/patient.model';
 import { QueryDocumentSnapshot, DocumentData } from '@angular/fire/firestore';
 
@@ -39,7 +40,7 @@ export class PatientSearchService {
     public hasMoreResults: boolean = false;
     public isLoadingMore: boolean = false;
 
-    constructor(private firebaseService: FirebaseService) { }
+    constructor(private firebaseService: FirebaseService, private clinicContextService: ClinicContextService) { }
 
     /**
      * Execute new search (resets pagination)
@@ -56,12 +57,13 @@ export class PatientSearchService {
             console.log('🔍 Searching for:', trimmedTerm);
 
             let allResults: Patient[] = [];
+            const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
 
             if (this.currentIsNumeric) {
                 // Run phone prefix search AND contains search in parallel
                 const [phoneSettled, containsSettled] = await Promise.allSettled([
-                    this.firebaseService.searchPatientByPhone(trimmedTerm, userId),
-                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId)
+                    this.firebaseService.searchPatientByPhone(trimmedTerm, userId, null, clinicId),
+                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId, clinicId)
                 ]);
 
                 const phoneResult = phoneSettled.status === 'fulfilled' ? phoneSettled.value : { results: [], lastDoc: null, hasMore: false };
@@ -74,9 +76,9 @@ export class PatientSearchService {
             } else {
                 // Run family, name prefix searches AND contains search in parallel
                 const [familySettled, nameSettled, containsSettled] = await Promise.allSettled([
-                    this.firebaseService.searchPatientByFamilyId(trimmedTerm.toLowerCase(), userId),
-                    this.firebaseService.searchPatientByName(trimmedTerm, userId),
-                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId)
+                    this.firebaseService.searchPatientByFamilyId(trimmedTerm.toLowerCase(), userId, null, clinicId),
+                    this.firebaseService.searchPatientByName(trimmedTerm, userId, null, clinicId),
+                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId, clinicId)
                 ]);
 
                 const familyResult = familySettled.status === 'fulfilled' ? familySettled.value : { results: [], lastDoc: null, hasMore: false };
@@ -112,28 +114,33 @@ export class PatientSearchService {
             let newResults: Patient[] = [];
 
             if (this.currentIsNumeric) {
+                const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
                 const { results, lastDoc, hasMore } = await this.firebaseService.searchPatientByPhone(
                     this.currentSearchTerm,
                     userId,
-                    this.paginationState.lastPhoneDoc
+                    this.paginationState.lastPhoneDoc,
+                    clinicId
                 );
                 newResults = results;
                 this.paginationState.lastPhoneDoc = lastDoc;
                 this.paginationState.hasMore = hasMore;
             } else {
+                const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
                 const [familySettled, nameSettled] = await Promise.allSettled([
                     this.paginationState.lastFamilyDoc !== null
                         ? this.firebaseService.searchPatientByFamilyId(
                             this.currentSearchTerm.toLowerCase(),
                             userId,
-                            this.paginationState.lastFamilyDoc
+                            this.paginationState.lastFamilyDoc,
+                            clinicId
                         )
                         : Promise.resolve({ results: [], lastDoc: null, hasMore: false }),
                     this.paginationState.lastNameDoc !== null
                         ? this.firebaseService.searchPatientByName(
                             this.currentSearchTerm,
                             userId,
-                            this.paginationState.lastNameDoc
+                            this.paginationState.lastNameDoc,
+                            clinicId
                         )
                         : Promise.resolve({ results: [], lastDoc: null, hasMore: false })
                 ]);

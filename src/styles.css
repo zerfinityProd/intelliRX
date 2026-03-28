@@ -498,6 +498,12 @@
   color: var(--dk-text2);
 }
 
+[data-theme="dark"] .walk-in-badge {
+  background: rgba(194, 65, 12, 0.15);
+  color: #fb923c;
+  border-color: rgba(251, 146, 60, 0.3);
+}
+
 [data-theme="dark"] .detail-value {
   color: var(--dk-text1);
 }
@@ -2263,6 +2269,22 @@ main {
   font-size: var(--fs-sm);
   color: var(--clr-text-muted);
   font-weight: 500;
+}
+
+/* Walk-in visit badge */
+.walk-in-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+  white-space: nowrap;
 }
 
 .visit-detail {

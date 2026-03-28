@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { PatientSearchService } from './patientSearchService';
 import { FirebaseService } from './firebase';
+import { ClinicContextService } from './clinicContextService';
 import { Patient } from '../models/patient.model';
 
 describe('PatientSearchService', () => {
@@ -32,11 +33,21 @@ describe('PatientSearchService', () => {
         firebaseService = {
             searchPatientByPhone: vi.fn(),
             searchPatientByFamilyId: vi.fn(),
-            searchPatientByName: vi.fn()
+            searchPatientByName: vi.fn(),
+            searchPatientsContaining: vi.fn().mockResolvedValue({ results: [], lastDoc: null, hasMore: false })
+        };
+
+        const clinicContextService = {
+            getSelectedClinicId: vi.fn(() => null),
+            getSubscriptionId: vi.fn(() => null)
         };
 
         TestBed.configureTestingModule({
-            providers: [PatientSearchService, { provide: FirebaseService, useValue: firebaseService }]
+            providers: [
+                PatientSearchService,
+                { provide: FirebaseService, useValue: firebaseService },
+                { provide: ClinicContextService, useValue: clinicContextService }
+            ]
         });
 
         service = TestBed.inject(PatientSearchService);
@@ -65,7 +76,7 @@ describe('PatientSearchService', () => {
 
             await service.search('5551234567', 'user-001');
 
-            expect(firebaseService.searchPatientByPhone).toHaveBeenCalledWith('5551234567', 'user-001');
+            expect(firebaseService.searchPatientByPhone).toHaveBeenCalledWith('5551234567', 'user-001', null, undefined);
         });
 
         it('should emit search results', async () => {
@@ -113,8 +124,8 @@ describe('PatientSearchService', () => {
 
             await service.search('john', 'user-001');
 
-            expect(firebaseService.searchPatientByFamilyId).toHaveBeenCalledWith('john', 'user-001');
-            expect(firebaseService.searchPatientByName).toHaveBeenCalledWith('john', 'user-001');
+            expect(firebaseService.searchPatientByFamilyId).toHaveBeenCalledWith('john', 'user-001', null, undefined);
+            expect(firebaseService.searchPatientByName).toHaveBeenCalledWith('john', 'user-001', null, undefined);
         });
 
         it('should merge and deduplicate results', async () => {

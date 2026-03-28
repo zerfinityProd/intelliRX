@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseService } from './firebase';
 import { AuthenticationService } from './authenticationService';
 import { PatientSearchService } from './patientSearchService';
+import { ClinicContextService } from './clinicContextService';
 import { Patient, Visit } from '../models/patient.model';
 import {
   isValidPhone,
@@ -44,7 +45,8 @@ export class PatientService {
   constructor(
     private firebaseService: FirebaseService,
     private authService: AuthenticationService,
-    private searchService: PatientSearchService
+    private searchService: PatientSearchService,
+    private clinicContextService: ClinicContextService
   ) { }
 
   /**
@@ -54,6 +56,11 @@ export class PatientService {
     const userId = this.authService.getCurrentUserId();
     if (!userId) throw new Error('User not authenticated');
     return userId;
+  }
+
+  /** Get the active clinic context for cross-user patient sharing */
+  private getClinicId(): string | undefined {
+    return this.clinicContextService.getSelectedClinicId() || undefined;
   }
 
   // ──── SEARCH & PAGINATION ────
@@ -88,8 +95,9 @@ export class PatientService {
    */
   async getPatient(uniqueId: string): Promise<Patient | null> {
     const userId = this.getCurrentUserId();
+    const clinicId = this.getClinicId();
     try {
-      const patient = await this.firebaseService.getPatientById(uniqueId, userId);
+      const patient = await this.firebaseService.getPatientById(uniqueId, userId, clinicId);
       if (patient) {
         this.selectedPatientSubject.next(patient);
       }
@@ -132,7 +140,8 @@ export class PatientService {
       }
 
       const familyId = this.firebaseService.generateFamilyId(patientData.name, patientData.phone);
-      const patientWithUserId = { ...patientData, familyId, userId };
+      const clinicId = patientData.clinicId || this.clinicContextService.getSelectedClinicId() || undefined;
+      const patientWithUserId = { ...patientData, familyId, userId, clinicId };
       const uniqueId = await this.firebaseService.addPatient(patientWithUserId, userId);
 
       console.log('✓ Patient created:', uniqueId);
@@ -148,8 +157,9 @@ export class PatientService {
    */
   async updatePatient(uniqueId: string, patientData: Partial<Patient>): Promise<void> {
     const userId = this.getCurrentUserId();
+    const clinicId = this.getClinicId();
     try {
-      await this.firebaseService.updatePatient(uniqueId, patientData, userId);
+      await this.firebaseService.updatePatient(uniqueId, patientData, userId, clinicId);
       console.log('✓ Patient updated successfully');
     } catch (error) {
       console.error('❌ Error updating patient:', error);
@@ -189,8 +199,9 @@ export class PatientService {
     visitData: Omit<Visit, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
     const userId = this.getCurrentUserId();
+    const clinicId = this.getClinicId();
     try {
-      const visitId = await this.firebaseService.addVisit(patientId, visitData, userId);
+      const visitId = await this.firebaseService.addVisit(patientId, visitData, userId, clinicId);
       console.log('✓ Visit added successfully:', visitId);
       return visitId;
     } catch (error) {
@@ -204,8 +215,9 @@ export class PatientService {
    */
   async getPatientVisits(patientId: string): Promise<Visit[]> {
     const userId = this.getCurrentUserId();
+    const clinicId = this.getClinicId();
     try {
-      const visits = await this.firebaseService.getPatientVisits(patientId, userId);
+      const visits = await this.firebaseService.getPatientVisits(patientId, userId, clinicId);
       return visits;
     } catch (error) {
       console.error('❌ Error fetching visits:', error);
@@ -284,7 +296,8 @@ export class PatientService {
     try {
       const normalizedFamilyId = familyId.trim().toLowerCase();
       if (!normalizedFamilyId) return false;
-      const { results } = await this.firebaseService.searchPatientByFamilyId(normalizedFamilyId, userId);
+      const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+      const { results } = await this.firebaseService.searchPatientByFamilyId(normalizedFamilyId, userId, null, clinicId);
       const exactMatch = results.find(p => p.familyId.toLowerCase() === normalizedFamilyId);
       return !!exactMatch;
     } catch (error) {
@@ -304,9 +317,18 @@ export class PatientService {
     try {
       const normalizedName = name.trim().toLowerCase();
       const normalizedPhone = phone.trim();
+      const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
 
-      const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, userId);
-      if (results.length === 0) return null;
+      const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, userId, null, clinicId);
+      if (results.length === 0) {
+        // Fallback: search without clinicId for legacy patients
+        if (clinicId) {
+          const { results: legacyResults } = await this.firebaseService.searchPatientByPhone(normalizedPhone, userId, null, undefined);
+          const legacyExact = legacyResults.filter(p => !p.clinicId && p.name.trim().toLowerCase() === normalizedName);
+          return legacyExact.length > 0 ? legacyExact[0] : null;
+        }
+        return null;
+      }
 
       const exactMatches = results.filter(p => p.name.trim().toLowerCase() === normalizedName);
       if (exactMatches.length === 0) return null;

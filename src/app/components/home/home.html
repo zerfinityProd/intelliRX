@@ -361,12 +361,12 @@
               <span class="slot-legend__item">
                 <span class="slot-legend__dot slot-legend__dot--booked"></span>Booked
               </span>
-              <span class="slot-legend__free-count">{{ freeSlotCount }}/{{ allTimeSlots.length }} available</span>
+              <span class="slot-legend__free-count">{{ freeSlotCount }}/{{ visibleTimeSlots.length }} available</span>
             </div>
 
             <!-- Slot chips grid -->
             <div class="slot-chips-grid">
-              <button *ngFor="let slot of allTimeSlots"
+              <button *ngFor="let slot of visibleTimeSlots"
                 class="slot-chip"
                 [class.slot-chip--free]="!bookedSlotsForSelected.includes(slot)"
                 [class.slot-chip--booked]="bookedSlotsForSelected.includes(slot)"

@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { ThemeService } from '../../services/themeService';
+import { ClinicContextService } from '../../services/clinicContextService';
 import { filter, take } from 'rxjs';
 
 @Component({
@@ -29,6 +30,7 @@ export class LoginComponent implements OnInit {
     private readonly router = inject(Router);
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
+    private readonly clinicContextService = inject(ClinicContextService);
 
     constructor() {}
 
@@ -62,9 +64,48 @@ export class LoginComponent implements OnInit {
         const role = await this.authorizationService.getUserRole(email);
         if (role === 'receptionist') {
             this.router.navigate(['/reception-home']);
-        } else {
-            this.router.navigate(['/home']);
+            return;
         }
+
+        // If this doctor belongs to multiple clinics, prompt which clinic to use.
+        await this.ensureDoctorClinicSelected(email);
+        this.router.navigate(['/home']);
+    }
+
+    private async ensureDoctorClinicSelected(doctorEmail: string): Promise<void> {
+        const clinics = await this.authorizationService.getUserClinicIds(doctorEmail);
+        const subscriptionId = await this.authorizationService.getUserSubscriptionId(doctorEmail);
+
+        if (!clinics.length) {
+            this.clinicContextService.setClinicContext(
+                this.clinicContextService.getSelectedClinicId(),
+                subscriptionId
+            );
+            return;
+        }
+
+        if (clinics.length === 1) {
+            this.clinicContextService.setClinicContext(clinics[0], subscriptionId);
+            return;
+        }
+
+        const { default: Swal } = await import('sweetalert2');
+        const options: Record<string, string> = {};
+        for (const id of clinics) options[id] = id;
+
+        const result = await Swal.fire({
+            title: 'Select Clinic',
+            text: 'Which clinic do you want to login for?',
+            input: 'select',
+            inputOptions: options,
+            inputPlaceholder: 'Select a clinic',
+            showCancelButton: false,
+            confirmButtonText: 'Continue',
+            allowOutsideClick: false
+        });
+
+        const chosen = String(result.value ?? clinics[0]);
+        this.clinicContextService.setClinicContext(chosen, subscriptionId);
     }
 
     toggleMode(): void {

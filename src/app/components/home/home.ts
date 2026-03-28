@@ -10,6 +10,8 @@ import { PatientService } from '../../services/patient';
 import { UIStateService } from '../../services/uiStateService';
 import { AppointmentService } from '../../services/appointmentService';
 import { AuthenticationService } from '../../services/authenticationService';
+import { AuthorizationService } from '../../services/authorizationService';
+import { ClinicContextService } from '../../services/clinicContextService';
 import { Patient } from '../../models/patient.model';
 import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
@@ -61,6 +63,8 @@ export class HomeComponent implements OnInit {
     private uiStateService: UIStateService,
     private appointmentService: AppointmentService,
     private authService: AuthenticationService,
+    private authorizationService: AuthorizationService,
+    private clinicContextService: ClinicContextService,
     private db: Firestore,
     private router: Router,
     private route: ActivatedRoute,
@@ -72,6 +76,8 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.clearSearch();
+    // Ensure doctor's clinic context is resolved so AddPatient uses the correct clinicId.
+    void this.ensureClinicContext();
 
     // If navigated here with prefill query params, open Add Patient modal.
     const qp = this.route.snapshot.queryParams || {};
@@ -90,6 +96,29 @@ export class HomeComponent implements OnInit {
     });
     this.loadAppointments();
     this.loadPatientCount();
+  }
+
+  /**
+   * Ensure the doctor's clinic context is set so patients created
+   * from Add-Patient modal are associated with the correct clinic
+   * and visible to reception staff.
+   */
+  private async ensureClinicContext(): Promise<void> {
+    // Already set (from login or localStorage) — nothing to do.
+    if (this.clinicContextService.getSelectedClinicId()) return;
+
+    const email = this.authService.currentUserValue?.email;
+    if (!email) return;
+
+    try {
+      const clinicIds = await this.authorizationService.getUserClinicIds(email);
+      if (clinicIds.length > 0) {
+        const subscriptionId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
+        this.clinicContextService.setClinicContext(clinicIds[0], subscriptionId);
+      }
+    } catch {
+      // Non-critical — proceed without clinic context.
+    }
   }
 
   private clearAddPatientQueryParams(): void {
@@ -122,7 +151,11 @@ export class HomeComponent implements OnInit {
       const userId = this.authService.getCurrentUserId();
       if (!userId) return;
       const col = collection(this.db, 'patients');
-      const q = query(col, where('userId', '==', userId));
+      const clinicId = this.clinicContextService.getSelectedClinicId();
+      // Count all patients in the clinic (includes those created by any staff member).
+      const q = clinicId
+        ? query(col, where('clinicId', '==', clinicId))
+        : query(col, where('userId', '==', userId));
       const snap = await getCountFromServer(q);
       this.totalPatients = snap.data().count;
       this.cdr.detectChanges();
@@ -260,8 +293,32 @@ export class HomeComponent implements OnInit {
     return `${h % 12 || 12}:${m.toString().padStart(2,'0')} ${period}`;
   }
 
+  /** True when the selected date is today */
+  get isSelectedDateToday(): boolean {
+    if (!this.selectedDate) return false;
+    const now = new Date();
+    return this.selectedDate.getFullYear() === now.getFullYear()
+      && this.selectedDate.getMonth() === now.getMonth()
+      && this.selectedDate.getDate() === now.getDate();
+  }
+
+  /** True when the slot's time has already passed (only applies when viewing today) */
+  isSlotInPast(slot: string): boolean {
+    if (!this.selectedDate || !this.isSelectedDateToday) return false;
+    const now = new Date();
+    const [h, m] = slot.split(':').map(Number);
+    const slotMinutes = h * 60 + m;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    return slotMinutes <= nowMinutes;
+  }
+
+  /** Only slots that are practically bookable (future + not booked) */
+  get visibleTimeSlots(): string[] {
+    return this.allTimeSlots.filter(s => !this.isSlotInPast(s));
+  }
+
   get freeSlotCount(): number {
-    return this.allTimeSlots.filter(s => !this.bookedSlotsForSelected.includes(s)).length;
+    return this.visibleTimeSlots.filter(s => !this.bookedSlotsForSelected.includes(s)).length;
   }
 
   async toggleSlots(): Promise<void> {

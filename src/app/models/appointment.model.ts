@@ -13,6 +13,15 @@ export interface Appointment {
   reason?: string;
   notes?: string;
   /**
+   * SaaS scoping: clinic where this appointment belongs.
+   * Optional for backward compatibility with existing documents.
+   */
+  clinicId?: string;
+  /**
+   * SaaS scoping: tenant subscription id (optional for backward compatibility).
+   */
+  subscriptionId?: string;
+  /**
    * Patient ailments captured during appointment booking.
    * This should later be visible on patient + in "Ailments" section of the visit form.
    */

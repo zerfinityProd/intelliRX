@@ -454,6 +454,44 @@
 .rh-card__name { font-size: 13px; font-weight: 700; color: var(--clr-text, #1e293b); margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rh-card__meta { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--clr-text-muted, #64748b); margin-bottom: 3px; }
 .rh-card__reason { font-size: 10px; color: var(--clr-text-light, #94a3b8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rh-card__clinic { font-size: 10px; color: var(--clr-text-light, #94a3b8); }
+
+/* ── Filter dropdowns ── */
+.rh-filter-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--clr-surface, #fff);
+  border: 1.5px solid var(--clr-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 5px 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rh-filter-select:focus-within {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.rh-filter-dropdown {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--clr-text, #1e293b);
+  cursor: pointer;
+  font-family: inherit;
+  padding: 2px 0;
+  min-width: 90px;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 2px center;
+  padding-right: 16px;
+}
 
 .rh-card__actions {
   display: flex;
@@ -759,3 +797,13 @@
 
 [data-theme="dark"] .rh-loading { color: var(--dk-text2); }
 [data-theme="dark"] .rh-col-empty { color: var(--dk-text2); }
+
+[data-theme="dark"] .rh-filter-select {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+}
+
+[data-theme="dark"] .rh-filter-dropdown {
+  color: var(--dk-text1);
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}

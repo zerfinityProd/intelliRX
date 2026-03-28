@@ -7,10 +7,14 @@ import { NavbarComponent } from '../navbar/navbar';
 import { AppointmentService } from '../../services/appointmentService';
 import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
+import { AuthorizationService } from '../../services/authorizationService';
 import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { todayLocalISO } from '../../utilities/local-date';
+import { normalizeEmail } from '../../utilities/normalize-email';
+import doctorsData from '../../data/doctors.json';
 
 @Component({
     selector: 'app-reception-home',
@@ -33,7 +37,14 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     updatingId: string | null = null;
 
     // Date filter — today by default
-    selectedDate: string = new Date().toISOString().split('T')[0];
+    selectedDate: string = todayLocalISO();
+
+    // Clinic & Doctor filters
+    filterClinicId: string = '';
+    filterDoctorId: string = '';
+    clinicOptions: Array<{ id: string; label: string }> = [];
+    readonly allDoctors: Array<{ id: string; name: string; specialty: string; email: string }> = doctorsData as any[];
+    private doctorNameCache = new Map<string, string>();
 
     readonly appointmentsDateMin: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMin;
     readonly appointmentsDateMax: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMax;
@@ -54,6 +65,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     private appointmentService = inject(AppointmentService);
     private authService = inject(AuthenticationService);
+    private authorizationService = inject(AuthorizationService);
     private patientService = inject(PatientService);
     private firebaseService = inject(FirebaseService);
     private router = inject(Router);
@@ -65,6 +77,8 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     ngOnInit(): void {
         this.setGreeting();
         this.loadAppointments();
+        this.loadClinicOptions();
+        this.buildDoctorNameCache();
         this.scheduleAutoCancelAtCutoff();
         // Keep UI in sync when appointment status changes from other pages.
         this.refreshTimer = setInterval(() => {
@@ -218,6 +232,19 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             });
         }
 
+        // Clinic filter
+        if (this.filterClinicId) {
+            result = result.filter(a => a.clinicId === this.filterClinicId);
+        }
+
+        // Doctor filter
+        if (this.filterDoctorId) {
+            result = result.filter(a => {
+                const apptDoctorEmail = (a.doctorId || '').trim().toLowerCase();
+                return apptDoctorEmail === this.filterDoctorId;
+            });
+        }
+
         const termRaw = this.searchTerm.trim();
         const term = termRaw.toLowerCase();
         if (term) {
@@ -269,18 +296,18 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     }
 
     get isSelectedToday(): boolean {
-        return this.selectedDate === new Date().toISOString().split('T')[0];
+        return this.selectedDate === todayLocalISO();
     }
 
     goToday(): void {
-        this.selectedDate = new Date().toISOString().split('T')[0];
+        this.selectedDate = todayLocalISO();
     }
 
     onDateInput(value: string): void {
         if (!value) return;
         const year = parseInt(value.split('-')[0], 10);
         if (year < 2000 || year > 2099) {
-            this.selectedDate = new Date().toISOString().split('T')[0];
+            this.selectedDate = todayLocalISO();
         } else {
             this.selectedDate = value;
         }
@@ -426,5 +453,64 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     formatDate(date: Date): string {
         return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    // ── Clinic & Doctor helpers ──
+
+    private async loadClinicOptions(): Promise<void> {
+        const email = this.authService.currentUserValue?.email;
+        if (!email) return;
+        try {
+            const clinicIds = await this.authorizationService.getUserClinicIds(email);
+            this.clinicOptions = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
+            this.cdr.detectChanges();
+        } catch {
+            this.clinicOptions = [];
+        }
+    }
+
+    private buildDoctorNameCache(): void {
+        for (const doc of this.allDoctors) {
+            this.doctorNameCache.set(normalizeEmail(doc.email), doc.name);
+        }
+    }
+
+    /** Resolve doctor display name from email stored in appointment.doctorId */
+    getDoctorDisplayName(appt: Appointment): string {
+        const email = (appt.doctorId || '').trim().toLowerCase();
+        if (!email) return '';
+        return this.doctorNameCache.get(email) || email;
+    }
+
+    /** Unique list of doctors that appear in current appointments for the filter dropdown */
+    get doctorFilterOptions(): Array<{ email: string; name: string }> {
+        const seen = new Set<string>();
+        const options: Array<{ email: string; name: string }> = [];
+        for (const appt of this.appointments) {
+            const email = (appt.doctorId || '').trim().toLowerCase();
+            if (!email || seen.has(email)) continue;
+            seen.add(email);
+            options.push({ email, name: this.doctorNameCache.get(email) || email });
+        }
+        return options.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    onFilterClinicChange(): void {
+        // Reset doctor filter if it doesn't exist in new clinic scope
+        this.cdr.detectChanges();
+    }
+
+    onFilterDoctorChange(): void {
+        this.cdr.detectChanges();
+    }
+
+    clearFilters(): void {
+        this.filterClinicId = '';
+        this.filterDoctorId = '';
+        this.cdr.detectChanges();
+    }
+
+    get hasActiveFilters(): boolean {
+        return !!(this.filterClinicId || this.filterDoctorId);
     }
 }

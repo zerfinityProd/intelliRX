@@ -224,7 +224,10 @@
             <div *ngIf="!isLoadingVisits && visits.length > 0" class="d-flex flex-column gap-3">
               <div *ngFor="let visit of visits; let i = index" class="visit-card">
                 <div class="visit-header">
-                  <span class="visit-number">Visit #{{ visits.length - i }}</span>
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="visit-number">Visit #{{ visits.length - i }}</span>
+                    <span *ngIf="visit.visitType === 'walk-in'" class="walk-in-badge">Walk-in visit</span>
+                  </div>
                   <div class="d-flex align-items-center gap-2">
                     <span class="visit-date">{{ formatDateTime(visit.createdAt) }}</span>
                     <button *ngIf="canDelete" class="delete-visit-btn" (click)="confirmDeleteVisit(visit)"

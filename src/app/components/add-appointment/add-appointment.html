@@ -1,208 +1,316 @@
 <!-- src/app/components/add-appointment/add-appointment.html -->
 <app-navbar></app-navbar>
 
-<div class="appt-page">
+<div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="appt-title">
+  <div class="modal-content">
 
-  <!-- ── Left Panel: Form ── -->
-  <div class="appt-form-col">
-
-    <!-- Header -->
-    <div class="appt-header">
-      <button class="appt-back-btn" (click)="goBack()" aria-label="Go back">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-          stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-      </button>
-      <div class="appt-header__text">
-        <h1 class="appt-header__title">
-          {{ step === 'new-patient-info' ? 'Patient Details' : 'Appointment Details' }}
-        </h1>
-        <p class="appt-header__sub">Step {{ step === 'new-patient-info' ? '1' : '2' }} of 2</p>
-      </div>
-    </div>
-
-    <!-- Step Progress -->
-    <div class="appt-stepper">
-      <div class="appt-step" [class.appt-step--active]="true" [class.appt-step--done]="step === 'appointment-details'">
-        <div class="appt-step__circle">
-          <svg *ngIf="step === 'appointment-details'" width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          <span *ngIf="step !== 'appointment-details'">1</span>
-        </div>
-        <span class="appt-step__label">Patient</span>
-      </div>
-      <div class="appt-step__line" [class.appt-step__line--filled]="step === 'appointment-details'"></div>
-      <div class="appt-step" [class.appt-step--active]="step === 'appointment-details'">
-        <div class="appt-step__circle">2</div>
-        <span class="appt-step__label">Appointment</span>
-      </div>
-    </div>
-
-    <!-- Error -->
-    <div *ngIf="errorMessage" class="appt-error" role="alert">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="8" x2="12" y2="12"></line>
-        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-      </svg>
-      {{ errorMessage }}
-    </div>
-
-    <!-- ══════════ STEP 1: Phone lookup & patient ══════════ -->
-    <div *ngIf="step === 'new-patient-info'" class="appt-card">
-
-      <div class="appt-section-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
-        </svg>
-        Phone & patient
-      </div>
-
-      <!-- Phone hint intentionally removed (shown elsewhere in the UI) -->
-
-      <!-- Phone first -->
-      <div class="appt-field appt-field--phone-hero">
-        <label class="appt-label">Mobile number <span class="appt-required">*</span></label>
-        <div class="appt-phone-row">
-          <div class="appt-input-icon-wrap appt-phone-input-wrap">
-            <svg class="appt-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
-            </svg>
-            <input type="tel" [ngModel]="newPatientPhone" (ngModelChange)="onPhoneModelChange($event)"
-              class="appt-input appt-input--with-icon appt-input--phone" inputmode="numeric" autocomplete="tel"
-              placeholder="10-digit mobile number" [attr.maxlength]="phoneMaxDigits" />
+    <!-- ── Header ── -->
+    <div class="modal-header">
+      <h2 id="appt-title">
+        {{ step === 'new-patient-info' ? (canChooseDoctor ? 'Clinic & Patient Details' : 'Patient Details') : 'Appointment Details' }}
+        <span class="appt-step-badge">Step {{ step === 'new-patient-info' ? '1' : '2' }} of 2</span>
+      </h2>
+      <div class="d-flex align-items-center gap-2">
+        <!-- Stepper pills -->
+        <div class="appt-stepper">
+          <div class="appt-step" [class.appt-step--active]="true" [class.appt-step--done]="step === 'appointment-details'">
+            <div class="appt-step__circle">
+              <svg *ngIf="step === 'appointment-details'" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span *ngIf="step !== 'appointment-details'">1</span>
+            </div>
+            <span class="appt-step__label">Patient</span>
           </div>
-          <button type="button" class="appt-search-phone-btn" (click)="lookupPatientsByPhone()"
-            [disabled]="phoneLookupStatus === 'loading' || normalizedPhoneDigits.length !== phoneMaxDigits">
-            <span *ngIf="phoneLookupStatus === 'loading'" class="appt-spinner appt-spinner--inline"></span>
-            <span *ngIf="phoneLookupStatus !== 'loading'">Search</span>
-          </button>
+          <div class="appt-step__line" [class.appt-step__line--filled]="step === 'appointment-details'"></div>
+          <div class="appt-step" [class.appt-step--active]="step === 'appointment-details'">
+            <div class="appt-step__circle">2</div>
+            <span class="appt-step__label">Appointment</span>
+          </div>
         </div>
-        <div class="appt-phone-meta">
-          <span *ngIf="normalizedPhoneDigits.length > 0 && normalizedPhoneDigits.length < phoneMaxDigits" class="appt-phone-meta__warn">
-            {{ phoneMaxDigits - normalizedPhoneDigits.length }} more digit{{ (phoneMaxDigits - normalizedPhoneDigits.length) === 1 ? '' : 's' }}
-          </span>
-          <span *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === phoneMaxDigits" class="appt-phone-meta__ok">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            Lookup complete
-          </span>
-        </div>
-      </div>
-
-      <!-- Matching patients -->
-      <div *ngIf="phoneLookupStatus === 'done' && phoneMatches.length > 0" class="appt-lookup-panel">
-        <div class="appt-lookup-panel__head">
-          <span class="appt-lookup-panel__title">{{ phoneMatches.length }} patient{{ phoneMatches.length === 1 ? '' : 's' }} on file</span>
-          <span class="appt-lookup-panel__sub">Tap one to book for that person</span>
-        </div>
-        <ul class="appt-patient-pick-list" role="listbox">
-          <li *ngFor="let p of phoneMatches">
-            <button type="button" class="appt-patient-pick"
-              [class.appt-patient-pick--selected]="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient"
-              (click)="selectExistingPatient(p)">
-              <span class="appt-patient-pick__avatar">{{ p.name.trim().charAt(0).toUpperCase() }}</span>
-              <span class="appt-patient-pick__body">
-                <span class="appt-patient-pick__name">{{ p.name }}</span>
-                <span class="appt-patient-pick__meta" *ngIf="p.familyId">ID · {{ p.familyId }}</span>
-              </span>
-              <span class="appt-patient-pick__check" *ngIf="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-              </span>
-            </button>
-          </li>
-        </ul>
-        <button type="button" class="appt-link-new" (click)="chooseNewPatientInstead()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          New patient — use this number (enter name below)
+        <button class="close-button" (click)="goBack()" aria-label="Go back">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
-
-      <!-- No matches / new patient names -->
-      <div *ngIf="phoneLookupStatus === 'done' && needsNewPatientNames" class="appt-new-patient-block">
-        <div class="appt-section-label appt-section-label--inline">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          {{ phoneMatches.length === 0 ? 'New patient' : 'Name for new record' }}
-        </div>
-        <div class="appt-field-row">
-          <div class="appt-field appt-field--grow2">
-            <label class="appt-label">First name <span class="appt-required">*</span></label>
-            <input type="text" [(ngModel)]="firstName" class="appt-input" placeholder="e.g. Rahul" />
-          </div>
-          <div class="appt-field appt-field--grow1">
-            <label class="appt-label">Middle <span class="appt-optional">(opt.)</span></label>
-            <input type="text" [(ngModel)]="middleName" class="appt-input" placeholder="M." />
-          </div>
-          <div class="appt-field appt-field--grow2">
-            <label class="appt-label">Last name <span class="appt-required">*</span></label>
-            <input type="text" [(ngModel)]="lastName" class="appt-input" placeholder="e.g. Sharma" />
-          </div>
-        </div>
-      </div>
-
-      <button class="appt-cta-btn" (click)="proceedFromNewPatient()"
-        [disabled]="isCheckingPhone || !canProceedStep1">
-        <span *ngIf="isCheckingPhone" class="appt-spinner"></span>
-        <span>{{ isCheckingPhone ? '…' : 'Continue to appointment' }}</span>
-        <svg *ngIf="!isCheckingPhone" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-          <polyline points="12 5 19 12 12 19"></polyline>
-        </svg>
-      </button>
     </div>
 
-    <!-- ══════════ STEP 2: Appointment Details ══════════ -->
-    <div *ngIf="step === 'appointment-details'" class="appt-card">
+    <!-- ── Body ── -->
+    <div class="modal-body">
 
-      <!-- Patient summary chip -->
-      <div class="appt-patient-chip">
-        <div class="appt-patient-chip__avatar">{{ displayPatientName.charAt(0).toUpperCase() }}</div>
-        <div class="appt-patient-chip__info">
-          <span class="appt-patient-chip__name">{{ displayPatientName }}</span>
-          <span class="appt-patient-chip__phone">{{ formatPhoneDisplay(normalizedPhoneDigits) }}</span>
-        </div>
-        <span class="appt-patient-chip__badge" [class.appt-badge--existing]="isExistingPatient"
-          [class.appt-badge--new]="!isExistingPatient">
-          {{ isExistingPatient ? 'Existing' : 'New' }}
-        </span>
+      <!-- Error -->
+      <div *ngIf="errorMessage" class="appt-error" role="alert">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        {{ errorMessage }}
       </div>
 
-      <!-- Doctor selector -->
-      <div class="appt-field">
-        <label class="appt-label" *ngIf="doctorContextReady && canChooseDoctor">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-            <polyline points="9 22 9 12 15 12 15 22"></polyline>
-          </svg>
-          Select Doctor
-        </label>
-        <div class="appt-select-wrap" *ngIf="doctorContextReady && canChooseDoctor">
-          <svg class="appt-select-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-            <circle cx="12" cy="7" r="4"></circle>
-          </svg>
-          <select [(ngModel)]="selectedDoctorId" class="appt-select" (ngModelChange)="onDoctorChange()">
-            <option value="">— Choose a doctor —</option>
-            <option *ngFor="let doc of doctors" [value]="doc.id">
-              {{ doc.name }} · {{ doc.specialty }}
-            </option>
-          </select>
-          <svg class="appt-select-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
+      <!-- ══════════ STEP 1: Phone lookup & patient ══════════ -->
+      <div *ngIf="step === 'new-patient-info'">
+
+        <!-- Clinic + Doctor (receptionist only, shown first) -->
+        <div *ngIf="doctorContextReady && canChooseDoctor" class="mb-4">
+          <h3 class="section-title">Clinic & Doctor</h3>
+          <div class="row g-3 mb-3">
+            <!-- Clinic selector -->
+            <div class="col-md-6">
+              <label for="clinicSelect" class="form-label fw-semibold" style="font-size:12px">
+                Select Clinic <span class="required">*</span>
+              </label>
+              <select id="clinicSelect" [(ngModel)]="selectedClinicId" class="form-select" (ngModelChange)="onClinicChange()">
+                <option value="">— Choose a clinic —</option>
+                <option *ngIf="clinics.length === 0" value="" disabled>No clinics configured</option>
+                <option *ngFor="let c of clinics" [value]="c.id">
+                  {{ c.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Doctor selector -->
+            <div class="col-md-6">
+              <label for="doctorSelect" class="form-label fw-semibold" style="font-size:12px">
+                Select Doctor <span class="required">*</span>
+              </label>
+              <select id="doctorSelect" [(ngModel)]="selectedDoctorId" class="form-select" (ngModelChange)="onDoctorChange()">
+                <option value="">— Choose a doctor —</option>
+                <option *ngFor="let doc of doctors" [value]="doc.id">
+                  {{ doc.name }} · {{ doc.specialty }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Selected doctor pill -->
+          <div *ngIf="selectedDoctor" class="appt-doctor-pill mb-3">
+            <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
+            <div class="appt-doctor-pill__info">
+              <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
+              <span class="appt-doctor-pill__spec">{{ selectedDoctor.specialty }}</span>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
         </div>
-        <!-- Selected doctor pill -->
-        <div *ngIf="doctorContextReady && selectedDoctor" class="appt-doctor-pill">
+
+        <h3 class="section-title">Phone & Patient</h3>
+
+        <!-- Phone input row -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label for="phoneInput" class="form-label fw-semibold" style="font-size:12px">
+              Mobile Number <span class="required">*</span>
+            </label>
+            <div class="appt-phone-row">
+              <div class="appt-input-icon-wrap appt-phone-input-wrap">
+                <svg class="appt-input-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <input id="phoneInput" type="tel" [ngModel]="newPatientPhone" (ngModelChange)="onPhoneModelChange($event)"
+                  class="form-control appt-input--with-icon" inputmode="numeric" autocomplete="tel"
+                  placeholder="10-digit mobile number" [attr.maxlength]="phoneMaxDigits" />
+              </div>
+              <button type="button" class="appt-search-phone-btn" (click)="lookupPatientsByPhone()"
+                [disabled]="phoneLookupStatus === 'loading' || normalizedPhoneDigits.length !== phoneMaxDigits">
+                <span *ngIf="phoneLookupStatus === 'loading'" class="appt-spinner appt-spinner--inline"></span>
+                <span *ngIf="phoneLookupStatus !== 'loading'">Search</span>
+              </button>
+            </div>
+            <div class="appt-phone-meta">
+              <span *ngIf="normalizedPhoneDigits.length > 0 && normalizedPhoneDigits.length < phoneMaxDigits" class="appt-phone-meta__warn">
+                {{ phoneMaxDigits - normalizedPhoneDigits.length }} more digit{{ (phoneMaxDigits - normalizedPhoneDigits.length) === 1 ? '' : 's' }}
+              </span>
+              <span *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === phoneMaxDigits" class="appt-phone-meta__ok">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Lookup complete
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Matching patients -->
+        <div *ngIf="phoneLookupStatus === 'done' && phoneMatches.length > 0" class="appt-lookup-panel mb-3">
+          <div class="appt-lookup-panel__head">
+            <span class="appt-lookup-panel__title">{{ phoneMatches.length }} patient{{ phoneMatches.length === 1 ? '' : 's' }} on file</span>
+            <span class="appt-lookup-panel__sub">Tap one to book for that person</span>
+          </div>
+          <ul class="appt-patient-pick-list" role="listbox">
+            <li *ngFor="let p of phoneMatches">
+              <button type="button" class="appt-patient-pick"
+                [class.appt-patient-pick--selected]="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient"
+                (click)="selectExistingPatient(p)">
+                <span class="appt-patient-pick__avatar">{{ p.name.trim().charAt(0).toUpperCase() }}</span>
+                <span class="appt-patient-pick__body">
+                  <span class="appt-patient-pick__name">{{ p.name }}</span>
+                  <span class="appt-patient-pick__meta" *ngIf="p.familyId">ID · {{ p.familyId }}</span>
+                </span>
+                <span class="appt-patient-pick__check" *ngIf="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+              </button>
+            </li>
+          </ul>
+          <button type="button" class="appt-link-new" (click)="chooseNewPatientInstead()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            New patient — use this number (enter name below)
+          </button>
+        </div>
+
+        <!-- No matches / new patient names -->
+        <div *ngIf="phoneLookupStatus === 'done' && needsNewPatientNames">
+          <h3 class="section-title">
+            {{ phoneMatches.length === 0 ? 'New Patient' : 'Name for New Record' }}
+          </h3>
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label for="firstName" class="form-label fw-semibold" style="font-size:12px">
+                First Name <span class="required">*</span>
+              </label>
+              <input type="text" id="firstName" [(ngModel)]="firstName" class="form-control" placeholder="e.g. Rahul"
+                (ngModelChange)="updateFamilyIdPreview()" />
+            </div>
+            <div class="col-md-4">
+              <label for="middleName" class="form-label fw-semibold" style="font-size:12px">
+                Middle Name <span class="auto-label">(opt.)</span>
+              </label>
+              <input type="text" id="middleName" [(ngModel)]="middleName" class="form-control" placeholder="M." />
+            </div>
+            <div class="col-md-4">
+              <label for="lastName" class="form-label fw-semibold" style="font-size:12px">
+                Last Name <span class="required">*</span>
+              </label>
+              <input type="text" id="lastName" [(ngModel)]="lastName" class="form-control" placeholder="e.g. Sharma"
+                (ngModelChange)="updateFamilyIdPreview()" />
+            </div>
+          </div>
+
+          <!-- Row 2: Family ID, DOB, Gender -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label for="familyIdPreview" class="form-label fw-semibold" style="font-size:12px">
+                Family ID <span class="auto-label">(Auto)</span>
+              </label>
+              <input type="text" id="familyIdPreview" [ngModel]="familyIdPreview"
+                placeholder="Auto generated" readonly class="form-control readonly-input" />
+            </div>
+            <div class="col-md-4">
+              <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth</label>
+              <input type="date" id="dateOfBirth" [(ngModel)]="dateOfBirth" class="form-control"
+                [max]="todayDate" />
+            </div>
+            <div class="col-md-4">
+              <label for="gender" class="form-label fw-semibold" style="font-size:12px">Gender</label>
+              <select id="gender" [(ngModel)]="gender" class="form-select">
+                <option value="">Select gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Row 3: Email -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="patientEmail" class="form-label fw-semibold" style="font-size:12px">Email</label>
+              <input type="email" id="patientEmail" [(ngModel)]="patientEmail" class="form-control"
+                placeholder="patient@example.com" />
+            </div>
+          </div>
+
+          <!-- Row 4: Allergies -->
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="allergyInput" class="form-label fw-semibold" style="font-size:12px">Allergies</label>
+              <div class="chip-input-box" role="group" aria-label="Allergies chips"
+                (click)="$any($event.currentTarget).querySelector('input').focus()"
+                [class.chip-input-error]="false">
+                <div class="chips-wrap">
+                  <span *ngFor="let allergy of allergyChips; let i = index" class="allergy-chip">
+                    {{ allergy }}
+                    <button type="button" class="chip-remove-btn"
+                      (click)="removeAllergy(i)" [attr.aria-label]="'Remove allergy ' + allergy">&times;</button>
+                  </span>
+                  <input id="allergyInput" type="text" class="chip-inline-input"
+                    [(ngModel)]="newAllergyInput" name="newAllergyInput"
+                    placeholder="Type and press Enter..."
+                    aria-label="Add allergy"
+                    (keydown)="onAllergyKeydown($event)" (blur)="onAllergyBlur()" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Duplicate patient warning -->
+        <div *ngIf="newPatientWarning && needsNewPatientNames" class="appt-error" role="alert" style="background:#fef3c7;border-color:#fcd34d;color:#92400e">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          {{ newPatientWarning }}
+        </div>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-secondary fw-semibold px-4" (click)="goBack()"
+            [disabled]="isCheckingPhone" aria-label="Cancel">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-primary fw-semibold px-4" (click)="proceedFromNewPatient()"
+            [disabled]="isCheckingPhone || !canProceedStep1" aria-label="Continue to appointment">
+            <span *ngIf="isCheckingPhone" class="loading-content">
+              <span class="loading-spinner"></span> …
+            </span>
+            <span *ngIf="!isCheckingPhone">Continue to Appointment →</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ══════════ STEP 2: Appointment Details ══════════ -->
+      <div *ngIf="step === 'appointment-details'">
+
+        <!-- Patient summary chip -->
+        <div class="appt-patient-chip mb-3">
+          <div class="appt-patient-chip__avatar">{{ displayPatientName.charAt(0).toUpperCase() }}</div>
+          <div class="appt-patient-chip__info">
+            <span class="appt-patient-chip__name">{{ displayPatientName }}</span>
+            <span class="appt-patient-chip__phone">{{ formatPhoneDisplay(normalizedPhoneDigits) }}</span>
+          </div>
+          <span class="appt-patient-chip__badge" [class.appt-badge--existing]="isExistingPatient"
+            [class.appt-badge--new]="!isExistingPatient">
+            {{ isExistingPatient ? 'Existing' : 'New' }}
+          </span>
+        </div>
+
+        <h3 class="section-title">Booking Details</h3>
+
+        <!-- Date + Doctor pill row -->
+        <div class="row g-3 mb-3">
+          <!-- Date -->
+          <div class="col-md-4">
+            <label for="apptDate" class="form-label fw-semibold" style="font-size:12px">
+              Date <span class="required">*</span>
+            </label>
+            <input type="date" id="apptDate" [(ngModel)]="appointmentDate" class="form-control"
+              [min]="minDate" [max]="maxDate" (ngModelChange)="onDateChange()" />
+          </div>
+        </div>
+
+        <!-- Selected doctor pill (doctor role - auto-locked) -->
+        <div *ngIf="doctorContextReady && !canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-3">
           <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
           <div class="appt-doctor-pill__info">
             <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
@@ -213,62 +321,45 @@
             <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
         </div>
-      </div>
 
-      <!-- Date + Reason row -->
-      <div class="appt-field-row">
-        <div class="appt-field appt-field--grow1">
-          <label class="appt-label">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            Date <span class="appt-required">*</span>
-          </label>
-          <input type="date" [(ngModel)]="appointmentDate" class="appt-input"
-            [min]="minDate" [max]="maxDate" (ngModelChange)="onDateChange()" />
+        <!-- Selected clinic & doctor summary (receptionist - chosen in step 1) -->
+        <div *ngIf="canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-3">
+          <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
+          <div class="appt-doctor-pill__info">
+            <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
+            <span class="appt-doctor-pill__spec">{{ selectedDoctor.specialty }}</span>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
         </div>
-        <div class="appt-field appt-field--grow1">
-          <label class="appt-label">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            Ailments
-          </label>
-          <div class="chip-input-box" role="group" aria-label="Ailments chips"
-            (click)="$any($event.currentTarget).querySelector('input').focus()"
-            [class.chip-input-error]="false">
-            <div class="chips-wrap">
-              <span *ngFor="let ail of ailmentChips; let i = index" class="allergy-chip">
-                {{ ail }}
-                <button type="button" class="chip-remove-btn"
-                  (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ail">&times;</button>
-              </span>
-              <input type="text" class="chip-inline-input"
-                [(ngModel)]="newAilmentInput" name="newAilmentInput"
-                placeholder="Type and press Enter..."
-                aria-label="Add ailment"
-                (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
+
+        <!-- Ailments -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-6">
+            <label for="ailmentInput" class="form-label fw-semibold" style="font-size:12px">Ailments</label>
+            <div class="chip-input-box" role="group" aria-label="Ailments chips"
+              (click)="$any($event.currentTarget).querySelector('input').focus()"
+              [class.chip-input-error]="false">
+              <div class="chips-wrap">
+                <span *ngFor="let ail of ailmentChips; let i = index" class="allergy-chip">
+                  {{ ail }}
+                  <button type="button" class="chip-remove-btn"
+                    (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ail">&times;</button>
+                </span>
+                <input id="ailmentInput" type="text" class="chip-inline-input"
+                  [(ngModel)]="newAilmentInput" name="newAilmentInput"
+                  placeholder="Type and press Enter..."
+                  aria-label="Add ailment"
+                  (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Time Slots -->
-      <div class="appt-field">
-        <label class="appt-label">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          Time Slot <span class="appt-required">*</span>
-        </label>
+        <!-- Time Slots -->
+        <h3 class="section-title">Time Slot <span class="required">*</span></h3>
 
         <div *ngIf="isLoadingSlots" class="appt-slot-loading">
           <span class="appt-spinner"></span> Loading available slots…
@@ -291,12 +382,14 @@
               class="slot-btn"
               [class.slot-selected]="selectedTimeSlot === slot"
               [class.slot-booked]="bookedSlots.includes(slot)"
-              [disabled]="bookedSlots.includes(slot)"
+              [class.slot-past]="isSlotInPast(slot)"
+              [disabled]="bookedSlots.includes(slot) || isSlotInPast(slot)"
               (click)="selectedTimeSlot = slot"
               type="button">
               <span class="slot-time">{{ formatSlotLabel(slot) }}</span>
               <span *ngIf="bookedSlots.includes(slot)" class="slot-tag slot-tag--booked">Booked</span>
-              <span *ngIf="!bookedSlots.includes(slot) && selectedTimeSlot !== slot"
+              <span *ngIf="isSlotInPast(slot) && !bookedSlots.includes(slot)" class="slot-tag slot-tag--past">Past</span>
+              <span *ngIf="!bookedSlots.includes(slot) && !isSlotInPast(slot) && selectedTimeSlot !== slot"
                 class="slot-tag slot-tag--available">Free</span>
               <span *ngIf="selectedTimeSlot === slot" class="slot-tag slot-tag--selected">✓</span>
             </button>
@@ -308,20 +401,25 @@
             <span class="appt-slot-count">{{ availableSlots.length }}/{{ allTimeSlots.length }} free</span>
           </div>
         </div>
-      </div>
 
-      <button class="appt-cta-btn" (click)="onSubmit()" [disabled]="isSubmitting">
-        <span *ngIf="isSubmitting" class="appt-spinner"></span>
-        <span>{{ isSubmitting ? 'Saving…' : 'Confirm Appointment' }}</span>
-        <svg *ngIf="!isSubmitting" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-      </button>
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-outline-secondary fw-semibold px-4" (click)="goBack()"
+            [disabled]="isSubmitting" aria-label="Go back">
+            Back
+          </button>
+          <button type="button" class="btn btn-primary fw-semibold px-4" (click)="onSubmit()" [disabled]="isSubmitting"
+            aria-label="Confirm Appointment">
+            <span *ngIf="!isSubmitting">Confirm Appointment</span>
+            <span *ngIf="isSubmitting" class="loading-content" aria-live="polite">
+              <span class="loading-spinner" aria-hidden="true"></span>
+              Saving…
+            </span>
+          </button>
+        </div>
+
+      </div>
 
     </div>
   </div>
-
-
-
 </div>

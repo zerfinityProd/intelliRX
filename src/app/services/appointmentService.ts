@@ -15,6 +15,7 @@ import { AuthenticationService } from './authenticationService';
 import { AuthorizationService } from './authorizationService';
 import { Appointment } from '../models/appointment.model';
 import { normalizeEmail } from '../utilities/normalize-email';
+import { ClinicContextService } from './clinicContextService';
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
@@ -22,11 +23,13 @@ export class AppointmentService {
   // In-memory cache — cleared when a new appointment is booked or status updated
   private cache: Appointment[] | null = null;
   private allCache: Appointment[] | null = null;
+  private cacheClinicId: string | null = null;
 
   constructor(
     private db: Firestore,
     private authService: AuthenticationService,
-    private authorizationService: AuthorizationService
+    private authorizationService: AuthorizationService,
+    private clinicContextService: ClinicContextService
   ) {}
 
   private getCurrentUserId(): string {
@@ -54,6 +57,7 @@ export class AppointmentService {
   invalidateCache(): void {
     this.cache = null;
     this.allCache = null;
+    this.cacheClinicId = null;
   }
 
   async createAppointment(
@@ -85,6 +89,8 @@ export class AppointmentService {
         isNewPatient: data.isNewPatient,
         // Store doctorId if provided (email of the assigned doctor)
         ...(data.doctorId ? { doctorId: normalizeEmail(data.doctorId) } : {}),
+        ...(data.clinicId ? { clinicId: data.clinicId } : {}),
+        ...(data.subscriptionId ? { subscriptionId: data.subscriptionId } : {}),
         createdAt: Timestamp.fromDate(now),
         updatedAt: Timestamp.fromDate(now)
       });
@@ -134,23 +140,24 @@ export class AppointmentService {
    * - Receptionists: see all appointments (via getAllAppointments).
    */
   async getAppointments(): Promise<Appointment[]> {
-    // Return cached result instantly if available
-    if (this.cache !== null) {
-      return this.cache;
-    }
-
     try {
       const email = this.getCurrentUserEmail();
       const role = await this.authorizationService.getUserRole(email);
 
       if (role === 'receptionist') {
         // Receptionists see all appointments
+        if (this.cache !== null) return this.cache;
         const all = await this.getAllAppointments();
         this.cache = all;
         return this.cache;
       }
 
       // Doctors see only their own appointments (matched by email = doctorId)
+      const clinicId = this.clinicContextService.getSelectedClinicId();
+      if (this.cache !== null && this.cacheClinicId === clinicId) {
+        return this.cache;
+      }
+
       const appointmentsCol = collection(this.db, 'appointments');
       const q = query(appointmentsCol, where('doctorId', '==', email));
       const snap = await getDocs(q);
@@ -166,8 +173,14 @@ export class AppointmentService {
         } as Appointment;
       });
 
-      // Sort in-memory — avoids needing a Firestore composite index
-      this.cache = appointments.sort((a, b) =>
+      // Sort in-memory — avoids needing a Firestore composite index.
+      // If clinicId is set, doctors only see their appointments for that clinic.
+      const filtered = clinicId
+        ? appointments.filter(a => (a.clinicId ? a.clinicId === clinicId : true))
+        : appointments;
+
+      this.cacheClinicId = clinicId;
+      this.cache = filtered.sort((a, b) =>
         new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime()
       );
 
