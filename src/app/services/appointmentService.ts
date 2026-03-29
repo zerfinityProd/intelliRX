@@ -205,4 +205,21 @@ export class AppointmentService {
       throw error;
     }
   }
+
+  /** Postpone (reschedule) an appointment to a new date and time slot. */
+  async postponeAppointment(id: string, newDate: Date, newTime: string): Promise<void> {
+    try {
+      const appointmentsCol = collection(this.db, 'appointments');
+      await updateDoc(doc(appointmentsCol, id), {
+        appointmentDate: Timestamp.fromDate(newDate),
+        appointmentTime: newTime,
+        updatedAt: Timestamp.fromDate(new Date())
+      });
+      this.invalidateCache();
+      console.log(`✓ Appointment ${id} postponed to ${newDate.toLocaleDateString()} at ${newTime}`);
+    } catch (error) {
+      console.error('✗ Error postponing appointment:', error);
+      throw error;
+    }
+  }
 }

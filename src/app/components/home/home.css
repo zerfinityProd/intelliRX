@@ -755,6 +755,121 @@
 }
 .cal-nav-btn:hover { background: #6366f1; border-color: #6366f1; color: #fff; }
 
+/* ── Doctor Selection Widget (receptionist dashboard) ── */
+.widget--doctor-select {
+  padding: 16px 18px;
+  border: 1.5px solid #c7d2fe;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(139, 92, 246, 0.04) 100%);
+}
+
+.doctor-select-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.doctor-select-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.doctor-select-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--clr-text-muted, #64748b);
+  margin-bottom: 5px;
+  letter-spacing: 0.02em;
+}
+
+.doctor-select-input {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: 1px solid var(--clr-border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--clr-surface, #fff);
+  color: var(--clr-text, #1e293b);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.doctor-select-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.doctor-select-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #ede9fe;
+  border: 1px solid #c7d2fe;
+  animation: widget-in 0.2s ease;
+}
+
+.doctor-select-pill__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.doctor-select-pill__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.doctor-select-pill__name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4338ca;
+}
+
+.doctor-select-pill__spec {
+  display: block;
+  font-size: 10px;
+  font-weight: 500;
+  color: #6366f1;
+  margin-top: 1px;
+}
+
+.doctor-select-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  color: #92400e;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.doctor-select-prompt svg {
+  flex-shrink: 0;
+  color: #d97706;
+}
 
 /* ═══════════════════════════════════════════════════════════
    DARK THEME
@@ -1078,3 +1193,31 @@
   border-color: rgba(239, 68, 68, 0.25);
   color: #f87171;
 }
+
+/* ── Dark mode for doctor selection widget ── */
+[data-theme="dark"] .widget--doctor-select {
+  border-color: rgba(99, 102, 241, 0.3);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.06) 100%);
+}
+
+[data-theme="dark"] .doctor-select-input {
+  background: var(--dk-bg2);
+  border-color: var(--dk-border);
+  color: var(--dk-text1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .doctor-select-pill {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+[data-theme="dark"] .doctor-select-pill__name { color: #a5b4fc; }
+[data-theme="dark"] .doctor-select-pill__spec { color: #818cf8; }
+
+[data-theme="dark"] .doctor-select-prompt {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #fcd34d;
+}
+[data-theme="dark"] .doctor-select-prompt svg { color: #fbbf24; }

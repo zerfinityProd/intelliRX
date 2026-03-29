@@ -274,6 +274,60 @@ export class PatientService {
   // ──── EXISTENCE CHECKS ────
 
   /**
+   * Find a patient by phone number alone (returns first match or null).
+   * Used by Add-Patient to detect duplicates even when names vary slightly.
+   * Uses multiple fallback strategies to handle missing Firestore composite indexes.
+   */
+  async findPatientByPhone(phone: string): Promise<Patient | null> {
+    const userId = this.getCurrentUserId();
+    const normalizedPhone = phone.trim();
+    if (!normalizedPhone) return null;
+    const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+
+    // Strategy 1: indexed phone search scoped by clinicId
+    try {
+      const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, userId, null, clinicId);
+      const exact = results.filter(p => p.phone.trim() === normalizedPhone);
+      if (exact.length > 0) return exact[0];
+    } catch {
+      // Index may be missing — fall through to next strategy
+    }
+
+    // Strategy 2: client-side contains search scoped by clinicId (no composite index needed)
+    if (clinicId) {
+      try {
+        const { results } = await this.firebaseService.searchPatientsContaining(normalizedPhone, userId, clinicId);
+        const exact = results.filter(p => p.phone.trim() === normalizedPhone);
+        if (exact.length > 0) return exact[0];
+      } catch {
+        // fall through
+      }
+    }
+
+    // Strategy 3: indexed phone search without clinicId (legacy patients)
+    if (clinicId) {
+      try {
+        const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, userId, null, undefined);
+        const exact = results.filter(p => !p.clinicId && p.phone.trim() === normalizedPhone);
+        if (exact.length > 0) return exact[0];
+      } catch {
+        // fall through
+      }
+    }
+
+    // Strategy 4: client-side contains search by userId (ultimate fallback)
+    try {
+      const { results } = await this.firebaseService.searchPatientsContaining(normalizedPhone, userId, undefined);
+      const exact = results.filter(p => p.phone.trim() === normalizedPhone);
+      if (exact.length > 0) return exact[0];
+    } catch {
+      // all strategies exhausted
+    }
+
+    return null;
+  }
+
+  /**
    * Check if a unique ID exists
    */
   async checkUniqueIdExists(name: string, phone: string): Promise<boolean> {

@@ -19,6 +19,16 @@ import { NavbarComponent } from '../navbar/navbar';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
+import { normalizeEmail } from '../../utilities/normalize-email';
+import doctorsData from '../../data/doctors.json';
+
+export interface DashboardDoctor {
+  id: string;
+  name: string;
+  specialty: string;
+  avatar: string;
+  email: string;
+}
 
 @Component({
   selector: 'app-home',
@@ -41,6 +51,19 @@ export class HomeComponent implements OnInit {
   appointments: Appointment[] = [];
   isLoadingAppts: boolean = true;
   totalPatients: number = 0;
+
+  // Doctor / clinic selection (receptionist flow)
+  userRole: 'doctor' | 'receptionist' = 'doctor';
+  dashboardDoctors: DashboardDoctor[] = [];
+  selectedDashboardDoctorId: string = '';
+  dashboardClinics: Array<{ id: string; label: string }> = [];
+  selectedDashboardClinicId: string = '';
+  doctorContextReady: boolean = false;
+  private readonly doctorClinicCache = new Map<string, string[]>();
+
+  // Doctor clinic switcher (for doctors with multiple clinics)
+  doctorClinics: Array<{ id: string; label: string }> = [];
+  selectedDoctorClinicId: string = '';
 
   // Slot viewer
   showSlots: boolean = false;
@@ -78,6 +101,8 @@ export class HomeComponent implements OnInit {
     this.clearSearch();
     // Ensure doctor's clinic context is resolved so AddPatient uses the correct clinicId.
     void this.ensureClinicContext();
+    // Initialize doctor context for dashboard filtering
+    void this.initDashboardDoctorContext();
 
     // If navigated here with prefill query params, open Add Patient modal.
     const qp = this.route.snapshot.queryParams || {};
@@ -119,6 +144,150 @@ export class HomeComponent implements OnInit {
     } catch {
       // Non-critical — proceed without clinic context.
     }
+  }
+
+  // ── Dashboard doctor context ──
+
+  private async initDashboardDoctorContext(): Promise<void> {
+    const rawEmail = this.authService.currentUserValue?.email || '';
+    this.doctorContextReady = false;
+
+    try {
+      if (rawEmail) {
+        this.userRole = await this.authorizationService.getUserRole(rawEmail);
+      }
+    } catch {
+      this.userRole = 'doctor';
+    }
+
+    if (this.userRole === 'doctor') {
+      // Doctor: lock to their own record
+      const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
+      const match = authEmail
+        ? (doctorsData as DashboardDoctor[]).find(d => normalizeEmail(d.email) === authEmail)
+        : undefined;
+      this.dashboardDoctors = match ? [match] : [];
+      this.selectedDashboardDoctorId = match?.id ?? '';
+      this.selectedDashboardClinicId = this.clinicContextService.getSelectedClinicId() ?? '';
+      // Load doctor's clinic list for the switcher
+      await this.loadDoctorClinics();
+    } else {
+      // Receptionist: load clinics and doctors
+      if (rawEmail) {
+        try {
+          const clinicIds = await this.authorizationService.getUserClinicIds(rawEmail);
+          this.dashboardClinics = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
+          this.selectedDashboardClinicId = clinicIds[0] ?? '';
+        } catch {
+          this.dashboardClinics = [];
+          this.selectedDashboardClinicId = '';
+        }
+      }
+      await this.refreshDashboardDoctors();
+    }
+
+    this.doctorContextReady = true;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Load the list of clinics assigned to the current doctor.
+   * Populates the clinic switcher dropdown only when more than 1 clinic.
+   */
+  private async loadDoctorClinics(): Promise<void> {
+    const email = this.authService.currentUserValue?.email;
+    if (!email) return;
+    try {
+      const clinicIds = await this.authorizationService.getUserClinicIds(email);
+      this.doctorClinics = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
+      this.selectedDoctorClinicId = this.clinicContextService.getSelectedClinicId() || clinicIds[0] || '';
+      console.log(`🏥 Doctor clinics loaded: ${clinicIds.length} clinic(s)`, clinicIds);
+    } catch {
+      this.doctorClinics = [];
+    }
+    this.cdr.markForCheck();
+  }
+
+  /** Called when a doctor changes their active clinic from the switcher */
+  async onDoctorClinicChange(): Promise<void> {
+    if (!this.selectedDoctorClinicId) return;
+    const email = this.authService.currentUserValue?.email;
+    const subscriptionId = email
+      ? await this.authorizationService.getUserSubscriptionId(email).catch(() => null)
+      : null;
+    this.clinicContextService.setClinicContext(this.selectedDoctorClinicId, subscriptionId);
+    // Invalidate appointment cache so next load reflects new clinic
+    this.appointmentService.invalidateCache();
+    await this.loadAppointments();
+    await this.loadPatientCount();
+    if (this.selectedDate) {
+      void this.loadSlotsForDate(this.selectedDate);
+    }
+    this.cdr.markForCheck();
+  }
+
+  private async getDoctorClinicIds(doctorEmail: string): Promise<string[]> {
+    const key = normalizeEmail(doctorEmail);
+    if (this.doctorClinicCache.has(key)) return this.doctorClinicCache.get(key)!;
+    try {
+      const clinicIds = await this.authorizationService.getUserClinicIds(doctorEmail);
+      this.doctorClinicCache.set(key, clinicIds);
+      return clinicIds;
+    } catch {
+      this.doctorClinicCache.set(key, []);
+      return [];
+    }
+  }
+
+  private async refreshDashboardDoctors(): Promise<void> {
+    if (!this.selectedDashboardClinicId) {
+      this.dashboardDoctors = doctorsData as DashboardDoctor[];
+    } else {
+      const clinicId = this.selectedDashboardClinicId;
+      const all = doctorsData as DashboardDoctor[];
+      const filtered: DashboardDoctor[] = [];
+      for (const doc of all) {
+        const clinicIds = await this.getDoctorClinicIds(doc.email);
+        if (clinicIds.includes(clinicId)) {
+          filtered.push(doc);
+        }
+      }
+      this.dashboardDoctors = filtered;
+    }
+    // Reset doctor selection when clinic changes
+    this.selectedDashboardDoctorId = '';
+    this.cdr.markForCheck();
+  }
+
+  get selectedDashboardDoctor(): DashboardDoctor | null {
+    return this.dashboardDoctors.find(d => d.id === this.selectedDashboardDoctorId) ?? null;
+  }
+
+  /** Email of the currently selected dashboard doctor (normalized) */
+  private get selectedDoctorEmail(): string {
+    const doc = this.selectedDashboardDoctor;
+    return doc?.email ? normalizeEmail(doc.email) : '';
+  }
+
+  async onDashboardClinicChange(): Promise<void> {
+    this.selectedDashboardDoctorId = '';
+    await this.refreshDashboardDoctors();
+    // Re-calculate slots if a date is selected
+    if (this.selectedDate) {
+      void this.loadSlotsForDate(this.selectedDate);
+    }
+    this.cdr.markForCheck();
+  }
+
+  async onDashboardDoctorChange(): Promise<void> {
+    // Close slot viewer when switching doctors
+    this.showSlots = false;
+    this.bookedSlotsForSelected = [];
+    // Re-load slots for the selected date with new doctor filter
+    if (this.selectedDate) {
+      void this.loadSlotsForDate(this.selectedDate);
+    }
+    this.cdr.markForCheck();
   }
 
   private clearAddPatientQueryParams(): void {
@@ -185,13 +354,20 @@ export class HomeComponent implements OnInit {
     return days;
   }
 
+  /** Filter an appointment list by the selected dashboard doctor (if any) */
+  private filterByDoctor(appts: Appointment[]): Appointment[] {
+    const email = this.selectedDoctorEmail;
+    if (!email) return appts;
+    return appts.filter(a => normalizeEmail(a.doctorId || '') === email);
+  }
+
   appointmentsOnDate(date: Date): Appointment[] {
-    return this.appointments.filter(a => {
+    return this.filterByDoctor(this.appointments.filter(a => {
       const d = new Date(a.appointmentDate);
       return d.getFullYear() === date.getFullYear()
         && d.getMonth() === date.getMonth()
         && d.getDate() === date.getDate();
-    });
+    }));
   }
 
   isToday(date: Date): boolean {
@@ -210,20 +386,20 @@ export class HomeComponent implements OnInit {
 
   get todayAppointmentCount(): number {
     const t = new Date();
-    return this.appointments.filter(a => {
+    return this.filterByDoctor(this.appointments.filter(a => {
       const d = new Date(a.appointmentDate);
       return d.getFullYear() === t.getFullYear()
         && d.getMonth() === t.getMonth()
         && d.getDate() === t.getDate();
-    }).length;
+    })).length;
   }
 
   get thisMonthCount(): number {
     const t = new Date();
-    return this.appointments.filter(a => {
+    return this.filterByDoctor(this.appointments.filter(a => {
       const d = new Date(a.appointmentDate);
       return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth();
-    }).length;
+    })).length;
   }
 
   get selectedDateLabel(): string {
@@ -271,8 +447,15 @@ export class HomeComponent implements OnInit {
   }
 
   bookOnDate(date: Date): void {
-    const iso = date.toISOString().split('T')[0];
-    this.router.navigate(['/add-appointment'], { queryParams: { date: iso } });
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const iso = `${y}-${m}-${d}`;
+    const params: any = { date: iso };
+    if (this.selectedDashboardDoctorId) {
+      params.doctorId = this.selectedDashboardDoctorId;
+    }
+    this.router.navigate(['/add-appointment'], { queryParams: params });
   }
 
   goToAppointments(): void {
@@ -302,6 +485,15 @@ export class HomeComponent implements OnInit {
       && this.selectedDate.getDate() === now.getDate();
   }
 
+  /** True when the selected date is strictly before today */
+  get isSelectedDateInPast(): boolean {
+    if (!this.selectedDate) return false;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const selected = new Date(this.selectedDate.getFullYear(), this.selectedDate.getMonth(), this.selectedDate.getDate());
+    return selected < todayStart;
+  }
+
   /** True when the slot's time has already passed (only applies when viewing today) */
   isSlotInPast(slot: string): boolean {
     if (!this.selectedDate || !this.isSelectedDateToday) return false;
@@ -314,6 +506,8 @@ export class HomeComponent implements OnInit {
 
   /** Only slots that are practically bookable (future + not booked) */
   get visibleTimeSlots(): string[] {
+    // Past dates have no bookable slots at all
+    if (this.isSelectedDateInPast) return [];
     return this.allTimeSlots.filter(s => !this.isSlotInPast(s));
   }
 
@@ -337,13 +531,18 @@ export class HomeComponent implements OnInit {
         ? this.appointments
         : await this.appointmentService.getAppointments();
 
+      const doctorEmail = this.selectedDoctorEmail;
+
       this.bookedSlotsForSelected = all
         .filter(a => {
           const d = new Date(a.appointmentDate);
-          return d.getFullYear() === date.getFullYear()
+          const sameDay = d.getFullYear() === date.getFullYear()
             && d.getMonth() === date.getMonth()
-            && d.getDate() === date.getDate()
-            && a.status !== 'cancelled';
+            && d.getDate() === date.getDate();
+          const sameDoctor = doctorEmail
+            ? normalizeEmail(a.doctorId || '') === doctorEmail
+            : true;
+          return sameDay && sameDoctor && a.status !== 'cancelled';
         })
         .map(a => a.appointmentTime);
     } catch {
@@ -355,8 +554,15 @@ export class HomeComponent implements OnInit {
 
   bookSpecificSlot(slot: string): void {
     if (!this.selectedDate) return;
-    const iso = this.selectedDate.toISOString().split('T')[0];
-    this.router.navigate(['/add-appointment'], { queryParams: { date: iso, time: slot } });
+    const y = this.selectedDate.getFullYear();
+    const m = String(this.selectedDate.getMonth() + 1).padStart(2, '0');
+    const d = String(this.selectedDate.getDate()).padStart(2, '0');
+    const iso = `${y}-${m}-${d}`;
+    const params: any = { date: iso, time: slot };
+    if (this.selectedDashboardDoctorId) {
+      params.doctorId = this.selectedDashboardDoctorId;
+    }
+    this.router.navigate(['/add-appointment'], { queryParams: params });
   }
 
   formatTime(time: string): string {

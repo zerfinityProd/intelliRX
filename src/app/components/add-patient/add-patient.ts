@@ -145,7 +145,8 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   }
 
   private async updateFamilyId(): Promise<void> {
-    const fullName = `${this.firstName.trim()} ${this.lastName.trim()}`.trim();
+    const fullName = [this.firstName.trim(), this.middleName.trim(), this.lastName.trim()]
+      .filter(p => p).join(' ');
     const phoneNumber = this.phone.trim();
 
     this.familyId = this.generateFamilyIdPreview(fullName, phoneNumber);
@@ -154,21 +155,30 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       clearTimeout(this.checkDebounceTimer);
     }
 
+    // Only check when we have a name and a valid 10-digit phone
     if (fullName && phoneNumber && phoneNumber.length === 10) {
       this.checkDebounceTimer = setTimeout(async () => {
         try {
-          const exists = await this.patientService.checkUniqueIdExists(fullName, phoneNumber);
-          if (exists) {
-            this.warningMessage = '⚠️ This patient already exists in the system';
+          // Search by phone number (multiple fallback strategies for reliability)
+          const phoneMatch = await this.patientService.findPatientByPhone(phoneNumber);
+          if (phoneMatch) {
+            const existingName = phoneMatch.name.trim().toLowerCase();
+            const enteredName = fullName.trim().toLowerCase();
+            if (existingName === enteredName) {
+              this.warningMessage = '⚠️ This patient already exists in the system';
+            } else {
+              this.warningMessage = `⚠️ A patient "${phoneMatch.name}" already exists with this phone number`;
+            }
           } else {
             this.warningMessage = '';
           }
           this.cdr.detectChanges();
         } catch (error) {
-          console.error('Error checking unique ID:', error);
+          console.error('Error checking for duplicate patient:', error);
           this.warningMessage = '';
+          this.cdr.detectChanges();
         }
-      }, 0);
+      }, 300);
     } else {
       this.warningMessage = '';
     }
@@ -177,7 +187,8 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   clearSuccessMessage(): void {
     if (this.successMessage) this.successMessage = '';
     if (this.errorMessage) this.errorMessage = '';
-    if (this.warningMessage) this.warningMessage = '';
+    // Note: warningMessage is NOT cleared here — it is managed exclusively
+    // by updateFamilyId() to preserve duplicate-patient warnings.
   }
 
   private generateFamilyIdPreview(name: string, phone: string): string {

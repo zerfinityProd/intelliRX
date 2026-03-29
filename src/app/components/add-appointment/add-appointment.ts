@@ -121,6 +121,10 @@ export class AddAppointmentComponent implements OnInit {
         this.appointmentDate = params['date'];
         this.onDateChange();
       }
+      // Pre-select doctor when navigated from dashboard with a specific doctor
+      if (params['doctorId']) {
+        this.selectedDoctorId = params['doctorId'];
+      }
     });
 
     // Set doctor dropdown + slot availability based on user role.

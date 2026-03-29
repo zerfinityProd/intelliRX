@@ -1,12 +1,22 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, collection, getDocs } from '@angular/fire/firestore';
 import { normalizeEmail } from '../utilities/normalize-email';
+
+interface RolesCache {
+    doctorEmails: string[];
+    receptionistEmails: string[];
+    timestamp: number;
+}
 
 @Injectable({
     providedIn: 'root'
 })
 export class AuthorizationService {
     private firestore = inject(Firestore);
+
+    /** In-memory cache for the roles collection (refreshed every 5 minutes) */
+    private rolesCache: RolesCache | null = null;
+    private readonly ROLES_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
     private toClinicIds(value: any): string[] {
         // Accept: string[] | string | [{id: string}] | {id: string}
@@ -32,17 +42,93 @@ export class AuthorizationService {
         return [];
     }
 
+    /**
+     * Fetch and cache the roles collection.
+     * Reads `roles/doctor` and `roles/receptionist`, each having an `emails` array.
+     */
+    private async loadRoles(): Promise<RolesCache> {
+        if (this.rolesCache && (Date.now() - this.rolesCache.timestamp < this.ROLES_CACHE_TTL)) {
+            return this.rolesCache;
+        }
+
+        let doctorEmails: string[] = [];
+        let receptionistEmails: string[] = [];
+
+        try {
+            const doctorDoc = await getDoc(doc(this.firestore, 'roles', 'doctor'));
+            if (doctorDoc.exists()) {
+                const data = doctorDoc.data();
+                const emails = data?.['emails'];
+                if (Array.isArray(emails)) {
+                    doctorEmails = emails.map((e: any) => normalizeEmail(String(e)));
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load doctor roles (possible Firestore rules issue):', error);
+        }
+
+        try {
+            const receptionistDoc = await getDoc(doc(this.firestore, 'roles', 'receptionist'));
+            if (receptionistDoc.exists()) {
+                const data = receptionistDoc.data();
+                const emails = data?.['emails'];
+                if (Array.isArray(emails)) {
+                    receptionistEmails = emails.map((e: any) => normalizeEmail(String(e)));
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load receptionist roles (possible Firestore rules issue):', error);
+        }
+
+        console.log('Loaded roles – doctors:', doctorEmails.length, ', receptionists:', receptionistEmails.length);
+        this.rolesCache = { doctorEmails, receptionistEmails, timestamp: Date.now() };
+        return this.rolesCache;
+    }
+
+    /** Force refresh the roles cache (e.g. after admin changes) */
+    invalidateRolesCache(): void {
+        this.rolesCache = null;
+    }
+
+    /**
+     * Check if an email is allowed.
+     * First checks the `roles` collection (doctor / receptionist emails).
+     * Falls back to `allowedUsers/{email}` document existence for backward compatibility.
+     */
     async isEmailAllowed(email: string): Promise<boolean> {
         try {
-            const docRef = doc(this.firestore, 'allowedUsers', normalizeEmail(email));
-            const docSnap = await getDoc(docRef);
-            return docSnap.exists();
+            const normalized = normalizeEmail(email);
+
+            // Primary check – roles collection
+            const roles = await this.loadRoles();
+            if (roles.doctorEmails.includes(normalized) ||
+                roles.receptionistEmails.includes(normalized)) {
+                return true;
+            }
+
+            // Fallback – allowedUsers document
+            try {
+                const userDoc = await getDoc(doc(this.firestore, 'allowedUsers', normalized));
+                if (userDoc.exists()) {
+                    console.log('Email found in allowedUsers (not in roles):', normalized);
+                    return true;
+                }
+            } catch (fallbackErr) {
+                console.warn('allowedUsers fallback check failed:', fallbackErr);
+            }
+
+            console.warn('Email not found in roles or allowedUsers:', normalized);
+            return false;
         } catch (error) {
-            console.warn('Access check failed for:', email);
+            console.warn('Access check failed for:', email, error);
             return false;
         }
     }
 
+    /**
+     * Check if a user has delete permissions.
+     * Still reads from `allowedUsers/{email}` for per-user settings.
+     */
     async canUserDelete(email: string): Promise<boolean> {
         try {
             const docRef = doc(this.firestore, 'allowedUsers', normalizeEmail(email));
@@ -58,15 +144,15 @@ export class AuthorizationService {
 
     /**
      * Returns the role for a given email.
-     * Defaults to 'doctor' if no role field exists (backward compatible).
+     * Reads from `roles/doctor` and `roles/receptionist` collections.
+     * Defaults to 'doctor' if email is not found in either role.
      */
     async getUserRole(email: string): Promise<'doctor' | 'receptionist'> {
         try {
-            const docRef = doc(this.firestore, 'allowedUsers', normalizeEmail(email));
-            const docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) return 'doctor';
-            const data = docSnap.data();
-            return (data?.['role'] === 'receptionist') ? 'receptionist' : 'doctor';
+            const normalized = normalizeEmail(email);
+            const roles = await this.loadRoles();
+            if (roles.receptionistEmails.includes(normalized)) return 'receptionist';
+            return 'doctor';
         } catch (error) {
             console.warn('Role check failed for:', email);
             return 'doctor';
@@ -103,12 +189,7 @@ export class AuthorizationService {
 
     /**
      * SaaS scoping: list of clinic ids a user (doctor/receptionist) can access.
-     * Data is expected in `allowedUsers/{email}`.
-     *
-     * Backward compatible behavior:
-     * - if `clinicIds` / `clinicId` is missing -> returns [] (callers decide fallback)
-     * - if only `subscriptionId` is present -> tries to read `subscriptions/{subscriptionId}`
-     *   and derive `clinicId`/`clinicIds` from there.
+     * Still reads from `allowedUsers/{email}` for per-user settings.
      */
     async getUserClinicIds(email: string): Promise<string[]> {
         try {
@@ -157,7 +238,7 @@ export class AuthorizationService {
 
     /**
      * SaaS scoping: subscription id for a user.
-     * Data is expected in `allowedUsers/{email}` as `subscriptionId`.
+     * Still reads from `allowedUsers/{email}` for per-user settings.
      */
     async getUserSubscriptionId(email: string): Promise<string | null> {
         try {

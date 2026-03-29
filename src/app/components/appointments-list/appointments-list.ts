@@ -13,6 +13,8 @@ import { Patient } from '../../models/patient.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { AppointmentCleanupService } from '../../services/appointmentCleanupService';
 import { todayLocalISO } from '../../utilities/local-date';
+import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
+import { normalizeEmail } from '../../utilities/normalize-email';
 
 export interface KanbanColumn {
   id: Appointment['status'];
@@ -44,6 +46,19 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   searchTerm: string = '';
 
   updatingId: string | null = null;
+
+  // ── Postpone Modal State ──
+  showPostponeModal = false;
+  postponingAppt: Appointment | null = null;
+  postponeDate: string = '';
+  postponeTime: string = '';
+  postponeBookedSlots: string[] = [];
+  isLoadingPostponeSlots = false;
+  isPostponing = false;
+  postponeError = '';
+  allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+  readonly postponeMinDate: string = todayLocalISO();
+  readonly postponeMaxDate: string = DEFAULT_SYSTEM_SETTINGS.addAppointment.maxDate;
 
   private appointmentService = inject(AppointmentService);
   private patientService = inject(PatientService);
@@ -136,6 +151,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       this.isLoading = false;
       this.cdr.detectChanges();
     }
+
+    // Auto-cancel appointments from past dates that are still "scheduled"
+    await this.autoCancelPastAppointments();
 
     this.scheduleAutoCancelAtCutoff();
     // Keep UI in sync when appointments are updated from other screens (e.g. adding a visit).
@@ -265,6 +283,36 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  /**
+   * Auto-cancel all past-date appointments that are still 'scheduled'.
+   * If the appointment day has fully passed, the patient didn't show up.
+   */
+  private async autoCancelPastAppointments(): Promise<void> {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const pastScheduled = this.appointments.filter(a => {
+      if (a.status !== 'scheduled') return false;
+      const apptDate = new Date(a.appointmentDate);
+      const apptDay = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
+      return apptDay < todayStart; // strictly before today
+    });
+
+    if (pastScheduled.length === 0) return;
+
+    for (const appt of pastScheduled) {
+      if (!appt.id) continue;
+      try {
+        await this.appointmentService.updateAppointmentStatus(appt.id, 'cancelled');
+        appt.status = 'cancelled';
+        console.log(`🕐 Auto-cancelled past appointment: ${appt.patientName} (${new Date(appt.appointmentDate).toLocaleDateString()})`);
+      } catch {
+        // keep going
+      }
+    }
+
+    this.cdr.detectChanges();
+  }
 
 
   async updateStatus(appt: Appointment, status: Appointment['status']): Promise<void> {
@@ -284,6 +332,140 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       this.updatingId = null;
       this.cdr.detectChanges();
     }
+  }
+
+  // ═══════════════════════════════════════════
+  //  POSTPONE (Reschedule) Modal
+  // ═══════════════════════════════════════════
+
+  openPostponeModal(appt: Appointment): void {
+    this.postponingAppt = appt;
+    this.postponeTime = '';
+    this.postponeBookedSlots = [];
+    this.postponeError = '';
+    this.isPostponing = false;
+    this.showPostponeModal = true;
+
+    // Default to tomorrow's date and instantly load slots
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const y = tomorrow.getFullYear();
+    const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const d = String(tomorrow.getDate()).padStart(2, '0');
+    this.postponeDate = `${y}-${m}-${d}`;
+    this.computePostponeBookedSlots();
+    this.cdr.detectChanges();
+  }
+
+  cancelPostpone(): void {
+    this.showPostponeModal = false;
+    this.postponingAppt = null;
+    this.postponeDate = '';
+    this.postponeTime = '';
+    this.postponeBookedSlots = [];
+    this.postponeError = '';
+    this.cdr.detectChanges();
+  }
+
+  /** True when the slot is in the past for the selected postpone date */
+  isPostponeSlotInPast(slot: string): boolean {
+    if (!this.postponeDate) return false;
+    const today = new Date();
+    const [y, mo, day] = this.postponeDate.split('-').map(Number);
+    const isToday = today.getFullYear() === y && today.getMonth() === mo - 1 && today.getDate() === day;
+    if (!isToday) return false;
+    const [h, m] = slot.split(':').map(Number);
+    const slotMinutes = h * 60 + m;
+    const nowMinutes = today.getHours() * 60 + today.getMinutes();
+    return slotMinutes <= nowMinutes;
+  }
+
+  get postponeAvailableSlots(): string[] {
+    return this.allTimeSlots.filter(s => !this.postponeBookedSlots.includes(s) && !this.isPostponeSlotInPast(s));
+  }
+
+  /** True if the selected postpone date is strictly before today */
+  isPostponeDateInPast(): boolean {
+    if (!this.postponeDate) return false;
+    const today = todayLocalISO();
+    return this.postponeDate < today;
+  }
+
+  onPostponeDateChange(): void {
+    this.postponeTime = '';
+    this.postponeError = '';
+    if (!this.postponeDate) {
+      this.postponeBookedSlots = [];
+      return;
+    }
+    // Reject past dates
+    if (this.isPostponeDateInPast()) {
+      this.postponeBookedSlots = [];
+      this.postponeError = 'Cannot postpone to a past date. Please select today or a future date.';
+      this.cdr.detectChanges();
+      return;
+    }
+    this.computePostponeBookedSlots();
+    this.cdr.detectChanges();
+  }
+
+  /** Compute booked slots instantly from already-loaded appointments (no Firestore fetch). */
+  private computePostponeBookedSlots(): void {
+    const appt = this.postponingAppt;
+    const doctorEmail = appt?.doctorId ? normalizeEmail(appt.doctorId) : '';
+    const clinicId = appt?.clinicId || '';
+    const [y, mo, day] = this.postponeDate.split('-').map(Number);
+
+    this.postponeBookedSlots = this.appointments
+      .filter(a => {
+        const d = new Date(a.appointmentDate);
+        const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
+        const sameDoctor = doctorEmail ? normalizeEmail(a.doctorId || '') === doctorEmail : true;
+        const sameClinic = clinicId ? (a.clinicId ? a.clinicId === clinicId : true) : true;
+        return sameDay && sameDoctor && sameClinic && a.status !== 'cancelled' && a.id !== appt?.id;
+      })
+      .map(a => a.appointmentTime);
+  }
+
+  async submitPostpone(): Promise<void> {
+    if (!this.postponingAppt?.id || !this.postponeDate || !this.postponeTime) {
+      this.postponeError = 'Please select a date and time slot.';
+      return;
+    }
+    // Final guard: reject past date
+    if (this.isPostponeDateInPast()) {
+      this.postponeError = 'Cannot postpone to a past date. Please select today or a future date.';
+      return;
+    }
+    // Final guard: reject past time slot on today
+    if (this.isPostponeSlotInPast(this.postponeTime)) {
+      this.postponeError = 'This time slot has already passed. Please select a future time.';
+      this.postponeTime = '';
+      return;
+    }
+    // Optimistic update: patch local state instantly so the UI feels snappy
+    const newDate = new Date(this.postponeDate + 'T00:00:00');
+    const newTime = this.postponeTime;
+    const apptId = this.postponingAppt.id;
+
+    this.postponingAppt.appointmentDate = newDate;
+    this.postponingAppt.appointmentTime = newTime;
+    this.cancelPostpone();             // closes modal immediately
+    this.cdr.detectChanges();
+
+    // Fire Firestore write in the background (no await — UI is already updated)
+    this.appointmentService.postponeAppointment(apptId, newDate, newTime)
+      .then(() => this.refreshAppointments())
+      .catch(() => {
+        // On rare failure, a background refresh will re-sync within 3 s.
+        console.error('Postpone write failed – will re-sync on next refresh.');
+      });
+  }
+
+  formatSlotLabel(time: string): string {
+    const [h, m] = time.split(':').map(Number);
+    const period = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
   }
 
   goHome(): void { this.router.navigate(['/home']); }

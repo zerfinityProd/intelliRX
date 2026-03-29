@@ -439,10 +439,22 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     // ── Navigation ──
 
-    bookNew(): void { this.router.navigate(['/add-appointment']); }
+    bookNew(): void {
+        const params: any = {};
+        if (this.filterDoctorId) {
+            const doc = this.allDoctors.find(d => normalizeEmail(d.email) === this.filterDoctorId);
+            if (doc) params.doctorId = doc.id;
+        }
+        this.router.navigate(['/add-appointment'], { queryParams: params });
+    }
 
     bookOnDate(): void {
-        this.router.navigate(['/add-appointment'], { queryParams: { date: this.selectedDate } });
+        const params: any = { date: this.selectedDate };
+        if (this.filterDoctorId) {
+            const doc = this.allDoctors.find(d => normalizeEmail(d.email) === this.filterDoctorId);
+            if (doc) params.doctorId = doc.id;
+        }
+        this.router.navigate(['/add-appointment'], { queryParams: params });
     }
 
     formatTime(time: string): string {

@@ -223,10 +223,119 @@
             <span *ngIf="isLoadingAppts" class="spinner-border spinner-border-sm"
               style="color:#fff;width:16px;height:16px;border-width:2px"></span>
           </div>
-          <div class="widget-banner__label">Today's Appointments</div>
+          <div class="widget-banner__label">
+            {{ selectedDashboardDoctor ? selectedDashboardDoctor.name + "'s" : "Today's" }} Appointments
+          </div>
         </div>
       </div>
       <button class="widget-banner__cta" (click)="goToAppointments()">View All →</button>
+    </div>
+
+    <!-- ── WIDGET: Doctor Clinic Switcher (doctors with multiple clinics) ── -->
+    <div *ngIf="doctorContextReady && userRole === 'doctor' && doctorClinics.length > 1" class="widget widget--doctor-select" (click)="$event.stopPropagation()">
+      <div class="widget__header">
+        <div class="widget__header-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>Switch Clinic</span>
+        </div>
+      </div>
+
+      <div class="doctor-select-row">
+        <div class="doctor-select-field" style="flex:1">
+          <label for="doctorClinicSwitch" class="doctor-select-label">Active Clinic</label>
+          <select id="doctorClinicSwitch" [(ngModel)]="selectedDoctorClinicId" class="doctor-select-input"
+            (ngModelChange)="onDoctorClinicChange()">
+            <option *ngFor="let c of doctorClinics" [value]="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Current clinic pill -->
+      <div class="doctor-select-pill" *ngIf="selectedDoctorClinicId">
+        <div class="doctor-select-pill__avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+        </div>
+        <div class="doctor-select-pill__info">
+          <span class="doctor-select-pill__name">Clinic {{ selectedDoctorClinicId }}</span>
+          <span class="doctor-select-pill__spec">Currently active</span>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ── WIDGET 2: Doctor Selection (receptionist only) ── -->
+    <div *ngIf="doctorContextReady && userRole === 'receptionist'" class="widget widget--doctor-select" (click)="$event.stopPropagation()">
+      <div class="widget__header">
+        <div class="widget__header-left">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          <span>Select Doctor</span>
+        </div>
+      </div>
+
+      <div class="doctor-select-row">
+        <!-- Clinic dropdown -->
+        <div class="doctor-select-field" *ngIf="dashboardClinics.length > 1">
+          <label for="dashClinic" class="doctor-select-label">Clinic</label>
+          <select id="dashClinic" [(ngModel)]="selectedDashboardClinicId" class="doctor-select-input"
+            (ngModelChange)="onDashboardClinicChange()">
+            <option value="">— All clinics —</option>
+            <option *ngFor="let c of dashboardClinics" [value]="c.id">{{ c.label }}</option>
+          </select>
+        </div>
+
+        <!-- Doctor dropdown -->
+        <div class="doctor-select-field">
+          <label for="dashDoctor" class="doctor-select-label">Doctor <span style="color:#ef4444">*</span></label>
+          <select id="dashDoctor" [(ngModel)]="selectedDashboardDoctorId" class="doctor-select-input"
+            (ngModelChange)="onDashboardDoctorChange()">
+            <option value="">— Choose a doctor —</option>
+            <option *ngFor="let doc of dashboardDoctors" [value]="doc.id">
+              {{ doc.name }} · {{ doc.specialty }}
+            </option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Selected doctor pill -->
+      <div *ngIf="selectedDashboardDoctor" class="doctor-select-pill">
+        <div class="doctor-select-pill__avatar">{{ selectedDashboardDoctor.avatar }}</div>
+        <div class="doctor-select-pill__info">
+          <span class="doctor-select-pill__name">{{ selectedDashboardDoctor.name }}</span>
+          <span class="doctor-select-pill__spec">{{ selectedDashboardDoctor.specialty }}</span>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+
+      <!-- No doctor prompt -->
+      <div *ngIf="!selectedDashboardDoctorId" class="doctor-select-prompt">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>Select a doctor to view their availability and book appointments</span>
+      </div>
     </div>
 
 
@@ -300,8 +409,8 @@
           <span>{{ selectedDateLabel }}</span>
         </div>
         <div class="day-panel-header-actions">
-          <!-- Check Slots toggle button -->
-          <button class="slots-toggle-btn"
+          <!-- Check Slots toggle button (hidden for past dates and when no doctor selected for receptionist) -->
+          <button *ngIf="!isSelectedDateInPast && (userRole === 'doctor' || selectedDashboardDoctorId)" class="slots-toggle-btn"
             [class.slots-toggle-btn--active]="showSlots"
             (click)="toggleSlots()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -319,8 +428,8 @@
               <polyline points="6 9 12 15 18 9"></polyline>
             </svg>
           </button>
-          <!-- Book button -->
-          <button class="kb-action-btn kb-action-btn--primary" style="font-size:11px;padding:5px 12px"
+          <!-- Book button (hidden for past dates and when no doctor selected for receptionist) -->
+          <button *ngIf="!isSelectedDateInPast && (userRole === 'doctor' || selectedDashboardDoctorId)" class="kb-action-btn kb-action-btn--primary" style="font-size:11px;padding:5px 12px"
             (click)="bookOnDate(selectedDate)">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round" stroke-linejoin="round">
@@ -334,13 +443,23 @@
 
       <!-- Booked appointments count -->
       <div class="day-panel-subline">
-        <span *ngIf="selectedDateBookedAppointments.length === 0">No appointments scheduled</span>
-        <span *ngIf="selectedDateBookedAppointments.length > 0">
-          {{ selectedDateBookedAppointments.length }} appointment{{ selectedDateBookedAppointments.length !== 1 ? 's' : '' }} booked
+        <!-- Receptionist without doctor selected -->
+        <span *ngIf="userRole === 'receptionist' && !selectedDashboardDoctorId" style="color:#94a3b8;font-style:italic">
+          Select a doctor above to view slots
         </span>
-        <span class="day-panel-free-count" *ngIf="!isLoadingSlots">
-          · {{ freeSlotCount }} slots free
-        </span>
+        <!-- Normal display when doctor is selected or user is doctor -->
+        <ng-container *ngIf="userRole === 'doctor' || selectedDashboardDoctorId">
+          <span *ngIf="selectedDateBookedAppointments.length === 0">No appointments scheduled</span>
+          <span *ngIf="selectedDateBookedAppointments.length > 0">
+            {{ selectedDateBookedAppointments.length }} appointment{{ selectedDateBookedAppointments.length !== 1 ? 's' : '' }} booked
+          </span>
+          <span class="day-panel-free-count" *ngIf="!isLoadingSlots && !isSelectedDateInPast">
+            · {{ freeSlotCount }} slots free
+          </span>
+          <span class="day-panel-past-label" *ngIf="isSelectedDateInPast" style="color:#94a3b8;font-style:italic">
+            · Past date
+          </span>
+        </ng-container>
       </div>
 
       <!-- ── Slot Viewer (animated expand) ── -->
