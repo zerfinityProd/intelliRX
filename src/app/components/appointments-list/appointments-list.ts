@@ -47,6 +47,13 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   updatingId: string | null = null;
 
+  // Cancel modal state
+  showCancelModal = false;
+  cancellingAppt: Appointment | null = null;
+  cancelReason = '';
+  isCancelling = false;
+  cancelError = '';
+
   // ── Postpone Modal State ──
   showPostponeModal = false;
   postponingAppt: Appointment | null = null;
@@ -322,6 +329,10 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
       return;
     }
+    if (status === 'cancelled') {
+      this.openCancelModal(appt);
+      return;
+    }
     this.updatingId = appt.id!;
     try {
       await this.appointmentService.updateAppointmentStatus(appt.id!, status);
@@ -330,6 +341,49 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       this.errorMessage = 'Failed to update status. Please try again.';
     } finally {
       this.updatingId = null;
+      this.cdr.detectChanges();
+    }
+  }
+
+  // ── Cancel Appointment Modal ──
+
+  openCancelModal(appt: Appointment): void {
+    this.cancellingAppt = appt;
+    this.cancelReason = '';
+    this.cancelError = '';
+    this.isCancelling = false;
+    this.showCancelModal = true;
+    this.cdr.detectChanges();
+  }
+
+  closeCancelModal(): void {
+    this.showCancelModal = false;
+    this.cancellingAppt = null;
+    this.cancelReason = '';
+    this.cancelError = '';
+    this.isCancelling = false;
+    this.cdr.detectChanges();
+  }
+
+  async confirmCancel(): Promise<void> {
+    if (!this.cancellingAppt?.id) return;
+    const reason = this.cancelReason.trim();
+    if (!reason) {
+      this.cancelError = 'Please provide a reason for cancellation.';
+      this.cdr.detectChanges();
+      return;
+    }
+    this.isCancelling = true;
+    this.cancelError = '';
+    this.cdr.detectChanges();
+    try {
+      await this.appointmentService.cancelAppointment(this.cancellingAppt.id, reason);
+      this.cancellingAppt.status = 'cancelled';
+      this.cancellingAppt.cancellationReason = reason;
+      this.closeCancelModal();
+    } catch {
+      this.cancelError = 'Failed to cancel appointment. Please try again.';
+      this.isCancelling = false;
       this.cdr.detectChanges();
     }
   }
@@ -346,14 +400,14 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     this.isPostponing = false;
     this.showPostponeModal = true;
 
-    // Default to tomorrow's date and instantly load slots
+    // Default to tomorrow's date and load slots (async — UI updates when done)
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const y = tomorrow.getFullYear();
     const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
     const d = String(tomorrow.getDate()).padStart(2, '0');
     this.postponeDate = `${y}-${m}-${d}`;
-    this.computePostponeBookedSlots();
+    void this.computePostponeBookedSlots();
     this.cdr.detectChanges();
   }
 
@@ -405,26 +459,35 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       this.cdr.detectChanges();
       return;
     }
-    this.computePostponeBookedSlots();
-    this.cdr.detectChanges();
+    void this.computePostponeBookedSlots();
   }
 
-  /** Compute booked slots instantly from already-loaded appointments (no Firestore fetch). */
-  private computePostponeBookedSlots(): void {
+  /**
+   * Compute booked slots from ALL appointments across clinics.
+   * This prevents a doctor from being double-booked at different clinics
+   * for the same time slot.
+   */
+  private async computePostponeBookedSlots(): Promise<void> {
     const appt = this.postponingAppt;
     const doctorEmail = appt?.doctorId ? normalizeEmail(appt.doctorId) : '';
-    const clinicId = appt?.clinicId || '';
     const [y, mo, day] = this.postponeDate.split('-').map(Number);
 
-    this.postponeBookedSlots = this.appointments
-      .filter(a => {
-        const d = new Date(a.appointmentDate);
-        const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
-        const sameDoctor = doctorEmail ? normalizeEmail(a.doctorId || '') === doctorEmail : true;
-        const sameClinic = clinicId ? (a.clinicId ? a.clinicId === clinicId : true) : true;
-        return sameDay && sameDoctor && sameClinic && a.status !== 'cancelled' && a.id !== appt?.id;
-      })
-      .map(a => a.appointmentTime);
+    try {
+      // Fetch ALL appointments (cross-clinic) so we detect conflicts globally.
+      const allAppointments = await this.appointmentService.getAllAppointments();
+      this.postponeBookedSlots = allAppointments
+        .filter(a => {
+          const d = new Date(a.appointmentDate);
+          const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
+          const sameDoctor = doctorEmail ? normalizeEmail(a.doctorId || '') === doctorEmail : true;
+          // NOTE: No clinicId filter — a doctor's slot is globally unique across clinics.
+          return sameDay && sameDoctor && a.status !== 'cancelled' && a.id !== appt?.id;
+        })
+        .map(a => a.appointmentTime);
+    } catch {
+      this.postponeBookedSlots = [];
+    }
+    this.cdr.detectChanges();
   }
 
   async submitPostpone(): Promise<void> {

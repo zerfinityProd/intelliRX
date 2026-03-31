@@ -127,11 +127,7 @@
       <div *ngIf="!isLoading" class="rh-kanban">
 
         <div *ngFor="let col of columns"
-          class="rh-column"
-          [class.rh-column--dragover]="dragOverColumn === col.id"
-          (dragover)="onDragOver($event, col.id)"
-          (dragleave)="onDragLeave()"
-          (drop)="onDrop($event, col.id)">
+          class="rh-column">
 
           <!-- Column header -->
           <div class="rh-column__header" [style.border-top-color]="col.accent">
@@ -166,14 +162,11 @@
             </span>
           </div>
 
-          <!-- Drop hint -->
-          <div class="rh-drop-hint" [class.rh-drop-hint--visible]="dragOverColumn === col.id && draggingCard?.status !== col.id">
-            Drop to mark as {{ col.label }}
-          </div>
+
 
           <!-- Cards list -->
           <div class="rh-cards-list">
-            <div *ngIf="cardsFor(col.id).length === 0 && dragOverColumn !== col.id" class="rh-col-empty">
+            <div *ngIf="cardsFor(col.id).length === 0" class="rh-col-empty">
               <div class="rh-col-empty__dot" [style.background]="col.color"></div>
               <span>No {{ col.label | lowercase }} appointments</span>
             </div>
@@ -182,10 +175,7 @@
             <div *ngFor="let appt of cardsFor(col.id)"
               class="rh-card"
               [class.rh-card--updating]="updatingId === appt.id"
-              [class.rh-card--today]="isToday(appt.appointmentDate)"
-              draggable="true"
-              (dragstart)="onDragStart($event, appt)"
-              (dragend)="onDragEnd($event)">
+              [class.rh-card--today]="isToday(appt.appointmentDate)">
 
               <!-- Updating overlay -->
               <div *ngIf="updatingId === appt.id" class="rh-card__overlay">
@@ -201,12 +191,6 @@
                   <span *ngIf="isToday(appt.appointmentDate)" class="rh-today-badge">Today</span>
                   <span *ngIf="appt.isNewPatient" class="rh-new-badge">New</span>
                   <span class="rh-card__time">{{ formatTime(appt.appointmentTime) }}</span>
-                </div>
-                <div class="rh-card__drag" title="Drag to move">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle>
-                    <circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle>
-                  </svg>
                 </div>
               </div>
 
@@ -240,6 +224,17 @@
 
               <div class="rh-card__reason" *ngIf="appt.ailments">{{ appt.ailments }}</div>
 
+              <!-- Cancellation reason (shown on cancelled cards) -->
+              <div *ngIf="appt.status === 'cancelled' && appt.cancellationReason" class="rh-card__cancel-reason">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                <span>{{ appt.cancellationReason }}</span>
+              </div>
+
               <!-- Quick actions (scheduled only) -->
               <div *ngIf="appt.status === 'scheduled'" class="rh-card__actions">
                 <button class="rh-card__btn rh-card__btn--visit"
@@ -254,8 +249,18 @@
                   </svg>
                   {{ appt.patientId ? 'Add Visit' : 'Add Patient' }}
                 </button>
+                <button class="rh-card__btn rh-card__btn--reschedule"
+                  (click)="openRescheduleModal(appt)"
+                  [disabled]="updatingId === appt.id">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  Reschedule
+                </button>
                 <button class="rh-card__btn rh-card__btn--cancel"
-                  (click)="updateStatus(appt, 'cancelled')"
+                  (click)="openCancelModal(appt)"
                   [disabled]="updatingId === appt.id">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -377,4 +382,189 @@
 
     </div><!-- /rh-sidebar -->
   </div><!-- /rh-layout -->
+</div>
+
+<!-- ══════════════════════════════════════════════
+     RESCHEDULE MODAL
+══════════════════════════════════════════════ -->
+<div *ngIf="showRescheduleModal" class="pp-backdrop" (click)="cancelReschedule()">
+  <div class="pp-modal" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="pp-modal__header">
+      <div class="pp-modal__header-left">
+        <div class="pp-modal__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+        </div>
+        <div>
+          <h2 class="pp-modal__title">Reschedule Appointment</h2>
+          <p class="pp-modal__sub">Pick a new date &amp; time slot</p>
+        </div>
+      </div>
+      <button class="pp-modal__close" (click)="cancelReschedule()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Patient Info Chip -->
+    <div class="pp-patient-chip" *ngIf="reschedulingAppt">
+      <div class="pp-patient-chip__avatar">{{ reschedulingAppt.patientName.charAt(0).toUpperCase() }}</div>
+      <div class="pp-patient-chip__info">
+        <span class="pp-patient-chip__name">{{ reschedulingAppt.patientName }}</span>
+        <span class="pp-patient-chip__meta">
+          Currently: {{ reschedulingAppt.appointmentDate | date:'MMM d, y' }} at {{ formatTime(reschedulingAppt.appointmentTime) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="rescheduleError" class="pp-error">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      {{ rescheduleError }}
+    </div>
+
+    <!-- Date Picker -->
+    <div class="pp-field">
+      <label class="pp-field__label" for="rs-date">New Date</label>
+      <input id="rs-date" type="date" class="pp-field__input"
+        [(ngModel)]="rescheduleDate"
+        (ngModelChange)="onRescheduleDateChange()"
+        [min]="rescheduleMinDate"
+        [max]="rescheduleMaxDate" />
+    </div>
+
+    <!-- Time Slot Grid -->
+    <div class="pp-field" *ngIf="rescheduleDate && !isRescheduleDateInPast()">
+      <label class="pp-field__label">Select Time Slot
+        <span *ngIf="!isLoadingRescheduleSlots" style="font-weight:500;color:var(--clr-text-muted,#64748b);margin-left:6px">
+          {{ rescheduleAvailableSlots.length }}/{{ allTimeSlots.length }} available
+        </span>
+        <span *ngIf="isLoadingRescheduleSlots" style="font-weight:500;color:var(--clr-text-muted,#64748b);margin-left:6px">
+          Loading slots…
+        </span>
+      </label>
+
+      <!-- Loading indicator -->
+      <div *ngIf="isLoadingRescheduleSlots" style="display:flex;align-items:center;justify-content:center;padding:24px 0;gap:8px;color:var(--clr-text-muted,#64748b)">
+        <div class="pp-btn-spinner"></div>
+        <span style="font-size:0.85rem">Checking availability…</span>
+      </div>
+
+      <div class="pp-slots-grid" *ngIf="!isLoadingRescheduleSlots">
+        <button *ngFor="let slot of allTimeSlots"
+          class="pp-slot-chip"
+          [class.pp-slot-chip--selected]="rescheduleTime === slot"
+          [class.pp-slot-chip--booked]="rescheduleBookedSlots.includes(slot)"
+          [class.pp-slot-chip--past]="isRescheduleSlotInPast(slot)"
+          [disabled]="rescheduleBookedSlots.includes(slot) || isRescheduleSlotInPast(slot)"
+          (click)="rescheduleTime = slot"
+          type="button">
+          {{ formatSlotLabel(slot) }}
+        </button>
+      </div>
+
+      <div *ngIf="!isLoadingRescheduleSlots && rescheduleAvailableSlots.length === 0" class="pp-no-slots">
+        No available slots for this date.
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="pp-modal__actions">
+      <button class="pp-btn pp-btn--ghost" (click)="cancelReschedule()" [disabled]="isRescheduling">Cancel</button>
+      <button class="pp-btn pp-btn--primary" (click)="submitReschedule()"
+        [disabled]="isRescheduling || !rescheduleDate || !rescheduleTime">
+        <span *ngIf="isRescheduling" class="pp-btn-spinner"></span>
+        {{ isRescheduling ? 'Rescheduling…' : 'Confirm Reschedule' }}
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CANCEL CONFIRMATION MODAL
+══════════════════════════════════════════════ -->
+<div *ngIf="showCancelModal" class="pp-backdrop" (click)="closeCancelModal()">
+  <div class="cc-modal" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="cc-modal__header">
+      <div class="cc-modal__header-left">
+        <div class="cc-modal__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div>
+          <h2 class="cc-modal__title">Cancel Appointment</h2>
+          <p class="cc-modal__sub">Are you sure you want to cancel this appointment?</p>
+        </div>
+      </div>
+      <button class="pp-modal__close" (click)="closeCancelModal()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Patient Info Chip -->
+    <div class="pp-patient-chip" *ngIf="cancellingAppt">
+      <div class="pp-patient-chip__avatar">{{ cancellingAppt.patientName.charAt(0).toUpperCase() }}</div>
+      <div class="pp-patient-chip__info">
+        <span class="pp-patient-chip__name">{{ cancellingAppt.patientName }}</span>
+        <span class="pp-patient-chip__meta">
+          {{ cancellingAppt.appointmentDate | date:'MMM d, y' }} at {{ formatTime(cancellingAppt.appointmentTime) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="cancelError" class="pp-error">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      {{ cancelError }}
+    </div>
+
+    <!-- Reason Input -->
+    <div class="pp-field">
+      <label class="pp-field__label" for="cancel-reason">Reason for Cancellation <span class="cc-required">*</span></label>
+      <textarea id="cancel-reason" class="cc-textarea" rows="3"
+        [(ngModel)]="cancelReason"
+        placeholder="e.g. Patient requested cancellation, Doctor unavailable…"
+        [disabled]="isCancelling"></textarea>
+    </div>
+
+    <!-- Actions -->
+    <div class="pp-modal__actions">
+      <button class="pp-btn pp-btn--ghost" (click)="closeCancelModal()" [disabled]="isCancelling">Go Back</button>
+      <button class="cc-btn--danger" (click)="confirmCancel()"
+        [disabled]="isCancelling || !cancelReason.trim()">
+        <span *ngIf="isCancelling" class="pp-btn-spinner"></span>
+        {{ isCancelling ? 'Cancelling…' : 'Yes, Cancel Appointment' }}
+      </button>
+    </div>
+
+  </div>
 </div>

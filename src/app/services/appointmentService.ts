@@ -206,6 +206,68 @@ export class AppointmentService {
     }
   }
 
+  /** Cancel an appointment with a reason */
+  async cancelAppointment(id: string, reason: string): Promise<void> {
+    try {
+      const appointmentsCol = collection(this.db, 'appointments');
+      await updateDoc(doc(appointmentsCol, id), {
+        status: 'cancelled',
+        cancellationReason: reason,
+        updatedAt: Timestamp.fromDate(new Date())
+      });
+      this.invalidateCache();
+      console.log(`✓ Appointment ${id} cancelled with reason: ${reason}`);
+    } catch (error) {
+      console.error('✗ Error cancelling appointment:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch booked time slots for a specific date/doctor/clinic — always hits Firestore (no cache).
+   * Used by the reschedule modal so it always sees the latest slot availability.
+   */
+  async getBookedSlotsForDate(
+    dateStr: string,
+    doctorEmail?: string,
+    clinicId?: string,
+    excludeApptId?: string
+  ): Promise<string[]> {
+    try {
+      const [y, mo, day] = dateStr.split('-').map(Number);
+      const startOfDay = new Date(y, mo - 1, day, 0, 0, 0, 0);
+      const startOfNextDay = new Date(y, mo - 1, day + 1, 0, 0, 0, 0);
+
+      const appointmentsCol = collection(this.db, 'appointments');
+      const q = query(
+        appointmentsCol,
+        where('appointmentDate', '>=', Timestamp.fromDate(startOfDay)),
+        where('appointmentDate', '<', Timestamp.fromDate(startOfNextDay))
+      );
+      const snap = await getDocs(q);
+
+      const bookedSlots: string[] = [];
+      for (const d of snap.docs) {
+        const data = d.data() as any;
+        // Skip cancelled appointments
+        if (data.status === 'cancelled') continue;
+        // Skip the appointment being rescheduled
+        if (excludeApptId && d.id === excludeApptId) continue;
+        // Filter by doctor if specified — a doctor's slot is globally
+        // unique across ALL clinics (no clinicId filter).
+        if (doctorEmail && normalizeEmail(data.doctorId || '') !== doctorEmail) continue;
+
+        if (data.appointmentTime) {
+          bookedSlots.push(data.appointmentTime);
+        }
+      }
+      return bookedSlots;
+    } catch (error) {
+      console.error('✗ Error fetching booked slots for date:', error);
+      return [];
+    }
+  }
+
   /** Postpone (reschedule) an appointment to a new date and time slot. */
   async postponeAppointment(id: string, newDate: Date, newTime: string): Promise<void> {
     try {

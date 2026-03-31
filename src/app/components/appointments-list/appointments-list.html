@@ -192,6 +192,17 @@
             {{ appt.ailments }}
           </div>
 
+          <!-- Cancellation reason (shown on cancelled cards) -->
+          <div *ngIf="appt.status === 'cancelled' && appt.cancellationReason" class="kb-card__cancel-reason">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>{{ appt.cancellationReason }}</span>
+          </div>
+
           <!-- Quick action buttons (only on scheduled cards) -->
           <div *ngIf="appt.status === 'scheduled'" class="kb-card__actions">
             <button class="kb-card__action-btn kb-card__action-btn--visit"
@@ -214,10 +225,10 @@
                 <circle cx="12" cy="12" r="10"></circle>
                 <polyline points="12 6 12 12 16 14"></polyline>
               </svg>
-              Postpone
+              Reschedule
             </button>
             <button class="kb-card__action-btn kb-card__action-btn--cancel"
-              (click)="updateStatus(appt, 'cancelled')"
+              (click)="openCancelModal(appt)"
               [disabled]="updatingId === appt.id">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round">
@@ -255,8 +266,8 @@
           </svg>
         </div>
         <div>
-          <h2 class="pp-modal__title">Postpone Appointment</h2>
-          <p class="pp-modal__sub">Reschedule to a new date &amp; time</p>
+          <h2 class="pp-modal__title">Reschedule Appointment</h2>
+          <p class="pp-modal__sub">Pick a new date &amp; time slot</p>
         </div>
       </div>
       <button class="pp-modal__close" (click)="cancelPostpone()" aria-label="Close">
@@ -332,7 +343,82 @@
       <button class="pp-btn pp-btn--primary" (click)="submitPostpone()"
         [disabled]="isPostponing || !postponeDate || !postponeTime">
         <span *ngIf="isPostponing" class="pp-btn-spinner"></span>
-        {{ isPostponing ? 'Postponing…' : 'Confirm Postpone' }}
+        {{ isPostponing ? 'Rescheduling…' : 'Confirm Reschedule' }}
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     CANCEL CONFIRMATION MODAL
+══════════════════════════════════════════════ -->
+<div *ngIf="showCancelModal" class="pp-backdrop" (click)="closeCancelModal()">
+  <div class="cc-modal" (click)="$event.stopPropagation()">
+
+    <!-- Header -->
+    <div class="cc-modal__header">
+      <div class="cc-modal__header-left">
+        <div class="cc-modal__icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+        </div>
+        <div>
+          <h2 class="cc-modal__title">Cancel Appointment</h2>
+          <p class="cc-modal__sub">Are you sure you want to cancel this appointment?</p>
+        </div>
+      </div>
+      <button class="pp-modal__close" (click)="closeCancelModal()" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Patient Info Chip -->
+    <div class="pp-patient-chip" *ngIf="cancellingAppt">
+      <div class="pp-patient-chip__avatar">{{ cancellingAppt.patientName.charAt(0).toUpperCase() }}</div>
+      <div class="pp-patient-chip__info">
+        <span class="pp-patient-chip__name">{{ cancellingAppt.patientName }}</span>
+        <span class="pp-patient-chip__meta">
+          {{ cancellingAppt.appointmentDate | date:'MMM d, y' }} at {{ formatTime(cancellingAppt.appointmentTime) }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Error -->
+    <div *ngIf="cancelError" class="pp-error">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      {{ cancelError }}
+    </div>
+
+    <!-- Reason Input -->
+    <div class="pp-field">
+      <label class="pp-field__label" for="cancel-reason-dr">Reason for Cancellation <span class="cc-required">*</span></label>
+      <textarea id="cancel-reason-dr" class="cc-textarea" rows="3"
+        [(ngModel)]="cancelReason"
+        placeholder="e.g. Patient requested cancellation, Doctor unavailable…"
+        [disabled]="isCancelling"></textarea>
+    </div>
+
+    <!-- Actions -->
+    <div class="pp-modal__actions">
+      <button class="pp-btn pp-btn--ghost" (click)="closeCancelModal()" [disabled]="isCancelling">Go Back</button>
+      <button class="cc-btn--danger" (click)="confirmCancel()"
+        [disabled]="isCancelling || !cancelReason.trim()">
+        <span *ngIf="isCancelling" class="pp-btn-spinner"></span>
+        {{ isCancelling ? 'Cancelling…' : 'Yes, Cancel Appointment' }}
       </button>
     </div>
 

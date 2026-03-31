@@ -26,6 +26,11 @@ export interface Appointment {
    * This should later be visible on patient + in "Ailments" section of the visit form.
    */
   ailments?: string;
+  /**
+   * Reason provided when an appointment is manually cancelled.
+   * Displayed on the cancelled appointment card on both reception and doctor dashboards.
+   */
+  cancellationReason?: string;
   status: AppointmentStatus;
   isNewPatient: boolean;    // true = no patientId yet
   userId: string;           // Firebase Auth UID of the user who created this appointment

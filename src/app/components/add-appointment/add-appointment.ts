@@ -467,7 +467,9 @@ export class AddAppointmentComponent implements OnInit {
       const selectedDoctorEmail = this.selectedDoctor?.email
         ? normalizeEmail(this.selectedDoctor.email)
         : '';
-      const all = await this.appointmentService.getAppointments();
+      // Use getAllAppointments() so we see the doctor's bookings across ALL clinics.
+      // This prevents double-booking when a doctor works at multiple locations.
+      const all = await this.appointmentService.getAllAppointments();
       this.bookedSlots = all
         .filter(a => {
           const d = new Date(a.appointmentDate);
@@ -476,10 +478,8 @@ export class AddAppointmentComponent implements OnInit {
           const sameDoctor = (this.selectedDoctorId && selectedDoctorEmail)
             ? normalizeEmail(a.doctorId || '') === selectedDoctorEmail
             : true;
-          const sameClinic = this.selectedClinicId
-            ? (a.clinicId ? a.clinicId === this.selectedClinicId : true)
-            : true;
-          return sameDay && sameDoctor && sameClinic && a.status !== 'cancelled';
+          // NOTE: No clinicId filter — a doctor's slot is globally unique across clinics.
+          return sameDay && sameDoctor && a.status !== 'cancelled';
         })
         .map(a => a.appointmentTime);
     } catch {

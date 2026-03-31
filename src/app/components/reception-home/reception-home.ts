@@ -14,6 +14,7 @@ import { Patient } from '../../models/patient.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { todayLocalISO } from '../../utilities/local-date';
 import { normalizeEmail } from '../../utilities/normalize-email';
+import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import doctorsData from '../../data/doctors.json';
 
 @Component({
@@ -31,13 +32,30 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     // Search
     searchTerm = '';
 
-    // Drag state
-    draggingCard: Appointment | null = null;
-    dragOverColumn: Appointment['status'] | null = null;
     updatingId: string | null = null;
 
-    // Date filter — today by default
-    selectedDate: string = todayLocalISO();
+    // Cancel modal state
+    showCancelModal = false;
+    cancellingAppt: Appointment | null = null;
+    cancelReason = '';
+    isCancelling = false;
+    cancelError = '';
+
+    // Date filter — restored from sessionStorage or today by default
+    selectedDate: string = sessionStorage.getItem('rh_selectedDate') || todayLocalISO();
+
+    // ── Reschedule Modal State ──
+    showRescheduleModal = false;
+    reschedulingAppt: Appointment | null = null;
+    rescheduleDate: string = '';
+    rescheduleTime: string = '';
+    rescheduleBookedSlots: string[] = [];
+    isRescheduling = false;
+    isLoadingRescheduleSlots = false;
+    rescheduleError = '';
+    allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+    readonly rescheduleMinDate: string = todayLocalISO();
+    readonly rescheduleMaxDate: string = DEFAULT_SYSTEM_SETTINGS.addAppointment.maxDate;
 
     // Clinic & Doctor filters
     filterClinicId: string = '';
@@ -80,6 +98,13 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         this.loadClinicOptions();
         this.buildDoctorNameCache();
         this.scheduleAutoCancelAtCutoff();
+        // Sync calendar view to persisted date
+        if (this.selectedDate) {
+            const [y, mo] = this.selectedDate.split('-').map(Number);
+            this.calendarDate = new Date(y, mo - 1, 1);
+            const parts = this.selectedDate.split('-').map(Number);
+            this.selectedCalDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        }
         // Keep UI in sync when appointment status changes from other pages.
         this.refreshTimer = setInterval(() => {
             void this.refreshAppointments();
@@ -301,6 +326,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     goToday(): void {
         this.selectedDate = todayLocalISO();
+        sessionStorage.setItem('rh_selectedDate', this.selectedDate);
     }
 
     onDateInput(value: string): void {
@@ -311,6 +337,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         } else {
             this.selectedDate = value;
         }
+        sessionStorage.setItem('rh_selectedDate', this.selectedDate);
     }
 
     // ── Calendar ──
@@ -359,37 +386,50 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const mo = String(date.getMonth() + 1).padStart(2, '0');
         const d = String(date.getDate()).padStart(2, '0');
         this.selectedDate = `${y}-${mo}-${d}`;
+        sessionStorage.setItem('rh_selectedDate', this.selectedDate);
     }
 
-    // ── Drag & Drop ──
+    // ── Cancel Appointment Modal ──
 
-    onDragStart(event: DragEvent, appt: Appointment): void {
-        this.draggingCard = appt;
-        event.dataTransfer?.setData('text/plain', appt.id ?? '');
-        (event.target as HTMLElement).classList.add('rh-card--dragging');
+    openCancelModal(appt: Appointment): void {
+        this.cancellingAppt = appt;
+        this.cancelReason = '';
+        this.cancelError = '';
+        this.isCancelling = false;
+        this.showCancelModal = true;
+        this.cdr.detectChanges();
     }
 
-    onDragEnd(event: DragEvent): void {
-        (event.target as HTMLElement).classList.remove('rh-card--dragging');
-        this.draggingCard = null;
-        this.dragOverColumn = null;
+    closeCancelModal(): void {
+        this.showCancelModal = false;
+        this.cancellingAppt = null;
+        this.cancelReason = '';
+        this.cancelError = '';
+        this.isCancelling = false;
+        this.cdr.detectChanges();
     }
 
-    onDragOver(event: DragEvent, colId: Appointment['status']): void {
-        event.preventDefault();
-        this.dragOverColumn = colId;
-    }
-
-    onDragLeave(): void { this.dragOverColumn = null; }
-
-    async onDrop(event: DragEvent, colId: Appointment['status']): Promise<void> {
-        event.preventDefault();
-        this.dragOverColumn = null;
-        if (colId === 'completed') return;
-        if (!this.draggingCard || this.draggingCard.status === colId) return;
-        const appt = this.draggingCard;
-        this.draggingCard = null;
-        await this.updateStatus(appt, colId);
+    async confirmCancel(): Promise<void> {
+        if (!this.cancellingAppt?.id) return;
+        const reason = this.cancelReason.trim();
+        if (!reason) {
+            this.cancelError = 'Please provide a reason for cancellation.';
+            this.cdr.detectChanges();
+            return;
+        }
+        this.isCancelling = true;
+        this.cancelError = '';
+        this.cdr.detectChanges();
+        try {
+            await this.appointmentService.cancelAppointment(this.cancellingAppt.id, reason);
+            this.cancellingAppt.status = 'cancelled';
+            this.cancellingAppt.cancellationReason = reason;
+            this.closeCancelModal();
+        } catch {
+            this.cancelError = 'Failed to cancel appointment. Please try again.';
+            this.isCancelling = false;
+            this.cdr.detectChanges();
+        }
     }
 
     async updateStatus(appt: Appointment, status: Appointment['status']): Promise<void> {
@@ -397,6 +437,10 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         if (status === 'completed') {
             this.errorMessage = 'Appointments are completed automatically when a visit is added.';
             this.cdr.detectChanges();
+            return;
+        }
+        if (status === 'cancelled') {
+            this.openCancelModal(appt);
             return;
         }
         this.updatingId = appt.id!;
@@ -525,4 +569,154 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     get hasActiveFilters(): boolean {
         return !!(this.filterClinicId || this.filterDoctorId);
     }
-}
+
+    // ═══════════════════════════════════════════
+    //  RESCHEDULE Modal
+    // ═══════════════════════════════════════════
+
+    async openRescheduleModal(appt: Appointment): Promise<void> {
+        this.reschedulingAppt = appt;
+        this.rescheduleTime = '';
+        this.rescheduleBookedSlots = [];
+        this.rescheduleError = '';
+        this.isRescheduling = false;
+        this.isLoadingRescheduleSlots = false;
+        this.showRescheduleModal = true;
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const y = tomorrow.getFullYear();
+        const m = String(tomorrow.getMonth() + 1).padStart(2, '0');
+        const d = String(tomorrow.getDate()).padStart(2, '0');
+        this.rescheduleDate = `${y}-${m}-${d}`;
+        await this.computeRescheduleBookedSlots();
+        this.cdr.detectChanges();
+    }
+
+    cancelReschedule(): void {
+        this.showRescheduleModal = false;
+        this.reschedulingAppt = null;
+        this.rescheduleDate = '';
+        this.rescheduleTime = '';
+        this.rescheduleBookedSlots = [];
+        this.rescheduleError = '';
+        this.cdr.detectChanges();
+    }
+
+    isRescheduleSlotInPast(slot: string): boolean {
+        if (!this.rescheduleDate) return false;
+        const today = new Date();
+        const [y, mo, day] = this.rescheduleDate.split('-').map(Number);
+        const isToday = today.getFullYear() === y && today.getMonth() === mo - 1 && today.getDate() === day;
+        if (!isToday) return false;
+        const [h, m] = slot.split(':').map(Number);
+        const slotMinutes = h * 60 + m;
+        const nowMinutes = today.getHours() * 60 + today.getMinutes();
+        return slotMinutes <= nowMinutes;
+    }
+
+    get rescheduleAvailableSlots(): string[] {
+        return this.allTimeSlots.filter(s => !this.rescheduleBookedSlots.includes(s) && !this.isRescheduleSlotInPast(s));
+    }
+
+    isRescheduleDateInPast(): boolean {
+        if (!this.rescheduleDate) return false;
+        return this.rescheduleDate < todayLocalISO();
+    }
+
+    async onRescheduleDateChange(): Promise<void> {
+        this.rescheduleTime = '';
+        this.rescheduleError = '';
+        if (!this.rescheduleDate) {
+            this.rescheduleBookedSlots = [];
+            return;
+        }
+        if (this.isRescheduleDateInPast()) {
+            this.rescheduleBookedSlots = [];
+            this.rescheduleError = 'Cannot reschedule to a past date. Please select today or a future date.';
+            this.cdr.detectChanges();
+            return;
+        }
+        await this.computeRescheduleBookedSlots();
+        this.cdr.detectChanges();
+    }
+
+    private async computeRescheduleBookedSlots(): Promise<void> {
+        const appt = this.reschedulingAppt;
+        if (!appt || !this.rescheduleDate) {
+            this.rescheduleBookedSlots = [];
+            return;
+        }
+        const doctorEmail = appt.doctorId ? normalizeEmail(appt.doctorId) : undefined;
+        const clinicId = appt.clinicId || undefined;
+        const excludeId = appt.id || undefined;
+
+        // ── Instant: compute from in-memory appointments (no network) ──
+        const [y, mo, day] = this.rescheduleDate.split('-').map(Number);
+        this.rescheduleBookedSlots = this.appointments
+            .filter(a => {
+                if (a.status === 'cancelled') return false;
+                if (excludeId && a.id === excludeId) return false;
+                const d = new Date(a.appointmentDate);
+                const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
+                if (!sameDay) return false;
+                if (doctorEmail && normalizeEmail(a.doctorId || '') !== doctorEmail) return false;
+                if (clinicId && a.clinicId && a.clinicId !== clinicId) return false;
+                return true;
+            })
+            .map(a => a.appointmentTime);
+        this.isLoadingRescheduleSlots = false;
+        this.cdr.detectChanges();
+
+        // ── Background: refresh from Firestore for accuracy ──
+        try {
+            const freshSlots = await this.appointmentService.getBookedSlotsForDate(
+                this.rescheduleDate,
+                doctorEmail,
+                clinicId,
+                excludeId
+            );
+            this.rescheduleBookedSlots = freshSlots;
+        } catch {
+            // Keep the in-memory result on error
+        } finally {
+            this.cdr.detectChanges();
+        }
+    }
+
+    async submitReschedule(): Promise<void> {
+        if (!this.reschedulingAppt?.id || !this.rescheduleDate || !this.rescheduleTime) {
+            this.rescheduleError = 'Please select a date and time slot.';
+            return;
+        }
+        if (this.isRescheduleDateInPast()) {
+            this.rescheduleError = 'Cannot reschedule to a past date. Please select today or a future date.';
+            return;
+        }
+        if (this.isRescheduleSlotInPast(this.rescheduleTime)) {
+            this.rescheduleError = 'This time slot has already passed. Please select a future time.';
+            this.rescheduleTime = '';
+            return;
+        }
+        const newDate = new Date(this.rescheduleDate + 'T00:00:00');
+        const newTime = this.rescheduleTime;
+        const apptId = this.reschedulingAppt.id;
+
+        this.reschedulingAppt.appointmentDate = newDate;
+        this.reschedulingAppt.appointmentTime = newTime;
+        this.cancelReschedule();
+        this.cdr.detectChanges();
+
+        this.appointmentService.postponeAppointment(apptId, newDate, newTime)
+            .then(() => this.refreshAppointments())
+            .catch(() => {
+                console.error('Reschedule write failed – will re-sync on next refresh.');
+            });
+    }
+
+    formatSlotLabel(time: string): string {
+        const [h, m] = time.split(':').map(Number);
+        const period = h >= 12 ? 'PM' : 'AM';
+        return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
+    }
+}
