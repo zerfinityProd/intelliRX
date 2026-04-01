@@ -15,6 +15,7 @@ import { ClinicContextService } from '../../services/clinicContextService';
 import { Patient } from '../../models/patient.model';
 import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
+import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
 import { NavbarComponent } from '../navbar/navbar';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
@@ -33,7 +34,7 @@ export interface DashboardDoctor {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddPatientComponent, NavbarComponent, MomentDatePipe],
+  imports: [CommonModule, FormsModule, AddPatientComponent, NavbarComponent, MomentDatePipe, DayViewModalComponent],
   templateUrl: './home.html',
   styleUrl: './home.css'
 })
@@ -70,6 +71,13 @@ export class HomeComponent implements OnInit {
   bookedSlotsForSelected: string[] = [];
   isLoadingSlots: boolean = false;
   readonly allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+
+  // Day View Modal state
+  showDayViewModal = false;
+  dayViewDate: Date | null = null;
+  dayViewAppointments: Appointment[] = [];
+  dayViewBookedSlots: string[] = [];
+  isLoadingDayView = false;
 
   get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
   get isLoadingMore(): boolean { return this.patientService.isLoadingMore; }
@@ -119,7 +127,10 @@ export class HomeComponent implements OnInit {
       this.isSearching = false;
       this.cdr.markForCheck();
     });
-    this.loadAppointments();
+    this.loadAppointments().then(() => {
+      // Restore day view modal from sessionStorage after appointments load
+      this.restoreDayViewFromSession();
+    });
     this.loadPatientCount();
   }
 
@@ -435,6 +446,8 @@ export class HomeComponent implements OnInit {
     this.selectedDate = date;
     // Keep the "slots free" counter accurate even when the slot viewer is collapsed.
     void this.loadSlotsForDate(date);
+    // Open Day View Modal
+    this.openDayViewModal(date);
   }
 
   onPageClick(event: MouseEvent): void {
@@ -667,4 +680,98 @@ export class HomeComponent implements OnInit {
   }
   closeAddAppointmentForm(): void { this.uiStateService.closeAddAppointmentForm(); }
   onAppointmentBooked(id: string): void {}
+
+  // ═══════════════════════════════════════════
+  //  Day View Modal
+  // ═══════════════════════════════════════════
+
+  openDayViewModal(date: Date): void {
+    this.dayViewDate = date;
+    this.showDayViewModal = true;
+    this.isLoadingDayView = true;
+    // Persist to sessionStorage
+    const y = date.getFullYear();
+    const mo = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    sessionStorage.setItem('home_dayViewDate', `${y}-${mo}-${d}`);
+    this.cdr.detectChanges();
+
+    // Build data for the modal
+    this.dayViewAppointments = this.appointmentsOnDate(date);
+    this.dayViewBookedSlots = this.dayViewAppointments
+      .filter(a => a.status !== 'cancelled')
+      .map(a => a.appointmentTime);
+    this.isLoadingDayView = false;
+    this.cdr.detectChanges();
+  }
+
+  closeDayView(): void {
+    this.showDayViewModal = false;
+    this.dayViewDate = null;
+    this.dayViewAppointments = [];
+    this.dayViewBookedSlots = [];
+    sessionStorage.removeItem('home_dayViewDate');
+    this.cdr.detectChanges();
+  }
+
+  /** Restore day view modal state from sessionStorage (called after appointments load) */
+  private restoreDayViewFromSession(): void {
+    const saved = sessionStorage.getItem('home_dayViewDate');
+    if (!saved) return;
+    const [y, mo, d] = saved.split('-').map(Number);
+    if (!y || !mo || !d) return;
+    const date = new Date(y, mo - 1, d);
+    this.selectedDate = date;
+    this.openDayViewModal(date);
+  }
+
+  onDayViewBookSlot(time: string): void {
+    if (!this.dayViewDate) return;
+    this.closeDayView();
+    this.bookSpecificSlot(time);
+  }
+
+  onDayViewAddVisit(appt: Appointment): void {
+    this.closeDayView();
+    const directPatientId = (appt.patientId || '').trim();
+    if (directPatientId) {
+      this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'home' } });
+    } else {
+      this.router.navigate(['/home'], {
+        queryParams: {
+          openAddPatient: '1',
+          name: appt.patientName || '',
+          phone: appt.patientPhone || '',
+          ailments: appt.ailments || ''
+        }
+      });
+    }
+  }
+
+  onDayViewReschedule(appt: Appointment): void {
+    // Close modal — the parent page handles reschedule modals differently
+    // For doctor home, navigate to appointments page for full management
+    this.closeDayView();
+    this.router.navigate(['/appointments']);
+  }
+
+  onDayViewCancel(appt: Appointment): void {
+    // Close modal and navigate to appointments for full management
+    this.closeDayView();
+    this.router.navigate(['/appointments']);
+  }
+
+  /** Whether the day view date is in the past */
+  get isDayViewDateInPast(): boolean {
+    if (!this.dayViewDate) return false;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const selected = new Date(this.dayViewDate.getFullYear(), this.dayViewDate.getMonth(), this.dayViewDate.getDate());
+    return selected < todayStart;
+  }
+
+  /** Doctor name for the day view */
+  get dayViewDoctorName(): string {
+    return this.selectedDashboardDoctor?.name || '';
+  }
 }

@@ -659,3 +659,21 @@
   [prefillName]="addPatientPrefillName"
   [prefillPhone]="addPatientPrefillPhone"
   [prefillAilments]="addPatientPrefillAilments"></app-add-patient>
+
+<!-- ── Day View Modal ── -->
+<app-day-view-modal
+  *ngIf="showDayViewModal && dayViewDate"
+  [date]="dayViewDate"
+  [appointments]="dayViewAppointments"
+  [allTimeSlots]="allTimeSlots"
+  [bookedSlots]="dayViewBookedSlots"
+  [isLoading]="isLoadingDayView"
+  [isPastDate]="isDayViewDateInPast"
+  [userRole]="userRole"
+  [doctorName]="dayViewDoctorName"
+  (closeModal)="closeDayView()"
+  (bookSlot)="onDayViewBookSlot($event)"
+  (addVisit)="onDayViewAddVisit($event)"
+  (rescheduleAppt)="onDayViewReschedule($event)"
+  (cancelAppt)="onDayViewCancel($event)">
+</app-day-view-modal>

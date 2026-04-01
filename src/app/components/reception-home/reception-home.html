@@ -568,3 +568,23 @@
 
   </div>
 </div>
+
+<!-- ══════════════════════════════════════════════
+     DAY VIEW MODAL
+══════════════════════════════════════════════ -->
+<app-day-view-modal
+  *ngIf="showDayViewModal && dayViewDate"
+  [date]="dayViewDate"
+  [appointments]="dayViewAppointments"
+  [allTimeSlots]="allTimeSlots"
+  [bookedSlots]="dayViewBookedSlots"
+  [isLoading]="isLoadingDayView"
+  [isPastDate]="isDayViewDateInPast"
+  [userRole]="'receptionist'"
+  [doctorName]="dayViewDoctorName"
+  (closeModal)="closeDayView()"
+  (bookSlot)="onDayViewBookSlot($event)"
+  (addVisit)="onDayViewAddVisit($event)"
+  (rescheduleAppt)="onDayViewReschedule($event)"
+  (cancelAppt)="onDayViewCancel($event)">
+</app-day-view-modal>

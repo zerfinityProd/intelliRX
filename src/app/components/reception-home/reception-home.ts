@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
+import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
 import { AppointmentService } from '../../services/appointmentService';
 import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
@@ -20,7 +21,7 @@ import doctorsData from '../../data/doctors.json';
 @Component({
     selector: 'app-reception-home',
     standalone: true,
-    imports: [CommonModule, FormsModule, NavbarComponent],
+    imports: [CommonModule, FormsModule, NavbarComponent, DayViewModalComponent],
     templateUrl: './reception-home.html',
     styleUrl: './reception-home.css'
 })
@@ -71,6 +72,13 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     calendarDate: Date = new Date();
     selectedCalDate: Date | null = null;
 
+    // Day View Modal
+    showDayViewModal = false;
+    dayViewDate: Date | null = null;
+    dayViewAppointments: Appointment[] = [];
+    dayViewBookedSlots: string[] = [];
+    isLoadingDayView = false;
+
     // Greeting
     greeting: string = '';
     userName: string = '';
@@ -94,7 +102,10 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     ngOnInit(): void {
         this.setGreeting();
-        this.loadAppointments();
+        this.loadAppointments().then(() => {
+            // Restore day view modal from sessionStorage after appointments load
+            this.restoreDayViewFromSession();
+        });
         this.loadClinicOptions();
         this.buildDoctorNameCache();
         this.scheduleAutoCancelAtCutoff();
@@ -387,6 +398,8 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const d = String(date.getDate()).padStart(2, '0');
         this.selectedDate = `${y}-${mo}-${d}`;
         sessionStorage.setItem('rh_selectedDate', this.selectedDate);
+        // Open Day View Modal
+        this.openDayViewModal(date);
     }
 
     // ── Cancel Appointment Modal ──
@@ -718,5 +731,96 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const [h, m] = time.split(':').map(Number);
         const period = h >= 12 ? 'PM' : 'AM';
         return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
+    }
+
+    // ═══════════════════════════════════════════
+    //  Day View Modal
+    // ═══════════════════════════════════════════
+
+    openDayViewModal(date: Date): void {
+        this.dayViewDate = date;
+        this.showDayViewModal = true;
+        this.isLoadingDayView = true;
+        // Persist to sessionStorage
+        const yy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        sessionStorage.setItem('rh_dayViewDate', `${yy}-${mm}-${dd}`);
+        this.cdr.detectChanges();
+
+        // Build data for the modal
+        this.dayViewAppointments = this.appointmentsOnDate(date);
+        this.dayViewBookedSlots = this.dayViewAppointments
+            .filter(a => a.status !== 'cancelled')
+            .map(a => a.appointmentTime);
+        this.isLoadingDayView = false;
+        this.cdr.detectChanges();
+    }
+
+    closeDayView(): void {
+        this.showDayViewModal = false;
+        this.dayViewDate = null;
+        this.dayViewAppointments = [];
+        this.dayViewBookedSlots = [];
+        sessionStorage.removeItem('rh_dayViewDate');
+        this.cdr.detectChanges();
+    }
+
+    /** Restore day view modal state from sessionStorage (called after appointments load) */
+    private restoreDayViewFromSession(): void {
+        const saved = sessionStorage.getItem('rh_dayViewDate');
+        if (!saved) return;
+        const [y, mo, d] = saved.split('-').map(Number);
+        if (!y || !mo || !d) return;
+        const date = new Date(y, mo - 1, d);
+        this.selectedCalDate = date;
+        this.selectedDate = saved;
+        sessionStorage.setItem('rh_selectedDate', saved);
+        this.openDayViewModal(date);
+    }
+
+    onDayViewBookSlot(time: string): void {
+        if (!this.dayViewDate) return;
+        const y = this.dayViewDate.getFullYear();
+        const mo = String(this.dayViewDate.getMonth() + 1).padStart(2, '0');
+        const d = String(this.dayViewDate.getDate()).padStart(2, '0');
+        const iso = `${y}-${mo}-${d}`;
+        this.closeDayView();
+        const params: any = { date: iso, time };
+        if (this.filterDoctorId) {
+            const doc = this.allDoctors.find(dc => normalizeEmail(dc.email) === this.filterDoctorId);
+            if (doc) params.doctorId = doc.id;
+        }
+        this.router.navigate(['/add-appointment'], { queryParams: params });
+    }
+
+    onDayViewAddVisit(appt: Appointment): void {
+        this.closeDayView();
+        this.openVisitFromAppointment(appt);
+    }
+
+    onDayViewReschedule(appt: Appointment): void {
+        this.closeDayView();
+        this.openRescheduleModal(appt);
+    }
+
+    onDayViewCancel(appt: Appointment): void {
+        this.closeDayView();
+        this.openCancelModal(appt);
+    }
+
+    /** Whether the day view date is in the past */
+    get isDayViewDateInPast(): boolean {
+        if (!this.dayViewDate) return false;
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const selected = new Date(this.dayViewDate.getFullYear(), this.dayViewDate.getMonth(), this.dayViewDate.getDate());
+        return selected < todayStart;
+    }
+
+    /** Get the doctor name for the day view filtered display */
+    get dayViewDoctorName(): string {
+        if (!this.filterDoctorId) return '';
+        return this.doctorNameCache.get(this.filterDoctorId) || '';
     }
 }

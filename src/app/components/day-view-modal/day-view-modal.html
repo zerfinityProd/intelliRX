@@ -1,0 +1,201 @@
+<!-- ══════════════════════════════════════════════
+     DAY VIEW MODAL — Google Calendar Style
+══════════════════════════════════════════════ -->
+<div class="dv-backdrop" (click)="onBackdropClick()">
+  <div class="dv-modal" (click)="onModalClick($event)">
+
+    <!-- ── Header ── -->
+    <div class="dv-header">
+      <div class="dv-header__left">
+        <div class="dv-header__icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+        </div>
+        <div>
+          <h2 class="dv-header__title">{{ dateLabel }}</h2>
+          <p class="dv-header__sub">
+            <span *ngIf="!isLoading">
+              {{ totalCount }} appointment{{ totalCount !== 1 ? 's' : '' }}
+              <span *ngIf="!isPastDate"> · {{ freeSlotCount }} slots available</span>
+            </span>
+            <span *ngIf="isLoading">Loading schedule…</span>
+          </p>
+        </div>
+      </div>
+      <button class="dv-header__close" (click)="closeModal.emit()" aria-label="Close day view">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- ── Status summary pills ── -->
+    <div class="dv-summary" *ngIf="!isLoading && totalCount > 0">
+      <span class="dv-pill dv-pill--scheduled" *ngIf="scheduledCount > 0">
+        <span class="dv-pill__dot" style="background:#6366f1"></span>
+        {{ scheduledCount }} Scheduled
+      </span>
+      <span class="dv-pill dv-pill--completed" *ngIf="completedCount > 0">
+        <span class="dv-pill__dot" style="background:#10b981"></span>
+        {{ completedCount }} Completed
+      </span>
+      <span class="dv-pill dv-pill--cancelled" *ngIf="cancelledCount > 0">
+        <span class="dv-pill__dot" style="background:#ef4444"></span>
+        {{ cancelledCount }} Cancelled
+      </span>
+      <span class="dv-pill dv-pill--doctor" *ngIf="doctorName">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        {{ doctorName }}
+      </span>
+    </div>
+
+    <!-- ── Loading state ── -->
+    <div *ngIf="isLoading" class="dv-loading">
+      <div class="dv-loading__spinner"></div>
+      <span>Loading schedule…</span>
+    </div>
+
+    <!-- ── Timeline Body ── -->
+    <div class="dv-timeline-wrap" *ngIf="!isLoading">
+      <div class="dv-timeline">
+
+        <!-- Current time indicator -->
+        <div *ngIf="currentTimePercent >= 0"
+          class="dv-now-line"
+          [style.top.%]="currentTimePercent">
+          <span class="dv-now-dot"></span>
+          <span class="dv-now-rule"></span>
+        </div>
+
+        <!-- Slot rows -->
+        <div *ngFor="let slot of slots; let i = index"
+          class="dv-slot"
+          [class.dv-slot--hour-start]="slot.isHourStart"
+          [class.dv-slot--booked]="slot.appointment"
+          [class.dv-slot--past]="slot.isPast && !slot.appointment"
+          [class.dv-slot--available]="!slot.appointment && !slot.isPast && !isPastDate">
+
+          <!-- Time gutter -->
+          <div class="dv-slot__time">
+            <span *ngIf="slot.isHourStart" class="dv-slot__hour">{{ getHourLabel(slot) }}</span>
+            <span *ngIf="!slot.isHourStart" class="dv-slot__half">{{ slot.label }}</span>
+          </div>
+
+          <!-- Slot content -->
+          <div class="dv-slot__content">
+
+            <!-- ── APPOINTMENT BLOCK ── -->
+            <div *ngIf="slot.appointment" class="dv-appt-block"
+              [style.background]="getStatusBg(slot.appointment.status)"
+              [style.border-left-color]="getStatusColor(slot.appointment.status)"
+              [style.border-color]="getStatusBorder(slot.appointment.status)">
+
+              <div class="dv-appt-block__top">
+                <div class="dv-appt-block__avatar">
+                  {{ slot.appointment.patientName.charAt(0).toUpperCase() }}
+                </div>
+                <div class="dv-appt-block__info">
+                  <span class="dv-appt-block__name">{{ slot.appointment.patientName }}</span>
+                  <span class="dv-appt-block__meta">
+                    {{ formatTime(slot.appointment.appointmentTime) }}
+                    <span *ngIf="slot.appointment.ailments"> · {{ slot.appointment.ailments }}</span>
+                  </span>
+                </div>
+                <span class="dv-appt-badge"
+                  [style.background]="getStatusColor(slot.appointment.status)">
+                  {{ slot.appointment.status }}
+                </span>
+              </div>
+
+              <!-- Phone -->
+              <div class="dv-appt-block__detail" *ngIf="slot.appointment.patientPhone">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6z"></path>
+                </svg>
+                {{ slot.appointment.patientPhone }}
+              </div>
+
+              <!-- Cancellation reason -->
+              <div *ngIf="slot.appointment.status === 'cancelled' && slot.appointment.cancellationReason"
+                class="dv-appt-block__cancel-reason">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                {{ slot.appointment.cancellationReason }}
+              </div>
+
+              <!-- Inline Actions (scheduled only) -->
+              <div *ngIf="slot.appointment.status === 'scheduled'" class="dv-appt-block__actions">
+                <button class="dv-action-btn dv-action-btn--visit"
+                  (click)="onAddVisit(slot.appointment!, $event)">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="12" y1="11" x2="12" y2="17"></line>
+                    <line x1="9" y1="14" x2="15" y2="14"></line>
+                  </svg>
+                  {{ slot.appointment!.patientId ? 'Add Visit' : 'Add Patient' }}
+                </button>
+                <button class="dv-action-btn dv-action-btn--reschedule"
+                  (click)="onReschedule(slot.appointment!, $event)">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                  Reschedule
+                </button>
+                <button class="dv-action-btn dv-action-btn--cancel"
+                  (click)="onCancel(slot.appointment!, $event)">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <!-- ── EMPTY AVAILABLE SLOT ── -->
+            <button *ngIf="!slot.appointment && !slot.isPast && !isPastDate"
+              class="dv-empty-slot"
+              (click)="onBookSlot(slot.time)"
+              [title]="'Book appointment at ' + slot.label">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span class="dv-empty-slot__label">Book {{ slot.label }}</span>
+            </button>
+
+            <!-- ── PAST EMPTY SLOT ── -->
+            <div *ngIf="!slot.appointment && (slot.isPast || isPastDate)" class="dv-past-slot">
+              <span class="dv-past-slot__dash">—</span>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
