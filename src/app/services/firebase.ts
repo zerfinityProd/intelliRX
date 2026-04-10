@@ -19,6 +19,7 @@ import {
   startAfter
 } from '@angular/fire/firestore';
 import { Patient, Visit } from '../models/patient.model';
+import { ClinicContextService } from './clinicContextService';
 
 export interface PagedResult {
   results: Patient[];
@@ -30,63 +31,59 @@ export interface PagedResult {
   providedIn: 'root'
 })
 export class FirebaseService {
-  private patientsCollection: CollectionReference<DocumentData>;
-
   private patientCache: Map<string, { patient: Patient; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000;
   public readonly PAGE_SIZE = 25;
 
-  constructor(private db: Firestore) {
-    this.patientsCollection = collection(this.db, 'patients');
+  constructor(
+    private db: Firestore,
+    private clinicContext: ClinicContextService
+  ) {}
+
+  /**
+   * Top-level patients collection.
+   * All queries must filter by subscription_id.
+   */
+  private getPatientsCollection(): CollectionReference<DocumentData> {
+    return collection(this.db, 'patients');
   }
 
-  private generateUniqueId(familyId: string, userId: string, name?: string, phone?: string): string {
-    if (name && phone) {
-      const nameParts = name.trim().split(' ');
-      const firstName = nameParts[0].toLowerCase();
-      const lastName = nameParts[nameParts.length - 1].toLowerCase();
-      const cleanPhone = phone.trim();
-      // Match the generateFamilyId format: lastname_firstname_phone
-      return `${lastName}_${firstName}_${cleanPhone}_${userId}`;
-    }
-    return `${familyId}_${userId}`;
+  /**
+   * Top-level visits collection.
+   */
+  private getVisitsCollection(): CollectionReference<DocumentData> {
+    return collection(this.db, 'visits');
   }
 
-  generateFamilyId(name: string, phone: string): string {
-    const nameParts = name.trim().split(' ');
-    const cleanPhone = phone.trim();
-    const lastName = nameParts[nameParts.length - 1].toLowerCase();
-
-    // If single name, return lastname_phone
-    if (nameParts.length === 1) {
-      return `${lastName}_${cleanPhone}`;
-    }
-
-    // If multiple names, return lastname_firstname_phone
-    const firstName = nameParts[0].toLowerCase();
-    return `${lastName}_${firstName}_${cleanPhone}`;
+  private getSubscriptionId(): string {
+    return this.clinicContext.requireSubscriptionId();
   }
 
   async addPatient(
-    patientData: Omit<Patient, 'uniqueId' | 'createdAt' | 'updatedAt'>,
-    userId: string
+    patientData: Omit<Patient, 'id' | 'last_updated'>,
   ): Promise<string> {
     try {
-      const uniqueId = this.generateUniqueId(patientData.familyId, userId, patientData.name, patientData.phone);
-      const patientDoc = doc(this.patientsCollection, uniqueId);
+      const patientsCol = this.getPatientsCollection();
+      const patientDoc = doc(patientsCol);
+      const id = patientDoc.id;
+      const now = new Date().toISOString();
 
       const patient: Patient = {
         ...patientData,
-        uniqueId,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        id,
+        // Ensure subscription_id is always set
+        subscription_id: patientData.subscription_id || this.getSubscriptionId(),
+        // Ensure clinic_ids is always an array
+        clinic_ids: patientData.clinic_ids ?? [],
+        created_at: patientData.created_at || now,
+        last_updated: now
       };
 
       const patientWithSearch = { ...patient, nameLower: patient.name.toLowerCase() };
       const cleanedPatient = this.removeUndefinedFields(patientWithSearch);
       await setDoc(patientDoc, this.convertToFirestore(cleanedPatient));
-      this.addToCache(uniqueId, patient);
-      return uniqueId;
+      this.addToCache(id, patient);
+      return id;
     } catch (error) {
       console.error('Error adding patient:', error);
       throw error;
@@ -108,32 +105,30 @@ export class FirebaseService {
    */
   async searchPatientByPhone(
     phone: string,
-    userId: string,
     lastDoc: QueryDocumentSnapshot<DocumentData> | null = null,
     clinicId?: string
   ): Promise<PagedResult> {
     try {
+      const patientsCol = this.getPatientsCollection();
+      const subId = this.getSubscriptionId();
       const searchTerm = phone.trim();
       const constraints: any[] = [
+        where('subscription_id', '==', subId),
         where('phone', '>=', searchTerm),
         where('phone', '<=', searchTerm + '\uf8ff'),
         orderBy('phone'),
-        orderBy('createdAt', 'desc'),
         limit(this.PAGE_SIZE + 1)
       ];
-      // Scope by clinicId when available (shared across clinic staff), else by userId
       if (clinicId) {
-        constraints.unshift(where('clinicId', '==', clinicId));
-      } else {
-        constraints.unshift(where('userId', '==', userId));
+        constraints.push(where('clinic_ids', 'array-contains', clinicId));
       }
       if (lastDoc) constraints.push(startAfter(lastDoc));
 
-      const snapshot = await getDocs(query(this.patientsCollection, ...constraints));
+      const snapshot = await getDocs(query(patientsCol, ...constraints));
       const hasMore = snapshot.docs.length > this.PAGE_SIZE;
       const docs = hasMore ? snapshot.docs.slice(0, this.PAGE_SIZE) : snapshot.docs;
       const results = docs.map(d => this.convertFromFirestore(d.data()));
-      results.forEach(p => this.addToCache(p.uniqueId, p));
+      results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
 
       console.log(`Phone search: ${results.length} result(s), hasMore=${hasMore}`);
       return { results, lastDoc: docs[docs.length - 1] ?? null, hasMore };
@@ -144,35 +139,34 @@ export class FirebaseService {
   }
 
   /**
-   * Search by name prefix — paginated, silent fallback if index missing
+   * Search by name prefix — paginated
    */
   async searchPatientByName(
     name: string,
-    userId: string,
     lastDoc: QueryDocumentSnapshot<DocumentData> | null = null,
     clinicId?: string
   ): Promise<PagedResult> {
     try {
+      const patientsCol = this.getPatientsCollection();
+      const subId = this.getSubscriptionId();
       const searchTerm = name.toLowerCase().trim();
       const constraints: any[] = [
+        where('subscription_id', '==', subId),
         where('nameLower', '>=', searchTerm),
         where('nameLower', '<=', searchTerm + '\uf8ff'),
         orderBy('nameLower'),
-        orderBy('createdAt', 'desc'),
         limit(this.PAGE_SIZE + 1)
       ];
       if (clinicId) {
-        constraints.unshift(where('clinicId', '==', clinicId));
-      } else {
-        constraints.unshift(where('userId', '==', userId));
+        constraints.push(where('clinic_ids', 'array-contains', clinicId));
       }
       if (lastDoc) constraints.push(startAfter(lastDoc));
 
-      const snapshot = await getDocs(query(this.patientsCollection, ...constraints));
+      const snapshot = await getDocs(query(patientsCol, ...constraints));
       const hasMore = snapshot.docs.length > this.PAGE_SIZE;
       const docs = hasMore ? snapshot.docs.slice(0, this.PAGE_SIZE) : snapshot.docs;
       const results = docs.map(d => this.convertFromFirestore(d.data()));
-      results.forEach(p => this.addToCache(p.uniqueId, p));
+      results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
 
       console.log(`Name search: ${results.length} result(s), hasMore=${hasMore}`);
       return { results, lastDoc: docs[docs.length - 1] ?? null, hasMore };
@@ -183,74 +177,35 @@ export class FirebaseService {
   }
 
   /**
-   * Search by family ID — paginated
-   */
-  async searchPatientByFamilyId(
-    familyId: string,
-    userId: string,
-    lastDoc: QueryDocumentSnapshot<DocumentData> | null = null,
-    clinicId?: string
-  ): Promise<PagedResult> {
-    try {
-      const searchTerm = familyId.toLowerCase().trim();
-      const constraints: any[] = [
-        where('familyId', '>=', searchTerm),
-        where('familyId', '<=', searchTerm + '\uf8ff'),
-        orderBy('familyId'),
-        orderBy('createdAt', 'desc'),
-        limit(this.PAGE_SIZE + 1)
-      ];
-      if (clinicId) {
-        constraints.unshift(where('clinicId', '==', clinicId));
-      } else {
-        constraints.unshift(where('userId', '==', userId));
-      }
-      if (lastDoc) constraints.push(startAfter(lastDoc));
-
-      const snapshot = await getDocs(query(this.patientsCollection, ...constraints));
-      const hasMore = snapshot.docs.length > this.PAGE_SIZE;
-      const docs = hasMore ? snapshot.docs.slice(0, this.PAGE_SIZE) : snapshot.docs;
-      const results = docs.map(d => this.convertFromFirestore(d.data()));
-      results.forEach(p => this.addToCache(p.uniqueId, p));
-
-      console.log(`FamilyId search: ${results.length} result(s), hasMore=${hasMore}`);
-      return { results, lastDoc: docs[docs.length - 1] ?? null, hasMore };
-    } catch (error) {
-      console.error('Error searching patient by family ID:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fetch all patients for user and filter client-side for "contains" matching
-   * Used as a fallback to support mid-string search on phone and name
+   * Fetch all patients within the subscription and filter client-side for "contains" matching
    */
   async searchPatientsContaining(
     term: string,
-    userId: string,
     clinicId?: string
   ): Promise<PagedResult> {
     try {
+      const patientsCol = this.getPatientsCollection();
+      const subId = this.getSubscriptionId();
       const lowerTerm = term.toLowerCase().trim();
-      // No orderBy — avoids composite index requirement; filter client-side
-      // Scope by clinicId when available (shared across clinic staff), else by userId
-      const queryConstraints: any[] = clinicId
-        ? [where('clinicId', '==', clinicId)]
-        : [where('userId', '==', userId)];
+      const queryConstraints: any[] = [
+        where('subscription_id', '==', subId)
+      ];
+      if (clinicId) {
+        queryConstraints.push(where('clinic_ids', 'array-contains', clinicId));
+      }
       queryConstraints.push(limit(500));
       const snapshot = await getDocs(
-        query(this.patientsCollection, ...queryConstraints)
+        query(patientsCol, ...queryConstraints)
       );
       const allPatients = snapshot.docs.map(d => this.convertFromFirestore(d.data()));
 
-      const results = allPatients.filter(p => {
+      const results = allPatients.filter((p: Patient) => {
         const nameMatch = p.name && p.name.toLowerCase().includes(lowerTerm);
         const phoneMatch = p.phone && p.phone.toString().includes(lowerTerm);
-        const familyIdMatch = p.familyId && p.familyId.toLowerCase().includes(lowerTerm);
-        return nameMatch || phoneMatch || familyIdMatch;
+        return nameMatch || phoneMatch;
       });
 
-      results.forEach(p => this.addToCache(p.uniqueId, p));
+      results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
       console.log(`Contains search "${term}": ${results.length} result(s)`);
       return { results, lastDoc: null, hasMore: false };
     } catch (error) {
@@ -259,20 +214,18 @@ export class FirebaseService {
     }
   }
 
-  async getPatientById(uniqueId: string, userId: string, clinicId?: string): Promise<Patient | null> {
+  async getPatientById(patientId: string): Promise<Patient | null> {
     try {
-      const cached = this.getFromCache(uniqueId);
-      if (cached && (cached.userId === userId || (clinicId && cached.clinicId === clinicId))) return cached;
+      const cached = this.getFromCache(patientId);
+      if (cached) return cached;
 
-      const patientDoc = doc(this.patientsCollection, uniqueId);
+      const patientsCol = this.getPatientsCollection();
+      const patientDoc = doc(patientsCol, patientId);
       const docSnap = await getDoc(patientDoc);
 
       if (docSnap.exists()) {
         const patient = this.convertFromFirestore(docSnap.data());
-        // Allow access if userId matches OR if clinicId matches (same clinic staff)
-        const hasAccess = patient.userId === userId || (clinicId && patient.clinicId === clinicId);
-        if (!hasAccess) return null;
-        this.addToCache(uniqueId, patient);
+        this.addToCache(patientId, patient);
         return patient;
       }
       return null;
@@ -282,22 +235,21 @@ export class FirebaseService {
     }
   }
 
-  async updatePatient(uniqueId: string, patientData: Partial<Patient>, userId: string, clinicId?: string): Promise<void> {
+  async updatePatient(patientId: string, patientData: Partial<Patient>): Promise<void> {
     try {
-      const existingPatient = await this.getPatientById(uniqueId, userId, clinicId);
-      if (!existingPatient) throw new Error('Patient not found or unauthorized');
+      const patientsCol = this.getPatientsCollection();
+      const patientDoc = doc(patientsCol, patientId);
 
-      const patientDoc = doc(this.patientsCollection, uniqueId);
-      const { createdAt, uniqueId: _, userId: __, ...dataWithoutProtectedFields } = patientData as any;
+      const { id: _, ...dataWithoutId } = patientData as any;
 
-      const updateData: any = { ...dataWithoutProtectedFields, updatedAt: new Date() };
-      if (dataWithoutProtectedFields.name) {
-        updateData.nameLower = dataWithoutProtectedFields.name.toLowerCase();
+      const updateData: any = { ...dataWithoutId, last_updated: new Date().toISOString() };
+      if (dataWithoutId.name) {
+        updateData.nameLower = dataWithoutId.name.toLowerCase();
       }
 
       const cleanedUpdate = this.removeUndefinedFields(updateData);
       await updateDoc(patientDoc, this.convertToFirestore(cleanedUpdate));
-      this.removeFromCache(uniqueId);
+      this.removeFromCache(patientId);
     } catch (error) {
       console.error('Error updating patient:', error);
       throw error;
@@ -305,64 +257,69 @@ export class FirebaseService {
   }
 
   async addVisit(
-    patientId: string,
-    visitData: Omit<Visit, 'id' | 'createdAt' | 'updatedAt'>,
-    userId: string,
-    clinicId?: string
+    visitData: Omit<Visit, 'id' | 'created_at'>,
   ): Promise<string> {
     try {
-      const patient = await this.getPatientById(patientId, userId, clinicId);
-      if (!patient) throw new Error('Patient not found or unauthorized');
-
-      const patientDoc = doc(this.patientsCollection, patientId);
-      const visitsCollection = collection(patientDoc, 'visits');
-      const visitDoc = doc(visitsCollection);
+      const visitsCol = this.getVisitsCollection();
+      const visitDoc = doc(visitsCol);
+      const id = visitDoc.id;
 
       const visit: Visit = {
         ...visitData,
-        id: visitDoc.id,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        id,
+        // Ensure subscription_id is always set
+        subscription_id: visitData.subscription_id || this.getSubscriptionId(),
+        // Ensure clinic_id is set from context if not provided
+        clinic_id: visitData.clinic_id || this.clinicContext.getSelectedClinicId() || '',
+        created_at: new Date().toISOString()
       };
 
       await setDoc(visitDoc, this.convertToFirestore(visit));
-      return visitDoc.id;
+      return id;
     } catch (error) {
       console.error('Error adding visit:', error);
       throw error;
     }
   }
 
-  async getPatientVisits(patientId: string, userId: string, clinicId?: string): Promise<Visit[]> {
+  async getPatientVisits(patientId: string): Promise<Visit[]> {
     try {
-      const patient = await this.getPatientById(patientId, userId, clinicId);
-      if (!patient) throw new Error('Patient not found or unauthorized');
-
-      const patientDoc = doc(this.patientsCollection, patientId);
-      const visitsCollection = collection(patientDoc, 'visits');
-      const q = query(visitsCollection, orderBy('createdAt', 'desc'), limit(50));
+      const visitsCol = this.getVisitsCollection();
+      const subId = this.getSubscriptionId();
+      const q = query(
+        visitsCol,
+        where('subscription_id', '==', subId),
+        where('patient_id', '==', patientId)
+      );
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(d => this.convertFromFirestore(d.data()) as Visit);
+      const visits = querySnapshot.docs.map(d => this.convertFromFirestore(d.data()) as Visit);
+      // Sort client-side to avoid requiring a Firestore composite index
+      visits.sort((a, b) => {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return dateB - dateA; // descending
+      });
+      return visits;
     } catch (error) {
       console.error('Error getting visits:', error);
       throw error;
     }
   }
 
-  private addToCache(uniqueId: string, patient: Patient): void {
-    this.patientCache.set(uniqueId, { patient, timestamp: Date.now() });
+  private addToCache(id: string, patient: Patient): void {
+    this.patientCache.set(id, { patient, timestamp: Date.now() });
   }
 
-  private getFromCache(uniqueId: string): Patient | null {
-    const cached = this.patientCache.get(uniqueId);
+  private getFromCache(id: string): Patient | null {
+    const cached = this.patientCache.get(id);
     if (!cached) return null;
     const isExpired = Date.now() - cached.timestamp > this.CACHE_DURATION;
-    if (isExpired) { this.patientCache.delete(uniqueId); return null; }
+    if (isExpired) { this.patientCache.delete(id); return null; }
     return cached.patient;
   }
 
-  private removeFromCache(uniqueId: string): void {
-    this.patientCache.delete(uniqueId);
+  private removeFromCache(id: string): void {
+    this.patientCache.delete(id);
   }
 
   public clearCache(): void {
@@ -379,46 +336,29 @@ export class FirebaseService {
     return converted;
   }
 
-  async getUserPreferences(uid: string): Promise<{ theme: 'light' | 'dark' } | null> {
-    try {
-      const userDoc = doc(this.db, 'users', uid);
-      const snap = await getDoc(userDoc);
-      if (snap.exists()) {
-        const data = snap.data();
-        return data['preferences'] ?? null;
-      }
-      return null;
-    } catch (error) {
-      // Preferences might be blocked by Firestore rules; fall back silently.
-      return null;
-    }
-  }
-
-  async saveUserPreferences(uid: string, preferences: { theme: 'light' | 'dark' }): Promise<void> {
-    try {
-      const userDoc = doc(this.db, 'users', uid);
-      await setDoc(userDoc, { preferences }, { merge: true });
-    } catch (error) {
-      // Preferences might be blocked by Firestore rules; ignore silently.
-    }
-  }
-
-  async deleteVisit(patientId: string, visitId: string, userId: string): Promise<void> {
-    const patientDoc = doc(this.patientsCollection, patientId);
-    const visitDoc = doc(collection(patientDoc, 'visits'), visitId);
+  async deleteVisit(visitId: string): Promise<void> {
+    const visitsCol = this.getVisitsCollection();
+    const visitDoc = doc(visitsCol, visitId);
     await deleteDoc(visitDoc);
   }
 
-  async deletePatient(uniqueId: string, userId: string): Promise<void> {
-    // Delete all visits first
-    const patientDoc = doc(this.patientsCollection, uniqueId);
-    const visitsCollection = collection(patientDoc, 'visits');
-    const visitsSnapshot = await getDocs(query(visitsCollection, where('userId', '==', userId)));
+  async deletePatient(patientId: string): Promise<void> {
+    const patientsCol = this.getPatientsCollection();
+    // Delete all visits for this patient first
+    const visitsCol = this.getVisitsCollection();
+    const subId = this.getSubscriptionId();
+    const visitsQuery = query(
+      visitsCol,
+      where('subscription_id', '==', subId),
+      where('patient_id', '==', patientId)
+    );
+    const visitsSnapshot = await getDocs(visitsQuery);
     const deletePromises = visitsSnapshot.docs.map(d => deleteDoc(d.ref));
     await Promise.all(deletePromises);
     // Delete patient document
+    const patientDoc = doc(patientsCol, patientId);
     await deleteDoc(patientDoc);
-    this.patientCache.delete(uniqueId);
+    this.patientCache.delete(patientId);
   }
 
   private convertFromFirestore(data: any): any {

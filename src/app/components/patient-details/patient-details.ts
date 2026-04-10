@@ -5,7 +5,7 @@ import { Observable } from 'rxjs';
 import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
 import { AuthenticationService } from '../../services/authenticationService';
-import { AuthorizationService } from '../../services/authorizationService';
+import { AuthorizationService, UserPermissions } from '../../services/authorizationService';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
 import { NavbarComponent } from '../navbar/navbar';
@@ -36,8 +36,14 @@ export class PatientDetailsComponent implements OnInit {
   isDeletingVisit: boolean = false;
   isDeletingPatient: boolean = false;
 
-  // ✅ Driven by Firestore canDelete field — no hardcoded emails
-  canDelete: boolean = false;
+  // Permissions — driven by Firestore layered resolution (per-user → subscription → default)
+  permissions: UserPermissions = {
+    canDelete: false, canEdit: false, canAddPatient: false,
+    canAddVisit: false, canAppointment: false, canCancel: false,
+  };
+
+  /** Convenience getter for template backward compatibility */
+  get canDelete(): boolean { return this.permissions.canDelete; }
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -48,9 +54,9 @@ export class PatientDetailsComponent implements OnInit {
   private readonly ngZone = inject(NgZone);
 
   async ngOnInit(): Promise<void> {
-    // ✅ Fetch canDelete permission from Firestore
+    // Fetch all permissions from Firestore (layered resolution)
     const email = this.authService.currentUserValue?.email || '';
-    this.canDelete = await this.authorizationService.canUserDelete(email);
+    this.permissions = await this.authorizationService.getUserPermissions(email);
 
     const patientId = this.route.snapshot.paramMap.get('id');
 
@@ -106,7 +112,7 @@ export class PatientDetailsComponent implements OnInit {
   }
 
   async loadVisits(): Promise<void> {
-    if (!this.patient || !this.patient.uniqueId) return;
+    if (!this.patient || !this.patient.id) return;
 
     this.ngZone.run(() => {
       this.isLoadingVisits = true;
@@ -115,7 +121,7 @@ export class PatientDetailsComponent implements OnInit {
 
     try {
       console.log('📡 Fetching visits...');
-      this.visits = await this.patientService.getPatientVisits(this.patient.uniqueId);
+      this.visits = await this.patientService.getPatientVisits(this.patient.id!);
       console.log('✅ Visits loaded:', this.visits.length);
 
       this.ngZone.run(() => {
@@ -134,7 +140,7 @@ export class PatientDetailsComponent implements OnInit {
   // Navigate to the dedicated Add Visit page
   openAddVisitForm(): void {
     if (this.patient) {
-      this.router.navigate(['/patient', this.patient.uniqueId, 'add-visit'], { state: { origin: 'patient' } });
+      this.router.navigate(['/patient', this.patient.id, 'add-visit'], { state: { origin: 'patient' } });
     }
   }
 
@@ -186,7 +192,7 @@ export class PatientDetailsComponent implements OnInit {
     if (!this.visitToDelete || !this.patient) return;
     this.isDeletingVisit = true;
     try {
-      await this.patientService.deleteVisit(this.patient.uniqueId, this.visitToDelete.id!);
+      await this.patientService.deleteVisit(this.patient.id!, this.visitToDelete.id!);
       this.cancelDeleteVisit();
       await this.loadVisits();
     } catch (error) {
@@ -218,7 +224,7 @@ export class PatientDetailsComponent implements OnInit {
     if (!this.patient) return;
     this.isDeletingPatient = true;
     try {
-      await this.patientService.deletePatient(this.patient.uniqueId);
+      await this.patientService.deletePatient(this.patient.id!);
       this.router.navigate(['/home']);
     } catch (error) {
       console.error('Error deleting patient:', error);

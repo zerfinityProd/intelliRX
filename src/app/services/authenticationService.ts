@@ -12,9 +12,9 @@ import {
     updateProfile,
     sendPasswordResetEmail
 } from '@angular/fire/auth';
-import { Firestore } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 import { AuthorizationService } from './authorizationService';
+import { ClinicContextService } from './clinicContextService';
 
 export interface UserPreferences {
     theme: 'light' | 'dark';
@@ -42,8 +42,8 @@ export class AuthenticationService {
     public authReady$ = this.authReadySubject.asObservable();
 
     private auth = inject(Auth);
-    private firestore = inject(Firestore);
     private authorizationService = inject(AuthorizationService);
+    private clinicContextService = inject(ClinicContextService);
     private injector = inject(EnvironmentInjector);
     private router = inject(Router);
 
@@ -61,8 +61,18 @@ export class AuthenticationService {
                         await signOut(this.auth);
                         this.setCurrentUser(null);
                     } else {
-                        // Fetch role so it's available after page refresh
+                        // Fetch role and set subscription/clinic context
                         const role = await this.authorizationService.getUserRole(email);
+                        const subscriptionId = await this.authorizationService.getUserSubscriptionId(email);
+                        const clinicIds = await this.authorizationService.getUserClinicIds(email);
+                        // Set clinic context so all services can build subscription-scoped paths
+                        if (subscriptionId) {
+                            const currentClinic = this.clinicContextService.getSelectedClinicId();
+                            const clinicId = currentClinic && clinicIds.includes(currentClinic)
+                                ? currentClinic
+                                : (clinicIds[0] || null);
+                            this.clinicContextService.setClinicContext(clinicId, subscriptionId);
+                        }
                         const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                         this.setCurrentUser(user);
                     }

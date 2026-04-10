@@ -10,14 +10,12 @@ import { QueryDocumentSnapshot, DocumentData } from '@angular/fire/firestore';
  */
 interface PaginationState {
     lastPhoneDoc: QueryDocumentSnapshot<DocumentData> | null;
-    lastFamilyDoc: QueryDocumentSnapshot<DocumentData> | null;
     lastNameDoc: QueryDocumentSnapshot<DocumentData> | null;
     hasMore: boolean;
 }
 
 /**
  * Manages patient search and pagination
- * Handles search queries, result caching, and pagination state
  */
 @Injectable({
     providedIn: 'root'
@@ -32,7 +30,6 @@ export class PatientSearchService {
     private cachedResults: Patient[] = [];
     private paginationState: PaginationState = {
         lastPhoneDoc: null,
-        lastFamilyDoc: null,
         lastNameDoc: null,
         hasMore: false
     };
@@ -45,7 +42,7 @@ export class PatientSearchService {
     /**
      * Execute new search (resets pagination)
      */
-    async search(searchTerm: string, userId: string): Promise<void> {
+    async search(searchTerm: string): Promise<void> {
         try {
             const trimmedTerm = searchTerm.trim();
 
@@ -62,8 +59,8 @@ export class PatientSearchService {
             if (this.currentIsNumeric) {
                 // Run phone prefix search AND contains search in parallel
                 const [phoneSettled, containsSettled] = await Promise.allSettled([
-                    this.firebaseService.searchPatientByPhone(trimmedTerm, userId, null, clinicId),
-                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId, clinicId)
+                    this.firebaseService.searchPatientByPhone(trimmedTerm, null, clinicId),
+                    this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
                 ]);
 
                 const phoneResult = phoneSettled.status === 'fulfilled' ? phoneSettled.value : { results: [], lastDoc: null, hasMore: false };
@@ -74,24 +71,19 @@ export class PatientSearchService {
 
                 allResults = this.mergeAndDeduplicateResults(phoneResult.results, containsResult.results);
             } else {
-                // Run family, name prefix searches AND contains search in parallel
-                const [familySettled, nameSettled, containsSettled] = await Promise.allSettled([
-                    this.firebaseService.searchPatientByFamilyId(trimmedTerm.toLowerCase(), userId, null, clinicId),
-                    this.firebaseService.searchPatientByName(trimmedTerm, userId, null, clinicId),
-                    this.firebaseService.searchPatientsContaining(trimmedTerm, userId, clinicId)
+                // Run name prefix search AND contains search in parallel
+                const [nameSettled, containsSettled] = await Promise.allSettled([
+                    this.firebaseService.searchPatientByName(trimmedTerm, null, clinicId),
+                    this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
                 ]);
 
-                const familyResult = familySettled.status === 'fulfilled' ? familySettled.value : { results: [], lastDoc: null, hasMore: false };
                 const nameResult = nameSettled.status === 'fulfilled' ? nameSettled.value : { results: [], lastDoc: null, hasMore: false };
                 const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastDoc: null, hasMore: false };
 
-                this.paginationState.lastFamilyDoc = familyResult.lastDoc;
                 this.paginationState.lastNameDoc = nameResult.lastDoc;
-                this.paginationState.hasMore = familyResult.hasMore || nameResult.hasMore;
+                this.paginationState.hasMore = nameResult.hasMore;
 
-                // Merge and deduplicate results from all sources
-                const prefixResults = this.mergeAndDeduplicateResults(familyResult.results, nameResult.results);
-                allResults = this.mergeAndDeduplicateResults(prefixResults, containsResult.results);
+                allResults = this.mergeAndDeduplicateResults(nameResult.results, containsResult.results);
             }
 
             this.updateResults(allResults);
@@ -106,7 +98,7 @@ export class PatientSearchService {
     /**
      * Load next page of results (appends to current)
      */
-    async loadMore(userId: string): Promise<void> {
+    async loadMore(): Promise<void> {
         if (!this.hasMoreResults || this.isLoadingMore) return;
 
         try {
@@ -117,7 +109,6 @@ export class PatientSearchService {
                 const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
                 const { results, lastDoc, hasMore } = await this.firebaseService.searchPatientByPhone(
                     this.currentSearchTerm,
-                    userId,
                     this.paginationState.lastPhoneDoc,
                     clinicId
                 );
@@ -126,38 +117,17 @@ export class PatientSearchService {
                 this.paginationState.hasMore = hasMore;
             } else {
                 const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
-                const [familySettled, nameSettled] = await Promise.allSettled([
-                    this.paginationState.lastFamilyDoc !== null
-                        ? this.firebaseService.searchPatientByFamilyId(
-                            this.currentSearchTerm.toLowerCase(),
-                            userId,
-                            this.paginationState.lastFamilyDoc,
-                            clinicId
-                        )
-                        : Promise.resolve({ results: [], lastDoc: null, hasMore: false }),
-                    this.paginationState.lastNameDoc !== null
-                        ? this.firebaseService.searchPatientByName(
-                            this.currentSearchTerm,
-                            userId,
-                            this.paginationState.lastNameDoc,
-                            clinicId
-                        )
-                        : Promise.resolve({ results: [], lastDoc: null, hasMore: false })
-                ]);
+                const { results, lastDoc, hasMore } = await this.firebaseService.searchPatientByName(
+                    this.currentSearchTerm,
+                    this.paginationState.lastNameDoc,
+                    clinicId
+                );
 
-                const familyResult = familySettled.status === 'fulfilled' ? familySettled.value : { results: [], lastDoc: null, hasMore: false };
-                const nameResult = nameSettled.status === 'fulfilled' ? nameSettled.value : { results: [], lastDoc: null, hasMore: false };
-
-                this.paginationState.lastFamilyDoc = familyResult.lastDoc;
-                this.paginationState.lastNameDoc = nameResult.lastDoc;
-                this.paginationState.hasMore = familyResult.hasMore || nameResult.hasMore;
-
-                // Merge new results, filtering out duplicates
-                const existingIds = new Set(this.cachedResults.map(p => p.uniqueId));
-                newResults = this.mergeAndDeduplicateResults(
-                    familyResult.results,
-                    nameResult.results
-                ).filter(p => !existingIds.has(p.uniqueId));
+                // Filter out duplicates
+                const existingIds = new Set(this.cachedResults.map(p => p.id));
+                newResults = results.filter(p => !existingIds.has(p.id));
+                this.paginationState.lastNameDoc = lastDoc;
+                this.paginationState.hasMore = hasMore;
             }
 
             // Append new results
@@ -183,55 +153,37 @@ export class PatientSearchService {
         this.searchResultsSubject.next([]);
     }
 
-    /**
-     * Private: Reset pagination cursors
-     */
     private resetPaginationState(): void {
         this.paginationState = {
             lastPhoneDoc: null,
-            lastFamilyDoc: null,
             lastNameDoc: null,
             hasMore: false
         };
     }
 
     /**
-     * Private: Merge and deduplicate results from multiple sources
+     * Merge and deduplicate results from multiple sources
      */
     private mergeAndDeduplicateResults(
-        familyResults: Patient[],
-        nameResults: Patient[]
+        results1: Patient[],
+        results2: Patient[]
     ): Patient[] {
         const seen = new Set<string>();
         const merged: Patient[] = [];
 
-        for (const patient of [...familyResults, ...nameResults]) {
-            if (!seen.has(patient.uniqueId)) {
-                seen.add(patient.uniqueId);
+        for (const patient of [...results1, ...results2]) {
+            const key = patient.id || '';
+            if (key && !seen.has(key)) {
+                seen.add(key);
                 merged.push(patient);
             }
         }
 
-        // Sort by newest first
-        return this.sortByDate(merged);
+        return merged;
     }
 
-    /**
-     * Private: Update cached results and emit
-     */
     private updateResults(results: Patient[]): void {
         this.cachedResults = results;
         this.searchResultsSubject.next(results);
-    }
-
-    /**
-     * Private: Sort patients by creation date (newest first)
-     */
-    private sortByDate(patients: Patient[]): Patient[] {
-        return patients.sort((a, b) => {
-            const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
-            const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
-            return dateB.getTime() - dateA.getTime();
-        });
     }
 }

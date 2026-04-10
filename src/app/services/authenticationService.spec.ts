@@ -13,9 +13,10 @@ const hoisted = vi.hoisted(() => {
         mockSendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
         mockOnAuthStateChanged: vi.fn((auth: any, cb: any) => { cb(null); return vi.fn(); }),
         MockGoogleAuthProvider: class { },
-        mockGetDoc: vi.fn(),
-        mockDoc: vi.fn(),
         mockIsEmailAllowed: vi.fn().mockResolvedValue(true),
+        mockGetUserRole: vi.fn().mockResolvedValue('doctor'),
+        mockGetUserSubscriptionId: vi.fn().mockResolvedValue('sub_01'),
+        mockGetUserClinicIds: vi.fn().mockResolvedValue(['clinic_01']),
     };
 });
 
@@ -31,15 +32,21 @@ vi.mock('@angular/fire/auth', () => ({
     GoogleAuthProvider: hoisted.MockGoogleAuthProvider,
 }));
 
-vi.mock('@angular/fire/firestore', () => ({
-    Firestore: class { },
-    doc: (...args: any[]) => hoisted.mockDoc(...args),
-    getDoc: (...args: any[]) => hoisted.mockGetDoc(...args),
-}));
-
 vi.mock('./authorizationService', () => ({
     AuthorizationService: class {
         isEmailAllowed = () => hoisted.mockIsEmailAllowed();
+        getUserRole = () => hoisted.mockGetUserRole();
+        getUserSubscriptionId = () => hoisted.mockGetUserSubscriptionId();
+        getUserClinicIds = () => hoisted.mockGetUserClinicIds();
+    },
+}));
+
+vi.mock('./clinicContextService', () => ({
+    ClinicContextService: class {
+        getSelectedClinicId = () => 'clinic_01';
+        getSubscriptionId = () => 'sub_01';
+        setClinicContext = vi.fn();
+        clear = vi.fn();
     },
 }));
 
@@ -51,7 +58,6 @@ vi.mock('@angular/core', () => ({
     ɵɵinjectAttribute: (...args: any[]) => { },
     inject: vi.fn((token: any) => {
         if (token.name === 'Auth') return {};
-        if (token.name === 'Firestore') return {};
         return new token();
     }),
 }));
@@ -169,7 +175,7 @@ describe('AuthenticationService', () => {
 
     describe('login() - Positive Cases', () => {
         beforeEach(() => {
-            hoisted.mockGetDoc.mockResolvedValue({ exists: () => true });
+            hoisted.mockIsEmailAllowed.mockResolvedValue(true);
         });
 
         it('should login user successfully', async () => {
@@ -184,7 +190,7 @@ describe('AuthenticationService', () => {
         it('should reject unauthorized user', async () => {
             const firebaseUser = makeFirebaseUser({ email: 'unauthorized@test.com' });
             hoisted.mockSignIn.mockResolvedValue({ user: firebaseUser });
-            hoisted.mockGetDoc.mockResolvedValue({ exists: () => false });
+            hoisted.mockIsEmailAllowed.mockResolvedValue(false);
 
             await expect(service.login('unauthorized@test.com', 'password123')).rejects.toThrow(
                 'Access denied'
@@ -223,7 +229,7 @@ describe('AuthenticationService', () => {
 
     describe('loginWithGoogle() - Positive Cases', () => {
         beforeEach(() => {
-            hoisted.mockGetDoc.mockResolvedValue({ exists: () => true });
+            hoisted.mockIsEmailAllowed.mockResolvedValue(true);
         });
 
         it('should login with Google successfully', async () => {
@@ -232,7 +238,7 @@ describe('AuthenticationService', () => {
 
             const result = await service.loginWithGoogle();
 
-            expect(result.email).toBe('doc@test.com');
+            expect((result as any)?.email).toBe('doc@test.com');
         });
     });
 

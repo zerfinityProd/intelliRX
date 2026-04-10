@@ -76,7 +76,7 @@
     </div>
     <div class="modal-body">
       <div *ngFor="let visit of selectedDateVisits; let i = index" class="visit-details-card">
-        <div class="visit-time">{{ formatDateTime(visit.createdAt) }}</div>
+        <div class="visit-time">{{ formatDateTime(visit.created_at) }}</div>
 
         <div class="visit-detail-row" *ngIf="visit.presentIllness">
           <span class="detail-label">Present Illness:</span>

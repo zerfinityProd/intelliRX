@@ -8,7 +8,7 @@ import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
 import { AppointmentService } from '../../services/appointmentService';
 import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
-import { AuthorizationService } from '../../services/authorizationService';
+import { AuthorizationService, UserPermissions } from '../../services/authorizationService';
 import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
@@ -83,6 +83,12 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     greeting: string = '';
     userName: string = '';
 
+    // Permissions
+    permissions: UserPermissions = {
+        canDelete: false, canEdit: false, canAddPatient: false,
+        canAddVisit: false, canAppointment: false, canCancel: false,
+    };
+
     readonly columns = [
         { id: 'scheduled' as const, label: 'Scheduled', color: '#ede9fe', accent: '#6366f1', icon: 'clock' },
         { id: 'completed' as const, label: 'Completed', color: '#d1fae5', accent: '#10b981', icon: 'check' },
@@ -102,6 +108,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     ngOnInit(): void {
         this.setGreeting();
+        this.loadPermissions();
         this.loadAppointments().then(() => {
             // Restore day view modal from sessionStorage after appointments load
             this.restoreDayViewFromSession();
@@ -167,41 +174,34 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     }
 
     private async hasAnyVisitTodayForAppointment(appt: Appointment, today: Date, cache: Map<string, boolean>): Promise<boolean> {
-        const cacheKey = appt.patientId
-            ? `pid:${appt.patientId}`
+        const cacheKey = appt.patient_id
+            ? `pid:${appt.patient_id}`
             : `np:${(appt.patientName || '').trim().toLowerCase()}|${this.normalizePhoneDigits(appt.patientPhone || '')}`;
 
         if (cache.has(cacheKey)) return cache.get(cacheKey)!;
 
         const checkVisitsForPatientId = async (patientId: string): Promise<boolean> => {
             const visits = await this.patientService.getPatientVisits(patientId);
-            return visits.some(v => this.isSameLocalDay(new Date((v as any).createdAt), today));
+            return visits.some(v => this.isSameLocalDay(new Date((v as any).created_at), today));
         };
 
         let result = false;
         try {
-            if (appt.patientId) {
-                result = await checkVisitsForPatientId(appt.patientId);
+            if (appt.patient_id) {
+                result = await checkVisitsForPatientId(appt.patient_id);
             } else {
-                const userId = this.authService.getCurrentUserId();
-                if (!userId) {
-                    result = false;
-                } else {
-                    const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
-                    if (!phoneDigits) {
-                        result = false;
-                    } else {
-                        const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits, userId);
-                        const nameLower = (appt.patientName || '').trim().toLowerCase();
-                        const candidates = results.filter((p: Patient) =>
-                            (p.name || '').trim().toLowerCase() === nameLower &&
-                            this.normalizePhoneDigits((p as any).phone) === phoneDigits
-                        );
-                        for (const p of candidates) {
-                            if (await checkVisitsForPatientId(p.uniqueId)) {
-                                result = true;
-                                break;
-                            }
+                const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
+                if (phoneDigits) {
+                    const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits);
+                    const nameLower = (appt.patientName || '').trim().toLowerCase();
+                    const candidates = results.filter((p: Patient) =>
+                        (p.name || '').trim().toLowerCase() === nameLower &&
+                        this.normalizePhoneDigits((p as any).phone) === phoneDigits
+                    );
+                    for (const p of candidates) {
+                        if (p.id && await checkVisitsForPatientId(p.id)) {
+                            result = true;
+                            break;
                         }
                     }
                 }
@@ -218,7 +218,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const now = new Date();
         const cache = new Map<string, boolean>();
         const todaysScheduled = this.appointments.filter(a =>
-            a.status === 'scheduled' && this.isSameLocalDay(new Date(a.appointmentDate), now)
+            a.status === 'scheduled' && this.isSameLocalDay(new Date(a.datetime), now)
         );
 
         for (const appt of todaysScheduled) {
@@ -243,6 +243,17 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         this.userName = this.authService.currentUserValue?.name?.split(' ')[0] || 'there';
     }
 
+    private async loadPermissions(): Promise<void> {
+        const email = this.authService.currentUserValue?.email;
+        if (!email) return;
+        try {
+            this.permissions = await this.authorizationService.getUserPermissions(email);
+            this.cdr.detectChanges();
+        } catch {
+            // Keep defaults (all false)
+        }
+    }
+
     async loadAppointments(): Promise<void> {
         this.isLoading = true;
         try {
@@ -263,20 +274,20 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         if (this.selectedDate) {
             const [y, mo, d] = this.selectedDate.split('-').map(Number);
             result = result.filter(a => {
-                const dt = new Date(a.appointmentDate);
+                const dt = new Date(a.datetime);
                 return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d;
             });
         }
 
         // Clinic filter
         if (this.filterClinicId) {
-            result = result.filter(a => a.clinicId === this.filterClinicId);
+            result = result.filter(a => a.clinic_id === this.filterClinicId);
         }
 
         // Doctor filter
         if (this.filterDoctorId) {
             result = result.filter(a => {
-                const apptDoctorEmail = (a.doctorId || '').trim().toLowerCase();
+                const apptDoctorEmail = (a.doctor_id || '').trim().toLowerCase();
                 return apptDoctorEmail === this.filterDoctorId;
             });
         }
@@ -308,7 +319,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     get todayCount(): number {
         const t = new Date();
         return this.appointments.filter(a => {
-            const d = new Date(a.appointmentDate);
+            const d = new Date(a.datetime);
             return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
         }).length;
     }
@@ -316,7 +327,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     get scheduledCount(): number {
         return this.appointments.filter(a => {
             if (a.status !== 'scheduled') return false;
-            const d = new Date(a.appointmentDate);
+            const d = new Date(a.datetime);
             const t = new Date();
             return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
         }).length;
@@ -325,7 +336,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     get completedTodayCount(): number {
         return this.appointments.filter(a => {
             if (a.status !== 'completed') return false;
-            const d = new Date(a.appointmentDate);
+            const d = new Date(a.datetime);
             const t = new Date();
             return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
         }).length;
@@ -385,7 +396,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     appointmentsOnDate(date: Date): Appointment[] {
         return this.appointments.filter(a => {
-            const d = new Date(a.appointmentDate);
+            const d = new Date(a.datetime);
             return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth() && d.getDate() === date.getDate();
         });
     }
@@ -469,7 +480,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     }
 
     async openVisitFromAppointment(appt: Appointment): Promise<void> {
-        const directPatientId = (appt.patientId || '').trim();
+        const directPatientId = (appt.patient_id || '').trim();
         if (directPatientId) {
             // Keep patient ailments in sync with what was entered during appointment booking.
             if (appt.ailments && appt.ailments.trim()) {
@@ -479,7 +490,9 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
                     // Don't block navigation if this fails.
                 }
             }
-            this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'home' } });
+            this.router.navigate(['/patient', directPatientId, 'add-visit'], {
+                state: { origin: 'home', appointmentId: appt.id || '' }
+            });
             return;
         }
 
@@ -514,8 +527,13 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         this.router.navigate(['/add-appointment'], { queryParams: params });
     }
 
-    formatTime(time: string): string {
+    formatTime(time: Date | string): string {
         if (!time) return '';
+        if (time instanceof Date) {
+            const h = time.getHours();
+            const m = time.getMinutes();
+            return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+        }
         const [h, m] = time.split(':').map(Number);
         return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
     }
@@ -546,7 +564,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     /** Resolve doctor display name from email stored in appointment.doctorId */
     getDoctorDisplayName(appt: Appointment): string {
-        const email = (appt.doctorId || '').trim().toLowerCase();
+        const email = (appt.doctor_id || '').trim().toLowerCase();
         if (!email) return '';
         return this.doctorNameCache.get(email) || email;
     }
@@ -556,7 +574,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const seen = new Set<string>();
         const options: Array<{ email: string; name: string }> = [];
         for (const appt of this.appointments) {
-            const email = (appt.doctorId || '').trim().toLowerCase();
+            const email = (appt.doctor_id || '').trim().toLowerCase();
             if (!email || seen.has(email)) continue;
             seen.add(email);
             options.push({ email, name: this.doctorNameCache.get(email) || email });
@@ -660,8 +678,8 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             this.rescheduleBookedSlots = [];
             return;
         }
-        const doctorEmail = appt.doctorId ? normalizeEmail(appt.doctorId) : undefined;
-        const clinicId = appt.clinicId || undefined;
+        const doctorEmail = appt.doctor_id ? normalizeEmail(appt.doctor_id) : undefined;
+        const clinicId = appt.clinic_id || undefined;
         const excludeId = appt.id || undefined;
 
         // ── Instant: compute from in-memory appointments (no network) ──
@@ -670,14 +688,17 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             .filter(a => {
                 if (a.status === 'cancelled') return false;
                 if (excludeId && a.id === excludeId) return false;
-                const d = new Date(a.appointmentDate);
+                const d = new Date(a.datetime);
                 const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
                 if (!sameDay) return false;
-                if (doctorEmail && normalizeEmail(a.doctorId || '') !== doctorEmail) return false;
-                if (clinicId && a.clinicId && a.clinicId !== clinicId) return false;
+                if (doctorEmail && normalizeEmail(a.doctor_id || '') !== doctorEmail) return false;
+                if (clinicId && a.clinic_id && a.clinic_id !== clinicId) return false;
                 return true;
             })
-            .map(a => a.appointmentTime);
+            .map(a => {
+                const dt = new Date(a.datetime);
+                return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+            });
         this.isLoadingRescheduleSlots = false;
         this.cdr.detectChanges();
 
@@ -715,8 +736,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const newTime = this.rescheduleTime;
         const apptId = this.reschedulingAppt.id;
 
-        this.reschedulingAppt.appointmentDate = newDate;
-        this.reschedulingAppt.appointmentTime = newTime;
+        this.reschedulingAppt.datetime = newDate;
         this.cancelReschedule();
         this.cdr.detectChanges();
 
@@ -752,7 +772,10 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         this.dayViewAppointments = this.appointmentsOnDate(date);
         this.dayViewBookedSlots = this.dayViewAppointments
             .filter(a => a.status !== 'cancelled')
-            .map(a => a.appointmentTime);
+            .map(a => {
+                const dt = new Date(a.datetime);
+                return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+            });
         this.isLoadingDayView = false;
         this.cdr.detectChanges();
     }

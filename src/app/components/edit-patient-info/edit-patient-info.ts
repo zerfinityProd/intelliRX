@@ -52,36 +52,25 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
       this.phone = this.patientData.phone || '';
       this.email = this.patientData.email || '';
       this.gender = this.patientData.gender || '';
-      this.familyId = this.patientData.familyId || '';
       
       // Format date for input
-      if (this.patientData.dateOfBirth) {
-        const dob = this.patientData.dateOfBirth;
-        let dateObj: Date;
+      if (this.patientData.dob) {
+        const dob = this.patientData.dob;
+        let dateStr: string;
         
-        if (typeof dob === 'object' && 'toDate' in dob) {
-          dateObj = (dob as any).toDate();
+        if (typeof dob === 'object' && 'toDate' in (dob as any)) {
+          dateStr = (dob as any).toDate().toISOString().split('T')[0];
         } else {
-          dateObj = new Date(dob);
+          dateStr = new Date(dob).toISOString().split('T')[0];
         }
         
-        this.dateOfBirth = dateObj.toISOString().split('T')[0];
+        this.dateOfBirth = dateStr;
       }
     }
   }
 
   onNameChange(): void {
     this.clearSuccessMessage();
-    if (this.firstName.trim() || this.lastName.trim()) {
-      const fullName = `${this.firstName.trim()} ${this.lastName.trim()}`.trim();
-      if (fullName) {
-        this.familyId = this.generateFamilyIdPreview(fullName);
-      } else {
-        this.familyId = '';
-      }
-    } else {
-      this.familyId = '';
-    }
   }
 
   clearSuccessMessage(): void {
@@ -136,7 +125,7 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
       return;
     }
 
-    if (!this.patientData?.uniqueId) {
+    if (!this.patientData?.id) {
       this.errorMessage = 'Patient ID not found';
       return;
     }
@@ -151,19 +140,17 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
         phone: this.phone,
         email: this.email || '',
         gender: this.gender || '',
-        familyId: this.familyId,
-        dateOfBirth: this.dateOfBirth ? new Date(this.dateOfBirth) : undefined,
-        updatedAt: new Date()
+        dob: this.dateOfBirth || undefined
       };
 
-      await this.patientService.updatePatient(this.patientData.uniqueId, updatedPatient);
+      await this.patientService.updatePatient(this.patientData.id, updatedPatient);
       
       this.successMessage = 'Patient information updated successfully!';
       this.isSubmitting = false;
 
       // Emit the patient ID to refresh the parent component
       setTimeout(() => {
-        this.patientUpdated.emit(this.patientData!.uniqueId);
+        this.patientUpdated.emit(this.patientData!.id);
         this.onClose();
       }, 1000);
 

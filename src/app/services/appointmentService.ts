@@ -9,13 +9,15 @@ import {
   updateDoc,
   query,
   where,
-  Timestamp
+  Timestamp,
+  CollectionReference,
+  DocumentData
 } from '@angular/fire/firestore';
 import { AuthenticationService } from './authenticationService';
 import { AuthorizationService } from './authorizationService';
+import { ClinicContextService } from './clinicContextService';
 import { Appointment } from '../models/appointment.model';
 import { normalizeEmail } from '../utilities/normalize-email';
-import { ClinicContextService } from './clinicContextService';
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
@@ -31,6 +33,18 @@ export class AppointmentService {
     private authorizationService: AuthorizationService,
     private clinicContextService: ClinicContextService
   ) {}
+
+  /**
+   * Top-level appointments collection.
+   * All queries filter by subscription_id.
+   */
+  private getAppointmentsCollection(): CollectionReference<DocumentData> {
+    return collection(this.db, 'appointments');
+  }
+
+  private getSubscriptionId(): string {
+    return this.clinicContextService.requireSubscriptionId();
+  }
 
   private getCurrentUserId(): string {
     const userId = this.authService.getCurrentUserId();
@@ -61,42 +75,39 @@ export class AppointmentService {
   }
 
   async createAppointment(
-    data: Omit<Appointment, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
+    data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
     try {
-      const userId = this.getCurrentUserId();
-      const appointmentsCol = collection(this.db, 'appointments');
+      const appointmentsCol = this.getAppointmentsCollection();
       const newDocRef = doc(appointmentsCol);
       const id = newDocRef.id;
       const now = new Date();
 
+      const clinicId = data.clinic_id || this.clinicContextService.getSelectedClinicId() || '';
+
       const payload = this.removeUndefined({
         id,
-        userId,
-        patientId: data.patientId || '',
-        patientName: data.patientName,
-        patientPhone: data.patientPhone,
-        patientFamilyId: data.patientFamilyId || '',
-        appointmentDate: Timestamp.fromDate(new Date(data.appointmentDate)),
-        appointmentTime: data.appointmentTime,
-        // Ailments are captured from the appointment booking form and later
-        // shown in patient + visit.
+        subscription_id: data.subscription_id || this.getSubscriptionId(),
+        clinic_id: clinicId,
+        doctor_id: data.doctor_id ? normalizeEmail(data.doctor_id) : '',
+        patient_id: data.patient_id || '',
+        datetime: Timestamp.fromDate(new Date(data.datetime)),
+        status: data.status,
+        ...(data.patientName ? { patientName: data.patientName } : {}),
+        ...(data.patientPhone ? { patientPhone: data.patientPhone } : {}),
+        ...(data.doctor_name ? { doctor_name: data.doctor_name } : {}),
+        ...(data.clinic_name ? { clinic_name: data.clinic_name } : {}),
         ...(data.ailments ? { ailments: data.ailments } : {}),
-        // Keep legacy fields if they were provided by older flows.
         ...(data.reason ? { reason: data.reason } : {}),
         ...(data.notes ? { notes: data.notes } : {}),
-        status: data.status,
-        isNewPatient: data.isNewPatient,
-        // Store doctorId if provided (email of the assigned doctor)
-        ...(data.doctorId ? { doctorId: normalizeEmail(data.doctorId) } : {}),
-        ...(data.clinicId ? { clinicId: data.clinicId } : {}),
-        ...(data.subscriptionId ? { subscriptionId: data.subscriptionId } : {}),
+        ...(data.isNewPatient !== undefined ? { isNewPatient: data.isNewPatient } : {}),
+        ...(data.cancellationReason ? { cancellationReason: data.cancellationReason } : {}),
         createdAt: Timestamp.fromDate(now),
         updatedAt: Timestamp.fromDate(now)
       });
 
       await setDoc(newDocRef, payload);
-      this.invalidateCache(); // clear cache so next load is fresh
+      this.invalidateCache();
       console.log('✓ Appointment booked with ID:', id);
       return id;
 
@@ -106,26 +117,28 @@ export class AppointmentService {
     }
   }
 
-  /** Fetch ALL appointments across all users — used for slot collision checks and receptionist view */
+  /** Fetch ALL appointments within the subscription */
   async getAllAppointments(): Promise<Appointment[]> {
     if (this.allCache !== null) {
       return this.allCache;
     }
     try {
-      const appointmentsCol = collection(this.db, 'appointments');
-      const snap = await getDocs(appointmentsCol);
+      const appointmentsCol = this.getAppointmentsCollection();
+      const subId = this.getSubscriptionId();
+      const q = query(appointmentsCol, where('subscription_id', '==', subId));
+      const snap = await getDocs(q);
       const appointments = snap.docs.map(d => {
         const data = d.data() as any;
         return {
           ...data,
           id: d.id,
-          appointmentDate: data.appointmentDate?.toDate?.() ?? new Date(data.appointmentDate),
+          datetime: data.datetime?.toDate?.() ?? new Date(data.datetime),
           createdAt: data.createdAt?.toDate?.() ?? new Date(data.createdAt),
           updatedAt: data.updatedAt?.toDate?.() ?? new Date(data.updatedAt),
         } as Appointment;
       });
       this.allCache = appointments.sort((a, b) =>
-        new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime()
+        new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
       );
       return this.allCache;
     } catch (error) {
@@ -136,8 +149,8 @@ export class AppointmentService {
 
   /**
    * Fetch appointments for the current user.
-   * - Doctors (role === 'doctor'): see only appointments where doctorId matches their email.
-   * - Receptionists: see all appointments (via getAllAppointments).
+   * - Doctors: see only appointments where doctor_id matches their email.
+   * - Receptionists: see all appointments.
    */
   async getAppointments(): Promise<Appointment[]> {
     try {
@@ -145,21 +158,25 @@ export class AppointmentService {
       const role = await this.authorizationService.getUserRole(email);
 
       if (role === 'receptionist') {
-        // Receptionists see all appointments
         if (this.cache !== null) return this.cache;
         const all = await this.getAllAppointments();
         this.cache = all;
         return this.cache;
       }
 
-      // Doctors see only their own appointments (matched by email = doctorId)
+      // Doctors see only their own appointments (matched by email = doctor_id)
       const clinicId = this.clinicContextService.getSelectedClinicId();
       if (this.cache !== null && this.cacheClinicId === clinicId) {
         return this.cache;
       }
 
-      const appointmentsCol = collection(this.db, 'appointments');
-      const q = query(appointmentsCol, where('doctorId', '==', email));
+      const appointmentsCol = this.getAppointmentsCollection();
+      const subId = this.getSubscriptionId();
+      const q = query(
+        appointmentsCol,
+        where('subscription_id', '==', subId),
+        where('doctor_id', '==', email)
+      );
       const snap = await getDocs(q);
 
       const appointments = snap.docs.map(d => {
@@ -167,21 +184,20 @@ export class AppointmentService {
         return {
           ...data,
           id: d.id,
-          appointmentDate: data.appointmentDate?.toDate?.() ?? new Date(data.appointmentDate),
+          datetime: data.datetime?.toDate?.() ?? new Date(data.datetime),
           createdAt: data.createdAt?.toDate?.() ?? new Date(data.createdAt),
           updatedAt: data.updatedAt?.toDate?.() ?? new Date(data.updatedAt),
         } as Appointment;
       });
 
-      // Sort in-memory — avoids needing a Firestore composite index.
       // If clinicId is set, doctors only see their appointments for that clinic.
       const filtered = clinicId
-        ? appointments.filter(a => (a.clinicId ? a.clinicId === clinicId : true))
+        ? appointments.filter(a => (a.clinic_id ? a.clinic_id === clinicId : true))
         : appointments;
 
       this.cacheClinicId = clinicId;
       this.cache = filtered.sort((a, b) =>
-        new Date(a.appointmentDate).getTime() - new Date(b.appointmentDate).getTime()
+        new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
       );
 
       return this.cache;
@@ -194,12 +210,12 @@ export class AppointmentService {
 
   async updateAppointmentStatus(id: string, status: Appointment['status']): Promise<void> {
     try {
-      const appointmentsCol = collection(this.db, 'appointments');
+      const appointmentsCol = this.getAppointmentsCollection();
       await updateDoc(doc(appointmentsCol, id), {
         status,
         updatedAt: Timestamp.fromDate(new Date())
       });
-      this.invalidateCache(); // clear cache so next load reflects updated status
+      this.invalidateCache();
     } catch (error) {
       console.error('✗ Error updating appointment status:', error);
       throw error;
@@ -209,7 +225,7 @@ export class AppointmentService {
   /** Cancel an appointment with a reason */
   async cancelAppointment(id: string, reason: string): Promise<void> {
     try {
-      const appointmentsCol = collection(this.db, 'appointments');
+      const appointmentsCol = this.getAppointmentsCollection();
       await updateDoc(doc(appointmentsCol, id), {
         status: 'cancelled',
         cancellationReason: reason,
@@ -224,8 +240,7 @@ export class AppointmentService {
   }
 
   /**
-   * Fetch booked time slots for a specific date/doctor/clinic — always hits Firestore (no cache).
-   * Used by the reschedule modal so it always sees the latest slot availability.
+   * Fetch booked time slots for a specific date/doctor/clinic.
    */
   async getBookedSlotsForDate(
     dateStr: string,
@@ -238,28 +253,27 @@ export class AppointmentService {
       const startOfDay = new Date(y, mo - 1, day, 0, 0, 0, 0);
       const startOfNextDay = new Date(y, mo - 1, day + 1, 0, 0, 0, 0);
 
-      const appointmentsCol = collection(this.db, 'appointments');
+      const appointmentsCol = this.getAppointmentsCollection();
+      const subId = this.getSubscriptionId();
       const q = query(
         appointmentsCol,
-        where('appointmentDate', '>=', Timestamp.fromDate(startOfDay)),
-        where('appointmentDate', '<', Timestamp.fromDate(startOfNextDay))
+        where('subscription_id', '==', subId),
+        where('datetime', '>=', Timestamp.fromDate(startOfDay)),
+        where('datetime', '<', Timestamp.fromDate(startOfNextDay))
       );
       const snap = await getDocs(q);
 
       const bookedSlots: string[] = [];
       for (const d of snap.docs) {
         const data = d.data() as any;
-        // Skip cancelled appointments
         if (data.status === 'cancelled') continue;
-        // Skip the appointment being rescheduled
         if (excludeApptId && d.id === excludeApptId) continue;
-        // Filter by doctor if specified — a doctor's slot is globally
-        // unique across ALL clinics (no clinicId filter).
-        if (doctorEmail && normalizeEmail(data.doctorId || '') !== doctorEmail) continue;
+        if (doctorEmail && normalizeEmail(data.doctor_id || '') !== doctorEmail) continue;
 
-        if (data.appointmentTime) {
-          bookedSlots.push(data.appointmentTime);
-        }
+        // Extract time from datetime
+        const dt = data.datetime?.toDate?.() ?? new Date(data.datetime);
+        const timeStr = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        bookedSlots.push(timeStr);
       }
       return bookedSlots;
     } catch (error) {
@@ -271,14 +285,18 @@ export class AppointmentService {
   /** Postpone (reschedule) an appointment to a new date and time slot. */
   async postponeAppointment(id: string, newDate: Date, newTime: string): Promise<void> {
     try {
-      const appointmentsCol = collection(this.db, 'appointments');
+      // Combine date and time into a single datetime
+      const dt = new Date(newDate);
+      const [h, m] = newTime.split(':').map(Number);
+      dt.setHours(h, m, 0, 0);
+
+      const appointmentsCol = this.getAppointmentsCollection();
       await updateDoc(doc(appointmentsCol, id), {
-        appointmentDate: Timestamp.fromDate(newDate),
-        appointmentTime: newTime,
+        datetime: Timestamp.fromDate(dt),
         updatedAt: Timestamp.fromDate(new Date())
       });
       this.invalidateCache();
-      console.log(`✓ Appointment ${id} postponed to ${newDate.toLocaleDateString()} at ${newTime}`);
+      console.log(`✓ Appointment ${id} postponed to ${dt.toLocaleDateString()} at ${newTime}`);
     } catch (error) {
       console.error('✗ Error postponing appointment:', error);
       throw error;

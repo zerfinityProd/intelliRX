@@ -48,7 +48,7 @@ export class AddAppointmentComponent implements OnInit {
   patientEmail: string = '';
   allergyChips: string[] = [];
   newAllergyInput: string = '';
-  familyIdPreview: string = '';
+  familyIdPreview: string = ''; // kept for UI preview only
   todayDate: string = todayLocalISO();
 
   /** Patients in DB with this exact phone (after lookup) */
@@ -276,13 +276,11 @@ export class AddAppointmentComponent implements OnInit {
 
     const userId = this.authService.getCurrentUserId() ?? '';
     this.matchedPatient = {
-      uniqueId: patientId,
-      userId,
-      familyId: patientFamilyId,
+      id: patientId,
+      subscription_id: this.clinicContextService.getSubscriptionId() || '',
       name: patientName || this.fullName || patientName,
       phone: phoneDigits,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      clinic_ids: []
     } as Patient;
 
     this.phoneMatches = this.matchedPatient ? [this.matchedPatient] : [];
@@ -420,7 +418,7 @@ export class AddAppointmentComponent implements OnInit {
       // Re-check local matches before overwriting — avoids race condition
       if (this.isDuplicateOfPhoneMatch()) return;
       try {
-        const exists = await this.patientService.checkUniqueIdExists(name, phone);
+        const exists = await this.patientService.checkPatientExists(name, phone);
         // Re-check again after await — user may have typed more
         if (this.isDuplicateOfPhoneMatch()) return;
         this.newPatientWarning = exists
@@ -472,16 +470,18 @@ export class AddAppointmentComponent implements OnInit {
       const all = await this.appointmentService.getAllAppointments();
       this.bookedSlots = all
         .filter(a => {
-          const d = new Date(a.appointmentDate);
+          const d = new Date(a.datetime);
           const [y, mo, day] = this.appointmentDate.split('-').map(Number);
           const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
           const sameDoctor = (this.selectedDoctorId && selectedDoctorEmail)
-            ? normalizeEmail(a.doctorId || '') === selectedDoctorEmail
+            ? normalizeEmail(a.doctor_id || '') === selectedDoctorEmail
             : true;
-          // NOTE: No clinicId filter — a doctor's slot is globally unique across clinics.
           return sameDay && sameDoctor && a.status !== 'cancelled';
         })
-        .map(a => a.appointmentTime);
+        .map(a => {
+          const dt = new Date(a.datetime);
+          return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        });
     } catch {
       this.bookedSlots = [];
     }
@@ -583,29 +583,22 @@ export class AddAppointmentComponent implements OnInit {
     this.newAllergyInput = '';
     this.familyIdPreview = '';
 
-    const userId = this.authService.getCurrentUserId();
-    if (!userId) {
-      this.phoneLookupStatus = 'done';
-      this.cdr.markForCheck();
-      return;
-    }
     const clinicId = this.selectedClinicId || undefined;
     let exact: import('../../models/patient.model').Patient[] = [];
 
     // Attempt 1: search with clinicId
     try {
-      const { results } = await this.firebaseService.searchPatientByPhone(digits, userId, null, clinicId);
+      const { results } = await this.firebaseService.searchPatientByPhone(digits, null, clinicId);
       exact = results.filter(p => this.normalizePhoneDigits(p.phone) === digits);
       console.log(`📞 Phone lookup (clinic=${clinicId}): ${results.length} raw, ${exact.length} exact`);
     } catch (err) {
       console.warn('Phone lookup (clinic-scoped) failed:', err);
     }
 
-    // Attempt 2: clinic-scoped contains search (no composite index needed)
-    // This finds patients created by ANY user within the same clinic (doctor ↔ receptionist)
+    // Attempt 2: clinic-scoped contains search
     if (exact.length === 0 && clinicId) {
       try {
-        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, userId, clinicId);
+        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, clinicId);
         exact = containsResults.filter(p => this.normalizePhoneDigits(p.phone) === digits);
         console.log(`📞 Phone lookup (clinic contains): ${exact.length} exact match(es)`);
       } catch (err) {
@@ -613,28 +606,27 @@ export class AddAppointmentComponent implements OnInit {
       }
     }
 
-    // Attempt 3: retry WITHOUT clinicId to find legacy patients (no clinicId field)
+    // Attempt 3: retry WITHOUT clinicId to find patients not in any clinic
     if (exact.length === 0 && clinicId) {
       try {
-        const { results: fallbackResults } = await this.firebaseService.searchPatientByPhone(digits, userId, null, undefined);
-        // Only include legacy patients (no clinicId) — NEVER patients from other clinics
+        const { results: fallbackResults } = await this.firebaseService.searchPatientByPhone(digits, null, undefined);
         exact = fallbackResults.filter(p =>
-          this.normalizePhoneDigits(p.phone) === digits && !p.clinicId
+          this.normalizePhoneDigits(p.phone) === digits && (!p.clinic_ids || p.clinic_ids.length === 0)
         );
       } catch (err) {
         console.warn('Phone lookup (legacy fallback) failed:', err);
       }
     }
 
-    // Attempt 4: ultimate fallback — userId-scoped contains search
+    // Attempt 4: ultimate fallback — contains search without clinicId
     if (exact.length === 0) {
       try {
-        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, userId, undefined);
+        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, undefined);
         exact = containsResults.filter(p =>
-          this.normalizePhoneDigits(p.phone) === digits && !p.clinicId
+          this.normalizePhoneDigits(p.phone) === digits && (!p.clinic_ids || p.clinic_ids.length === 0)
         );
       } catch (err) {
-        console.warn('Phone lookup (userId contains fallback) failed:', err);
+        console.warn('Phone lookup (contains fallback) failed:', err);
       }
     }
 
@@ -743,14 +735,12 @@ export class AddAppointmentComponent implements OnInit {
       let patientId = '';
       let patientName = this.fullName;
       let patientPhone = this.normalizedPhoneDigits;
-      let patientFamilyId = '';
 
       if (this.isExistingPatient && this.matchedPatient) {
         // Existing patient
-        patientId = this.matchedPatient.uniqueId;
+        patientId = this.matchedPatient.id || '';
         patientName = this.matchedPatient.name ?? this.fullName;
         patientPhone = this.matchedPatient.phone ?? this.normalizedPhoneDigits;
-        patientFamilyId = this.matchedPatient.familyId ?? '';
 
         // Persist ailments/allergies to existing patient record
         const updateData: any = {};
@@ -766,34 +756,38 @@ export class AddAppointmentComponent implements OnInit {
           phone: this.normalizedPhoneDigits
         };
         if (this.patientEmail.trim()) patientData.email = this.patientEmail.trim();
-        if (this.dateOfBirth) patientData.dateOfBirth = new Date(this.dateOfBirth);
+        if (this.dateOfBirth) patientData.dob = this.dateOfBirth;
         if (this.gender) patientData.gender = this.gender;
         if (allergiesText) patientData.allergies = allergiesText;
         if (ailmentsText) patientData.ailments = ailmentsText;
 
-        patientId = await this.patientService.createPatient({ ...patientData, clinicId: this.selectedClinicId || undefined });
-        // After creation, fetch the familyId generated by the service
+        patientId = await this.patientService.createPatient({
+          ...patientData,
+          clinic_ids: this.selectedClinicId ? [this.selectedClinicId] : []
+        });
         const createdPatient = await this.patientService.getPatient(patientId);
-        patientFamilyId = createdPatient?.familyId ?? '';
         patientName = createdPatient?.name ?? this.fullName;
         patientPhone = createdPatient?.phone ?? this.normalizedPhoneDigits;
       }
 
+      // Build combined datetime from date + time slot
+      const [h, m] = this.selectedTimeSlot.split(':').map(Number);
+      const apptDatetime = new Date(this.appointmentDate + 'T00:00:00');
+      apptDatetime.setHours(h, m, 0, 0);
+
       await this.appointmentService.createAppointment({
-        patientId,
+        patient_id: patientId,
         patientName,
         patientPhone,
-        patientFamilyId,
-        appointmentDate: new Date(this.appointmentDate),
-        appointmentTime: this.selectedTimeSlot,
+        datetime: apptDatetime,
         ailments: ailmentsText,
-        status:  'scheduled',
+        status: 'scheduled',
         isNewPatient: !this.isExistingPatient,
-        doctorId: this.selectedDoctor?.email
+        doctor_id: this.selectedDoctor?.email
           ? normalizeEmail(this.selectedDoctor.email)
           : (authDoctor?.email ? normalizeEmail(authDoctor.email) : ''),
-        clinicId: this.selectedClinicId || undefined,
-        subscriptionId: this.subscriptionId || this.clinicContextService.getSubscriptionId() || undefined
+        clinic_id: this.selectedClinicId || '',
+        subscription_id: this.subscriptionId || this.clinicContextService.getSubscriptionId() || ''
       });
 
       this.isSubmitting = false;

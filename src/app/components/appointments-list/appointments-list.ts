@@ -91,7 +91,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     if (this.selectedDate) {
       const [y, mo, day] = this.selectedDate.split('-').map(Number);
       result = result.filter(a => {
-        const d = new Date(a.appointmentDate);
+        const d = new Date(a.datetime);
         return d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
       });
     }
@@ -123,7 +123,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   get totalToday(): number {
     const t = new Date();
     return this.appointments.filter(a => {
-      const d = new Date(a.appointmentDate);
+      const d = new Date(a.datetime);
       return d.getFullYear() === t.getFullYear()
         && d.getMonth() === t.getMonth()
         && d.getDate() === t.getDate();
@@ -217,41 +217,34 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   private async hasAnyVisitTodayForAppointment(appt: Appointment, today: Date, cache: Map<string, boolean>): Promise<boolean> {
-    const cacheKey = appt.patientId
-      ? `pid:${appt.patientId}`
+    const cacheKey = appt.patient_id
+      ? `pid:${appt.patient_id}`
       : `np:${(appt.patientName || '').trim().toLowerCase()}|${this.normalizePhoneDigits(appt.patientPhone || '')}`;
 
     if (cache.has(cacheKey)) return cache.get(cacheKey)!;
 
     const checkVisitsForPatientId = async (patientId: string): Promise<boolean> => {
       const visits = await this.patientService.getPatientVisits(patientId);
-      return visits.some(v => this.isSameLocalDay(new Date((v as any).createdAt), today));
+      return visits.some(v => this.isSameLocalDay(new Date((v as any).created_at), today));
     };
 
     let result = false;
     try {
-      if (appt.patientId) {
-        result = await checkVisitsForPatientId(appt.patientId);
+      if (appt.patient_id) {
+        result = await checkVisitsForPatientId(appt.patient_id);
       } else {
-        const userId = this.authService.getCurrentUserId();
-        if (!userId) {
-          result = false;
-        } else {
-          const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
-          if (!phoneDigits) {
-            result = false;
-          } else {
-            const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits, userId);
-            const nameLower = (appt.patientName || '').trim().toLowerCase();
-            const candidates = results.filter(p =>
-              (p.name || '').trim().toLowerCase() === nameLower &&
-              this.normalizePhoneDigits((p as any).phone) === phoneDigits
-            );
-            for (const p of candidates) {
-              if (await checkVisitsForPatientId(p.uniqueId)) {
-                result = true;
-                break;
-              }
+        const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
+        if (phoneDigits) {
+          const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits);
+          const nameLower = (appt.patientName || '').trim().toLowerCase();
+          const candidates = results.filter(p =>
+            (p.name || '').trim().toLowerCase() === nameLower &&
+            this.normalizePhoneDigits((p as any).phone) === phoneDigits
+          );
+          for (const p of candidates) {
+            if (p.id && await checkVisitsForPatientId(p.id)) {
+              result = true;
+              break;
             }
           }
         }
@@ -271,7 +264,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
     const cache = new Map<string, boolean>();
     const todaysScheduled = this.appointments.filter(a =>
-      a.status === 'scheduled' && this.isSameLocalDay(new Date(a.appointmentDate), now)
+      a.status === 'scheduled' && this.isSameLocalDay(new Date(a.datetime), now)
     );
 
     for (const appt of todaysScheduled) {
@@ -300,9 +293,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
     const pastScheduled = this.appointments.filter(a => {
       if (a.status !== 'scheduled') return false;
-      const apptDate = new Date(a.appointmentDate);
+      const apptDate = new Date(a.datetime);
       const apptDay = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
-      return apptDay < todayStart; // strictly before today
+      return apptDay < todayStart;
     });
 
     if (pastScheduled.length === 0) return;
@@ -312,7 +305,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       try {
         await this.appointmentService.updateAppointmentStatus(appt.id, 'cancelled');
         appt.status = 'cancelled';
-        console.log(`🕐 Auto-cancelled past appointment: ${appt.patientName} (${new Date(appt.appointmentDate).toLocaleDateString()})`);
+        console.log(`🕐 Auto-cancelled past appointment: ${appt.patientName} (${new Date(appt.datetime).toLocaleDateString()})`);
       } catch {
         // keep going
       }
@@ -469,21 +462,22 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
    */
   private async computePostponeBookedSlots(): Promise<void> {
     const appt = this.postponingAppt;
-    const doctorEmail = appt?.doctorId ? normalizeEmail(appt.doctorId) : '';
+    const doctorEmail = appt?.doctor_id ? normalizeEmail(appt.doctor_id) : '';
     const [y, mo, day] = this.postponeDate.split('-').map(Number);
 
     try {
-      // Fetch ALL appointments (cross-clinic) so we detect conflicts globally.
       const allAppointments = await this.appointmentService.getAllAppointments();
       this.postponeBookedSlots = allAppointments
         .filter(a => {
-          const d = new Date(a.appointmentDate);
+          const d = new Date(a.datetime);
           const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
-          const sameDoctor = doctorEmail ? normalizeEmail(a.doctorId || '') === doctorEmail : true;
-          // NOTE: No clinicId filter — a doctor's slot is globally unique across clinics.
+          const sameDoctor = doctorEmail ? normalizeEmail(a.doctor_id || '') === doctorEmail : true;
           return sameDay && sameDoctor && a.status !== 'cancelled' && a.id !== appt?.id;
         })
-        .map(a => a.appointmentTime);
+        .map(a => {
+          const dt = new Date(a.datetime);
+          return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        });
     } catch {
       this.postponeBookedSlots = [];
     }
@@ -511,8 +505,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     const newTime = this.postponeTime;
     const apptId = this.postponingAppt.id;
 
-    this.postponingAppt.appointmentDate = newDate;
-    this.postponingAppt.appointmentTime = newTime;
+    this.postponingAppt.datetime = newDate;
     this.cancelPostpone();             // closes modal immediately
     this.cdr.detectChanges();
 
@@ -535,9 +528,8 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   bookNew(): void { this.router.navigate(['/add-appointment']); }
 
   async openVisitFromAppointment(appt: Appointment): Promise<void> {
-    const directPatientId = (appt.patientId || '').trim();
+    const directPatientId = (appt.patient_id || '').trim();
     if (directPatientId) {
-      // Keep patient ailments in sync with what was entered during appointment booking.
       if (appt.ailments && appt.ailments.trim()) {
         try {
           await this.patientService.updatePatient(directPatientId, { ailments: appt.ailments });
@@ -564,8 +556,13 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  formatTime(time: string): string {
+  formatTime(time: Date | string): string {
     if (!time) return '';
+    if (time instanceof Date) {
+      const h = time.getHours();
+      const m = time.getMinutes();
+      return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
+    }
     const [h, m] = time.split(':').map(Number);
     const period = h >= 12 ? 'PM' : 'AM';
     return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;

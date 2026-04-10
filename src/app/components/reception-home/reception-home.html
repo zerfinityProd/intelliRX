@@ -175,7 +175,7 @@
             <div *ngFor="let appt of cardsFor(col.id)"
               class="rh-card"
               [class.rh-card--updating]="updatingId === appt.id"
-              [class.rh-card--today]="isToday(appt.appointmentDate)">
+              [class.rh-card--today]="isToday(appt.datetime)">
 
               <!-- Updating overlay -->
               <div *ngIf="updatingId === appt.id" class="rh-card__overlay">
@@ -184,13 +184,13 @@
 
               <div class="rh-card__top">
                 <div class="rh-card__date-block">
-                  <span class="rh-card__day">{{ appt.appointmentDate | date:'d' }}</span>
-                  <span class="rh-card__month">{{ appt.appointmentDate | date:'MMM' }}</span>
+                  <span class="rh-card__day">{{ appt.datetime | date:'d' }}</span>
+                  <span class="rh-card__month">{{ appt.datetime | date:'MMM' }}</span>
                 </div>
-                <div class="rh-card__top-right">
-                  <span *ngIf="isToday(appt.appointmentDate)" class="rh-today-badge">Today</span>
+                <div *ngIf="!isSelectedToday" class="rh-card__top-right">
+                  <span *ngIf="isToday(appt.datetime)" class="rh-today-badge">Today</span>
                   <span *ngIf="appt.isNewPatient" class="rh-new-badge">New</span>
-                  <span class="rh-card__time">{{ formatTime(appt.appointmentTime) }}</span>
+                  <span class="rh-card__time">{{ formatTime(appt.datetime) }}</span>
                 </div>
               </div>
 
@@ -213,13 +213,13 @@
                 </svg>
                 {{ getDoctorDisplayName(appt) }}
               </div>
-              <div class="rh-card__meta rh-card__clinic" *ngIf="appt.clinicId">
+              <div class="rh-card__meta rh-card__clinic" *ngIf="appt.clinic_id">
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round">
                   <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                   <polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
-                Clinic {{ appt.clinicId }}
+                Clinic {{ appt.clinic_id }}
               </div>
 
               <div class="rh-card__reason" *ngIf="appt.ailments">{{ appt.ailments }}</div>
@@ -247,7 +247,7 @@
                     <line x1="12" y1="11" x2="12" y2="17"></line>
                     <line x1="9" y1="14" x2="15" y2="14"></line>
                   </svg>
-                  {{ appt.patientId ? 'Add Visit' : 'Add Patient' }}
+                  {{ appt.patient_id ? 'Add Visit' : 'Add Patient' }}
                 </button>
                 <button class="rh-card__btn rh-card__btn--reschedule"
                   (click)="openRescheduleModal(appt)"
@@ -259,7 +259,7 @@
                   </svg>
                   Reschedule
                 </button>
-                <button class="rh-card__btn rh-card__btn--cancel"
+                <button *ngIf="permissions.canCancel" class="rh-card__btn rh-card__btn--cancel"
                   (click)="openCancelModal(appt)"
                   [disabled]="updatingId === appt.id">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -416,11 +416,11 @@
 
     <!-- Patient Info Chip -->
     <div class="pp-patient-chip" *ngIf="reschedulingAppt">
-      <div class="pp-patient-chip__avatar">{{ reschedulingAppt.patientName.charAt(0).toUpperCase() }}</div>
+      <div class="pp-patient-chip__avatar">{{ (reschedulingAppt.patientName || '?').charAt(0).toUpperCase() }}</div>
       <div class="pp-patient-chip__info">
         <span class="pp-patient-chip__name">{{ reschedulingAppt.patientName }}</span>
         <span class="pp-patient-chip__meta">
-          Currently: {{ reschedulingAppt.appointmentDate | date:'MMM d, y' }} at {{ formatTime(reschedulingAppt.appointmentTime) }}
+          Currently: {{ reschedulingAppt.datetime | date:'MMM d, y' }} at {{ reschedulingAppt.datetime | date:'h:mm a' }}
         </span>
       </div>
     </div>
@@ -527,11 +527,11 @@
 
     <!-- Patient Info Chip -->
     <div class="pp-patient-chip" *ngIf="cancellingAppt">
-      <div class="pp-patient-chip__avatar">{{ cancellingAppt.patientName.charAt(0).toUpperCase() }}</div>
+      <div class="pp-patient-chip__avatar">{{ (cancellingAppt.patientName || '?').charAt(0).toUpperCase() }}</div>
       <div class="pp-patient-chip__info">
         <span class="pp-patient-chip__name">{{ cancellingAppt.patientName }}</span>
         <span class="pp-patient-chip__meta">
-          {{ cancellingAppt.appointmentDate | date:'MMM d, y' }} at {{ formatTime(cancellingAppt.appointmentTime) }}
+          {{ cancellingAppt.datetime | date:'MMM d, y' }} at {{ cancellingAppt.datetime | date:'h:mm a' }}
         </span>
       </div>
     </div>

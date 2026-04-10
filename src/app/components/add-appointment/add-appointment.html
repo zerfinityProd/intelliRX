@@ -147,14 +147,14 @@
           <ul class="appt-patient-pick-list" role="listbox">
             <li *ngFor="let p of phoneMatches">
               <button type="button" class="appt-patient-pick"
-                [class.appt-patient-pick--selected]="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient"
+                [class.appt-patient-pick--selected]="matchedPatient?.id === p.id && !intentNewPatient"
                 (click)="selectExistingPatient(p)">
                 <span class="appt-patient-pick__avatar">{{ p.name.trim().charAt(0).toUpperCase() }}</span>
                 <span class="appt-patient-pick__body">
                   <span class="appt-patient-pick__name">{{ p.name }}</span>
-                  <span class="appt-patient-pick__meta" *ngIf="p.familyId">ID · {{ p.familyId }}</span>
+                  <span class="appt-patient-pick__meta" *ngIf="p.id">ID · {{ p.id }}</span>
                 </span>
-                <span class="appt-patient-pick__check" *ngIf="matchedPatient?.uniqueId === p.uniqueId && !intentNewPatient">
+                <span class="appt-patient-pick__check" *ngIf="matchedPatient?.id === p.id && !intentNewPatient">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </span>
               </button>

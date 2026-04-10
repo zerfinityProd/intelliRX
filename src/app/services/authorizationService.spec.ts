@@ -3,15 +3,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
 const hoisted = vi.hoisted(() => {
     return {
-        mockGetDoc: vi.fn(),
-        mockDoc: vi.fn(),
+        mockGetDocs: vi.fn(),
+        mockCollectionGroup: vi.fn(),
+        mockQuery: vi.fn(),
+        mockWhere: vi.fn(),
     };
 });
 
 vi.mock('@angular/fire/firestore', () => ({
     Firestore: class { },
-    doc: (...args: any[]) => hoisted.mockDoc(...args),
-    getDoc: (...args: any[]) => hoisted.mockGetDoc(...args),
+    collectionGroup: (...args: any[]) => hoisted.mockCollectionGroup(...args),
+    query: (...args: any[]) => hoisted.mockQuery(...args),
+    where: (...args: any[]) => hoisted.mockWhere(...args),
+    getDocs: (...args: any[]) => hoisted.mockGetDocs(...args),
+    doc: vi.fn(),
+    getDoc: vi.fn(),
 }));
 
 vi.mock('@angular/core', () => ({
@@ -28,9 +34,43 @@ vi.mock('@angular/core', () => ({
 // Import AFTER all mocks are defined
 import { AuthorizationService } from './authorizationService';
 
-// ═════════════════════════════════════════════════════════════════════════════════
-// AUTHORIZATION SERVICE TESTS
-// ═════════════════════════════════════════════════════════════════════════════════
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Build a fake Firestore query snapshot with doc paths and data */
+function makeSnapshot(docs: Array<{ path: string; data: Record<string, any> }>) {
+    return {
+        empty: docs.length === 0,
+        docs: docs.map(d => ({
+            ref: { path: d.path },
+            data: () => d.data,
+        })),
+    };
+}
+
+/** Standard doctor user doc at subscriptions/sub_01/clinics/clinic_01/users/doctor@test.com */
+function doctorDoc(email = 'doctor@test.com') {
+    return {
+        path: `subscriptions/sub_01/clinics/clinic_01/users/${email}`,
+        data: {
+            email,
+            doctor: ['canDelete', 'canEdit', 'canAddPatient', 'canAddVisit', 'canAppointment', 'canCancel'],
+        },
+    };
+}
+
+function receptionistDoc(email = 'recep@test.com') {
+    return {
+        path: `subscriptions/sub_01/clinics/clinic_01/users/${email}`,
+        data: {
+            email,
+            receptionist: ['canAppointment', 'canCancel', 'canAddPatient'],
+        },
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// AUTHORIZATION SERVICE TESTS (subscription-based)
+// ═══════════════════════════════════════════════════════════════════════════════
 
 describe('AuthorizationService', () => {
     let service: AuthorizationService;
@@ -38,214 +78,184 @@ describe('AuthorizationService', () => {
     beforeEach(() => {
         vi.clearAllMocks();
         service = new AuthorizationService();
+        // Clear internal cache between tests
+        service.invalidateRolesCache();
     });
 
-    describe('isEmailAllowed() - Positive Cases', () => {
-        it('should return true when email exists in allowlist', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => true,
-            });
+    // ── isEmailAllowed ────────────────────────────────────────────────────────
+    describe('isEmailAllowed()', () => {
+        it('returns true when user doc exists in a clinic', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc()]));
 
-            const result = await service.isEmailAllowed('allowed@test.com');
-
+            const result = await service.isEmailAllowed('doctor@test.com');
             expect(result).toBe(true);
         });
 
-        it('should normalize email to lowercase', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => true,
-            });
+        it('returns false when no user doc found', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([]));
+
+            const result = await service.isEmailAllowed('unknown@test.com');
+            expect(result).toBe(false);
+        });
+
+        it('returns false on Firestore error', async () => {
+            hoisted.mockGetDocs.mockRejectedValue(new Error('Firestore error'));
+
+            const result = await service.isEmailAllowed('error@test.com');
+            expect(result).toBe(false);
+        });
+
+        it('normalizes email to lowercase', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc('admin@test.com')]));
 
             await service.isEmailAllowed('ADMIN@TEST.COM');
 
-            expect(hoisted.mockDoc).toHaveBeenCalled();
-        });
-
-        it('should handle email with special characters', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => true,
-            });
-
-            const result = await service.isEmailAllowed('user+tag@test.com');
-
-            expect(result).toBe(true);
+            expect(hoisted.mockWhere).toHaveBeenCalledWith('email', '==', 'admin@test.com');
         });
     });
 
-    describe('isEmailAllowed() - Negative Cases', () => {
-        it('should return false when email does not exist in allowlist', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => false,
-            });
+    // ── getUserRole ───────────────────────────────────────────────────────────
+    describe('getUserRole()', () => {
+        it('returns "doctor" when user doc has a doctor field', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc()]));
 
-            const result = await service.isEmailAllowed('notallowed@test.com');
-
-            expect(result).toBe(false);
+            const role = await service.getUserRole('doctor@test.com');
+            expect(role).toBe('doctor');
         });
 
-        it('should return false on Firestore error', async () => {
-            hoisted.mockGetDoc.mockRejectedValue(new Error('Firestore error'));
+        it('returns "receptionist" when user doc has a receptionist field', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([receptionistDoc()]));
 
-            const result = await service.isEmailAllowed('error@test.com');
-
-            expect(result).toBe(false);
+            const role = await service.getUserRole('recep@test.com');
+            expect(role).toBe('receptionist');
         });
 
-        it('should return false on permission denied error', async () => {
-            hoisted.mockGetDoc.mockRejectedValue({
-                code: 'permission-denied',
-                message: 'Missing or insufficient permissions',
-            });
+        it('defaults to "doctor" when user not found', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([]));
 
-            const result = await service.isEmailAllowed('nopermission@test.com');
-
-            expect(result).toBe(false);
-        });
-
-        it('should return false on network error', async () => {
-            hoisted.mockGetDoc.mockRejectedValue(new Error('Network error'));
-
-            const result = await service.isEmailAllowed('network@test.com');
-
-            expect(result).toBe(false);
+            const role = await service.getUserRole('unknown@test.com');
+            expect(role).toBe('doctor');
         });
     });
 
-    describe('checkEmailsAllowed() - Positive Cases', () => {
-        it('should check multiple emails and return results', async () => {
-            hoisted.mockGetDoc.mockImplementation(() =>
-                Promise.resolve({
-                    exists: () => true,
-                })
-            );
+    // ── getUserPermissions ────────────────────────────────────────────────────
+    describe('getUserPermissions()', () => {
+        it('returns all doctor permissions as true', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc()]));
 
-            const result = await service.checkEmailsAllowed([
-                'user1@test.com',
-                'user2@test.com',
-                'user3@test.com',
-            ]);
-
-            expect(result['user1@test.com']).toBe(true);
-            expect(result['user2@test.com']).toBe(true);
-            expect(result['user3@test.com']).toBe(true);
+            const perms = await service.getUserPermissions('doctor@test.com');
+            expect(perms.canDelete).toBe(true);
+            expect(perms.canEdit).toBe(true);
+            expect(perms.canAddPatient).toBe(true);
+            expect(perms.canAddVisit).toBe(true);
+            expect(perms.canAppointment).toBe(true);
+            expect(perms.canCancel).toBe(true);
         });
 
-        it('should handle empty email array', async () => {
+        it('returns limited receptionist permissions', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([receptionistDoc()]));
+
+            const perms = await service.getUserPermissions('recep@test.com');
+            expect(perms.canAppointment).toBe(true);
+            expect(perms.canCancel).toBe(true);
+            expect(perms.canAddPatient).toBe(true);
+            expect(perms.canDelete).toBe(false);
+            expect(perms.canEdit).toBe(false);
+            expect(perms.canAddVisit).toBe(false);
+        });
+
+        it('returns all-false permissions when user not found', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([]));
+
+            const perms = await service.getUserPermissions('unknown@test.com');
+            expect(perms.canDelete).toBe(false);
+            expect(perms.canEdit).toBe(false);
+            expect(perms.canAddPatient).toBe(false);
+        });
+    });
+
+    // ── getUserClinicIds ──────────────────────────────────────────────────────
+    describe('getUserClinicIds()', () => {
+        it('extracts clinic IDs from doc paths', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([
+                doctorDoc('doc@test.com'),
+                {
+                    path: 'subscriptions/sub_01/clinics/clinic_02/users/doc@test.com',
+                    data: { email: 'doc@test.com', doctor: ['canDelete'] },
+                },
+            ]));
+
+            const clinicIds = await service.getUserClinicIds('doc@test.com');
+            expect(clinicIds).toContain('clinic_01');
+            expect(clinicIds).toContain('clinic_02');
+            expect(clinicIds).toHaveLength(2);
+        });
+    });
+
+    // ── getUserSubscriptionId ─────────────────────────────────────────────────
+    describe('getUserSubscriptionId()', () => {
+        it('extracts subscription ID from doc path', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc()]));
+
+            const subId = await service.getUserSubscriptionId('doctor@test.com');
+            expect(subId).toBe('sub_01');
+        });
+
+        it('returns null when user not found', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([]));
+
+            const subId = await service.getUserSubscriptionId('unknown@test.com');
+            expect(subId).toBeNull();
+        });
+    });
+
+    // ── checkEmailsAllowed ────────────────────────────────────────────────────
+    describe('checkEmailsAllowed()', () => {
+        it('checks multiple emails', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc('a@test.com')]));
+
+            const result = await service.checkEmailsAllowed(['a@test.com', 'b@test.com']);
+            expect(result['a@test.com']).toBeDefined();
+            expect(result['b@test.com']).toBeDefined();
+        });
+
+        it('handles empty array', async () => {
             const result = await service.checkEmailsAllowed([]);
-
             expect(result).toEqual({});
         });
+    });
 
-        it('should handle mixed allowed and disallowed emails', async () => {
-            let callCount = 0;
-            hoisted.mockGetDoc.mockImplementation(() => {
-                callCount++;
-                return Promise.resolve({
-                    exists: () => callCount % 2 === 0, // Alternating true/false
-                });
-            });
+    // ── Caching ───────────────────────────────────────────────────────────────
+    describe('Caching', () => {
+        it('caches user lookup and reuses on second call', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc()]));
 
-            const result = await service.checkEmailsAllowed([
-                'user1@test.com',
-                'user2@test.com',
-                'user3@test.com',
-            ]);
+            await service.isEmailAllowed('doctor@test.com');
+            await service.isEmailAllowed('doctor@test.com');
 
-            expect(result['user1@test.com']).toBe(false);
-            expect(result['user2@test.com']).toBe(true);
-            expect(result['user3@test.com']).toBe(false);
+            // collectionGroup query should only fire once (cached)
+            expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
+        });
+
+        it('invalidateRolesCache forces re-fetch', async () => {
+            hoisted.mockGetDocs.mockResolvedValue(makeSnapshot([doctorDoc()]));
+
+            await service.isEmailAllowed('doctor@test.com');
+            service.invalidateRolesCache();
+            await service.isEmailAllowed('doctor@test.com');
+
+            expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(2);
         });
     });
 
-    describe('checkEmailsAllowed() - Negative Cases', () => {
-        it('should handle partial failures gracefully', async () => {
-            hoisted.mockGetDoc.mockImplementation((docPath) => {
-                if (typeof docPath === 'string' && docPath.includes('error')) {
-                    return Promise.reject(new Error('Error checking email'));
-                }
-                return Promise.resolve({ exists: () => true });
-            });
-
-            const result = await service.checkEmailsAllowed(['user@test.com']);
-
-            expect(result['user@test.com']).toBeDefined();
-        });
-    });
-
-    describe('allowEmail() - Positive Cases', () => {
-        it('should allow email (placeholder implementation)', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => true,
-            });
-
-            await expect(service.allowEmail('newuser@test.com')).resolves.not.toThrow();
+    // ── Placeholder methods ───────────────────────────────────────────────────
+    describe('allowEmail / denyEmail (placeholders)', () => {
+        it('allowEmail does not throw', async () => {
+            await expect(service.allowEmail('new@test.com')).resolves.not.toThrow();
         });
 
-        it('should normalize email to lowercase when allowing', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => true,
-            });
-
-            await service.allowEmail('NEWUSER@TEST.COM');
-
-            expect(hoisted.mockDoc).toHaveBeenCalled();
-        });
-    });
-
-    describe('allowEmail() - Negative Cases', () => {
-        it('should throw error on Firestore failure', async () => {
-            hoisted.mockGetDoc.mockRejectedValue(new Error('Firestore error'));
-
-            await expect(service.allowEmail('user@test.com')).rejects.toThrow('Firestore error');
-        });
-
-        it('should throw error on permission denied', async () => {
-            hoisted.mockGetDoc.mockRejectedValue(new Error('Permission denied'));
-
-            await expect(service.allowEmail('user@test.com')).rejects.toThrow('Permission denied');
-        });
-    });
-
-    describe('denyEmail() - Positive Cases', () => {
-        it('should deny email (placeholder implementation)', async () => {
-            await expect(service.denyEmail('usertoblock@test.com')).resolves.not.toThrow();
-        });
-    });
-
-    describe('denyEmail() - Negative Cases', () => {
-        it('should throw error on Firestore failure', async () => {
-            // Mock setDoc or deleteDoc when implemented
-            // Currently denyEmail is a placeholder, so this test verifies the placeholder doesn't throw
-            await expect(service.denyEmail('user@test.com')).resolves.not.toThrow();
-        });
-    });
-
-    describe('Integration Tests', () => {
-        it('should allow email then verify it is allowed', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => true,
-            });
-
-            await service.allowEmail('integration@test.com');
-            const isAllowed = await service.isEmailAllowed('integration@test.com');
-
-            expect(isAllowed).toBe(true);
-        });
-
-        it('should handle rapid authorization checks', async () => {
-            hoisted.mockGetDoc.mockResolvedValue({
-                exists: () => true,
-            });
-
-            const promises = Array(5)
-                .fill(null)
-                .map((_, i) => service.isEmailAllowed(`user${i}@test.com`));
-
-            const results = await Promise.all(promises);
-
-            results.forEach(result => {
-                expect(result).toBe(true);
-            });
+        it('denyEmail does not throw', async () => {
+            await expect(service.denyEmail('old@test.com')).resolves.not.toThrow();
         });
     });
 });

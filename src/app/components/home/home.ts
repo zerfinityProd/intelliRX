@@ -11,6 +11,7 @@ import { UIStateService } from '../../services/uiStateService';
 import { AppointmentService } from '../../services/appointmentService';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
+import { UserPermissions } from '../../services/authorizationService';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { Patient } from '../../models/patient.model';
 import { Appointment } from '../../models/appointment.model';
@@ -89,6 +90,12 @@ export class HomeComponent implements OnInit {
   addPatientPrefillPhone: string = '';
   addPatientPrefillAilments: string = '';
 
+  // Permissions
+  permissions: UserPermissions = {
+    canDelete: false, canEdit: false, canAddPatient: false,
+    canAddVisit: false, canAppointment: false, canCancel: false,
+  };
+
   constructor(
     private patientService: PatientService,
     private uiStateService: UIStateService,
@@ -166,6 +173,7 @@ export class HomeComponent implements OnInit {
     try {
       if (rawEmail) {
         this.userRole = await this.authorizationService.getUserRole(rawEmail);
+        this.permissions = await this.authorizationService.getUserPermissions(rawEmail);
       }
     } catch {
       this.userRole = 'doctor';
@@ -330,12 +338,13 @@ export class HomeComponent implements OnInit {
     try {
       const userId = this.authService.getCurrentUserId();
       if (!userId) return;
+      const subId = this.clinicContextService.getSubscriptionId();
+      if (!subId) return;
       const col = collection(this.db, 'patients');
       const clinicId = this.clinicContextService.getSelectedClinicId();
-      // Count all patients in the clinic (includes those created by any staff member).
       const q = clinicId
-        ? query(col, where('clinicId', '==', clinicId))
-        : query(col, where('userId', '==', userId));
+        ? query(col, where('subscription_id', '==', subId), where('clinic_ids', 'array-contains', clinicId))
+        : query(col, where('subscription_id', '==', subId));
       const snap = await getCountFromServer(q);
       this.totalPatients = snap.data().count;
       this.cdr.detectChanges();
@@ -369,12 +378,12 @@ export class HomeComponent implements OnInit {
   private filterByDoctor(appts: Appointment[]): Appointment[] {
     const email = this.selectedDoctorEmail;
     if (!email) return appts;
-    return appts.filter(a => normalizeEmail(a.doctorId || '') === email);
+    return appts.filter(a => normalizeEmail(a.doctor_id || '') === email);
   }
 
   appointmentsOnDate(date: Date): Appointment[] {
     return this.filterByDoctor(this.appointments.filter(a => {
-      const d = new Date(a.appointmentDate);
+      const d = new Date(a.datetime);
       return d.getFullYear() === date.getFullYear()
         && d.getMonth() === date.getMonth()
         && d.getDate() === date.getDate();
@@ -398,7 +407,7 @@ export class HomeComponent implements OnInit {
   get todayAppointmentCount(): number {
     const t = new Date();
     return this.filterByDoctor(this.appointments.filter(a => {
-      const d = new Date(a.appointmentDate);
+      const d = new Date(a.datetime);
       return d.getFullYear() === t.getFullYear()
         && d.getMonth() === t.getMonth()
         && d.getDate() === t.getDate();
@@ -408,7 +417,7 @@ export class HomeComponent implements OnInit {
   get thisMonthCount(): number {
     const t = new Date();
     return this.filterByDoctor(this.appointments.filter(a => {
-      const d = new Date(a.appointmentDate);
+      const d = new Date(a.datetime);
       return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth();
     })).length;
   }
@@ -539,7 +548,6 @@ export class HomeComponent implements OnInit {
     this.isLoadingSlots = true;
     this.cdr.markForCheck();
     try {
-      // Use already-loaded appointments when available to avoid extra network calls.
       const all = this.appointments?.length
         ? this.appointments
         : await this.appointmentService.getAppointments();
@@ -548,16 +556,19 @@ export class HomeComponent implements OnInit {
 
       this.bookedSlotsForSelected = all
         .filter(a => {
-          const d = new Date(a.appointmentDate);
+          const d = new Date(a.datetime);
           const sameDay = d.getFullYear() === date.getFullYear()
             && d.getMonth() === date.getMonth()
             && d.getDate() === date.getDate();
           const sameDoctor = doctorEmail
-            ? normalizeEmail(a.doctorId || '') === doctorEmail
+            ? normalizeEmail(a.doctor_id || '') === doctorEmail
             : true;
           return sameDay && sameDoctor && a.status !== 'cancelled';
         })
-        .map(a => a.appointmentTime);
+        .map(a => {
+          const dt = new Date(a.datetime);
+          return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        });
     } catch {
       this.bookedSlotsForSelected = [];
     }
@@ -639,7 +650,7 @@ export class HomeComponent implements OnInit {
   closeFab(): void { this.uiStateService.closeFab(); }
 
   openAddVisitForm(patient: Patient): void {
-    this.router.navigate(['/patient', patient.uniqueId, 'add-visit'], { state: { origin: 'home' } });
+    this.router.navigate(['/patient', patient.id, 'add-visit'], { state: { origin: 'home' } });
   }
 
   closeAddVisitForm(): void { this.uiStateService.closeAddVisitForm(); }
@@ -652,7 +663,7 @@ export class HomeComponent implements OnInit {
 
   viewPatientDetails(patient: Patient): void {
     this.clearSearch();
-    this.router.navigate(['/patient', patient.uniqueId]);
+    this.router.navigate(['/patient', patient.id]);
   }
 
   async loadMoreResults(): Promise<void> { await this.patientService.loadMorePatients(); }
@@ -668,10 +679,9 @@ export class HomeComponent implements OnInit {
     if (patient) {
       this.router.navigate(['/add-appointment'], {
         queryParams: {
-          patientId: patient.uniqueId,
+          patientId: patient.id,
           patientName: patient.name,
-          patientPhone: patient.phone,
-          patientFamilyId: patient.familyId
+          patientPhone: patient.phone
         }
       });
       return;
@@ -700,7 +710,10 @@ export class HomeComponent implements OnInit {
     this.dayViewAppointments = this.appointmentsOnDate(date);
     this.dayViewBookedSlots = this.dayViewAppointments
       .filter(a => a.status !== 'cancelled')
-      .map(a => a.appointmentTime);
+      .map(a => {
+        const dt = new Date(a.datetime);
+        return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      });
     this.isLoadingDayView = false;
     this.cdr.detectChanges();
   }
@@ -733,9 +746,11 @@ export class HomeComponent implements OnInit {
 
   onDayViewAddVisit(appt: Appointment): void {
     this.closeDayView();
-    const directPatientId = (appt.patientId || '').trim();
+    const directPatientId = (appt.patient_id || '').trim();
     if (directPatientId) {
-      this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'home' } });
+      this.router.navigate(['/patient', directPatientId, 'add-visit'], {
+        state: { origin: 'home', appointmentId: appt.id || '' }
+      });
     } else {
       this.router.navigate(['/home'], {
         queryParams: {

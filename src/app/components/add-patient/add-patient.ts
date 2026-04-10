@@ -268,16 +268,17 @@ export class AddPatientComponent implements OnInit, OnDestroy {
         phone: this.phone.trim()
       };
       if (this.email.trim()) patientData.email = this.email.trim();
-      if (this.dateOfBirth) patientData.dateOfBirth = new Date(this.dateOfBirth);
+      if (this.dateOfBirth) patientData.dob = this.dateOfBirth;
       if (this.gender) patientData.gender = this.gender;
       const allergiesText = this.allergyChips.join(', ');
       if (allergiesText) patientData.allergies = allergiesText;
       const ailmentsText = this.ailmentChips.join(', ');
       if (ailmentsText) patientData.ailments = ailmentsText;
 
+      const clinicId = this.clinicContextService.getSelectedClinicId();
       const patientId = await this.patientService.createPatient({
         ...patientData,
-        clinicId: this.clinicContextService.getSelectedClinicId() || undefined
+        clinic_ids: clinicId ? [clinicId] : []
       });
 
       this.isSubmitting = false;

@@ -113,7 +113,7 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     // Last visit date
     if (this.visits.length > 0) {
       const lastVisit = this.visits[0];
-      this.stats.lastVisitDate = this.formatDate(lastVisit.createdAt);
+      this.stats.lastVisitDate = this.formatDate(lastVisit.created_at);
     }
 
     // Allergies count
@@ -123,8 +123,8 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
 
     // Average visits per month
     if (this.visits.length > 0) {
-      const firstVisit = new Date(this.visits[this.visits.length - 1].createdAt);
-      const lastVisit = new Date(this.visits[0].createdAt);
+      const firstVisit = new Date(this.visits[this.visits.length - 1].created_at);
+      const lastVisit = new Date(this.visits[0].created_at);
       const monthsDiff = this.getMonthsDifference(firstVisit, lastVisit) || 1;
       this.stats.averageVisitsPerMonth = Number((this.visits.length / monthsDiff).toFixed(1));
     }
@@ -301,10 +301,10 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     // Count visits per month
     this.visits.forEach(visit => {
       let visitDate: Date;
-      if (visit.createdAt && typeof (visit.createdAt as any).toDate === 'function') {
-        visitDate = (visit.createdAt as any).toDate();
+      if (visit.created_at && typeof (visit.created_at as any).toDate === 'function') {
+        visitDate = (visit.created_at as any).toDate();
       } else {
-        visitDate = new Date(visit.createdAt);
+        visitDate = new Date(visit.created_at);
       }
       
       const monthKey = `${visitDate.getFullYear()}-${(visitDate.getMonth() + 1).toString().padStart(2, '0')}`;
@@ -497,10 +497,10 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   private getVisitsForDate(date: Date): Visit[] {
     return this.visits.filter(visit => {
       let visitDate: Date;
-      if (visit.createdAt && typeof (visit.createdAt as any).toDate === 'function') {
-        visitDate = (visit.createdAt as any).toDate();
+      if (visit.created_at && typeof (visit.created_at as any).toDate === 'function') {
+        visitDate = (visit.created_at as any).toDate();
       } else {
-        visitDate = new Date(visit.createdAt);
+        visitDate = new Date(visit.created_at);
       }
       
       return visitDate.getDate() === date.getDate() &&

@@ -4,37 +4,26 @@ export type AppointmentStatus = 'scheduled' | 'completed' | 'cancelled' | 'no-sh
 
 export interface Appointment {
   id?: string;
-  patientId: string;        // links to Patient.uniqueId
-  patientName: string;
-  patientPhone: string;
-  patientFamilyId?: string;
-  appointmentDate: Date;
-  appointmentTime: string;  // e.g. "10:30"
+  subscription_id: string;
+  clinic_id: string;
+  doctor_id: string;           // user ID (email) of the assigned doctor
+  patient_id: string;          // patient document ID
+  datetime: Date;              // appointment date+time
+  status: AppointmentStatus;
+
+  // Denormalized display fields (avoids extra lookups)
+  patientName?: string;
+  patientPhone?: string;
+  doctor_name?: string;        // denormalized doctor display name
+  clinic_name?: string;        // denormalized clinic display name
+
+  // Optional fields
   reason?: string;
   notes?: string;
-  /**
-   * SaaS scoping: clinic where this appointment belongs.
-   * Optional for backward compatibility with existing documents.
-   */
-  clinicId?: string;
-  /**
-   * SaaS scoping: tenant subscription id (optional for backward compatibility).
-   */
-  subscriptionId?: string;
-  /**
-   * Patient ailments captured during appointment booking.
-   * This should later be visible on patient + in "Ailments" section of the visit form.
-   */
   ailments?: string;
-  /**
-   * Reason provided when an appointment is manually cancelled.
-   * Displayed on the cancelled appointment card on both reception and doctor dashboards.
-   */
   cancellationReason?: string;
-  status: AppointmentStatus;
-  isNewPatient: boolean;    // true = no patientId yet
-  userId: string;           // Firebase Auth UID of the user who created this appointment
-  doctorId?: string;        // email of the assigned doctor (links to allowedUsers collection)
-  createdAt: Date;
-  updatedAt: Date;
+  isNewPatient?: boolean;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }

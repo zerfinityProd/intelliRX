@@ -83,14 +83,16 @@ export class DayViewModalComponent implements OnChanges {
       return;
     }
 
-    // Build a map of appointmentTime -> Appointment for quick lookup
+    // Build a map of time string -> Appointment for quick lookup
     const apptMap = new Map<string, Appointment>();
     for (const appt of this.appointments) {
-      if (appt.appointmentTime) {
+      if (appt.datetime) {
+        const dt = new Date(appt.datetime);
+        const timeStr = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
         // For multiple appointments at same time, first one wins (scheduled > others)
-        const existing = apptMap.get(appt.appointmentTime);
+        const existing = apptMap.get(timeStr);
         if (!existing || (appt.status === 'scheduled' && existing.status !== 'scheduled')) {
-          apptMap.set(appt.appointmentTime, appt);
+          apptMap.set(timeStr, appt);
         }
       }
     }

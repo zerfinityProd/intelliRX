@@ -1,17 +1,17 @@
 export interface Patient {
-  uniqueId: string; // Primary key: combination of userId, familyId and phone
-  userId: string; // Firebase Auth UID - for user-specific data access
-  familyId: string; // lastname_firstname
+  id?: string;                // Firestore document ID
+  subscription_id: string;
   name: string;
   phone: string;
-  clinicId?: string;
   email?: string;
-  dateOfBirth?: Date;
+  dob?: string;               // ISO date string e.g. "1990-01-01"
   gender?: string;
-  allergies?: string;
-  ailments?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  allergies?: string;          // comma-separated string
+  ailments?: string;           // comma-separated string
+  clinic_ids: string[];        // array of clinic IDs patient is associated with
+  family_id?: string;          // auto-generated family identifier (e.g. "sharma_9876543210")
+  created_at?: string;         // ISO datetime — when the patient was first registered
+  last_updated?: string;       // ISO datetime string
 }
 
 export interface Illness {
@@ -30,27 +30,63 @@ export interface Diagnosis {
   description: string;
 }
 
-export interface Examination {
-  testName: string;
-  result: string;
+export interface TestRecord {
+  test_name: string;
+  status: 'completed' | 'suggested' | 'pending';
+  result: string | null;
 }
 
-export interface Medicine {
+export interface Medication {
   name: string;
   dosage: string;
   frequency: string;
+  duration_days?: number;
+}
+
+export interface ClinicalData {
+  chief_complaints: string[];
+  diagnosis: string[];
+  advice: string;
+}
+
+export interface VisitSnapshot {
+  patient_name: string;
+  doctor_name: string;
+  clinic_name: string;
+}
+
+export interface VisitAudit {
+  created_by: string;
+  updated_by: string;
 }
 
 export interface Visit {
   id?: string;
-  visitType?: 'appointment' | 'walk-in';
+  subscription_id: string;
+  clinic_id: string;
+  appointment_id?: string;
+  doctor_id: string;
+  patient_id: string;
+  visit_datetime?: string;          // ISO datetime
+
+  // ── Backward-compatible flat fields (used by current UI) ──
   presentIllness?: string;
-  chiefComplaints: string;
-  diagnosis: string;
-  examination: string;
-  medicines?: string; 
-  treatmentPlan: string;
-  advice: string;
-  createdAt: Date;
-  updatedAt: Date;
+  chiefComplaints?: string;
+  diagnosis?: string;
+  examination?: string;
+  medicines?: string;
+  treatmentPlan?: string;
+  advice?: string;
+  visitType?: string;               // e.g. "walk-in", "scheduled"
+
+  // ── Structured fields (for future use) ──
+  clinical_data?: ClinicalData;
+  tests?: TestRecord[];
+  medications?: Medication[];
+  snapshot?: VisitSnapshot;
+  audit?: VisitAudit;
+
+  status?: 'completed' | 'in-progress';
+  version?: number;
+  created_at: string;               // ISO datetime
 }

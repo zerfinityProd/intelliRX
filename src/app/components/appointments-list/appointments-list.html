@@ -149,7 +149,7 @@
         <div *ngFor="let appt of cardsFor(col.id)"
           class="kb-card"
           [class.kb-card--updating]="updatingId === appt.id"
-          [class.kb-card--today]="isToday(appt.appointmentDate)">
+          [class.kb-card--today]="isToday(appt.datetime)">
 
           <!-- Spinner overlay when updating -->
           <div *ngIf="updatingId === appt.id" class="kb-card__overlay">
@@ -159,13 +159,13 @@
           <!-- Card top: date + today badge -->
           <div class="kb-card__top">
             <div class="kb-card__date-block">
-              <span class="kb-card__day">{{ appt.appointmentDate | date:'d' }}</span>
-              <span class="kb-card__month">{{ appt.appointmentDate | date:'MMM' }}</span>
+              <span class="kb-card__day">{{ appt.datetime | date:'d' }}</span>
+              <span class="kb-card__month">{{ appt.datetime | date:'MMM' }}</span>
             </div>
             <div class="kb-card__top-right">
-              <span *ngIf="isToday(appt.appointmentDate)" class="kb-today-badge">Today</span>
+              <span *ngIf="isToday(appt.datetime)" class="kb-today-badge">Today</span>
               <span *ngIf="appt.isNewPatient" class="kb-new-badge">New</span>
-              <span class="kb-card__time">{{ formatTime(appt.appointmentTime) }}</span>
+              <span class="kb-card__time">{{ formatTime(appt.datetime) }}</span>
             </div>
 
           </div>
@@ -281,11 +281,11 @@
 
     <!-- Patient Info Chip -->
     <div class="pp-patient-chip" *ngIf="postponingAppt">
-      <div class="pp-patient-chip__avatar">{{ postponingAppt.patientName.charAt(0).toUpperCase() }}</div>
+      <div class="pp-patient-chip__avatar">{{ (postponingAppt.patientName || '?').charAt(0).toUpperCase() }}</div>
       <div class="pp-patient-chip__info">
         <span class="pp-patient-chip__name">{{ postponingAppt.patientName }}</span>
         <span class="pp-patient-chip__meta">
-          Currently: {{ postponingAppt.appointmentDate | date:'MMM d, y' }} at {{ formatTime(postponingAppt.appointmentTime) }}
+          Currently: {{ postponingAppt.datetime | date:'MMM d, y' }} at {{ postponingAppt.datetime | date:'h:mm a' }}
         </span>
       </div>
     </div>
@@ -383,11 +383,11 @@
 
     <!-- Patient Info Chip -->
     <div class="pp-patient-chip" *ngIf="cancellingAppt">
-      <div class="pp-patient-chip__avatar">{{ cancellingAppt.patientName.charAt(0).toUpperCase() }}</div>
+      <div class="pp-patient-chip__avatar">{{ (cancellingAppt.patientName || '?').charAt(0).toUpperCase() }}</div>
       <div class="pp-patient-chip__info">
         <span class="pp-patient-chip__name">{{ cancellingAppt.patientName }}</span>
         <span class="pp-patient-chip__meta">
-          {{ cancellingAppt.appointmentDate | date:'MMM d, y' }} at {{ formatTime(cancellingAppt.appointmentTime) }}
+          {{ cancellingAppt.datetime | date:'MMM d, y' }} at {{ cancellingAppt.datetime | date:'h:mm a' }}
         </span>
       </div>
     </div>

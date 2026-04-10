@@ -240,7 +240,7 @@
             <div class="avp-visit-meta">
               <span class="avp-visit-num">Visit #{{ visits.length - i }}</span>
               <span *ngIf="visit.visitType === 'walk-in'" class="walk-in-badge">Walk-in visit</span>
-              <span class="avp-visit-date">{{ formatDateTime(visit.createdAt) }}</span>
+              <span class="avp-visit-date">{{ formatDateTime(visit.created_at) }}</span>
             </div>
             <div class="avp-visit-preview" *ngIf="!isVisitExpanded(visit.id)">
               {{ visit.chiefComplaints }}

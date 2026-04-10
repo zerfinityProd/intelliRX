@@ -30,6 +30,27 @@ export class ClinicContextService {
     return this.contextSubject.value.subscriptionId;
   }
 
+  /**
+   * Returns the subscription ID or throws if not set.
+   * Use this in services that MUST have a subscription context to function.
+   */
+  requireSubscriptionId(): string {
+    const subId = this.contextSubject.value.subscriptionId;
+    if (!subId) {
+      throw new Error('Subscription context not set. Please log in again.');
+    }
+    return subId;
+  }
+
+  /**
+   * Returns the Firestore collection path for a subcollection under the subscription.
+   * e.g. getSubscriptionCollectionPath('patients') → 'subscriptions/sub_01/patients'
+   */
+  getSubscriptionCollectionPath(subcollection: string): string {
+    const subId = this.requireSubscriptionId();
+    return `subscriptions/${subId}/${subcollection}`;
+  }
+
   setClinicContext(clinicId: string | null, subscriptionId: string | null): void {
     const next: ClinicContext = { clinicId, subscriptionId };
     this.contextSubject.next(next);
@@ -61,4 +82,3 @@ export class ClinicContextService {
     }
   }
 }
-

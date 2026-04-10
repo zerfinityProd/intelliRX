@@ -69,6 +69,7 @@ export class AddVisitPageComponent implements OnInit {
 
     // ── Navigation origin ─────────────────────────────────────
     private origin: 'home' | 'patient' = 'home';
+    private routeAppointmentId: string = '';
     private originalAllergies: string[] = [];
     private originalAilments: string[] = [];
 
@@ -80,8 +81,9 @@ export class AddVisitPageComponent implements OnInit {
     private readonly ngZone = inject(NgZone);
 
     async ngOnInit(): Promise<void> {
-        const state = history.state as { origin?: string } | undefined;
+        const state = history.state as { origin?: string; appointmentId?: string } | undefined;
         this.origin = (state?.origin === 'patient') ? 'patient' : 'home';
+        this.routeAppointmentId = (state?.appointmentId || '').trim();
 
         const patientId = this.route.snapshot.paramMap.get('id');
         if (!patientId) {
@@ -129,13 +131,13 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     async loadVisits(): Promise<void> {
-        if (!this.patient?.uniqueId) return;
+        if (!this.patient?.id) return;
         this.ngZone.run(() => {
             this.isLoadingVisits = true;
             this.cdr.detectChanges();
         });
         try {
-            this.visits = await this.patientService.getPatientVisits(this.patient!.uniqueId);
+            this.visits = await this.patientService.getPatientVisits(this.patient!.id);
             this.ngZone.run(() => {
                 this.isLoadingVisits = false;
                 this.cdr.detectChanges();
@@ -247,7 +249,7 @@ export class AddVisitPageComponent implements OnInit {
         if (!this.patient) return;
         this.isSubmitting = true;
         try {
-            const patientId = this.patient.uniqueId;
+            const patientId = this.patient.id!;
 
             // Update allergies/ailments if changed
             const allergiesText = this.existingAllergies.join(', ');
@@ -273,9 +275,9 @@ export class AddVisitPageComponent implements OnInit {
 
                 const candidates = allAppts
                     .filter(a => a.status === 'scheduled')
-                    .filter(a => new Date(a.appointmentDate) >= todayStart)
+                    .filter(a => new Date(a.datetime) >= todayStart)
                     .filter(a => {
-                        const apptPatientId = (a.patientId || '').trim();
+                        const apptPatientId = (a.patient_id || '').trim();
                         if (apptPatientId) return apptPatientId === patientId;
                         const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
                         const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
@@ -288,7 +290,9 @@ export class AddVisitPageComponent implements OnInit {
             }
 
             // Determine visit type based on whether a matching appointment was found
-            const visitType = matchedAppointment?.id ? 'appointment' : 'walk-in';
+            const hasAppointment = !!(this.routeAppointmentId || matchedAppointment?.id);
+            const visitType = hasAppointment ? 'appointment' : 'walk-in';
+            const appointmentId = this.routeAppointmentId || matchedAppointment?.id || '';
 
             // Save visit
             const visitData: any = {
@@ -298,6 +302,11 @@ export class AddVisitPageComponent implements OnInit {
                 examination: this.formatExaminations(),
                 treatmentPlan: this.treatmentPlan.trim(),
             };
+
+            // Link visit to the matched appointment
+            if (appointmentId) {
+                visitData.appointment_id = appointmentId;
+            }
             const presentIllnessText = this.formatArrayField(this.presentIllnesses);
             if (presentIllnessText) visitData.presentIllness = presentIllnessText;
             const medicinesText = this.formatMedicines();
@@ -306,9 +315,10 @@ export class AddVisitPageComponent implements OnInit {
             await this.patientService.addVisit(patientId, visitData);
 
             // ── Auto-complete the matched appointment ──────────────
-            if (matchedAppointment?.id) {
+            const apptIdToComplete = this.routeAppointmentId || matchedAppointment?.id;
+            if (apptIdToComplete) {
                 try {
-                    await this.appointmentService.updateAppointmentStatus(matchedAppointment.id, 'completed');
+                    await this.appointmentService.updateAppointmentStatus(apptIdToComplete, 'completed');
                 } catch {
                     // Silent — don't block visit save if appointment update fails
                 }
@@ -338,7 +348,7 @@ export class AddVisitPageComponent implements OnInit {
 
     private navigateBack(): void {
         if (this.origin === 'patient' && this.patient) {
-            this.router.navigate(['/patient', this.patient.uniqueId]);
+            this.router.navigate(['/patient', this.patient.id]);
         } else {
             this.router.navigate(['/home']);
         }
@@ -410,8 +420,8 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     getPatientAge(): number | null {
-        if (!this.patient?.dateOfBirth) return null;
-        const dob = new Date(this.patient.dateOfBirth);
+        if (!this.patient?.dob) return null;
+        const dob = new Date(this.patient.dob);
         const today = new Date();
         let age = today.getFullYear() - dob.getFullYear();
         const m = today.getMonth() - dob.getMonth();
@@ -446,15 +456,15 @@ export class AddVisitPageComponent implements OnInit {
         return dt;
     }
 
-    private pickClosestAppointmentByTime(appointments: Array<{ appointmentDate: any; appointmentTime: string }>, now: Date) {
+    private pickClosestAppointmentByTime(appointments: Array<{ datetime: any }>, now: Date) {
         if (!appointments?.length) return null;
         let best = appointments[0] as any;
         let bestDiff = Math.abs(
-            this.toLocalDateTime(new Date(best.appointmentDate), best.appointmentTime).getTime() - now.getTime()
+            new Date(best.datetime).getTime() - now.getTime()
         );
         for (const a of appointments.slice(1) as any[]) {
             const diff = Math.abs(
-                this.toLocalDateTime(new Date(a.appointmentDate), a.appointmentTime).getTime() - now.getTime()
+                new Date(a.datetime).getTime() - now.getTime()
             );
             if (diff < bestDiff) {
                 best = a;
