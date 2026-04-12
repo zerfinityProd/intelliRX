@@ -16,6 +16,7 @@ export interface Subscription {
   billing_email?: string;       // billing contact (defaults to owner_email)
   plan: SubscriptionPlan;
   status: 'active' | 'inactive' | 'suspended';
+  permissions?: Record<string, string[]>;  // role → permission overrides (e.g. { "doctor": ["canEdit","canAddPatient"] })
   created_at?: string;          // ISO datetime
   updated_at?: string;          // ISO datetime
 }

@@ -222,6 +222,19 @@ export class PatientService {
   }
 
   /**
+   * Update an existing visit
+   */
+  async updateVisit(patientId: string, visitId: string, visitData: Partial<Visit>): Promise<void> {
+    try {
+      await this.firebaseService.updateVisit(visitId, visitData);
+      console.log('✓ Visit updated successfully');
+    } catch (error) {
+      console.error('❌ Error updating visit:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete a visit
    */
   async deleteVisit(patientId: string, visitId: string): Promise<void> {

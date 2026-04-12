@@ -2,7 +2,8 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import {
   Firestore, collection, query, where, getCountFromServer
 } from '@angular/fire/firestore';
@@ -13,6 +14,7 @@ import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { UserPermissions } from '../../services/authorizationService';
 import { ClinicContextService } from '../../services/clinicContextService';
+import { ClinicService } from '../../services/clinicService';
 import { Patient } from '../../models/patient.model';
 import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
@@ -20,7 +22,7 @@ import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
 import { NavbarComponent } from '../navbar/navbar';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
-import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import doctorsData from '../../data/doctors.json';
 
@@ -71,7 +73,7 @@ export class HomeComponent implements OnInit {
   showSlots: boolean = false;
   bookedSlotsForSelected: string[] = [];
   isLoadingSlots: boolean = false;
-  readonly allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+  allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
 
   // Day View Modal state
   showDayViewModal = false;
@@ -94,6 +96,7 @@ export class HomeComponent implements OnInit {
   permissions: UserPermissions = {
     canDelete: false, canEdit: false, canAddPatient: false,
     canAddVisit: false, canAppointment: false, canCancel: false,
+    canEditVisit: false,
   };
 
   constructor(
@@ -103,6 +106,7 @@ export class HomeComponent implements OnInit {
     private authService: AuthenticationService,
     private authorizationService: AuthorizationService,
     private clinicContextService: ClinicContextService,
+    private clinicService: ClinicService,
     private db: Firestore,
     private router: Router,
     private route: ActivatedRoute,
@@ -114,10 +118,6 @@ export class HomeComponent implements OnInit {
 
   ngOnInit(): void {
     this.clearSearch();
-    // Ensure doctor's clinic context is resolved so AddPatient uses the correct clinicId.
-    void this.ensureClinicContext();
-    // Initialize doctor context for dashboard filtering
-    void this.initDashboardDoctorContext();
 
     // If navigated here with prefill query params, open Add Patient modal.
     const qp = this.route.snapshot.queryParams || {};
@@ -134,10 +134,20 @@ export class HomeComponent implements OnInit {
       this.isSearching = false;
       this.cdr.markForCheck();
     });
-    this.loadAppointments().then(() => {
-      // Restore day view modal from sessionStorage after appointments load
-      this.restoreDayViewFromSession();
-    });
+
+    // Ensure clinic/subscription context is resolved BEFORE loading appointments
+    void this.initializeAndLoad();
+  }
+
+  /**
+   * Sequentially resolve clinic context → dashboard doctor context → load data.
+   * This prevents "Subscription context not set" errors.
+   */
+  private async initializeAndLoad(): Promise<void> {
+    await this.ensureClinicContext();
+    await this.initDashboardDoctorContext();
+    await this.loadAppointments();
+    this.restoreDayViewFromSession();
     this.loadPatientCount();
   }
 
@@ -148,7 +158,13 @@ export class HomeComponent implements OnInit {
    */
   private async ensureClinicContext(): Promise<void> {
     // Already set (from login or localStorage) — nothing to do.
-    if (this.clinicContextService.getSelectedClinicId()) return;
+    if (this.clinicContextService.getSelectedClinicId() && this.clinicContextService.getSubscriptionId()) return;
+
+    // Wait for Firebase auth to resolve before reading user email
+    await firstValueFrom(this.authService.authReady$.pipe(filter(ready => ready)));
+
+    // Re-check after auth is ready (authenticationService may have set it)
+    if (this.clinicContextService.getSelectedClinicId() && this.clinicContextService.getSubscriptionId()) return;
 
     const email = this.authService.currentUserValue?.email;
     if (!email) return;
@@ -158,6 +174,8 @@ export class HomeComponent implements OnInit {
       if (clinicIds.length > 0) {
         const subscriptionId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
         this.clinicContextService.setClinicContext(clinicIds[0], subscriptionId);
+        // Load clinic-specific timings
+        await this.refreshTimeSlotsForClinic(clinicIds[0]);
       }
     } catch {
       // Non-critical — proceed without clinic context.
@@ -235,6 +253,8 @@ export class HomeComponent implements OnInit {
       ? await this.authorizationService.getUserSubscriptionId(email).catch(() => null)
       : null;
     this.clinicContextService.setClinicContext(this.selectedDoctorClinicId, subscriptionId);
+    // Refresh time slots based on the new clinic's timings
+    await this.refreshTimeSlotsForClinic(this.selectedDoctorClinicId);
     // Invalidate appointment cache so next load reflects new clinic
     this.appointmentService.invalidateCache();
     await this.loadAppointments();
@@ -488,8 +508,53 @@ export class HomeComponent implements OnInit {
 
   generateTimeSlots(): string[] {
     // Kept for backward compatibility inside the component.
-    // Main source of truth is now DEFAULT_SYSTEM_SETTINGS.
-    return generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+    // Main source of truth is now clinic-specific timings.
+    return this.allTimeSlots;
+  }
+
+  /**
+   * Fetch a clinic's schedule and regenerate time slots,
+   * filtered by the selected doctor's weekday availability.
+   * Falls back to global defaults when no clinic timings exist.
+   */
+  private async refreshTimeSlotsForClinic(clinicId?: string | null, date?: Date): Promise<void> {
+    const id = clinicId || this.clinicContextService.getSelectedClinicId();
+    if (!id) {
+      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+      return;
+    }
+    try {
+      const clinic = await this.clinicService.getClinicById(id);
+      let timings = clinic?.schedule?.timings;
+
+      const effectiveDate = date || this.selectedDate;
+
+      // Check if the clinic is open on this day (based on schedule.weekdays)
+      if (effectiveDate && clinic?.schedule?.weekdays) {
+        if (!isClinicOpenOnDate(clinic.schedule.weekdays, effectiveDate)) {
+          // Clinic is closed on this day — no slots available
+          this.allTimeSlots = [];
+          return;
+        }
+      }
+
+      // Apply doctor availability filtering if a doctor and date are known
+      const doctorEmail = this.selectedDoctorEmail;
+
+      if (doctorEmail && effectiveDate && timings && timings.length > 0) {
+        const availability = await this.authorizationService.getDoctorAvailability(doctorEmail, id);
+        if (availability) {
+          const dayKey = getWeekdayKey(effectiveDate);
+          const dayLabels = availability[dayKey];
+          // Pass true: availability map exists, so a missing day means "not available"
+          timings = filterTimingsByAvailability(timings, dayLabels, true);
+        }
+      }
+
+      this.allTimeSlots = generateTimeSlotsFromClinicTimings(timings);
+    } catch {
+      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+    }
   }
 
   formatSlotLabel(time: string): string {
@@ -695,7 +760,7 @@ export class HomeComponent implements OnInit {
   //  Day View Modal
   // ═══════════════════════════════════════════
 
-  openDayViewModal(date: Date): void {
+  async openDayViewModal(date: Date): Promise<void> {
     this.dayViewDate = date;
     this.showDayViewModal = true;
     this.isLoadingDayView = true;
@@ -705,6 +770,9 @@ export class HomeComponent implements OnInit {
     const d = String(date.getDate()).padStart(2, '0');
     sessionStorage.setItem('home_dayViewDate', `${y}-${mo}-${d}`);
     this.cdr.detectChanges();
+
+    // Refresh slots for the selected date (applies doctor availability)
+    await this.refreshTimeSlotsForClinic(null, date);
 
     // Build data for the modal
     this.dayViewAppointments = this.appointmentsOnDate(date);

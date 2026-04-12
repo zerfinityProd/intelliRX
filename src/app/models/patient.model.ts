@@ -89,4 +89,5 @@ export interface Visit {
   status?: 'completed' | 'in-progress';
   version?: number;
   created_at: string;               // ISO datetime
+  updated_at?: string;              // ISO datetime — last edit timestamp
 }

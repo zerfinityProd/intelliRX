@@ -15,7 +15,8 @@ import { Patient } from '../../models/patient.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { todayLocalISO } from '../../utilities/local-date';
 import { normalizeEmail } from '../../utilities/normalize-email';
-import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
+import { ClinicService } from '../../services/clinicService';
 import doctorsData from '../../data/doctors.json';
 
 @Component({
@@ -87,6 +88,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     permissions: UserPermissions = {
         canDelete: false, canEdit: false, canAddPatient: false,
         canAddVisit: false, canAppointment: false, canCancel: false,
+        canEditVisit: false,
     };
 
     readonly columns = [
@@ -100,6 +102,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     private authorizationService = inject(AuthorizationService);
     private patientService = inject(PatientService);
     private firebaseService = inject(FirebaseService);
+    private clinicService = inject(ClinicService);
     private router = inject(Router);
     private cdr = inject(ChangeDetectorRef);
 
@@ -550,6 +553,10 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         try {
             const clinicIds = await this.authorizationService.getUserClinicIds(email);
             this.clinicOptions = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
+            // Load clinic-specific timings for the first clinic
+            if (clinicIds.length > 0) {
+                await this.refreshTimeSlotsForClinic(clinicIds[0]);
+            }
             this.cdr.detectChanges();
         } catch {
             this.clinicOptions = [];
@@ -582,12 +589,61 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         return options.sort((a, b) => a.name.localeCompare(b.name));
     }
 
-    onFilterClinicChange(): void {
+    async onFilterClinicChange(): Promise<void> {
+        // Refresh time slots for the selected clinic
+        await this.refreshTimeSlotsForClinic(this.filterClinicId || null);
         // Reset doctor filter if it doesn't exist in new clinic scope
         this.cdr.detectChanges();
     }
 
-    onFilterDoctorChange(): void {
+    /**
+     * Fetch a clinic's schedule and regenerate time slots,
+     * filtered by the selected doctor's weekday availability.
+     * Falls back to global defaults when no clinic timings exist.
+     */
+    private async refreshTimeSlotsForClinic(clinicId?: string | null, date?: Date): Promise<void> {
+        if (!clinicId) {
+            this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+            return;
+        }
+        try {
+            const clinic = await this.clinicService.getClinicById(clinicId);
+            let timings = clinic?.schedule?.timings;
+
+            const effectiveDate = date || (this.selectedCalDate ?? undefined);
+
+            // Check if the clinic is open on this day (based on schedule.weekdays)
+            if (effectiveDate && clinic?.schedule?.weekdays) {
+                if (!isClinicOpenOnDate(clinic.schedule.weekdays, effectiveDate)) {
+                    // Clinic is closed on this day — no slots available
+                    this.allTimeSlots = [];
+                    return;
+                }
+            }
+
+            // Apply doctor availability filtering if a doctor filter is active
+            const doctorEmail = this.filterDoctorId || '';
+
+            if (doctorEmail && effectiveDate && timings && timings.length > 0) {
+                const availability = await this.authorizationService.getDoctorAvailability(doctorEmail, clinicId);
+                if (availability) {
+                    const dayKey = getWeekdayKey(effectiveDate);
+                    const dayLabels = availability[dayKey];
+                    // Pass true: availability map exists, so a missing day means "not available"
+                    timings = filterTimingsByAvailability(timings, dayLabels, true);
+                }
+            }
+
+            this.allTimeSlots = generateTimeSlotsFromClinicTimings(timings);
+        } catch {
+            this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+        }
+    }
+
+    async onFilterDoctorChange(): Promise<void> {
+        // Refresh time slots to apply the new doctor's availability
+        const clinicId = this.filterClinicId || (this.clinicOptions.length > 0 ? this.clinicOptions[0].id : null);
+        await this.refreshTimeSlotsForClinic(clinicId);
         this.cdr.detectChanges();
     }
 
@@ -757,7 +813,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     //  Day View Modal
     // ═══════════════════════════════════════════
 
-    openDayViewModal(date: Date): void {
+    async openDayViewModal(date: Date): Promise<void> {
         this.dayViewDate = date;
         this.showDayViewModal = true;
         this.isLoadingDayView = true;
@@ -767,6 +823,10 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const dd = String(date.getDate()).padStart(2, '0');
         sessionStorage.setItem('rh_dayViewDate', `${yy}-${mm}-${dd}`);
         this.cdr.detectChanges();
+
+        // Refresh slots for the selected date (applies doctor availability)
+        const clinicId = this.filterClinicId || (this.clinicOptions.length > 0 ? this.clinicOptions[0].id : null);
+        await this.refreshTimeSlotsForClinic(clinicId, date);
 
         // Build data for the modal
         this.dayViewAppointments = this.appointmentsOnDate(date);

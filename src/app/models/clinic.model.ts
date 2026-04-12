@@ -18,6 +18,7 @@ export interface Clinic {
   email?: string;
   schedule: ClinicSchedule;
   doctor_ids?: string[];       // user IDs of doctors assigned to this clinic
+  permissions?: Record<string, string[]>;  // role → permission overrides (e.g. { "doctor": ["canEdit"] })
   created_at?: string;         // ISO datetime
   updated_at?: string;         // ISO datetime
 }

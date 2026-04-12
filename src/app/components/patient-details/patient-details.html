@@ -229,7 +229,18 @@
                     <span *ngIf="visit.visitType === 'walk-in'" class="walk-in-badge">Walk-in visit</span>
                   </div>
                   <div class="d-flex align-items-center gap-2">
-                    <span class="visit-date">{{ formatDateTime(visit.created_at) }}</span>
+                    <div class="d-flex flex-column align-items-end">
+                      <span class="visit-date">{{ formatDateTime(visit.created_at) }}</span>
+                      <span *ngIf="visit.updated_at" class="visit-updated-date">Updated: {{ formatDateTime(visit.updated_at) }}</span>
+                    </div>
+                    <button *ngIf="permissions.canEditVisit" class="edit-visit-btn"
+                      (click)="startEditVisit(visit)" title="Edit visit">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
                     <button *ngIf="canDelete" class="delete-visit-btn" (click)="confirmDeleteVisit(visit)"
                       title="Delete visit">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -244,6 +255,7 @@
                   </div>
                 </div>
 
+                <!-- ── Visit details (read-only) ── -->
                 <div class="d-flex flex-column gap-2">
                   <div class="visit-detail" *ngIf="visit.presentIllness">
                     <span class="detail-label">

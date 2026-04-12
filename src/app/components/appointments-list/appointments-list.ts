@@ -1,5 +1,7 @@
 // src/app/components/appointments-list/appointments-list.ts
 import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -9,12 +11,15 @@ import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
 import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
+import { AuthorizationService } from '../../services/authorizationService';
 import { Patient } from '../../models/patient.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { AppointmentCleanupService } from '../../services/appointmentCleanupService';
 import { todayLocalISO } from '../../utilities/local-date';
-import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings } from '../../utilities/timeSlotUtils';
 import { normalizeEmail } from '../../utilities/normalize-email';
+import { ClinicContextService } from '../../services/clinicContextService';
+import { ClinicService } from '../../services/clinicService';
 
 export interface KanbanColumn {
   id: Appointment['status'];
@@ -47,6 +52,10 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   updatingId: string | null = null;
 
+  // Permission flags
+  canAppointment = false;
+  canCancel = false;
+
   // Cancel modal state
   showCancelModal = false;
   cancellingAppt: Appointment | null = null;
@@ -74,6 +83,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private cleanupService = inject(AppointmentCleanupService);
+  private clinicContextService = inject(ClinicContextService);
+  private clinicService = inject(ClinicService);
+  private authorizationService = inject(AuthorizationService);
 
   private autoCancelTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -149,6 +161,21 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
+    // Ensure clinic/subscription context is resolved before fetching appointments
+    await this.ensureClinicContext();
+
+    // Guard: if subscription context is still missing after best-effort resolution,
+    // show a friendly error instead of crashing.
+    if (!this.clinicContextService.getSubscriptionId()) {
+      this.errorMessage = 'Your account is not linked to any clinic subscription. Please contact your administrator.';
+      this.isLoading = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    // Resolve permissions for the current user
+    await this.loadPermissions();
+
     try {
       this.appointments = await this.appointmentService.getAppointments();
     } catch (e) {
@@ -158,6 +185,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       this.isLoading = false;
       this.cdr.detectChanges();
     }
+
+    // Load clinic-specific timings for the postpone modal
+    await this.refreshTimeSlotsForClinic();
 
     // Auto-cancel appointments from past dates that are still "scheduled"
     await this.autoCancelPastAppointments();
@@ -178,6 +208,8 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   private async refreshAppointments(): Promise<void> {
+    // Guard: skip if subscription context is not available yet
+    if (!this.clinicContextService.getSubscriptionId()) return;
     try {
       this.appointments = await this.appointmentService.getAppointments();
       this.cdr.detectChanges();
@@ -524,8 +556,71 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
   }
 
+  /**
+   * Fetch the current clinic's schedule and regenerate time slots.
+   * Falls back to global defaults when no clinic timings exist.
+   */
+  private async refreshTimeSlotsForClinic(): Promise<void> {
+    const clinicId = this.clinicContextService.getSelectedClinicId();
+    if (!clinicId) {
+      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+      return;
+    }
+    try {
+      const clinic = await this.clinicService.getClinicById(clinicId);
+      this.allTimeSlots = generateTimeSlotsFromClinicTimings(clinic?.schedule?.timings);
+    } catch {
+      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+    }
+  }
+
+  /**
+   * Ensure subscription + clinic context is set before any Firestore queries.
+   * Waits for auth to be ready, then resolves from the logged-in user's email
+   * → clinic_users → subscription_id.
+   */
+  private async ensureClinicContext(): Promise<void> {
+    // Already set (from login or localStorage) — nothing to do.
+    if (this.clinicContextService.getSubscriptionId()) return;
+
+    // Wait for Firebase auth to resolve before reading user email
+    await firstValueFrom(this.authService.authReady$.pipe(filter(ready => ready)));
+
+    // Re-check after auth is ready (it may have been set by authenticationService)
+    if (this.clinicContextService.getSubscriptionId()) return;
+
+    const email = this.authService.currentUserValue?.email;
+    if (!email) return;
+
+    try {
+      const clinicIds = await this.authorizationService.getUserClinicIds(email);
+      const subscriptionId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
+      if (clinicIds.length > 0 || subscriptionId) {
+        this.clinicContextService.setClinicContext(
+          clinicIds[0] || null,
+          subscriptionId
+        );
+      }
+    } catch {
+      // Non-critical — proceed without; requireSubscriptionId will throw if truly missing.
+    }
+  }
+
   goHome(): void { this.router.navigate(['/home']); }
   bookNew(): void { this.router.navigate(['/add-appointment']); }
+
+  private async loadPermissions(): Promise<void> {
+    const email = this.authService.currentUserValue?.email;
+    if (!email) return;
+    try {
+      const perms = await this.authorizationService.getUserPermissions(email);
+      this.canAppointment = perms.canAppointment;
+      this.canCancel = perms.canCancel;
+      this.cdr.detectChanges();
+    } catch {
+      // Default to false (no permissions) on failure
+    }
+  }
 
   async openVisitFromAppointment(appt: Appointment): Promise<void> {
     const directPatientId = (appt.patient_id || '').trim();

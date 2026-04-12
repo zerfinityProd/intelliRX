@@ -1,5 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef, NgZone, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { Patient, Visit } from '../../models/patient.model';
@@ -14,7 +15,7 @@ import moment from 'moment';
 @Component({
   selector: 'app-patient-details',
   standalone: true,
-  imports: [CommonModule, PatientStatsComponent, EditPatientInfoComponent, NavbarComponent],
+  imports: [CommonModule, FormsModule, PatientStatsComponent, EditPatientInfoComponent, NavbarComponent],
   templateUrl: './patient-details.html',
   styleUrl: './patient-details.css'
 })
@@ -40,10 +41,17 @@ export class PatientDetailsComponent implements OnInit {
   permissions: UserPermissions = {
     canDelete: false, canEdit: false, canAddPatient: false,
     canAddVisit: false, canAppointment: false, canCancel: false,
+    canEditVisit: false,
   };
 
   /** Convenience getter for template backward compatibility */
   get canDelete(): boolean { return this.permissions.canDelete; }
+
+  // Edit Visit state
+  editingVisit: Visit | null = null;
+  editVisitData: Partial<Visit> = {};
+  isSavingVisitEdit = false;
+  editVisitError = '';
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -237,6 +245,53 @@ export class PatientDetailsComponent implements OnInit {
 
   goBack(): void {
     this.router.navigate(['/home']);
+  }
+
+  // ── Edit Visit ──
+  startEditVisit(visit: Visit): void {
+    if (!this.patient) return;
+    this.router.navigate(['/patient', this.patient.id, 'add-visit'], {
+      state: {
+        origin: 'patient',
+        editVisitId: visit.id,
+        editVisitData: visit
+      }
+    });
+  }
+
+  cancelEditVisit(): void {
+    this.editingVisit = null;
+    this.editVisitData = {};
+    this.editVisitError = '';
+    this.cdr.detectChanges();
+  }
+
+  async saveEditVisit(): Promise<void> {
+    if (!this.editingVisit?.id || !this.patient?.id) return;
+    if (!(this.editVisitData.chiefComplaints || '').trim()) {
+      this.editVisitError = 'Chief complaints is required.';
+      this.cdr.detectChanges();
+      return;
+    }
+    this.isSavingVisitEdit = true;
+    this.editVisitError = '';
+    this.cdr.detectChanges();
+    try {
+      const now = new Date().toISOString();
+      const dataToSave = { ...this.editVisitData, updated_at: now };
+      await this.patientService.updateVisit(this.patient.id, this.editingVisit.id, dataToSave);
+      // Reflect changes in the local visits array
+      const idx = this.visits.findIndex(v => v.id === this.editingVisit!.id);
+      if (idx !== -1) {
+        Object.assign(this.visits[idx], dataToSave);
+      }
+      this.cancelEditVisit();
+    } catch {
+      this.editVisitError = 'Failed to save changes. Please try again.';
+    } finally {
+      this.isSavingVisitEdit = false;
+      this.cdr.detectChanges();
+    }
   }
 
   formatDate(date: Date | undefined | any): string {

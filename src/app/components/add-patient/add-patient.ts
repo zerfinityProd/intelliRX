@@ -48,6 +48,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   successMessage: string = '';
   warningMessage: string = '';
   isSubmitting: boolean = false;
+  dobError: string = '';
 
   private checkDebounceTimer: any = null;
   private readonly patientService = inject(PatientService);
@@ -342,17 +343,29 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
     if (this.dateOfBirth) {
       const year = new Date(this.dateOfBirth).getFullYear();
-      if (year > 9999 || year < 1000) {
-        this.errorMessage = 'Please enter a valid year (4 digits)';
+      if (year > 9999 || year < 1900) {
+        this.errorMessage = 'Please enter a valid year (1900–present)';
+        this.dobError = this.errorMessage;
         return false;
       }
       if (this.dateOfBirth > this.todayDate) {
         this.errorMessage = 'Date of birth cannot be a future date';
+        this.dobError = this.errorMessage;
         return false;
       }
     }
+    this.dobError = '';
 
     return true;
+  }
+
+  onDobChange(): void {
+    if (!this.dateOfBirth) { this.dobError = ''; return; }
+    const year = new Date(this.dateOfBirth).getFullYear();
+    if (year > 9999 || year < 1900) { this.dobError = 'Please enter a valid year (1900–present)'; return; }
+    if (this.dateOfBirth > this.todayDate) { this.dobError = 'Date of birth cannot be a future date'; return; }
+    this.dobError = '';
+    if (this.errorMessage) this.errorMessage = '';
   }
 
   onClose(): void {

@@ -46,7 +46,7 @@
           (ngModelChange)="onDateInput($event)" />
         <button *ngIf="!isSelectedToday" class="kb-today-chip" (click)="goToday()">Today</button>
       </div>
-      <button class="kb-btn kb-btn--primary" (click)="bookNew()">
+      <button *ngIf="canAppointment" class="kb-btn kb-btn--primary" (click)="bookNew()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
           stroke-linecap="round" stroke-linejoin="round">
           <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -227,7 +227,7 @@
               </svg>
               Reschedule
             </button>
-            <button class="kb-card__action-btn kb-card__action-btn--cancel"
+            <button *ngIf="canCancel" class="kb-card__action-btn kb-card__action-btn--cancel"
               (click)="openCancelModal(appt)"
               [disabled]="updatingId === appt.id">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"

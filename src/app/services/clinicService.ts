@@ -14,7 +14,7 @@ import {
   DocumentData
 } from '@angular/fire/firestore';
 import { ClinicContextService } from './clinicContextService';
-import { Clinic } from '../models/clinic.model';
+import { Clinic, ClinicSchedule } from '../models/clinic.model';
 
 @Injectable({ providedIn: 'root' })
 export class ClinicService {
@@ -38,6 +38,41 @@ export class ClinicService {
     return this.clinicContext.requireSubscriptionId();
   }
 
+  // ─── Schedule subcollection helper ───
+
+  /**
+   * Fetch schedule data from the `clinics/{clinicId}/schedule` subcollection.
+   * Returns the first schedule document's data, or a default empty schedule.
+   *
+   * Firestore structure:
+   *   clinics/{clinicId}/schedule/{scheduleDocId}
+   *     → { weekdays: ["M","T","W","Th","F"], timings: [{label,start,end},...] }
+   */
+  private async fetchScheduleSubcollection(clinicId: string): Promise<ClinicSchedule> {
+    const defaultSchedule: ClinicSchedule = { weekdays: [], timings: [] };
+    try {
+      const scheduleCol = collection(this.db, 'clinics', clinicId, 'schedule');
+      const snap = await getDocs(scheduleCol);
+      if (snap.empty) return defaultSchedule;
+
+      // Use the first schedule document
+      const data = snap.docs[0].data();
+      const weekdays: string[] = Array.isArray(data['weekdays']) ? data['weekdays'] : [];
+      const rawTimings = Array.isArray(data['timings']) ? data['timings'] : [];
+      const timings = rawTimings.map((t: any) => ({
+        label: t['label'] || '',
+        start: t['start'] || '',
+        end: t['end'] || ''
+      }));
+
+      console.log(`📅 Schedule loaded for clinic ${clinicId}: weekdays=${JSON.stringify(weekdays)}, timings=${timings.length} block(s)`);
+      return { weekdays, timings };
+    } catch (error) {
+      console.warn('Error fetching schedule subcollection for clinic:', clinicId, error);
+      return defaultSchedule;
+    }
+  }
+
   // ─── READ ───
 
   /**
@@ -50,8 +85,16 @@ export class ClinicService {
       const q = query(clinicsCol, where('subscription_id', '==', subId));
       const snapshot = await getDocs(q);
 
-      const clinics: Clinic[] = snapshot.docs.map(d => {
+      const clinics: Clinic[] = [];
+      for (const d of snapshot.docs) {
         const data = d.data();
+
+        // Try document-level schedule field first, then fetch subcollection
+        let schedule: ClinicSchedule = data['schedule'] || { weekdays: [], timings: [] };
+        if (!schedule.weekdays?.length && !schedule.timings?.length) {
+          schedule = await this.fetchScheduleSubcollection(d.id);
+        }
+
         const clinic: Clinic = {
           id: d.id,
           subscription_id: data['subscription_id'] || subId,
@@ -59,14 +102,14 @@ export class ClinicService {
           address: data['address'],
           phone: data['phone'],
           email: data['email'],
-          schedule: data['schedule'] || { weekdays: [], timings: [] },
+          schedule,
           doctor_ids: data['doctor_ids'] || [],
           created_at: data['created_at'],
           updated_at: data['updated_at']
         };
         this.addToCache(clinic);
-        return clinic;
-      });
+        clinics.push(clinic);
+      }
 
       console.log(`Loaded ${clinics.length} clinic(s) for subscription ${subId}`);
       return clinics;
@@ -91,6 +134,13 @@ export class ClinicService {
       if (!snap.exists()) return null;
 
       const data = snap.data();
+
+      // Try document-level schedule field first, then fetch subcollection
+      let schedule: ClinicSchedule = data['schedule'] || { weekdays: [], timings: [] };
+      if (!schedule.weekdays?.length && !schedule.timings?.length) {
+        schedule = await this.fetchScheduleSubcollection(clinicId);
+      }
+
       const clinic: Clinic = {
         id: snap.id,
         subscription_id: data['subscription_id'] || '',
@@ -98,7 +148,7 @@ export class ClinicService {
         address: data['address'],
         phone: data['phone'],
         email: data['email'],
-        schedule: data['schedule'] || { weekdays: [], timings: [] },
+        schedule,
         doctor_ids: data['doctor_ids'] || [],
         created_at: data['created_at'],
         updated_at: data['updated_at']

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
+import { todayLocalISO } from '../../utilities/local-date';
 
 @Component({
   selector: 'app-edit-patient-info',
@@ -29,6 +30,8 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
   errorMessage: string = '';
   successMessage: string = '';
   isSubmitting: boolean = false;
+  todayDate: string = todayLocalISO();
+  dobError: string = '';
 
   constructor(private patientService: PatientService) {}
 
@@ -109,7 +112,40 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
       return false;
     }
 
+    // Validate DOB if provided
+    if (this.dateOfBirth) {
+      const parsed = new Date(this.dateOfBirth);
+      if (isNaN(parsed.getTime())) {
+        this.errorMessage = 'Please enter a valid date of birth';
+        this.dobError = this.errorMessage;
+        return false;
+      }
+      const year = parsed.getFullYear();
+      if (year < 1900 || year > 9999) {
+        this.errorMessage = 'Please enter a valid year (1900–present)';
+        this.dobError = this.errorMessage;
+        return false;
+      }
+      if (this.dateOfBirth > this.todayDate) {
+        this.errorMessage = 'Date of birth cannot be a future date';
+        this.dobError = this.errorMessage;
+        return false;
+      }
+    }
+    this.dobError = '';
+
     return true;
+  }
+
+  onDobChange(): void {
+    if (!this.dateOfBirth) { this.dobError = ''; return; }
+    const parsed = new Date(this.dateOfBirth);
+    if (isNaN(parsed.getTime())) { this.dobError = 'Please enter a valid date of birth'; return; }
+    const year = parsed.getFullYear();
+    if (year < 1900 || year > 9999) { this.dobError = 'Please enter a valid year (1900–present)'; return; }
+    if (this.dateOfBirth > this.todayDate) { this.dobError = 'Date of birth cannot be a future date'; return; }
+    this.dobError = '';
+    if (this.errorMessage) this.errorMessage = '';
   }
 
   private isValidEmail(email: string): boolean {

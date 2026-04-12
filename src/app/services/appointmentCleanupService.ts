@@ -2,6 +2,7 @@
 import { Injectable, inject } from '@angular/core';
 import { AppointmentService } from './appointmentService';
 import { PatientService } from './patient';
+import { ClinicContextService } from './clinicContextService';
 import { Appointment } from '../models/appointment.model';
 
 /**
@@ -15,6 +16,7 @@ export class AppointmentCleanupService {
 
   private readonly appointmentService = inject(AppointmentService);
   private readonly patientService = inject(PatientService);
+  private readonly clinicContextService = inject(ClinicContextService);
 
   /**
    * Run cleanup once per session.
@@ -22,6 +24,13 @@ export class AppointmentCleanupService {
   async runCleanupIfNeeded(): Promise<void> {
     if (this.hasRunThisSession) return;
     this.hasRunThisSession = true;
+
+    // Skip cleanup if subscription context is not yet available
+    if (!this.clinicContextService.getSubscriptionId()) {
+      console.log('🧹 Cleanup skipped: subscription context not set yet.');
+      this.hasRunThisSession = false; // Allow retry on next call
+      return;
+    }
 
     try {
       const allAppointments = await this.appointmentService.getAppointments();

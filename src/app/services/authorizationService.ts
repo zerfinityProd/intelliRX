@@ -1,6 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { Firestore, collection, query, where, getDocs, doc, getDoc, updateDoc, deleteField } from '@angular/fire/firestore';
 import { normalizeEmail } from '../utilities/normalize-email';
+import { ClinicUserAvailability } from '../models/clinic-user.model';
+import { ClinicContextService } from './clinicContextService';
 
 /** Strip non-printable / invisible characters from a string */
 function stripInvisible(s: string): string {
@@ -14,6 +16,7 @@ export interface UserPermissions {
     canAddVisit: boolean;
     canAppointment: boolean;
     canCancel: boolean;
+    canEditVisit: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -23,6 +26,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     canAddVisit: false,
     canAppointment: false,
     canCancel: false,
+    canEditVisit: false,
 };
 
 /** Known role names */
@@ -38,6 +42,8 @@ interface UserLookupResult {
     role: 'doctor' | 'receptionist';
     /** Per-user permission overrides (if present on the user doc) */
     userPermissionOverrides: string[] | null;
+    /** Per-clinic_user permission overrides (from clinic_users doc for active clinic) */
+    clinicUserPermissions: Map<string, string[] | null>;
     timestamp: number;
 }
 
@@ -46,6 +52,7 @@ interface UserLookupResult {
 })
 export class AuthorizationService {
     private firestore = inject(Firestore);
+    private clinicContext = inject(ClinicContextService);
 
     /** Per-email lookup cache */
     private lookupCache = new Map<string, UserLookupResult>();
@@ -182,21 +189,33 @@ export class AuthorizationService {
                 userPermissionOverrides = perms;
             }
 
-            // Step 2: Find clinic_users entries for this user
+            // Step 2: Find clinic_users entries for this user.
+            // Query by user_id only; filter status client-side because documents
+            // may lack the 'status' field entirely (treat missing → active).
             const clinicUsersCol = collection(this.firestore, 'clinic_users');
-            const cuQuery = query(clinicUsersCol, where('user_id', '==', userId), where('status', '==', 'active'));
+            const cuQuery = query(clinicUsersCol, where('user_id', '==', userId));
             const cuSnapshot = await getDocs(cuQuery);
+
+            if (cuSnapshot.empty) {
+                console.warn('[AuthZ] No clinic_users entries found for user_id:', userId,
+                    '(email:', normalized, '). The user needs a clinic_users record.');
+            }
 
             let subscriptionId = '';
             const clinicIds: string[] = [];
+            const clinicUserPermissions = new Map<string, string[] | null>();
 
             for (const cuDoc of cuSnapshot.docs) {
                 const cuData = cuDoc.data();
+                // Treat missing status as active; skip only explicitly inactive/disabled
+                const status = cuData['status'] || 'active';
+                if (status !== 'active') continue;
                 if (cuData['subscription_id']) {
                     subscriptionId = cuData['subscription_id'];
                 }
-                if (cuData['clinic_id'] && !clinicIds.includes(cuData['clinic_id'])) {
-                    clinicIds.push(cuData['clinic_id']);
+                const cId = cuData['clinic_id'];
+                if (cId && !clinicIds.includes(cId)) {
+                    clinicIds.push(cId);
                 }
                 // Override role from clinic_users if present
                 if (cuData['roles'] && Array.isArray(cuData['roles'])) {
@@ -207,6 +226,11 @@ export class AuthorizationService {
                         }
                     }
                 }
+                // Capture per-clinic_user permission overrides (Layer 4)
+                if (cId) {
+                    const cuPerms = cuData['permissions'];
+                    clinicUserPermissions.set(cId, (cuPerms && Array.isArray(cuPerms)) ? cuPerms : null);
+                }
             }
 
             const result: UserLookupResult = {
@@ -215,6 +239,7 @@ export class AuthorizationService {
                 clinicIds,
                 role,
                 userPermissionOverrides,
+                clinicUserPermissions,
                 timestamp: Date.now()
             };
 
@@ -290,6 +315,58 @@ export class AuthorizationService {
     }
 
     /**
+     * Load subscription-level permission overrides for a given role.
+     * Reads: subscriptions/{subId}.permissions[roleName]
+     * Returns the override array if present, or null to fall through.
+     */
+    private async loadSubscriptionPermissions(subscriptionId: string, roleName: string): Promise<string[] | null> {
+        if (!subscriptionId) return null;
+        try {
+            const subDocRef = doc(this.firestore, 'subscriptions', subscriptionId);
+            const subDoc = await getDoc(subDocRef);
+            if (subDoc.exists()) {
+                const data = subDoc.data();
+                const perms = data['permissions'];
+                if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
+                    const rolePerms = perms[roleName];
+                    if (rolePerms && Array.isArray(rolePerms)) {
+                        return rolePerms;
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to load subscription permissions:', subscriptionId, error);
+        }
+        return null;
+    }
+
+    /**
+     * Load clinic-level permission overrides for a given role.
+     * Reads: clinics/{clinicId}.permissions[roleName]
+     * Returns the override array if present, or null to fall through.
+     */
+    private async loadClinicPermissions(clinicId: string, roleName: string): Promise<string[] | null> {
+        if (!clinicId) return null;
+        try {
+            const clinicDocRef = doc(this.firestore, 'clinics', clinicId);
+            const clinicDoc = await getDoc(clinicDocRef);
+            if (clinicDoc.exists()) {
+                const data = clinicDoc.data();
+                const perms = data['permissions'];
+                if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
+                    const rolePerms = perms[roleName];
+                    if (rolePerms && Array.isArray(rolePerms)) {
+                        return rolePerms;
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('Failed to load clinic permissions:', clinicId, error);
+        }
+        return null;
+    }
+
+    /**
      * Check if an email is allowed (exists in users collection).
      */
     async isEmailAllowed(email: string): Promise<boolean> {
@@ -316,27 +393,66 @@ export class AuthorizationService {
     }
 
     /**
-     * Resolve permissions using layered approach:
-     * 1. Per-user overrides (user doc "permissions" field) → HIGHEST priority
-     * 2. Global role defaults (roles/{roleName}) → fallback
+     * Resolve permissions using a 4-layer hierarchical approach.
+     * Each layer REPLACES the previous if it defines permissions for the user's role.
+     *
+     * Layer 1: Global role defaults       → roles/{roleName}                          (base)
+     * Layer 2: Subscription overrides     → subscriptions/{subId}.permissions[role]   (org-level)
+     * Layer 3: Clinic overrides           → clinics/{clinicId}.permissions[role]       (clinic-level)
+     * Layer 4: Individual overrides       → clinic_users/{cuId}.permissions            (per-doctor)
+     * Layer 5: User-doc overrides         → users/{userId}.permissions                 (super override)
+     *
+     * Higher layers win (replace semantics). If a layer has no permissions, previous layer carries through.
      */
     async getUserPermissions(email: string): Promise<UserPermissions> {
         try {
             const result = await this.lookupUser(email);
             if (!result) return { ...DEFAULT_PERMISSIONS };
 
+            const roleName = result.role;
+            const currentClinicId = this.clinicContext.getSelectedClinicId();
             let permNames: string[];
+            let resolvedFrom = 'Layer 1 (global role defaults)';
 
+            // Layer 1: Global role defaults
+            permNames = await this.loadRoleDefaults(roleName);
+
+            // Layer 2: Subscription overrides
+            if (result.subscriptionId) {
+                const subPerms = await this.loadSubscriptionPermissions(result.subscriptionId, roleName);
+                if (subPerms) {
+                    permNames = subPerms;
+                    resolvedFrom = 'Layer 2 (subscription)';
+                }
+            }
+
+            // Layer 3: Clinic overrides (based on currently selected clinic)
+            if (currentClinicId) {
+                const clinicPerms = await this.loadClinicPermissions(currentClinicId, roleName);
+                if (clinicPerms) {
+                    permNames = clinicPerms;
+                    resolvedFrom = 'Layer 3 (clinic)';
+                }
+            }
+
+            // Layer 4: Individual overrides (from clinic_users doc for current clinic)
+            if (currentClinicId && result.clinicUserPermissions.has(currentClinicId)) {
+                const cuPerms = result.clinicUserPermissions.get(currentClinicId);
+                if (cuPerms) {
+                    permNames = cuPerms;
+                    resolvedFrom = 'Layer 4 (clinic_user)';
+                }
+            }
+
+            // Layer 5: User-doc overrides (super override — always wins)
             if (result.userPermissionOverrides) {
                 permNames = result.userPermissionOverrides;
-                console.log('Using per-user permission overrides for', normalizeEmail(email));
-            } else {
-                permNames = await this.loadRoleDefaults(result.role);
-                console.log('Using global role defaults for', normalizeEmail(email), '→', result.role);
+                resolvedFrom = 'Layer 5 (user-doc override)';
             }
 
             const permissions = this.mapPermissionNames(permNames);
-            console.log('Resolved permissions for', normalizeEmail(email), permissions);
+            console.log('Resolved permissions for', normalizeEmail(email),
+                '→', resolvedFrom, permissions);
             return permissions;
         } catch (error) {
             console.warn('getUserPermissions failed for:', email, error);
@@ -402,6 +518,46 @@ export class AuthorizationService {
             results[email] = await this.isEmailAllowed(email);
         }
         return results;
+    }
+
+    /**
+     * Fetch a doctor's per-weekday availability for a specific clinic.
+     *
+     * Returns the availability map (e.g. { mon: ["FH"], tue: ["FH","SH"] })
+     * or null if the doctor has no availability configured (meaning all blocks available).
+     */
+    async getDoctorAvailability(
+        email: string,
+        clinicId: string
+    ): Promise<ClinicUserAvailability | null> {
+        try {
+            const result = await this.lookupUser(email);
+            if (!result) return null;
+
+            const clinicUsersCol = collection(this.firestore, 'clinic_users');
+            const q = query(
+                clinicUsersCol,
+                where('user_id', '==', result.userId),
+                where('clinic_id', '==', clinicId)
+            );
+            const snapshot = await getDocs(q);
+
+            // Filter client-side: treat missing status as active
+            const activeDocs = snapshot.docs.filter(d => {
+                const s = d.data()['status'] || 'active';
+                return s === 'active';
+            });
+            if (activeDocs.length === 0) return null;
+
+            const cuData = activeDocs[0].data();
+            const availability = cuData['availability'];
+            if (!availability || typeof availability !== 'object') return null;
+
+            return availability as ClinicUserAvailability;
+        } catch (error) {
+            console.warn('getDoctorAvailability failed for:', email, clinicId, error);
+            return null;
+        }
     }
 
     async allowEmail(email: string): Promise<void> {

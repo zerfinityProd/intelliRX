@@ -336,6 +336,19 @@ export class FirebaseService {
     return converted;
   }
 
+  async updateVisit(visitId: string, visitData: Partial<Visit>): Promise<void> {
+    try {
+      const visitsCol = this.getVisitsCollection();
+      const visitDoc = doc(visitsCol, visitId);
+      const { id: _, ...dataWithoutId } = visitData as any;
+      const cleanedUpdate = this.removeUndefinedFields(dataWithoutId);
+      await updateDoc(visitDoc, this.convertToFirestore(cleanedUpdate));
+    } catch (error) {
+      console.error('Error updating visit:', error);
+      throw error;
+    }
+  }
+
   async deleteVisit(visitId: string): Promise<void> {
     const visitsCol = this.getVisitsCollection();
     const visitDoc = doc(visitsCol, visitId);

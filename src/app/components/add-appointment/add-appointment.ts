@@ -13,8 +13,9 @@ import { NavbarComponent } from '../navbar/navbar';
 import doctorsData from '../../data/doctors.json';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
-import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
 import { ClinicContextService } from '../../services/clinicContextService';
+import { ClinicService } from '../../services/clinicService';
 import { todayLocalISO } from '../../utilities/local-date';
 
 export interface Doctor {
@@ -50,6 +51,7 @@ export class AddAppointmentComponent implements OnInit {
   newAllergyInput: string = '';
   familyIdPreview: string = ''; // kept for UI preview only
   todayDate: string = todayLocalISO();
+  dobError: string = ''; // inline DOB validation error
 
   /** Patients in DB with this exact phone (after lookup) */
   phoneMatches: Patient[] = [];
@@ -104,6 +106,7 @@ export class AddAppointmentComponent implements OnInit {
   private authorizationService = inject(AuthorizationService);
   private patientService = inject(PatientService);
   private clinicContextService = inject(ClinicContextService);
+  private clinicService = inject(ClinicService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
@@ -157,6 +160,17 @@ export class AddAppointmentComponent implements OnInit {
       // Prefer clinic selected at login; otherwise attempt to load.
       this.selectedClinicId = this.clinicContextService.getSelectedClinicId() ?? '';
       this.subscriptionId = this.clinicContextService.getSubscriptionId();
+
+      // If subscriptionId is missing from context (e.g. localStorage cleared),
+      // fetch it from the authorization service so downstream calls don't fail.
+      if (!this.subscriptionId && rawEmail) {
+        try {
+          this.subscriptionId = await this.authorizationService.getUserSubscriptionId(rawEmail);
+        } catch {
+          // Keep null — will show error if still missing
+        }
+      }
+
       if (!this.selectedClinicId && rawEmail) {
         try {
           const clinics = await this.authorizationService.getUserClinicIds(rawEmail);
@@ -167,13 +181,17 @@ export class AddAppointmentComponent implements OnInit {
           // Keep empty — legacy compatibility
         }
       }
+
       // Persist resolved clinic context so AddPatient and other components use it too.
-      if (this.selectedClinicId) {
+      if (this.selectedClinicId || this.subscriptionId) {
         this.clinicContextService.setClinicContext(
-          this.selectedClinicId,
+          this.selectedClinicId || null,
           this.subscriptionId
         );
       }
+
+      // Load clinic-specific timings for slot generation (after context is set)
+      await this.refreshTimeSlotsForClinic();
     } else {
       // Receptionist: can choose any doctor.
       this.canChooseDoctor = true;
@@ -294,8 +312,58 @@ export class AddAppointmentComponent implements OnInit {
 
   generateTimeSlots(): string[] {
     // Kept for backward compatibility inside the component.
-    // Main source of truth is now DEFAULT_SYSTEM_SETTINGS.
-    return generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+    // Main source of truth is now clinic-specific timings.
+    return this.allTimeSlots;
+  }
+
+  /**
+   * Fetch the selected clinic's schedule and regenerate time slots,
+   * filtered by the selected doctor's weekday availability.
+   * Falls back to global defaults when no clinic timings exist.
+   */
+  private async refreshTimeSlotsForClinic(dateStr?: string): Promise<void> {
+    if (!this.selectedClinicId) {
+      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+      return;
+    }
+    try {
+      const clinic = await this.clinicService.getClinicById(this.selectedClinicId);
+      let timings = clinic?.schedule?.timings;
+
+      const effectiveDate = dateStr || this.appointmentDate;
+
+      // Check if the clinic is open on this day (based on schedule.weekdays)
+      if (effectiveDate && clinic?.schedule?.weekdays) {
+        const date = new Date(effectiveDate + 'T00:00:00');
+        if (!isClinicOpenOnDate(clinic.schedule.weekdays, date)) {
+          // Clinic is closed on this day — no slots available
+          this.allTimeSlots = [];
+          return;
+        }
+      }
+
+      // Apply doctor availability filtering if a doctor and date are selected
+      const doctorEmail = this.selectedDoctor?.email
+        ? normalizeEmail(this.selectedDoctor.email)
+        : '';
+
+      if (doctorEmail && effectiveDate && timings && timings.length > 0) {
+        const availability = await this.authorizationService.getDoctorAvailability(
+          doctorEmail, this.selectedClinicId
+        );
+        if (availability) {
+          const date = new Date(effectiveDate + 'T00:00:00');
+          const dayKey = getWeekdayKey(date);
+          const dayLabels = availability[dayKey];
+          // Pass true: availability map exists, so a missing day means "not available"
+          timings = filterTimingsByAvailability(timings, dayLabels, true);
+        }
+      }
+
+      this.allTimeSlots = generateTimeSlotsFromClinicTimings(timings);
+    } catch {
+      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+    }
   }
 
   formatSlotLabel(time: string): string {
@@ -327,6 +395,8 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   async onDoctorChange(): Promise<void> {
+    // Refresh time slots to apply the new doctor's availability
+    await this.refreshTimeSlotsForClinic(this.appointmentDate);
     if (this.appointmentDate) await this.onDateChange();
   }
 
@@ -341,6 +411,9 @@ export class AddAppointmentComponent implements OnInit {
       this.selectedClinicId || null,
       this.subscriptionId ?? null
     );
+
+    // Refresh time slots based on the new clinic's timings
+    await this.refreshTimeSlotsForClinic();
 
     await this.refreshDoctorsForSelectedClinic();
 
@@ -461,6 +534,8 @@ export class AddAppointmentComponent implements OnInit {
     if (!this.appointmentDate) { this.bookedSlots = []; return; }
     this.isLoadingSlots = true;
     this.selectedTimeSlot = '';
+    // Refresh time slots to apply doctor availability for the new date's weekday
+    await this.refreshTimeSlotsForClinic(this.appointmentDate);
     try {
       const selectedDoctorEmail = this.selectedDoctor?.email
         ? normalizeEmail(this.selectedDoctor.email)
@@ -691,6 +766,11 @@ export class AddAppointmentComponent implements OnInit {
     if (this.needsNewPatientNames) {
       if (!this.firstName.trim()) { this.errorMessage = 'First name is required'; return; }
       if (!this.lastName.trim()) { this.errorMessage = 'Last name is required'; return; }
+
+      // Validate DOB if provided
+      const dobErr = this.validateDob();
+      if (dobErr) { this.errorMessage = dobErr; this.dobError = dobErr; return; }
+
       this.matchedPatient = null;
       this.isExistingPatient = false;
     } else if (this.matchedPatient) {
@@ -698,6 +778,7 @@ export class AddAppointmentComponent implements OnInit {
     }
 
     this.errorMessage = '';
+    this.dobError = '';
     this.isCheckingPhone = true;
     try {
       this.step = 'appointment-details';
@@ -838,4 +919,20 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   goHome(): void { this.router.navigate(['/home']); }
+
+  /** Validate the dateOfBirth field. Returns an error message, or '' if valid. */
+  validateDob(): string {
+    if (!this.dateOfBirth) return '';
+    const parsed = new Date(this.dateOfBirth);
+    if (isNaN(parsed.getTime())) return 'Please enter a valid date of birth';
+    const year = parsed.getFullYear();
+    if (year < 1900 || year > 9999) return 'Please enter a valid year (1900–present)';
+    if (this.dateOfBirth > this.todayDate) return 'Date of birth cannot be a future date';
+    return '';
+  }
+
+  onDobChange(): void {
+    this.dobError = this.validateDob();
+    if (!this.dobError) this.errorMessage = '';
+  }
 }

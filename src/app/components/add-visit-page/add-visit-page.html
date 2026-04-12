@@ -1,7 +1,7 @@
 <div class="avp-page">
 
   <!-- ── Navbar ── -->
-  <app-navbar [showBack]="true" pageTitle="New Visit" (backClick)="onCancel()"></app-navbar>
+  <app-navbar [showBack]="true" [pageTitle]="isEditMode ? 'Edit Visit' : 'New Visit'" (backClick)="onCancel()"></app-navbar>
 
   <!-- ── Loading ── -->
   <div *ngIf="isLoadingPatient" class="d-flex flex-column align-items-center justify-content-center avp-loading">
@@ -22,7 +22,7 @@
         </div>
         <div class="avp-patient-info">
           <h2 class="avp-patient-name">
-            New Visit for <span>{{ patient.name }}</span>
+            {{ isEditMode ? 'Edit Visit for' : 'New Visit for' }} <span>{{ patient.name }}</span>
             <span *ngIf="getPatientAge() !== null" class="avp-age-badge">{{ getPatientAge() }} yrs</span>
           </h2>
         </div>
@@ -190,7 +190,7 @@
               Save &amp; Print
             </button>
             <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting" aria-label="Save visit">
-              <span *ngIf="!isSubmitting">Save</span>
+              <span *ngIf="!isSubmitting">{{ isEditMode ? 'Update' : 'Save' }}</span>
               <span *ngIf="isSubmitting" class="loading-content" aria-live="polite">
                 <span class="loading-spinner" aria-hidden="true"></span>
                 Saving...

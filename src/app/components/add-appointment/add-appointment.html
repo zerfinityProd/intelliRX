@@ -206,7 +206,8 @@
             <div class="col-md-4">
               <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth</label>
               <input type="date" id="dateOfBirth" [(ngModel)]="dateOfBirth" class="form-control"
-                [max]="todayDate" />
+                [max]="todayDate" [class.is-invalid]="dobError" (ngModelChange)="onDobChange()" />
+              <div *ngIf="dobError" class="invalid-feedback" style="display:block">{{ dobError }}</div>
             </div>
             <div class="col-md-4">
               <label for="gender" class="form-label fw-semibold" style="font-size:12px">Gender</label>
@@ -376,7 +377,17 @@
           Select a date first
         </div>
 
-        <div *ngIf="!isLoadingSlots && appointmentDate">
+        <div *ngIf="!isLoadingSlots && appointmentDate && allTimeSlots.length === 0" class="appt-slot-placeholder" style="color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          No slots available on this date — the clinic or doctor is not working on this day.
+        </div>
+
+        <div *ngIf="!isLoadingSlots && appointmentDate && allTimeSlots.length > 0">
           <div class="slots-grid">
             <button *ngFor="let slot of allTimeSlots"
               class="slot-btn"

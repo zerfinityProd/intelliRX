@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
 import { AuthenticationService } from './authenticationService';
 import { ClinicContextService } from './clinicContextService';
 import { normalizeEmail } from '../utilities/normalize-email';
@@ -136,8 +136,8 @@ export class ThemeService {
         if (!path) return;
 
         const userDocRef = doc(this.firestore, path);
-        await updateDoc(userDocRef, {
-            'preferences.theme': theme
-        });
+        await setDoc(userDocRef, {
+            preferences: { theme }
+        }, { merge: true });
     }
 }

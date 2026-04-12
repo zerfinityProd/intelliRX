@@ -64,6 +64,10 @@ export class AddVisitPageComponent implements OnInit {
     successMessage: string = '';
     isSubmitting: boolean = false;
 
+    // ── Edit mode ─────────────────────────────────────────────
+    isEditMode: boolean = false;
+    editVisitId: string = '';
+
     // ── Expanded visit tracking ───────────────────────────────
     expandedVisitIds: Set<string> = new Set();
 
@@ -81,9 +85,15 @@ export class AddVisitPageComponent implements OnInit {
     private readonly ngZone = inject(NgZone);
 
     async ngOnInit(): Promise<void> {
-        const state = history.state as { origin?: string; appointmentId?: string } | undefined;
+        const state = history.state as { origin?: string; appointmentId?: string; editVisitId?: string; editVisitData?: any } | undefined;
         this.origin = (state?.origin === 'patient') ? 'patient' : 'home';
         this.routeAppointmentId = (state?.appointmentId || '').trim();
+
+        // ── Edit mode detection ──
+        if (state?.editVisitId) {
+            this.isEditMode = true;
+            this.editVisitId = state.editVisitId;
+        }
 
         const patientId = this.route.snapshot.paramMap.get('id');
         if (!patientId) {
@@ -91,6 +101,53 @@ export class AddVisitPageComponent implements OnInit {
             return;
         }
         await this.loadPatient(patientId);
+
+        // ── Pre-populate fields in edit mode ──
+        if (this.isEditMode && state?.editVisitData) {
+            this.populateEditFields(state.editVisitData);
+        }
+    }
+
+    private populateEditFields(visit: any): void {
+        this.chiefComplaintsText = visit.chiefComplaints || '';
+        this.diagnosis = visit.diagnosis || '';
+        this.treatmentPlan = visit.treatmentPlan || '';
+        this.advice = visit.advice || '';
+
+        // Present illness — stored as comma-separated string
+        if (visit.presentIllness) {
+            this.presentIllnesses = visit.presentIllness
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 0)
+                .map((s: string) => ({ description: s }));
+        }
+
+        // Examinations — stored as "test: result, test: result"
+        if (visit.examination) {
+            this.examinations = visit.examination
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 0)
+                .map((s: string) => {
+                    const parts = s.split(':').map((p: string) => p.trim());
+                    return { testName: parts[0] || '', result: parts.slice(1).join(':').trim() || '' };
+                });
+        }
+
+        // Medicines — stored as "name - dosage - freq, name - dosage - freq"
+        if (visit.medicines) {
+            this.medicines = visit.medicines
+                .split(',')
+                .map((s: string) => s.trim())
+                .filter((s: string) => s.length > 0)
+                .map((s: string) => {
+                    const parts = s.split(' - ').map((p: string) => p.trim());
+                    return { name: parts[0] || '', dosage: parts[1] || '', frequency: parts[2] || '' };
+                });
+        }
+
+        this.cdr.detectChanges();
     }
 
     async loadPatient(patientId: string): Promise<void> {
@@ -261,85 +318,104 @@ export class AddVisitPageComponent implements OnInit {
                 await this.patientService.updatePatient(patientId, { ailments: ailmentsText });
             }
 
-            // ── Check for a matching appointment BEFORE saving the visit ──
-            let matchedAppointment: any = null;
-            try {
-                const allAppts = await this.appointmentService.getAppointments();
-                const patientName = (this.patient.name || '').trim().toLowerCase();
-                const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
-                const now = new Date();
-
-                // Match scheduled appointments for today or any future date
-                const todayStart = new Date(now);
-                todayStart.setHours(0, 0, 0, 0);
-
-                const candidates = allAppts
-                    .filter(a => a.status === 'scheduled')
-                    .filter(a => new Date(a.datetime) >= todayStart)
-                    .filter(a => {
-                        const apptPatientId = (a.patient_id || '').trim();
-                        if (apptPatientId) return apptPatientId === patientId;
-                        const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
-                        const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
-                        return nameMatch && phoneMatch;
-                    });
-
-                matchedAppointment = this.pickClosestAppointmentByTime(candidates, now);
-            } catch {
-                // Silent — if appointment lookup fails, treat as walk-in
-            }
-
-            // Determine visit type based on whether a matching appointment was found
-            const hasAppointment = !!(this.routeAppointmentId || matchedAppointment?.id);
-            const visitType = hasAppointment ? 'appointment' : 'walk-in';
-            const appointmentId = this.routeAppointmentId || matchedAppointment?.id || '';
-
-            // Save visit
+            // Build visit data
             const visitData: any = {
-                visitType,
                 chiefComplaints: this.chiefComplaintsText.trim(),
                 diagnosis: this.diagnosis.trim(),
                 examination: this.formatExaminations(),
                 treatmentPlan: this.treatmentPlan.trim(),
+                advice: this.advice.trim(),
             };
-
-            // Link visit to the matched appointment
-            if (appointmentId) {
-                visitData.appointment_id = appointmentId;
-            }
             const presentIllnessText = this.formatArrayField(this.presentIllnesses);
             if (presentIllnessText) visitData.presentIllness = presentIllnessText;
             const medicinesText = this.formatMedicines();
             if (medicinesText) visitData.medicines = medicinesText;
 
-            await this.patientService.addVisit(patientId, visitData);
+            if (this.isEditMode && this.editVisitId) {
+                // ── UPDATE existing visit ──
+                visitData.updated_at = new Date().toISOString();
+                await this.patientService.updateVisit(patientId, this.editVisitId, visitData);
 
-            // ── Auto-complete the matched appointment ──────────────
-            const apptIdToComplete = this.routeAppointmentId || matchedAppointment?.id;
-            if (apptIdToComplete) {
+                this.isSubmitting = false;
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                await Swal.fire({
+                    title: 'Visit Updated!',
+                    text: 'The visit has been updated successfully.',
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#6366f1',
+                    timer: 2000,
+                    timerProgressBar: true,
+                    background: isDark ? '#1f1f1f' : '#ffffff',
+                    color: isDark ? '#e0e0e0' : '#1e293b',
+                });
+                this.router.navigate(['/patient', patientId]);
+            } else {
+                // ── CREATE new visit ──
+
+                // Check for a matching appointment BEFORE saving the visit
+                let matchedAppointment: any = null;
                 try {
-                    await this.appointmentService.updateAppointmentStatus(apptIdToComplete, 'completed');
+                    const allAppts = await this.appointmentService.getAppointments();
+                    const patientName = (this.patient.name || '').trim().toLowerCase();
+                    const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
+                    const now = new Date();
+
+                    const todayStart = new Date(now);
+                    todayStart.setHours(0, 0, 0, 0);
+
+                    const candidates = allAppts
+                        .filter(a => a.status === 'scheduled')
+                        .filter(a => new Date(a.datetime) >= todayStart)
+                        .filter(a => {
+                            const apptPatientId = (a.patient_id || '').trim();
+                            if (apptPatientId) return apptPatientId === patientId;
+                            const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
+                            const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
+                            return nameMatch && phoneMatch;
+                        });
+
+                    matchedAppointment = this.pickClosestAppointmentByTime(candidates, now);
                 } catch {
-                    // Silent — don't block visit save if appointment update fails
+                    // Silent — if appointment lookup fails, treat as walk-in
                 }
+
+                const hasAppointment = !!(this.routeAppointmentId || matchedAppointment?.id);
+                const visitType = hasAppointment ? 'appointment' : 'walk-in';
+                const appointmentId = this.routeAppointmentId || matchedAppointment?.id || '';
+
+                visitData.visitType = visitType;
+                if (appointmentId) {
+                    visitData.appointment_id = appointmentId;
+                }
+
+                await this.patientService.addVisit(patientId, visitData);
+
+                // Auto-complete the matched appointment
+                const apptIdToComplete = this.routeAppointmentId || matchedAppointment?.id;
+                if (apptIdToComplete) {
+                    try {
+                        await this.appointmentService.updateAppointmentStatus(apptIdToComplete, 'completed');
+                    } catch {
+                        // Silent — don't block visit save if appointment update fails
+                    }
+                }
+
+                this.isSubmitting = false;
+                const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+                await Swal.fire({
+                    title: 'Visit Added!',
+                    text: 'The new visit has been recorded.',
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#6366f1',
+                    timer: 2000,
+                    timerProgressBar: true,
+                    background: isDark ? '#1f1f1f' : '#ffffff',
+                    color: isDark ? '#e0e0e0' : '#1e293b',
+                });
+                this.router.navigate(['/patient', patientId]);
             }
-
-            this.isSubmitting = false;
-
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            await Swal.fire({
-                title: 'Visit Added!',
-                text: 'The new visit has been recorded.',
-                icon: 'success',
-                confirmButtonText: 'OK',
-                confirmButtonColor: '#6366f1',
-                timer: 2000,
-                timerProgressBar: true,
-                background: isDark ? '#1f1f1f' : '#ffffff',
-                color: isDark ? '#e0e0e0' : '#1e293b',
-            });
-
-            this.router.navigate(['/patient', patientId]);
         } catch (error: any) {
             this.isSubmitting = false;
             this.errorMessage = `Failed to save visit: ${error?.message || 'An unexpected error occurred'}`;

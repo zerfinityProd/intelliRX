@@ -607,9 +607,9 @@
   <div class="fab-options" [class.fab-options--visible]="(uiState$ | async)?.isFabOpen"
     [attr.aria-hidden]="!(uiState$ | async)?.isFabOpen">
 
-    <div class="fab-option-row">
+    <div *ngIf="permissions.canAppointment" class="fab-option-row">
       <span class="fab-label" aria-hidden="true">Appointment</span>
-      <button *ngIf="permissions.canAppointment" class="fab-option-btn fab-visit-btn" (click)="openAddAppointmentForm()" aria-label="Book appointment"
+      <button class="fab-option-btn fab-visit-btn" (click)="openAddAppointmentForm()" aria-label="Book appointment"
         [attr.tabindex]="(uiState$ | async)?.isFabOpen ? 0 : -1">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
