@@ -2,7 +2,7 @@ name: Angular Build + Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ beta0.2 ]
   workflow_dispatch:
 
 permissions:
