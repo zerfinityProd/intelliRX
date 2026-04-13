@@ -123,28 +123,26 @@ export class AddVisitPageComponent implements OnInit {
                 .map((s: string) => ({ description: s }));
         }
 
-        // Examinations — stored as "test: result, test: result"
+        // Examinations — stored as string[] (e.g. ["test: result", ...])
         if (visit.examination) {
-            this.examinations = visit.examination
-                .split(',')
-                .map((s: string) => s.trim())
-                .filter((s: string) => s.length > 0)
-                .map((s: string) => {
-                    const parts = s.split(':').map((p: string) => p.trim());
-                    return { testName: parts[0] || '', result: parts.slice(1).join(':').trim() || '' };
-                });
+            const examArr: string[] = Array.isArray(visit.examination)
+                ? visit.examination
+                : (visit.examination as string).split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+            this.examinations = examArr.map((s: string) => {
+                const parts = s.split(':').map((p: string) => p.trim());
+                return { testName: parts[0] || '', result: parts.slice(1).join(':').trim() || '' };
+            });
         }
 
-        // Medicines — stored as "name - dosage - freq, name - dosage - freq"
+        // Medicines — stored as string[] (e.g. ["name - dosage - freq", ...])
         if (visit.medicines) {
-            this.medicines = visit.medicines
-                .split(',')
-                .map((s: string) => s.trim())
-                .filter((s: string) => s.length > 0)
-                .map((s: string) => {
-                    const parts = s.split(' - ').map((p: string) => p.trim());
-                    return { name: parts[0] || '', dosage: parts[1] || '', frequency: parts[2] || '' };
-                });
+            const medArr: string[] = Array.isArray(visit.medicines)
+                ? visit.medicines
+                : (visit.medicines as string).split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+            this.medicines = medArr.map((s: string) => {
+                const parts = s.split(' - ').map((p: string) => p.trim());
+                return { name: parts[0] || '', dosage: parts[1] || '', frequency: parts[2] || '' };
+            });
         }
 
         this.cdr.detectChanges();
@@ -328,8 +326,8 @@ export class AddVisitPageComponent implements OnInit {
             };
             const presentIllnessText = this.formatArrayField(this.presentIllnesses);
             if (presentIllnessText) visitData.presentIllness = presentIllnessText;
-            const medicinesText = this.formatMedicines();
-            if (medicinesText) visitData.medicines = medicinesText;
+            const medicinesArr = this.formatMedicines();
+            if (medicinesArr.length > 0) visitData.medicines = medicinesArr;
 
             if (this.isEditMode && this.editVisitId) {
                 // ── UPDATE existing visit ──
@@ -469,13 +467,12 @@ export class AddVisitPageComponent implements OnInit {
     private formatArrayField(fields: DynamicField[]): string {
         return fields.map(f => f.description.trim()).filter(d => d.length > 0).join(', ');
     }
-    private formatExaminations(): string {
+    private formatExaminations(): string[] {
         return this.examinations
             .filter(e => e.testName.trim())
-            .map(e => `${e.testName.trim()}: ${e.result.trim()}`)
-            .join(', ');
+            .map(e => `${e.testName.trim()}: ${e.result.trim()}`);
     }
-    private formatMedicines(): string {
+    private formatMedicines(): string[] {
         return this.medicines
             .filter(m => m.name.trim())
             .map(m => {
@@ -483,7 +480,7 @@ export class AddVisitPageComponent implements OnInit {
                 if (m.dosage.trim()) parts.push(m.dosage.trim());
                 if (m.frequency.trim()) parts.push(m.frequency.trim());
                 return parts.join(' - ');
-            }).join(', ');
+            });
     }
 
     getInitials(name: string): string {

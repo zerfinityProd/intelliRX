@@ -73,8 +73,8 @@ export interface Visit {
   presentIllness?: string;
   chiefComplaints?: string;
   diagnosis?: string;
-  examination?: string;
-  medicines?: string;
+  examination?: string[];
+  medicines?: string[];
   treatmentPlan?: string;
   advice?: string;
   visitType?: string;               // e.g. "walk-in", "scheduled"

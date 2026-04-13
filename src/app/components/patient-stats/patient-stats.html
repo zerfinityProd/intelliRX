@@ -90,13 +90,13 @@
           <span class="detail-label">Diagnosis:</span>
           <span class="detail-value">{{ visit.diagnosis }}</span>
         </div>
-        <div class="visit-detail-row" *ngIf="visit.examination">
+        <div class="visit-detail-row" *ngIf="visit.examination?.length">
           <span class="detail-label">Examination:</span>
-          <span class="detail-value">{{ visit.examination }}</span>
+          <span class="detail-value">{{ visit.examination!.join(', ') }}</span>
         </div>
-        <div class="visit-detail-row" *ngIf="visit.medicines">
+        <div class="visit-detail-row" *ngIf="visit.medicines?.length">
           <span class="detail-label">Medicines:</span>
-          <span class="detail-value">{{ visit.medicines }}</span>
+          <span class="detail-value">{{ visit.medicines!.join(', ') }}</span>
         </div>
         <div class="visit-detail-row" *ngIf="visit.treatmentPlan">
           <span class="detail-label">Treatment Plan:</span>

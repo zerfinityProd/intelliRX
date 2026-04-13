@@ -266,13 +266,13 @@
               <span class="avp-detail-label">Diagnosis</span>
               <span class="avp-detail-value">{{ visit.diagnosis }}</span>
             </div>
-            <div class="avp-visit-detail" *ngIf="visit.examination">
+            <div class="avp-visit-detail" *ngIf="visit.examination?.length">
               <span class="avp-detail-label">Examination</span>
-              <span class="avp-detail-value">{{ visit.examination }}</span>
+              <span class="avp-detail-value">{{ visit.examination!.join(', ') }}</span>
             </div>
-            <div class="avp-visit-detail" *ngIf="visit.medicines">
+            <div class="avp-visit-detail" *ngIf="visit.medicines?.length">
               <span class="avp-detail-label">Medicines</span>
-              <span class="avp-detail-value">{{ visit.medicines }}</span>
+              <span class="avp-detail-value">{{ visit.medicines!.join(', ') }}</span>
             </div>
             <div class="avp-visit-detail" *ngIf="visit.treatmentPlan">
               <span class="avp-detail-label">Treatment Plan</span>

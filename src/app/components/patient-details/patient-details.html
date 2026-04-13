@@ -289,7 +289,7 @@
                     </span>
                     <span class="detail-value">{{ visit.diagnosis }}</span>
                   </div>
-                  <div class="visit-detail" *ngIf="visit.examination">
+                  <div class="visit-detail" *ngIf="visit.examination?.length">
                     <span class="detail-label">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
@@ -298,9 +298,9 @@
                       </svg>
                       Examination
                     </span>
-                    <span class="detail-value">{{ visit.examination }}</span>
+                    <span class="detail-value">{{ visit.examination!.join(', ') }}</span>
                   </div>
-                  <div class="visit-detail" *ngIf="visit.medicines">
+                  <div class="visit-detail" *ngIf="visit.medicines?.length">
                     <span class="detail-label">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
@@ -310,7 +310,7 @@
                       </svg>
                       Medicines Prescribed
                     </span>
-                    <span class="detail-value">{{ visit.medicines }}</span>
+                    <span class="detail-value">{{ visit.medicines!.join(', ') }}</span>
                   </div>
                   <div class="visit-detail" *ngIf="visit.treatmentPlan">
                     <span class="detail-label">
