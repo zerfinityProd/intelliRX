@@ -37,6 +37,8 @@ const KNOWN_ROLES: string[] = ['doctor', 'receptionist'];
  */
 interface UserLookupResult {
     userId: string;
+    /** Display name from the users collection */
+    userName: string;
     subscriptionId: string;
     clinicIds: string[];
     role: 'doctor' | 'receptionist';
@@ -149,7 +151,24 @@ export class AuthorizationService {
                 userSnapshot = { empty: false, size: 1, docs: [matchedDoc] } as any;
             }
 
-            const userDoc = userSnapshot.docs[0];
+            // Handle duplicate user documents: prefer the one with clinic_users entries
+            let userDoc = userSnapshot.docs[0];
+            if (userSnapshot.size > 1) {
+                console.warn('[AuthZ] Found', userSnapshot.size, 'user docs for email:', normalized,
+                    '— IDs:', userSnapshot.docs.map((d: any) => d.id).join(', '));
+
+                // Check which user doc has associated clinic_users entries
+                const clinicUsersCol2 = collection(this.firestore, 'clinic_users');
+                for (const candidateDoc of userSnapshot.docs) {
+                    const candidateQuery = query(clinicUsersCol2, where('user_id', '==', candidateDoc.id));
+                    const candidateSnap = await getDocs(candidateQuery);
+                    if (!candidateSnap.empty) {
+                        console.log('[AuthZ] Preferring user doc', candidateDoc.id, 'which has', candidateSnap.size, 'clinic_users entries');
+                        userDoc = candidateDoc;
+                        break;
+                    }
+                }
+            }
             const userData = userDoc.data();
             const userId = userDoc.id;
 
@@ -181,6 +200,9 @@ export class AuthorizationService {
                     }
                 }
             }
+
+            // Extract display name from user doc
+            const userName: string = getField(userData, 'name') || '';
 
             // Check for per-user permission overrides
             let userPermissionOverrides: string[] | null = null;
@@ -217,11 +239,19 @@ export class AuthorizationService {
                 if (cId && !clinicIds.includes(cId)) {
                     clinicIds.push(cId);
                 }
-                // Override role from clinic_users if present
+                // Override role from clinic_users if present (clinic_users role is authoritative)
                 if (cuData['roles'] && Array.isArray(cuData['roles'])) {
                     for (const r of cuData['roles']) {
                         if (r === 'recep' || r === 'receptionist') {
                             role = 'receptionist';
+                            break;
+                        }
+                        if (r === 'doctor') {
+                            role = 'doctor';
+                            break;
+                        }
+                        if (KNOWN_ROLES.includes(r)) {
+                            role = r as 'doctor' | 'receptionist';
                             break;
                         }
                     }
@@ -235,6 +265,7 @@ export class AuthorizationService {
 
             const result: UserLookupResult = {
                 userId,
+                userName,
                 subscriptionId,
                 clinicIds,
                 role,
@@ -245,7 +276,7 @@ export class AuthorizationService {
 
             this.lookupCache.set(normalized, result);
             console.log('Resolved user context for', normalized,
-                '→ sub:', subscriptionId, 'clinics:', clinicIds,
+                '→ name:', userName, 'sub:', subscriptionId, 'clinics:', clinicIds,
                 'role:', role, 'overrides:', userPermissionOverrides ? 'yes' : 'no');
             return result;
         } catch (error: any) {
@@ -500,6 +531,19 @@ export class AuthorizationService {
     }
 
     /**
+     * Returns the display name from the users collection for a given email.
+     */
+    async getUserName(email: string): Promise<string> {
+        try {
+            const result = await this.lookupUser(email);
+            return result?.userName ?? '';
+        } catch (error) {
+            console.warn('getUserName failed for:', email, error);
+            return '';
+        }
+    }
+
+    /**
      * Get the Firestore user document ID for a given email.
      */
     async getUserId(email: string): Promise<string | null> {
@@ -557,6 +601,123 @@ export class AuthorizationService {
         } catch (error) {
             console.warn('getDoctorAvailability failed for:', email, clinicId, error);
             return null;
+        }
+    }
+
+    /**
+     * Fetch all doctors assigned to a specific clinic from the database.
+     * Queries clinic_users where clinic_id matches and roles include 'doctor',
+     * then joins with the users collection for name/email.
+     */
+    async getDoctorsForClinic(clinicId: string): Promise<Array<{ id: string; name: string; specialty: string; avatar: string; email: string }>> {
+        if (!clinicId) return [];
+        try {
+            const clinicUsersCol = collection(this.firestore, 'clinic_users');
+            const q = query(clinicUsersCol, where('clinic_id', '==', clinicId));
+            const snapshot = await getDocs(q);
+
+            const doctors: Array<{ id: string; name: string; specialty: string; avatar: string; email: string }> = [];
+            const seenUserIds = new Set<string>();
+
+            for (const cuDoc of snapshot.docs) {
+                const cuData = cuDoc.data();
+                const status = cuData['status'] || 'active';
+                if (status !== 'active') continue;
+
+                // Check if this clinic_user has 'doctor' role
+                const roles: string[] = cuData['roles'] || [];
+                const isDoctor = roles.some(r => r === 'doctor');
+                if (!isDoctor) continue;
+
+                const userId = cuData['user_id'];
+                if (!userId || seenUserIds.has(userId)) continue;
+                seenUserIds.add(userId);
+
+                // Fetch user document for name/email
+                try {
+                    const userDocRef = doc(this.firestore, 'users', userId);
+                    const userDoc = await getDoc(userDocRef);
+                    if (!userDoc.exists()) continue;
+
+                    const userData = userDoc.data();
+                    const email = (userData['email'] || '').trim().toLowerCase();
+                    const name = userData['name'] || email.split('@')[0] || 'Doctor';
+                    const specialty = cuData['specialty'] || userData['specialty'] || '';
+                    const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+
+                    doctors.push({
+                        id: `dr_${userId}`,
+                        name,
+                        specialty,
+                        avatar: initials,
+                        email
+                    });
+                } catch {
+                    // Skip this doctor if user doc fails
+                }
+            }
+
+            return doctors;
+        } catch (error) {
+            console.error('getDoctorsForClinic failed:', clinicId, error);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch all doctors across all clinics for a given subscription.
+     * Used as a fallback when no specific clinic is selected.
+     */
+    async getDoctorsForSubscription(subscriptionId: string): Promise<Array<{ id: string; name: string; specialty: string; avatar: string; email: string }>> {
+        if (!subscriptionId) return [];
+        try {
+            const clinicUsersCol = collection(this.firestore, 'clinic_users');
+            const q = query(clinicUsersCol, where('subscription_id', '==', subscriptionId));
+            const snapshot = await getDocs(q);
+
+            const doctors: Array<{ id: string; name: string; specialty: string; avatar: string; email: string }> = [];
+            const seenUserIds = new Set<string>();
+
+            for (const cuDoc of snapshot.docs) {
+                const cuData = cuDoc.data();
+                const status = cuData['status'] || 'active';
+                if (status !== 'active') continue;
+
+                const roles: string[] = cuData['roles'] || [];
+                const isDoctor = roles.some(r => r === 'doctor');
+                if (!isDoctor) continue;
+
+                const userId = cuData['user_id'];
+                if (!userId || seenUserIds.has(userId)) continue;
+                seenUserIds.add(userId);
+
+                try {
+                    const userDocRef = doc(this.firestore, 'users', userId);
+                    const userDoc = await getDoc(userDocRef);
+                    if (!userDoc.exists()) continue;
+
+                    const userData = userDoc.data();
+                    const email = (userData['email'] || '').trim().toLowerCase();
+                    const name = userData['name'] || email.split('@')[0] || 'Doctor';
+                    const specialty = cuData['specialty'] || userData['specialty'] || '';
+                    const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+
+                    doctors.push({
+                        id: `dr_${userId}`,
+                        name,
+                        specialty,
+                        avatar: initials,
+                        email
+                    });
+                } catch {
+                    // Skip
+                }
+            }
+
+            return doctors;
+        } catch (error) {
+            console.error('getDoctorsForSubscription failed:', subscriptionId, error);
+            return [];
         }
     }
 

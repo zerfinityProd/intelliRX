@@ -17,7 +17,8 @@ import { todayLocalISO } from '../../utilities/local-date';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
 import { ClinicService } from '../../services/clinicService';
-import doctorsData from '../../data/doctors.json';
+import { ClinicContextService } from '../../services/clinicContextService';
+
 
 @Component({
     selector: 'app-reception-home',
@@ -63,7 +64,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     filterClinicId: string = '';
     filterDoctorId: string = '';
     clinicOptions: Array<{ id: string; label: string }> = [];
-    readonly allDoctors: Array<{ id: string; name: string; specialty: string; email: string }> = doctorsData as any[];
+    allDoctors: Array<{ id: string; name: string; specialty: string; email: string }> = [];
     private doctorNameCache = new Map<string, string>();
 
     readonly appointmentsDateMin: string = DEFAULT_SYSTEM_SETTINGS.ui.appointmentsDateMin;
@@ -103,6 +104,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     private patientService = inject(PatientService);
     private firebaseService = inject(FirebaseService);
     private clinicService = inject(ClinicService);
+    private clinicContextService = inject(ClinicContextService);
     private router = inject(Router);
     private cdr = inject(ChangeDetectorRef);
 
@@ -138,6 +140,8 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     }
 
     private async refreshAppointments(): Promise<void> {
+        // Guard: skip if subscription context isn't ready yet
+        if (!this.clinicContextService.getSubscriptionId()) return;
         try {
             this.appointments = await this.appointmentService.getAllAppointments();
             this.cdr.detectChanges();
@@ -563,9 +567,26 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         }
     }
 
-    private buildDoctorNameCache(): void {
-        for (const doc of this.allDoctors) {
-            this.doctorNameCache.set(normalizeEmail(doc.email), doc.name);
+    private async buildDoctorNameCache(): Promise<void> {
+        // Fetch doctors from the database
+        const email = this.authService.currentUserValue?.email;
+        if (!email) return;
+        try {
+            const clinicIds = await this.authorizationService.getUserClinicIds(email);
+            const seenEmails = new Set<string>();
+            for (const clinicId of clinicIds) {
+                const doctors = await this.authorizationService.getDoctorsForClinic(clinicId);
+                for (const doc of doctors) {
+                    const normEmail = normalizeEmail(doc.email);
+                    if (seenEmails.has(normEmail)) continue;
+                    seenEmails.add(normEmail);
+                    this.doctorNameCache.set(normEmail, doc.name);
+                    this.allDoctors.push({ id: doc.id, name: doc.name, specialty: doc.specialty, email: doc.email });
+                }
+            }
+            this.cdr.detectChanges();
+        } catch (err) {
+            console.warn('Failed to build doctor name cache:', err);
         }
     }
 

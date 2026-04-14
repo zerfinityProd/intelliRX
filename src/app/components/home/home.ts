@@ -24,7 +24,7 @@ import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
 import { normalizeEmail } from '../../utilities/normalize-email';
-import doctorsData from '../../data/doctors.json';
+
 
 export interface DashboardDoctor {
   id: string;
@@ -198,13 +198,27 @@ export class HomeComponent implements OnInit {
     }
 
     if (this.userRole === 'doctor') {
-      // Doctor: lock to their own record
+      // Doctor: use authenticated user's name from the database
+      const currentUser = this.authService.currentUserValue;
+      const dbName = currentUser?.name || '';
       const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
-      const match = authEmail
-        ? (doctorsData as DashboardDoctor[]).find(d => normalizeEmail(d.email) === authEmail)
-        : undefined;
-      this.dashboardDoctors = match ? [match] : [];
-      this.selectedDashboardDoctorId = match?.id ?? '';
+
+      // Build doctor entry from database user info
+      if (dbName && authEmail) {
+        const initials = dbName.split(' ').filter(Boolean).map(w => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+        const doctorEntry: DashboardDoctor = {
+          id: `dr_${authEmail}`,
+          name: dbName,
+          specialty: '',
+          avatar: initials,
+          email: rawEmail
+        };
+        this.dashboardDoctors = [doctorEntry];
+        this.selectedDashboardDoctorId = doctorEntry.id;
+      } else {
+        this.dashboardDoctors = [];
+        this.selectedDashboardDoctorId = '';
+      }
       this.selectedDashboardClinicId = this.clinicContextService.getSelectedClinicId() ?? '';
       // Load doctor's clinic list for the switcher
       await this.loadDoctorClinics();
@@ -279,19 +293,17 @@ export class HomeComponent implements OnInit {
   }
 
   private async refreshDashboardDoctors(): Promise<void> {
-    if (!this.selectedDashboardClinicId) {
-      this.dashboardDoctors = doctorsData as DashboardDoctor[];
+    if (this.selectedDashboardClinicId) {
+      // Fetch doctors assigned to this specific clinic from the database
+      this.dashboardDoctors = await this.authorizationService.getDoctorsForClinic(this.selectedDashboardClinicId) as DashboardDoctor[];
     } else {
-      const clinicId = this.selectedDashboardClinicId;
-      const all = doctorsData as DashboardDoctor[];
-      const filtered: DashboardDoctor[] = [];
-      for (const doc of all) {
-        const clinicIds = await this.getDoctorClinicIds(doc.email);
-        if (clinicIds.includes(clinicId)) {
-          filtered.push(doc);
-        }
+      // Fetch all doctors in the subscription
+      const subId = this.clinicContextService.getSubscriptionId();
+      if (subId) {
+        this.dashboardDoctors = await this.authorizationService.getDoctorsForSubscription(subId) as DashboardDoctor[];
+      } else {
+        this.dashboardDoctors = [];
       }
-      this.dashboardDoctors = filtered;
     }
     // Reset doctor selection when clinic changes
     this.selectedDashboardDoctorId = '';

@@ -63,6 +63,7 @@ export class AuthenticationService {
                     } else {
                         // Fetch role and set subscription/clinic context
                         const role = await this.authorizationService.getUserRole(email);
+                        const dbName = await this.authorizationService.getUserName(email);
                         const subscriptionId = await this.authorizationService.getUserSubscriptionId(email);
                         const clinicIds = await this.authorizationService.getUserClinicIds(email);
                         // Set clinic context so all services can build subscription-scoped paths
@@ -74,6 +75,8 @@ export class AuthenticationService {
                             this.clinicContextService.setClinicContext(clinicId, subscriptionId);
                         }
                         const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
+                        // Override display name with database name if available
+                        if (dbName) user.name = dbName;
                         this.setCurrentUser(user);
                     }
                 } else {
@@ -169,7 +172,9 @@ export class AuthenticationService {
                 throw new Error('Access denied. You are not authorized to log in.');
             }
             const role = await this.authorizationService.getUserRole(userEmail);
+            const dbName = await this.authorizationService.getUserName(userEmail);
             const user: User = { ...this.transformFirebaseUser(userCredential.user), role };
+            if (dbName) user.name = dbName;
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
@@ -193,7 +198,9 @@ export class AuthenticationService {
                 throw new Error('Access denied. You are not authorized to log in.');
             }
             const role = await this.authorizationService.getUserRole(email);
+            const dbName = await this.authorizationService.getUserName(email);
             const user: User = { ...this.transformFirebaseUser(result.user), role };
+            if (dbName) user.name = dbName;
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
@@ -216,7 +223,9 @@ export class AuthenticationService {
                 throw new Error('Access denied. You are not authorized to log in.');
             }
             const role = await this.authorizationService.getUserRole(email);
+            const dbName = await this.authorizationService.getUserName(email);
             const user: User = { ...this.transformFirebaseUser(result.user), role };
+            if (dbName) user.name = dbName;
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
@@ -239,7 +248,9 @@ export class AuthenticationService {
                 throw new Error('Access denied. You are not authorized to log in.');
             }
             const role = await this.authorizationService.getUserRole(email);
+            const dbName = await this.authorizationService.getUserName(email);
             const user: User = { ...this.transformFirebaseUser(result.user), role };
+            if (dbName) user.name = dbName;
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {

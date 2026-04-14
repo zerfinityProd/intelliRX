@@ -10,7 +10,7 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
-import doctorsData from '../../data/doctors.json';
+
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
@@ -81,7 +81,7 @@ export class AddAppointmentComponent implements OnInit {
   doctorContextReady: boolean = false;
 
   // Doctors list
-  doctors: Doctor[] = doctorsData as Doctor[];
+  doctors: Doctor[] = [];
 
   // Clinic-first selection (receptionist flow)
   clinics: Array<{ id: string; label: string }> = [];
@@ -154,8 +154,27 @@ export class AddAppointmentComponent implements OnInit {
         ? this.doctors.find(d => normalizeEmail(d.email) === authEmail)
         : undefined;
 
-      this.doctors = match ? [match] : [];
-      this.selectedDoctorId = match?.id ?? '';
+      if (!match && authEmail) {
+        // Build doctor entry from the authenticated user's database info
+        const currentUser = this.authService.currentUserValue;
+        const dbName = currentUser?.name || authEmail.split('@')[0];
+        const initials = dbName.split(' ').filter(Boolean).map(w => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+        const doctorEntry: Doctor = {
+          id: `dr_${authEmail}`,
+          name: dbName,
+          specialty: '',
+          avatar: initials,
+          email: rawEmail
+        };
+        this.doctors = [doctorEntry];
+        this.selectedDoctorId = doctorEntry.id;
+      } else if (match) {
+        this.doctors = [match];
+        this.selectedDoctorId = match.id;
+      } else {
+        this.doctors = [];
+        this.selectedDoctorId = '';
+      }
 
       // Prefer clinic selected at login; otherwise attempt to load.
       this.selectedClinicId = this.clinicContextService.getSelectedClinicId() ?? '';
@@ -240,21 +259,17 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   private async refreshDoctorsForSelectedClinic(): Promise<void> {
-    // If clinic isn't known yet (legacy mode), keep previous behavior.
-    if (!this.selectedClinicId) {
-      this.doctors = doctorsData as Doctor[];
+    if (this.selectedClinicId) {
+      // Fetch doctors from database for this clinic
+      this.doctors = await this.authorizationService.getDoctorsForClinic(this.selectedClinicId) as Doctor[];
     } else {
-      const clinicId = this.selectedClinicId;
-      const all = doctorsData as Doctor[];
-      const filtered: Doctor[] = [];
-      for (const doc of all) {
-        const clinicIds = await this.getDoctorClinicIds(doc.email);
-        // Strict: only show doctors explicitly assigned to this clinic.
-        if (clinicIds.includes(clinicId)) {
-          filtered.push(doc);
-        }
+      // Fetch all doctors in the subscription
+      const subId = this.subscriptionId || this.clinicContextService.getSubscriptionId();
+      if (subId) {
+        this.doctors = await this.authorizationService.getDoctorsForSubscription(subId) as Doctor[];
+      } else {
+        this.doctors = [];
       }
-      this.doctors = filtered;
     }
 
     // Preselect doctor if receptionist email matches one of the clinic-scoped doctors.
