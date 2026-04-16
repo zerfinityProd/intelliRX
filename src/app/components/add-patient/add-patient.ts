@@ -160,16 +160,10 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     if (fullName && phoneNumber && phoneNumber.length === 10) {
       this.checkDebounceTimer = setTimeout(async () => {
         try {
-          // Search by phone number (multiple fallback strategies for reliability)
-          const phoneMatch = await this.patientService.findPatientByPhone(phoneNumber);
-          if (phoneMatch) {
-            const existingName = phoneMatch.name.trim().toLowerCase();
-            const enteredName = fullName.trim().toLowerCase();
-            if (existingName === enteredName) {
-              this.warningMessage = '⚠️ This patient already exists in the system';
-            } else {
-              this.warningMessage = `⚠️ A patient "${phoneMatch.name}" already exists with this phone number`;
-            }
+          // Check if a patient with the same name AND phone already exists
+          const exists = await this.patientService.checkPatientExists(fullName, phoneNumber);
+          if (exists) {
+            this.warningMessage = '⚠️ This patient already exists in the system';
           } else {
             this.warningMessage = '';
           }
@@ -294,7 +288,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
         icon: 'success',
         showConfirmButton: true,
         confirmButtonText: 'Add Visit',
-        confirmButtonColor: '#6366f1',
+        confirmButtonColor: '#148D9E',
         showDenyButton: true,
         denyButtonText: 'OK',
         denyButtonColor: '#94a3b8',
@@ -386,7 +380,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
           confirmButtonColor: '#ef4444',
           showDenyButton: true,
           denyButtonText: 'Keep editing',
-          denyButtonColor: '#6366f1',
+          denyButtonColor: '#148D9E',
           background: isDark ? '#1f1f1f' : '#ffffff',
           color: isDark ? '#e0e0e0' : '#1e293b',
         }).then(result => {

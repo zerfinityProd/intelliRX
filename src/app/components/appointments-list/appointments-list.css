@@ -16,8 +16,8 @@
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .kb-search-wrap:focus-within {
-  border-color: var(--clr-primary, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+  border-color: var(--clr-primary, #148D9E);
+  box-shadow: 0 0 0 3px rgba(20,141,158,0.12);
 }
 .kb-search-icon {
   color: var(--clr-text-light, #94a3b8);
@@ -76,7 +76,7 @@
 }
 
 .kb-today-chip {
-  background: var(--clr-primary, #6366f1);
+  background: var(--clr-primary, #148D9E);
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -124,12 +124,12 @@
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.35);
 }
 
 .kb-page-header__title {
@@ -171,9 +171,9 @@
 }
 
 .kb-stat-pill--total {
-  background: var(--clr-primary-light, #ede9fe);
-  color: var(--clr-primary, #6366f1);
-  border-color: #c7d2fe;
+  background: var(--clr-primary-light, #E7F5F7);
+  color: var(--clr-primary, #148D9E);
+  border-color: #B5DDE5;
 }
 
 .kb-stat-pill--today {
@@ -198,13 +198,13 @@
 }
 
 .kb-btn--primary {
-  background: var(--clr-primary, #6366f1);
+  background: var(--clr-primary, #148D9E);
   color: #fff;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+  box-shadow: 0 2px 8px rgba(20, 141, 158, 0.25);
 }
 .kb-btn--primary:hover {
-  background: var(--clr-primary-dark, #4f46e5);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+  background: var(--clr-primary-dark, #117A8B);
+  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.35);
   transform: translateY(-1px);
 }
 
@@ -215,8 +215,8 @@
 }
 .kb-btn--ghost:hover {
   background: var(--clr-bg, #f5f7fa);
-  border-color: var(--clr-primary, #6366f1);
-  color: var(--clr-primary, #6366f1);
+  border-color: var(--clr-primary, #148D9E);
+  color: var(--clr-primary, #148D9E);
 }
 
 /* ── Error Banner ── */
@@ -260,7 +260,7 @@
   width: 36px;
   height: 36px;
   border: 3px solid var(--clr-border, #e2e8f0);
-  border-top-color: var(--clr-primary, #6366f1);
+  border-top-color: var(--clr-primary, #148D9E);
   border-radius: 50%;
   animation: kb-spin 0.75s linear infinite;
 }
@@ -392,15 +392,15 @@
 
 .kb-card:hover {
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.10);
-  border-color: #c7d2fe;
+  border-color: #B5DDE5;
   transform: translateY(-2px);
 }
 
 
 
 .kb-card--today {
-  border-color: #c7d2fe;
-  box-shadow: 0 0 0 1.5px rgba(99, 102, 241, 0.15);
+  border-color: #B5DDE5;
+  box-shadow: 0 0 0 1.5px rgba(20, 141, 158, 0.15);
 }
 
 .kb-card--updating {
@@ -423,7 +423,7 @@
   width: 22px;
   height: 22px;
   border: 2.5px solid #e2e8f0;
-  border-top-color: #6366f1;
+  border-top-color: #148D9E;
   border-radius: 50%;
   animation: kb-spin 0.7s linear infinite;
 }
@@ -450,7 +450,7 @@
 .kb-card__day {
   font-size: 18px;
   font-weight: 800;
-  color: var(--clr-primary, #6366f1);
+  color: var(--clr-primary, #148D9E);
   line-height: 1;
 }
 
@@ -484,7 +484,7 @@
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff;
   letter-spacing: 0.02em;
 }
@@ -575,11 +575,11 @@
 }
 
 .kb-card__action-btn--visit {
-  background: #e0e7ff;
-  color: #4338ca;
+  background: #DAF0F4;
+  color: #0E6877;
 }
 .kb-card__action-btn--visit:hover:not(:disabled) {
-  background: #c7d2fe;
+  background: #B5DDE5;
   color: #fff;
 }
 
@@ -628,11 +628,11 @@
   border-color: var(--dk-border);
 }
 [data-theme="dark"] .kb-card:hover {
-  border-color: #4f46e5;
+  border-color: #117A8B;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 [data-theme="dark"] .kb-card--today {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: rgba(20, 141, 158, 0.5);
 }
 
 [data-theme="dark"] .kb-card__overlay {
@@ -800,7 +800,7 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff;
   display: flex;
   align-items: center;

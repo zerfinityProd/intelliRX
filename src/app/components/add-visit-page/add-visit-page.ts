@@ -13,12 +13,14 @@ interface DynamicField {
 }
 interface Examination {
     testName: string;
+    status: string;
     result: string;
 }
 interface Medicine {
     name: string;
     dosage: string;
     frequency: string;
+    durationDays: string;
 }
 
 /**
@@ -53,12 +55,14 @@ export class AddVisitPageComponent implements OnInit {
     examinations: Examination[] = [];
     newExamTestName: string = '';
     newExamResult: string = '';
+    newExamStatus: string = '';
     treatmentPlan: string = '';
     advice: string = '';
     medicines: Medicine[] = [];
     newMedicineName: string = '';
     newMedicineDosage: string = '';
     newMedicineFrequency: string = '';
+    newMedicineDuration: string = '';
 
     errorMessage: string = '';
     successMessage: string = '';
@@ -72,10 +76,13 @@ export class AddVisitPageComponent implements OnInit {
     expandedVisitIds: Set<string> = new Set();
 
     // ── Navigation origin ─────────────────────────────────────
-    private origin: 'home' | 'patient' = 'home';
+    private origin: 'home' | 'patient' | 'appointments' = 'home';
     private routeAppointmentId: string = '';
     private originalAllergies: string[] = [];
     private originalAilments: string[] = [];
+
+    // ── Original form snapshot (for dirty-checking) ───────────
+    private originalFormState: string = '';
 
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
@@ -86,7 +93,7 @@ export class AddVisitPageComponent implements OnInit {
 
     async ngOnInit(): Promise<void> {
         const state = history.state as { origin?: string; appointmentId?: string; editVisitId?: string; editVisitData?: any } | undefined;
-        this.origin = (state?.origin === 'patient') ? 'patient' : 'home';
+        this.origin = (state?.origin === 'patient') ? 'patient' : (state?.origin === 'appointments') ? 'appointments' : 'home';
         this.routeAppointmentId = (state?.appointmentId || '').trim();
 
         // ── Edit mode detection ──
@@ -106,6 +113,9 @@ export class AddVisitPageComponent implements OnInit {
         if (this.isEditMode && state?.editVisitData) {
             this.populateEditFields(state.editVisitData);
         }
+
+        // Snapshot the form state after initialization for dirty-checking
+        this.originalFormState = this.getFormStateSnapshot();
     }
 
     private populateEditFields(visit: any): void {
@@ -123,25 +133,33 @@ export class AddVisitPageComponent implements OnInit {
                 .map((s: string) => ({ description: s }));
         }
 
-        // Examinations — stored as string[] (e.g. ["test: result", ...])
+        // Examinations — stored as string[] (e.g. ["test [status]: result", ...])
         if (visit.examination) {
             const examArr: string[] = Array.isArray(visit.examination)
                 ? visit.examination
                 : (visit.examination as string).split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
             this.examinations = examArr.map((s: string) => {
+                // New format: "testName [status]: result"
+                const statusMatch = s.match(/^(.+?)\s*\[(\w[\w-]*)\]\s*:\s*(.*)$/);
+                if (statusMatch) {
+                    return { testName: statusMatch[1].trim(), status: statusMatch[2], result: statusMatch[3].trim() };
+                }
+                // Old format: "testName: result"
                 const parts = s.split(':').map((p: string) => p.trim());
-                return { testName: parts[0] || '', result: parts.slice(1).join(':').trim() || '' };
+                return { testName: parts[0] || '', status: '', result: parts.slice(1).join(':').trim() || '' };
             });
         }
 
-        // Medicines — stored as string[] (e.g. ["name - dosage - freq", ...])
+        // Medicines — stored as string[] (e.g. ["name - dosage - freq - 5 days", ...])
         if (visit.medicines) {
             const medArr: string[] = Array.isArray(visit.medicines)
                 ? visit.medicines
                 : (visit.medicines as string).split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
             this.medicines = medArr.map((s: string) => {
                 const parts = s.split(' - ').map((p: string) => p.trim());
-                return { name: parts[0] || '', dosage: parts[1] || '', frequency: parts[2] || '' };
+                const durationPart = parts[3] || '';
+                const durationNum = durationPart.replace(/\s*days?\s*/i, '').trim();
+                return { name: parts[0] || '', dosage: parts[1] || '', frequency: parts[2] || '', durationDays: durationNum };
             });
         }
 
@@ -247,27 +265,47 @@ export class AddVisitPageComponent implements OnInit {
     addMedicineChip(): void {
         const name = this.newMedicineName.trim();
         if (!name) return;
-        this.medicines.push({ name, dosage: this.newMedicineDosage.trim(), frequency: this.newMedicineFrequency.trim() });
-        this.newMedicineName = ''; this.newMedicineDosage = ''; this.newMedicineFrequency = '';
+        this.medicines.push({
+            name,
+            dosage: this.newMedicineDosage.trim(),
+            frequency: this.newMedicineFrequency.trim(),
+            durationDays: this.newMedicineDuration.trim()
+        });
+        this.newMedicineName = ''; this.newMedicineDosage = ''; this.newMedicineFrequency = ''; this.newMedicineDuration = '';
     }
     onMedicineKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') { event.preventDefault(); this.addMedicineChip(); }
     }
-    onMedicineBlur(): void { this.addMedicineChip(); }
+    onMedicineBlur(): void { /* no auto-add — user must click + Add */ }
     removeMedicine(index: number): void { this.medicines.splice(index, 1); }
+    editMedicine(index: number): void {
+        const med = this.medicines[index];
+        this.newMedicineName = med.name;
+        this.newMedicineDosage = med.dosage;
+        this.newMedicineFrequency = med.frequency;
+        this.newMedicineDuration = med.durationDays;
+        this.medicines.splice(index, 1);
+    }
 
     // ── Examinations ──────────────────────────────────────────
     addExaminationChip(): void {
         const name = this.newExamTestName.trim();
         if (!name) return;
-        this.examinations.push({ testName: name, result: this.newExamResult.trim() });
-        this.newExamTestName = ''; this.newExamResult = '';
+        this.examinations.push({ testName: name, status: this.newExamStatus, result: this.newExamResult.trim() });
+        this.newExamTestName = ''; this.newExamResult = ''; this.newExamStatus = '';
     }
     onExaminationKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') { event.preventDefault(); this.addExaminationChip(); }
     }
-    onExaminationBlur(): void { this.addExaminationChip(); }
+    onExaminationBlur(): void { /* no auto-add — user must click + Add */ }
     removeExamination(index: number): void { this.examinations.splice(index, 1); }
+    editExamination(index: number): void {
+        const exam = this.examinations[index];
+        this.newExamTestName = exam.testName;
+        this.newExamStatus = exam.status;
+        this.newExamResult = exam.result;
+        this.examinations.splice(index, 1);
+    }
 
     // ── Visit History helpers ─────────────────────────────────
     toggleVisitExpand(visitId: string): void {
@@ -341,13 +379,13 @@ export class AddVisitPageComponent implements OnInit {
                     text: 'The visit has been updated successfully.',
                     icon: 'success',
                     confirmButtonText: 'OK',
-                    confirmButtonColor: '#6366f1',
+                    confirmButtonColor: '#148D9E',
                     timer: 2000,
                     timerProgressBar: true,
                     background: isDark ? '#1f1f1f' : '#ffffff',
                     color: isDark ? '#e0e0e0' : '#1e293b',
                 });
-                this.router.navigate(['/patient', patientId]);
+                this.router.navigate(['/patient', patientId], { state: { activeTab: 'visits' } });
             } else {
                 // ── CREATE new visit ──
 
@@ -403,16 +441,19 @@ export class AddVisitPageComponent implements OnInit {
                 const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
                 await Swal.fire({
                     title: 'Visit Added!',
-                    text: 'The new visit has been recorded.',
                     icon: 'success',
                     confirmButtonText: 'OK',
-                    confirmButtonColor: '#6366f1',
+                    confirmButtonColor: '#148D9E',
                     timer: 2000,
                     timerProgressBar: true,
                     background: isDark ? '#1f1f1f' : '#ffffff',
                     color: isDark ? '#e0e0e0' : '#1e293b',
                 });
-                this.router.navigate(['/patient', patientId]);
+                if (this.origin === 'appointments') {
+                    this.router.navigate(['/appointments']);
+                } else {
+                    this.router.navigate(['/patient', patientId], { state: { activeTab: 'visits' } });
+                }
             }
         } catch (error: any) {
             this.isSubmitting = false;
@@ -421,25 +462,36 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     private navigateBack(): void {
-        if (this.origin === 'patient' && this.patient) {
+        if (this.origin === 'appointments') {
+            this.router.navigate(['/appointments']);
+        } else if (this.origin === 'patient' && this.patient) {
             this.router.navigate(['/patient', this.patient.id]);
         } else {
             this.router.navigate(['/home']);
         }
     }
 
+    /** Serialise the current form values into a comparable string. */
+    private getFormStateSnapshot(): string {
+        return JSON.stringify({
+            chiefComplaints: this.chiefComplaintsText.trim(),
+            presentIllnesses: this.presentIllnesses.map(i => i.description),
+            allergies: [...this.existingAllergies].sort(),
+            ailments: [...this.existingAilments].sort(),
+            diagnosis: this.diagnosis.trim(),
+            treatmentPlan: this.treatmentPlan.trim(),
+            examinations: this.examinations.map(e => `${e.testName}|${e.status}|${e.result}`),
+            medicines: this.medicines.map(m => `${m.name}|${m.dosage}|${m.frequency}|${m.durationDays}`),
+        });
+    }
+
+    /** Check whether the form has been modified since it was loaded. */
+    private isFormDirty(): boolean {
+        return this.getFormStateSnapshot() !== this.originalFormState;
+    }
+
     onCancel(): void {
-        const allergiesChanged = this.existingAllergies.length !== this.originalAllergies.length ||
-            this.existingAllergies.some(a => !this.originalAllergies.includes(a));
-        const ailmentsChanged = this.existingAilments.length !== this.originalAilments.length ||
-            this.existingAilments.some(a => !this.originalAilments.includes(a));
-
-        const hasData = this.chiefComplaintsText.trim() || this.presentIllnesses.length ||
-            allergiesChanged || ailmentsChanged ||
-            this.diagnosis.trim() || this.treatmentPlan.trim() ||
-            this.examinations.length || this.medicines.length;
-
-        if (hasData) {
+        if (this.isFormDirty()) {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             Swal.fire({
                 title: 'Discard changes?',
@@ -450,7 +502,7 @@ export class AddVisitPageComponent implements OnInit {
                 confirmButtonColor: '#ef4444',
                 showDenyButton: true,
                 denyButtonText: 'Keep editing',
-                denyButtonColor: '#6366f1',
+                denyButtonColor: '#148D9E',
                 background: isDark ? '#1f1f1f' : '#ffffff',
                 color: isDark ? '#e0e0e0' : '#1e293b',
             }).then(result => {
@@ -470,7 +522,12 @@ export class AddVisitPageComponent implements OnInit {
     private formatExaminations(): string[] {
         return this.examinations
             .filter(e => e.testName.trim())
-            .map(e => `${e.testName.trim()}: ${e.result.trim()}`);
+            .map(e => {
+                let str = e.testName.trim();
+                if (e.status) str += ` [${e.status}]`;
+                str += `: ${e.result.trim()}`;
+                return str;
+            });
     }
     private formatMedicines(): string[] {
         return this.medicines
@@ -479,6 +536,7 @@ export class AddVisitPageComponent implements OnInit {
                 const parts = [m.name.trim()];
                 if (m.dosage.trim()) parts.push(m.dosage.trim());
                 if (m.frequency.trim()) parts.push(m.frequency.trim());
+                if (m.durationDays.trim()) parts.push(m.durationDays.trim() + ' days');
                 return parts.join(' - ');
             });
     }

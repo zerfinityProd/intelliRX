@@ -8,8 +8,8 @@
 .appt-step-badge {
   font-size: 11px;
   font-weight: 600;
-  background: var(--clr-primary-light, #ede9fe);
-  color: var(--clr-primary, #6366f1);
+  background: var(--clr-primary-light, #E7F5F7);
+  color: var(--clr-primary, #148D9E);
   padding: 3px 10px;
   border-radius: 20px;
   margin-left: 10px;
@@ -46,9 +46,9 @@
 }
 
 .appt-step--active .appt-step__circle {
-  background: var(--clr-primary, #6366f1);
+  background: var(--clr-primary, #148D9E);
   color: #fff;
-  box-shadow: 0 2px 10px rgba(99,102,241,0.35);
+  box-shadow: 0 2px 10px rgba(20,141,158,0.35);
 }
 
 .appt-step--done .appt-step__circle {
@@ -77,7 +77,7 @@
   margin: 0 10px;
   transition: background 0.3s;
 }
-.appt-step__line--filled { background: var(--clr-primary, #6366f1); }
+.appt-step__line--filled { background: var(--clr-primary, #148D9E); }
 
 /* ── Error ── */
 .appt-error {
@@ -122,9 +122,9 @@
   flex-shrink: 0;
   padding: 0 18px;
   border-radius: 10px;
-  border: 1.5px solid var(--clr-primary, #6366f1);
+  border: 1.5px solid var(--clr-primary, #148D9E);
   background: var(--clr-surface, #fff);
-  color: var(--clr-primary, #6366f1);
+  color: var(--clr-primary, #148D9E);
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -132,7 +132,7 @@
   min-width: 96px;
 }
 .appt-search-phone-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(20, 141, 158, 0.08);
 }
 .appt-search-phone-btn:disabled {
   opacity: 0.45;
@@ -197,20 +197,20 @@
   transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
 }
 .appt-patient-pick:hover {
-  border-color: #c7d2fe;
+  border-color: #B5DDE5;
   background: #fafaff;
 }
 .appt-patient-pick--selected {
-  border-color: var(--clr-primary, #6366f1) !important;
-  background: linear-gradient(135deg, rgba(99,102,241,0.06), rgba(139,92,246,0.06)) !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+  border-color: var(--clr-primary, #148D9E) !important;
+  background: rgba(20,141,158,0.06) !important;
+  box-shadow: 0 0 0 3px rgba(20, 141, 158, 0.12);
 }
 
 .appt-patient-pick__avatar {
   width: 40px;
   height: 40px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff;
   font-size: 15px;
   font-weight: 800;
@@ -229,7 +229,7 @@
 }
 .appt-patient-pick__name { font-size: 14px; font-weight: 700; color: var(--clr-text, #1e293b); }
 .appt-patient-pick__meta { font-size: 11px; color: var(--clr-text-muted, #94a3b8); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.appt-patient-pick__check { color: var(--clr-primary, #6366f1); flex-shrink: 0; }
+.appt-patient-pick__check { color: var(--clr-primary, #148D9E); flex-shrink: 0; }
 
 .appt-link-new {
   width: 100%;
@@ -249,9 +249,9 @@
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 .appt-link-new:hover {
-  color: var(--clr-primary, #6366f1);
-  border-color: var(--clr-primary, #6366f1);
-  background: rgba(99, 102, 241, 0.04);
+  color: var(--clr-primary, #148D9E);
+  border-color: var(--clr-primary, #148D9E);
+  background: rgba(20, 141, 158, 0.04);
 }
 
 /* ── Doctor pill (shown after selection) ── */
@@ -275,7 +275,7 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
@@ -302,7 +302,7 @@
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff;
   font-size: 16px;
   font-weight: 800;
@@ -335,8 +335,8 @@
   width: 14px;
   height: 14px;
   border-width: 2px;
-  border-color: rgba(99, 102, 241, 0.25);
-  border-top-color: var(--clr-primary, #6366f1);
+  border-color: rgba(20, 141, 158, 0.25);
+  border-top-color: var(--clr-primary, #148D9E);
 }
 
 /* ── Slot states ── */
@@ -350,7 +350,7 @@
 }
 .appt-slot-loading .appt-spinner {
   border-color: var(--clr-border, #e2e8f0);
-  border-top-color: var(--clr-primary, #6366f1);
+  border-top-color: var(--clr-primary, #148D9E);
 }
 
 .appt-slot-placeholder {
@@ -394,8 +394,8 @@
   width: 100%;
 }
 .slot-btn:hover:not(:disabled) {
-  border-color: #6366f1;
-  background: #ede9fe;
+  border-color: #148D9E;
+  background: #E7F5F7;
 }
 .slot-btn:disabled {
   cursor: not-allowed;
@@ -403,8 +403,8 @@
   border-color: #fecaca;
 }
 .slot-btn.slot-selected {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
-  border-color: #6366f1 !important;
+  background: linear-gradient(135deg, #148D9E, #1CB5C9) !important;
+  border-color: #148D9E !important;
 }
 .slot-btn.slot-selected .slot-time { color: #fff !important; }
 
@@ -442,7 +442,7 @@
 .appt-slot-count {
   margin-left: auto;
   font-weight: 600;
-  color: var(--clr-primary, #6366f1);
+  color: var(--clr-primary, #148D9E);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -462,14 +462,23 @@
    DARK THEME
 ═══════════════════════════════════════════════════════════ */
 [data-theme="dark"] .appt-step-badge {
-  background: rgba(99,102,241,0.15);
-  color: #818cf8;
+  background: rgba(20, 141, 158, 0.15);
+  color: #5dd8e8;
 }
 
 [data-theme="dark"] .appt-step__circle {
   background: var(--dk-bg3);
   color: var(--dk-text2);
 }
+
+[data-theme="dark"] .appt-step--active .appt-step__circle {
+  box-shadow: 0 2px 10px rgba(20, 141, 158, 0.35);
+}
+
+[data-theme="dark"] .appt-step__label { color: var(--dk-text2); }
+[data-theme="dark"] .appt-step--active .appt-step__label,
+[data-theme="dark"] .appt-step--done .appt-step__label { color: var(--dk-text1); }
+[data-theme="dark"] .appt-step__line { background: var(--dk-border); }
 
 [data-theme="dark"] .appt-error {
   background: rgba(220,38,38,0.1);
@@ -489,16 +498,35 @@
   border-color: rgba(16,185,129,0.25);
 }
 [data-theme="dark"] .appt-doctor-pill__name { color: var(--dk-text1); }
+[data-theme="dark"] .appt-doctor-pill__spec { color: var(--dk-text2); }
 
 [data-theme="dark"] .slot-btn {
   background: var(--dk-bg1);
   border-color: var(--dk-border);
 }
 [data-theme="dark"] .slot-btn:hover:not(:disabled) {
-  background: rgba(99,102,241,0.15);
-  border-color: #6366f1;
+  background: rgba(20, 141, 158, 0.15);
+  border-color: #148D9E;
 }
 [data-theme="dark"] .slot-time { color: var(--dk-text1); }
+
+/* Slot tags in dark mode */
+[data-theme="dark"] .slot-tag--available { background: rgba(16, 185, 129, 0.15); color: #34d399; }
+[data-theme="dark"] .slot-tag--booked    { background: rgba(220, 38, 38, 0.15); color: #f87171; }
+[data-theme="dark"] .slot-tag--past      { background: var(--dk-bg3); color: var(--dk-text2); }
+
+/* Past slots in dark mode */
+[data-theme="dark"] .slot-btn.slot-past {
+  background: var(--dk-bg1);
+  border-color: var(--dk-border);
+  opacity: 0.45;
+}
+
+/* Booked (disabled) slots in dark mode */
+[data-theme="dark"] .slot-btn:disabled {
+  background: rgba(220, 38, 38, 0.06);
+  border-color: rgba(220, 38, 38, 0.2);
+}
 
 [data-theme="dark"] .appt-slot-placeholder {
   background: var(--dk-bg1);
@@ -512,7 +540,7 @@
   color: var(--clr-primary);
 }
 [data-theme="dark"] .appt-search-phone-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.12);
+  background: rgba(20, 141, 158, 0.12);
 }
 
 [data-theme="dark"] .appt-lookup-panel {
@@ -528,7 +556,11 @@
 }
 [data-theme="dark"] .appt-patient-pick:hover {
   background: var(--dk-bg3);
-  border-color: rgba(99, 102, 241, 0.45);
+  border-color: rgba(20, 141, 158, 0.45);
+}
+[data-theme="dark"] .appt-patient-pick--selected {
+  background: rgba(20, 141, 158, 0.1) !important;
+  border-color: var(--clr-primary) !important;
 }
 [data-theme="dark"] .appt-patient-pick__name { color: var(--dk-text1); }
 [data-theme="dark"] .appt-patient-pick__meta { color: var(--dk-text2); }
@@ -540,8 +572,12 @@
 [data-theme="dark"] .appt-link-new:hover {
   border-color: var(--clr-primary);
   color: var(--clr-primary);
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(20, 141, 158, 0.08);
 }
+
+[data-theme="dark"] .appt-slot-legend { color: var(--dk-text2); }
+[data-theme="dark"] .appt-badge--existing { background: rgba(16,185,129,0.15); color: #34d399; }
+[data-theme="dark"] .appt-badge--new { background: rgba(217,119,6,0.15); color: #fbbf24; }
 
 [data-theme="dark"] .appt-phone-meta__warn { color: var(--dk-text2); }
 [data-theme="dark"] .appt-phone-meta__ok { color: #34d399; }

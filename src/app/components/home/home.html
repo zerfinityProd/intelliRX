@@ -190,21 +190,6 @@
   ═══════════════════════════════════════════ -->
   <div class="kanban-col kanban-col--widgets">
 
-    <!-- Column Header -->
-    <div class="kanban-col-header">
-      <div class="kanban-col-header__icon kanban-col-header__icon--widgets">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="3" width="7" height="7"></rect>
-          <rect x="14" y="3" width="7" height="7"></rect>
-          <rect x="14" y="14" width="7" height="7"></rect>
-          <rect x="3" y="14" width="7" height="7"></rect>
-        </svg>
-      </div>
-      <span class="kanban-col-header__title">Dashboard</span>
-      <span class="kanban-col-header__date">{{ calendarDate | date:'EEEE, MMM d' }}</span>
-    </div>
-
     <!-- ── WIDGET 1: Today's Summary Banner ── -->
     <div class="widget widget--banner">
       <div class="widget-banner__left">
@@ -256,7 +241,7 @@
 
       <!-- Current clinic pill -->
       <div class="doctor-select-pill" *ngIf="selectedDoctorClinicId">
-        <div class="doctor-select-pill__avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+        <div class="doctor-select-pill__avatar" style="background:linear-gradient(135deg,#148D9E,#1CB5C9)">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -387,7 +372,7 @@
       <!-- Calendar legend -->
       <div class="cal-legend">
         <div class="d-flex align-items-center gap-1">
-          <div style="width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0"></div> Today
+          <div style="width:8px;height:8px;border-radius:50%;background:#148D9E;flex-shrink:0"></div> Today
         </div>
         <div class="d-flex align-items-center gap-1">
           <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0"></div> Has appts
@@ -395,147 +380,8 @@
       </div>
     </div>
 
-    <!-- ── WIDGET 4: Day Panel (shown when a date is selected) ── -->
-    <div *ngIf="selectedDate" class="widget widget--day-panel" (click)="$event.stopPropagation()">
 
-      <!-- Header row -->
-      <div class="widget__header">
-        <div class="widget__header-left">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
-          </svg>
-          <span>{{ selectedDateLabel }}</span>
-        </div>
-        <div class="day-panel-header-actions">
-          <!-- Check Slots toggle button (hidden for past dates and when no doctor selected for receptionist) -->
-          <button *ngIf="!isSelectedDateInPast && (userRole === 'doctor' || selectedDashboardDoctorId)" class="slots-toggle-btn"
-            [class.slots-toggle-btn--active]="showSlots"
-            (click)="toggleSlots()">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-              <line x1="16" y1="2" x2="16" y2="6"></line>
-              <line x1="8" y1="2" x2="8" y2="6"></line>
-              <line x1="3" y1="10" x2="21" y2="10"></line>
-            </svg>
-            {{ showSlots ? 'Hide Slots' : 'Check Slots' }}
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round"
-              [style.transform]="showSlots ? 'rotate(180deg)' : 'rotate(0)'"
-              style="transition:transform 0.2s">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          </button>
-          <!-- Book button (hidden for past dates and when no doctor selected for receptionist) -->
-          <button *ngIf="!isSelectedDateInPast && (userRole === 'doctor' || selectedDashboardDoctorId)" class="kb-action-btn kb-action-btn--primary" style="font-size:11px;padding:5px 12px"
-            (click)="bookOnDate(selectedDate)">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            Book
-          </button>
-        </div>
-      </div>
 
-      <!-- Booked appointments count -->
-      <div class="day-panel-subline">
-        <!-- Receptionist without doctor selected -->
-        <span *ngIf="userRole === 'receptionist' && !selectedDashboardDoctorId" style="color:#94a3b8;font-style:italic">
-          Select a doctor above to view slots
-        </span>
-        <!-- Normal display when doctor is selected or user is doctor -->
-        <ng-container *ngIf="userRole === 'doctor' || selectedDashboardDoctorId">
-          <span *ngIf="selectedDateBookedAppointments.length === 0">No appointments scheduled</span>
-          <span *ngIf="selectedDateBookedAppointments.length > 0">
-            {{ selectedDateBookedAppointments.length }} appointment{{ selectedDateBookedAppointments.length !== 1 ? 's' : '' }} booked
-          </span>
-          <span class="day-panel-free-count" *ngIf="!isLoadingSlots && !isSelectedDateInPast">
-            · {{ freeSlotCount }} slots free
-          </span>
-          <span class="day-panel-past-label" *ngIf="isSelectedDateInPast" style="color:#94a3b8;font-style:italic">
-            · Past date
-          </span>
-        </ng-container>
-      </div>
-
-      <!-- ── Slot Viewer (animated expand) ── -->
-      <div class="slot-viewer" [class.slot-viewer--open]="showSlots">
-        <div class="slot-viewer__inner">
-
-          <div *ngIf="isLoadingSlots" class="slot-viewer__loading">
-            <div class="slot-viewer__spinner"></div>
-            <span>Loading slots…</span>
-          </div>
-
-          <ng-container *ngIf="!isLoadingSlots">
-            <!-- Legend -->
-            <div class="slot-legend">
-              <span class="slot-legend__item">
-                <span class="slot-legend__dot slot-legend__dot--free"></span>Free
-              </span>
-              <span class="slot-legend__item">
-                <span class="slot-legend__dot slot-legend__dot--booked"></span>Booked
-              </span>
-              <span class="slot-legend__free-count">{{ freeSlotCount }}/{{ visibleTimeSlots.length }} available</span>
-            </div>
-
-            <!-- Slot chips grid -->
-            <div class="slot-chips-grid">
-              <button *ngFor="let slot of visibleTimeSlots"
-                class="slot-chip"
-                [class.slot-chip--free]="!bookedSlotsForSelected.includes(slot)"
-                [class.slot-chip--booked]="bookedSlotsForSelected.includes(slot)"
-                [disabled]="bookedSlotsForSelected.includes(slot)"
-                (click)="bookSpecificSlot(slot)"
-                type="button"
-                [title]="bookedSlotsForSelected.includes(slot) ? 'Already booked' : 'Click to book this slot'">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                {{ formatSlotLabel(slot) }}
-              </button>
-            </div>
-          </ng-container>
-
-        </div>
-      </div>
-
-      <!-- Existing appointments list -->
-      <div *ngIf="selectedDateAppointments.length > 0" class="appt-items">
-        <div *ngFor="let appt of selectedDateAppointments" class="appt-item">
-          <div class="appt-item-avatar">{{ (appt.patientName || '?').charAt(0).toUpperCase() }}</div>
-          <div class="appt-item-info">
-            <div class="appt-item-name">{{ appt.patientName }}</div>
-            <div class="appt-item-meta">
-              🕐 {{ appt.datetime | date:'h:mm a' }}
-              <span *ngIf="appt.ailments"> · {{ appt.ailments }}</span>
-            </div>
-          </div>
-          <span class="appt-item-badge"
-            [style.background]="appt.status==='scheduled'?'#ede9fe':appt.status==='completed'?'#d1fae5':'#fee2e2'"
-            [style.color]="appt.status==='scheduled'?'#6366f1':appt.status==='completed'?'#059669':'#dc2626'">
-            {{ appt.status }}
-          </span>
-        </div>
-      </div>
-
-      <div *ngIf="selectedDateAppointments.length === 0 && !showSlots" class="day-panel-empty">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"
-          stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <p>No appointments — click Book or Check Slots</p>
-      </div>
-
-    </div>
 
     <!-- ── WIDGET 5: Quick Actions ── -->
     <div class="widget widget--quick-actions">

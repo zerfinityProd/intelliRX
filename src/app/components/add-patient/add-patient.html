@@ -63,9 +63,9 @@
                 placeholder="Auto generated" readonly class="form-control readonly-input" />
             </div>
             <div class="col-md-4">
-              <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth</label>
+              <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth <span class="required">*</span></label>
               <input type="date" id="dateOfBirth" name="dateOfBirth" [(ngModel)]="dateOfBirth"
-                [max]="todayDate" [class.is-invalid]="dobError"
+                [max]="todayDate" [class.is-invalid]="dobError" required
                 (ngModelChange)="clearSuccessMessage(); onDobChange()" class="form-control" />
               <div *ngIf="dobError" class="invalid-feedback" style="display:block">{{ dobError }}</div>
             </div>

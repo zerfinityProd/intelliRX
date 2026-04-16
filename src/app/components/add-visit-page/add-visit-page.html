@@ -126,20 +126,37 @@
             <div class="avp-section-label">Examinations</div>
             <div class="chip-input-box medicines-chip-box">
               <div class="chips-wrap" *ngIf="examinations.length > 0">
-                <span *ngFor="let exam of examinations; let i = index" class="allergy-chip medicine-chip">
+                <span *ngFor="let exam of examinations; let i = index" class="allergy-chip medicine-chip"
+                  [class.chip-status-pending]="exam.status === 'pending'"
+                  [class.chip-status-completed]="exam.status === 'completed'"
+                  [class.chip-status-suggested]="exam.status === 'suggested'">
                   <span class="medicine-chip-text">
                     <strong>{{ exam.testName }}</strong>
+                    <span *ngIf="exam.status" class="exam-status-badge"
+                      [class.badge-pending]="exam.status === 'pending'"
+                      [class.badge-completed]="exam.status === 'completed'"
+                      [class.badge-suggested]="exam.status === 'suggested'">{{ exam.status }}</span>
                     <span *ngIf="exam.result"> · {{ exam.result }}</span>
                   </span>
+                  <button type="button" class="chip-edit-btn" (click)="editExamination(i)" [attr.aria-label]="'Edit examination ' + exam.testName" title="Edit">✎</button>
                   <button type="button" class="chip-remove-btn" (click)="removeExamination(i)" [attr.aria-label]="'Remove examination ' + exam.testName">&times;</button>
                 </span>
               </div>
               <div class="medicine-inline-inputs">
                 <input type="text" [(ngModel)]="newExamTestName" name="newExamTestName"
-                  placeholder="Test name" class="form-control form-control-sm medicine-part-input" aria-label="Examination test name" />
+                  placeholder="Test name" class="form-control form-control-sm medicine-part-input" aria-label="Examination test name"
+                  (keydown)="onExaminationKeydown($event)" />
+                <select [(ngModel)]="newExamStatus" name="newExamStatus"
+                  class="form-control form-control-sm medicine-part-input exam-status-select" aria-label="Examination status"
+                  (keydown)="onExaminationKeydown($event)">
+                  <option value="">Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="completed">Completed</option>
+                  <option value="suggested">Suggested</option>
+                </select>
                 <input type="text" [(ngModel)]="newExamResult" name="newExamResult"
                   placeholder="Result" class="form-control form-control-sm medicine-part-input" aria-label="Examination result"
-                  (keydown)="onExaminationKeydown($event)" (blur)="onExaminationBlur()" />
+                  (keydown)="onExaminationKeydown($event)" />
                 <button type="button" class="add-medicine-btn" (click)="addExaminationChip()" aria-label="Add examination">+ Add</button>
               </div>
             </div>
@@ -154,18 +171,26 @@
                     <strong>{{ med.name }}</strong>
                     <span *ngIf="med.dosage"> · {{ med.dosage }}</span>
                     <span *ngIf="med.frequency"> · {{ med.frequency }}</span>
+                    <span *ngIf="med.durationDays" class="med-duration-badge">{{ med.durationDays }}d</span>
                   </span>
+                  <button type="button" class="chip-edit-btn" (click)="editMedicine(i)" [attr.aria-label]="'Edit medicine ' + med.name" title="Edit">✎</button>
                   <button type="button" class="chip-remove-btn" (click)="removeMedicine(i)" [attr.aria-label]="'Remove medicine ' + med.name">&times;</button>
                 </span>
               </div>
               <div class="medicine-inline-inputs">
                 <input type="text" [(ngModel)]="newMedicineName" name="newMedicineName"
-                  placeholder="Name" class="form-control form-control-sm medicine-part-input" aria-label="Medicine name" />
+                  placeholder="Name" class="form-control form-control-sm medicine-part-input" aria-label="Medicine name"
+                  (keydown)="onMedicineKeydown($event)" />
                 <input type="text" [(ngModel)]="newMedicineDosage" name="newMedicineDosage"
-                  placeholder="Dosage" class="form-control form-control-sm medicine-part-input" aria-label="Medicine dosage" />
+                  placeholder="Dosage" class="form-control form-control-sm medicine-part-input" aria-label="Medicine dosage"
+                  (keydown)="onMedicineKeydown($event)" />
                 <input type="text" [(ngModel)]="newMedicineFrequency" name="newMedicineFrequency"
                   placeholder="Frequency" class="form-control form-control-sm medicine-part-input" aria-label="Medicine frequency"
-                  (keydown)="onMedicineKeydown($event)" (blur)="onMedicineBlur()" />
+                  (keydown)="onMedicineKeydown($event)" />
+                <input type="text" [(ngModel)]="newMedicineDuration" name="newMedicineDuration"
+                  placeholder="Days" class="form-control form-control-sm medicine-part-input medicine-duration-input"
+                  aria-label="Duration in days" inputmode="numeric"
+                  (keydown)="onMedicineKeydown($event)" />
                 <button type="button" class="add-medicine-btn" (click)="addMedicineChip()" aria-label="Add medicine">+ Add</button>
               </div>
             </div>

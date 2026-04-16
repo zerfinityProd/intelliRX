@@ -895,7 +895,7 @@ export class AddAppointmentComponent implements OnInit {
         icon: 'success',
         showConfirmButton: true,
         confirmButtonText: 'View Appointments',
-        confirmButtonColor: '#6366f1',
+        confirmButtonColor: '#148D9E',
         showDenyButton: true,
         denyButtonText: 'Go Home',
         denyButtonColor: '#94a3b8',

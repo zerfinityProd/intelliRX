@@ -149,9 +149,9 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   private buildPill(text: string, type: 'illness' | 'allergy'): string {
     const isIllness = type === 'illness';
     const bg = isIllness ? '#eef2ff' : '#fff1f2';
-    const color = isIllness ? '#4f46e5' : '#e11d48';
-    const border = isIllness ? '#c7d2fe' : '#fecdd3';
-    const dot = isIllness ? '#6366f1' : '#f43f5e';
+    const color = isIllness ? '#117A8B' : '#e11d48';
+    const border = isIllness ? '#B5DDE5' : '#fecdd3';
+    const dot = isIllness ? '#148D9E' : '#f43f5e';
 
     return `
       <span style="
@@ -246,7 +246,7 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
           font-family:'Poppins',sans-serif;
           font-size:11px;
           font-weight:600;
-          color:#6366f1;
+          color:#148D9E;
           text-transform:uppercase;
           letter-spacing:0.07em;
           margin-bottom:6px;
@@ -348,13 +348,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
         datasets: [{
           label: 'Visits',
           data: this.monthlyVisitsData.map(d => d.count),
-          borderColor: '#6366f1',
-          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          borderColor: '#148D9E',
+          backgroundColor: 'rgba(20, 141, 158, 0.1)',
           borderWidth: 3,
           tension: 0.4,
           fill: true,
           pointRadius: 5,
-          pointBackgroundColor: '#6366f1',
+          pointBackgroundColor: '#148D9E',
           pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
           pointHoverRadius: 7
@@ -377,7 +377,7 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
             bodyFont: {
               size: 13
             },
-            borderColor: '#6366f1',
+            borderColor: '#148D9E',
             borderWidth: 1,
             displayColors: false,
             callbacks: {

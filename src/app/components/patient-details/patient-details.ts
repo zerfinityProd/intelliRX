@@ -47,6 +47,9 @@ export class PatientDetailsComponent implements OnInit {
   /** Convenience getter for template backward compatibility */
   get canDelete(): boolean { return this.permissions.canDelete; }
 
+  // Expand Visit state
+  expandedVisitId: string | null = null;
+
   // Edit Visit state
   editingVisit: Visit | null = null;
   editVisitData: Partial<Visit> = {};
@@ -65,6 +68,12 @@ export class PatientDetailsComponent implements OnInit {
     // Fetch all permissions from Firestore (layered resolution)
     const email = this.authService.currentUserValue?.email || '';
     this.permissions = await this.authorizationService.getUserPermissions(email);
+
+    // Check if navigation state specifies which tab to show (e.g. after adding a visit)
+    const navState = history.state as { activeTab?: string } | undefined;
+    if (navState?.activeTab === 'visits') {
+      this.activeTab = 'visits';
+    }
 
     const patientId = this.route.snapshot.paramMap.get('id');
 
@@ -336,6 +345,13 @@ export class PatientDetailsComponent implements OnInit {
   setActiveTab(tab: 'info' | 'visits'): void {
     this.ngZone.run(() => {
       this.activeTab = tab;
+      this.cdr.detectChanges();
+    });
+  }
+
+  toggleVisitExpand(visitId: string): void {
+    this.ngZone.run(() => {
+      this.expandedVisitId = this.expandedVisitId === visitId ? null : visitId;
       this.cdr.detectChanges();
     });
   }

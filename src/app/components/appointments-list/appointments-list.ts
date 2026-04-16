@@ -55,6 +55,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   // Permission flags
   canAppointment = false;
   canCancel = false;
+  userRole: 'doctor' | 'receptionist' = 'doctor';
 
   // Cancel modal state
   showCancelModal = false;
@@ -91,7 +92,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
 
   readonly columns: KanbanColumn[] = [
-    { id: 'scheduled',  label: 'Scheduled',  color: '#ede9fe', accent: '#6366f1', icon: 'clock'    },
+    { id: 'scheduled',  label: 'Scheduled',  color: '#E7F5F7', accent: '#148D9E', icon: 'clock'    },
     { id: 'completed',  label: 'Completed',  color: '#d1fae5', accent: '#10b981', icon: 'check'    },
     { id: 'cancelled',  label: 'Cancelled',  color: '#fee2e2', accent: '#ef4444', icon: 'x'        },
   ];
@@ -616,6 +617,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       const perms = await this.authorizationService.getUserPermissions(email);
       this.canAppointment = perms.canAppointment;
       this.canCancel = perms.canCancel;
+      this.userRole = await this.authorizationService.getUserRole(email);
       this.cdr.detectChanges();
     } catch {
       // Default to false (no permissions) on failure
@@ -632,7 +634,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
           // Don't block navigation if the update fails.
         }
       }
-      this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'home' } });
+      this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'appointments' } });
       return;
     }
 

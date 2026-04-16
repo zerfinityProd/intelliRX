@@ -147,7 +147,10 @@ export class HomeComponent implements OnInit {
     await this.ensureClinicContext();
     await this.initDashboardDoctorContext();
     await this.loadAppointments();
-    this.restoreDayViewFromSession();
+    // Auto-select today's date for calendar highlighting (but don't open modal)
+    const today = new Date();
+    this.selectedDate = today;
+    void this.loadSlotsForDate(today);
     this.loadPatientCount();
   }
 

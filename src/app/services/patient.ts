@@ -324,35 +324,47 @@ export class PatientService {
   }
 
   /**
-   * Private: Find existing patient by name and phone
+   * Private: Find existing patient by name and phone (uses multiple fallback strategies)
    */
   private async findExistingPatient(
     name: string,
     phone: string
   ): Promise<Patient | null> {
+    const normalizedName = name.trim().toLowerCase();
+    const normalizedPhone = phone.trim();
+    if (!normalizedName || !normalizedPhone) return null;
+
+    const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+
+    // Strategy 1: indexed phone search scoped by clinicId
     try {
-      const normalizedName = name.trim().toLowerCase();
-      const normalizedPhone = phone.trim();
-      const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
-
       const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, clinicId);
-      if (results.length === 0) {
-        // Fallback: search without clinicId
-        if (clinicId) {
-          const { results: broadResults } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, undefined);
-          const filtered = broadResults.filter(p => p.name.trim().toLowerCase() === normalizedName);
-          return filtered.length > 0 ? filtered[0] : null;
-        }
-        return null;
-      }
-
-      const exactMatches = results.filter(p => p.name.trim().toLowerCase() === normalizedName);
-      if (exactMatches.length === 0) return null;
-
-      return exactMatches[0];
-    } catch (error) {
-      console.error('❌ Error finding existing patient:', error);
-      return null;
+      const match = results.find(p => p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName);
+      if (match) return match;
+    } catch {
+      // fall through
     }
+
+    // Strategy 2: client-side contains search
+    try {
+      const { results } = await this.firebaseService.searchPatientsContaining(normalizedPhone, clinicId);
+      const match = results.find(p => p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName);
+      if (match) return match;
+    } catch {
+      // fall through
+    }
+
+    // Strategy 3: search without clinicId
+    if (clinicId) {
+      try {
+        const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, undefined);
+        const match = results.find(p => p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName);
+        if (match) return match;
+      } catch {
+        // fall through
+      }
+    }
+
+    return null;
   }
 }
