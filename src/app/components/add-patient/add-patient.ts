@@ -278,6 +278,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
       this.isSubmitting = false;
       this.patientAdded.emit(patientId);
+      this.resetForm();  // Clear form so onClose() doesn't trigger "Discard changes?"
       this.onClose();
 
       // Dynamically import Swal only at the point it is needed

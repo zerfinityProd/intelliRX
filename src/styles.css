@@ -1903,12 +1903,35 @@ main {
   box-shadow: 0 6px 18px rgba(20, 141, 158, 0.55);
 }
 
+.fab-visit-btn {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  box-shadow: 0 4px 14px rgba(13, 148, 136, 0.4);
+}
+
+.fab-visit-btn:hover {
+  box-shadow: 0 6px 18px rgba(13, 148, 136, 0.55);
+}
+
 /* 
    PATIENT DETAILS
     */
 .details-page {
-  min-height: 100vh;
+  height: 100vh;
+  width: 100%;
   background: var(--clr-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.details-content-wrapper {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
 .details-header {
@@ -2025,7 +2048,7 @@ main {
 .patient-header-card {
   background: linear-gradient(135deg, var(--clr-primary) 0%, var(--clr-primary-dark) 100%);
   border-radius: 20px;
-  padding: 36px 40px;
+  padding: 24px 32px;
   color: #ffffff;
   display: flex;
   justify-content: space-between;
@@ -2033,6 +2056,7 @@ main {
   gap: 24px;
   box-shadow: 0 4px 20px rgba(20, 141, 158, 0.25);
   animation: fadeIn 0.4s ease;
+  flex-shrink: 0;
 }
 
 .patient-avatar-large {
@@ -2126,16 +2150,47 @@ main {
   grid-template-columns: 1fr 400px;
   gap: 28px;
   align-items: start;
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .main-column {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  min-width: 0;
+  max-height: 100%;
+}
+
+/* Subtle scrollbar for main column */
+.main-column::-webkit-scrollbar {
+  width: 5px;
+}
+
+.main-column::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main-column::-webkit-scrollbar-thumb {
+  background: rgba(20, 141, 158, 0.2);
+  border-radius: 10px;
+}
+
+.main-column::-webkit-scrollbar-thumb:hover {
+  background: rgba(20, 141, 158, 0.4);
 }
 
 .stats-column {
   display: block;
+  max-height: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 /*  Tabs  */
@@ -2886,7 +2941,7 @@ main {
 .stats-widget-card {
   background: #ffffff;
   border-radius: 16px;
-  padding: 22px;
+  padding: 14px 18px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--clr-border-light);
 }
@@ -3006,7 +3061,7 @@ main {
 .last-visit-strip {
   background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark));
   border-radius: 14px;
-  padding: 18px;
+  padding: 12px 18px;
   color: #ffffff;
   box-shadow: 0 4px 12px rgba(20, 141, 158, 0.25);
 }
@@ -3031,7 +3086,7 @@ main {
 /* Chart */
 .chart-container {
   position: relative;
-  height: 230px;
+  height: 140px;
   width: 100%;
   display: flex;
   align-items: center;
@@ -4696,7 +4751,7 @@ main {
   background: var(--clr-surface);
   border: 1px solid var(--clr-border);
   border-radius: 16px;
-  padding: 24px 28px;
+  padding: 18px 24px;
   box-shadow: var(--shadow-md);
 }
 
@@ -4705,8 +4760,8 @@ main {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid var(--clr-border);
 }
 
@@ -4763,13 +4818,13 @@ main {
 .avp-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
 }
 
 .avp-form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: 10px;
 }
 
 .avp-form-row.avp-three-col {
@@ -4802,8 +4857,8 @@ main {
 }
 
 .avp-textarea {
-  resize: vertical;
-  min-height: 72px;
+  resize: none;
+  height: 52px;
 }
 
 .avp-char-row {

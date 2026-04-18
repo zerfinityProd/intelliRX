@@ -8,9 +8,7 @@ import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import Swal from 'sweetalert2';
 
-interface DynamicField {
-    description: string;
-}
+
 interface Examination {
     testName: string;
     status: string;
@@ -45,8 +43,7 @@ export class AddVisitPageComponent implements OnInit {
 
     // ── Form Fields ───────────────────────────────────────────
     chiefComplaintsText: string = '';
-    presentIllnesses: DynamicField[] = [];
-    newIllnessInput: string = '';
+    clinicalFindingsText: string = '';
     existingAllergies: string[] = [];
     newAllergyInput: string = '';
     existingAilments: string[] = [];
@@ -120,18 +117,10 @@ export class AddVisitPageComponent implements OnInit {
 
     private populateEditFields(visit: any): void {
         this.chiefComplaintsText = visit.chiefComplaints || '';
+        this.clinicalFindingsText = visit.presentIllness || '';
         this.diagnosis = visit.diagnosis || '';
         this.treatmentPlan = visit.treatmentPlan || '';
         this.advice = visit.advice || '';
-
-        // Present illness — stored as comma-separated string
-        if (visit.presentIllness) {
-            this.presentIllnesses = visit.presentIllness
-                .split(',')
-                .map((s: string) => s.trim())
-                .filter((s: string) => s.length > 0)
-                .map((s: string) => ({ description: s }));
-        }
 
         // Examinations — stored as string[] (e.g. ["test [status]: result", ...])
         if (visit.examination) {
@@ -223,19 +212,7 @@ export class AddVisitPageComponent implements OnInit {
         }
     }
 
-    // ── Present Illness ───────────────────────────────────────
-    onIllnessKeydown(event: KeyboardEvent): void {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            const trimmed = this.newIllnessInput.trim();
-            if (trimmed) { this.presentIllnesses.push({ description: trimmed }); this.newIllnessInput = ''; }
-        }
-    }
-    onIllnessBlur(): void {
-        const trimmed = this.newIllnessInput.trim();
-        if (trimmed) { this.presentIllnesses.push({ description: trimmed }); this.newIllnessInput = ''; }
-    }
-    removeIllness(index: number): void { this.presentIllnesses.splice(index, 1); }
+
 
     // ── Allergies ─────────────────────────────────────────────
     onAllergyKeydown(event: KeyboardEvent): void {
@@ -362,8 +339,8 @@ export class AddVisitPageComponent implements OnInit {
                 treatmentPlan: this.treatmentPlan.trim(),
                 advice: this.advice.trim(),
             };
-            const presentIllnessText = this.formatArrayField(this.presentIllnesses);
-            if (presentIllnessText) visitData.presentIllness = presentIllnessText;
+            const clinicalFindingsVal = this.clinicalFindingsText.trim();
+            if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;
             const medicinesArr = this.formatMedicines();
             if (medicinesArr.length > 0) visitData.medicines = medicinesArr;
 
@@ -475,7 +452,7 @@ export class AddVisitPageComponent implements OnInit {
     private getFormStateSnapshot(): string {
         return JSON.stringify({
             chiefComplaints: this.chiefComplaintsText.trim(),
-            presentIllnesses: this.presentIllnesses.map(i => i.description),
+            clinicalFindings: this.clinicalFindingsText.trim(),
             allergies: [...this.existingAllergies].sort(),
             ailments: [...this.existingAilments].sort(),
             diagnosis: this.diagnosis.trim(),
@@ -516,9 +493,6 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     // ── Formatters ────────────────────────────────────────────
-    private formatArrayField(fields: DynamicField[]): string {
-        return fields.map(f => f.description.trim()).filter(d => d.length > 0).join(', ');
-    }
     private formatExaminations(): string[] {
         return this.examinations
             .filter(e => e.testName.trim())

@@ -681,7 +681,8 @@ export class HomeComponent implements OnInit {
   onSearchInput(): void {
     this.errorMessage = '';
     if (this.searchTimeout) clearTimeout(this.searchTimeout);
-    if (!this.searchTerm.trim()) {
+    const trimmed = this.searchTerm.trim();
+    if (!trimmed || trimmed.length < 3) {
       this.patientService.clearSearchResults();
       this.isSearching = false;
       this.cdr.markForCheck();
@@ -689,7 +690,7 @@ export class HomeComponent implements OnInit {
     }
     this.searchTimeout = setTimeout(() => {
       this.isSearching = true;
-      this.performSearch(this.searchTerm.trim());
+      this.performSearch(trimmed);
     }, 1000);
   }
 

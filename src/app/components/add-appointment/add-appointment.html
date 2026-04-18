@@ -121,14 +121,14 @@
                   placeholder="10-digit mobile number" [attr.maxlength]="phoneMaxDigits" />
               </div>
               <button type="button" class="appt-search-phone-btn" (click)="lookupPatientsByPhone()"
-                [disabled]="phoneLookupStatus === 'loading' || normalizedPhoneDigits.length !== phoneMaxDigits">
+                [disabled]="phoneLookupStatus === 'loading' || normalizedPhoneDigits.length < 3">
                 <span *ngIf="phoneLookupStatus === 'loading'" class="appt-spinner appt-spinner--inline"></span>
                 <span *ngIf="phoneLookupStatus !== 'loading'">Search</span>
               </button>
             </div>
             <div class="appt-phone-meta">
               <span *ngIf="normalizedPhoneDigits.length > 0 && normalizedPhoneDigits.length < phoneMaxDigits" class="appt-phone-meta__warn">
-                {{ phoneMaxDigits - normalizedPhoneDigits.length }} more digit{{ (phoneMaxDigits - normalizedPhoneDigits.length) === 1 ? '' : 's' }}
+                {{ phoneMaxDigits - normalizedPhoneDigits.length }} more digit{{ (phoneMaxDigits - normalizedPhoneDigits.length) === 1 ? '' : 's' }} to proceed
               </span>
               <span *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === phoneMaxDigits" class="appt-phone-meta__ok">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -139,10 +139,10 @@
         </div>
 
         <!-- Matching patients -->
-        <div *ngIf="phoneLookupStatus === 'done' && phoneMatches.length > 0" class="appt-lookup-panel mb-3">
+        <div *ngIf="phoneMatches.length > 0 && phoneLookupStatus !== 'loading' && !intentNewPatient" class="appt-lookup-panel mb-3">
           <div class="appt-lookup-panel__head">
             <span class="appt-lookup-panel__title">{{ phoneMatches.length }} patient{{ phoneMatches.length === 1 ? '' : 's' }} on file</span>
-            <span class="appt-lookup-panel__sub">Tap one to book for that person</span>
+            <span class="appt-lookup-panel__sub">{{ normalizedPhoneDigits.length === phoneMaxDigits ? 'Tap one to book for that person' : 'Tap to select, or keep typing to narrow results' }}</span>
           </div>
           <ul class="appt-patient-pick-list" role="listbox">
             <li *ngFor="let p of phoneMatches">
@@ -152,7 +152,7 @@
                 <span class="appt-patient-pick__avatar">{{ p.name.trim().charAt(0).toUpperCase() }}</span>
                 <span class="appt-patient-pick__body">
                   <span class="appt-patient-pick__name">{{ p.name }}</span>
-                  <span class="appt-patient-pick__meta" *ngIf="p.id">ID · {{ p.id }}</span>
+                  <span class="appt-patient-pick__meta" *ngIf="p.phone">📞 {{ p.phone }}</span>
                 </span>
                 <span class="appt-patient-pick__check" *ngIf="matchedPatient?.id === p.id && !intentNewPatient">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -160,7 +160,7 @@
               </button>
             </li>
           </ul>
-          <button type="button" class="appt-link-new" (click)="chooseNewPatientInstead()">
+          <button *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === phoneMaxDigits" type="button" class="appt-link-new" (click)="chooseNewPatientInstead()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
             New patient — use this number (enter name below)
           </button>
@@ -204,7 +204,7 @@
                 placeholder="Auto generated" readonly class="form-control readonly-input" />
             </div>
             <div class="col-md-4">
-              <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth</label>
+              <label for="dateOfBirth" class="form-label fw-semibold" style="font-size:12px">Date of Birth <span class="required">*</span></label>
               <input type="date" id="dateOfBirth" [(ngModel)]="dateOfBirth" class="form-control"
                 [max]="todayDate" [class.is-invalid]="dobError" (ngModelChange)="onDobChange()" />
               <div *ngIf="dobError" class="invalid-feedback" style="display:block">{{ dobError }}</div>
@@ -220,12 +220,31 @@
             </div>
           </div>
 
-          <!-- Row 3: Email -->
+          <!-- Row 3: Email + Ailments -->
           <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="patientEmail" class="form-label fw-semibold" style="font-size:12px">Email</label>
               <input type="email" id="patientEmail" [(ngModel)]="patientEmail" class="form-control"
                 placeholder="patient@example.com" />
+            </div>
+            <div class="col-md-6">
+              <label for="ailmentInput" class="form-label fw-semibold" style="font-size:12px">Ailments</label>
+              <div class="chip-input-box" role="group" aria-label="Ailments chips"
+                (click)="$any($event.currentTarget).querySelector('input').focus()"
+                [class.chip-input-error]="false">
+                <div class="chips-wrap">
+                  <span *ngFor="let ail of ailmentChips; let i = index" class="allergy-chip">
+                    {{ ail }}
+                    <button type="button" class="chip-remove-btn"
+                      (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ail">&times;</button>
+                  </span>
+                  <input id="ailmentInput" type="text" class="chip-inline-input"
+                    [(ngModel)]="newAilmentInput" name="newAilmentInput"
+                    placeholder="Type and press Enter..."
+                    aria-label="Add ailment"
+                    (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -336,28 +355,7 @@
           </svg>
         </div>
 
-        <!-- Ailments -->
-        <div class="row g-3 mb-3">
-          <div class="col-md-6">
-            <label for="ailmentInput" class="form-label fw-semibold" style="font-size:12px">Ailments</label>
-            <div class="chip-input-box" role="group" aria-label="Ailments chips"
-              (click)="$any($event.currentTarget).querySelector('input').focus()"
-              [class.chip-input-error]="false">
-              <div class="chips-wrap">
-                <span *ngFor="let ail of ailmentChips; let i = index" class="allergy-chip">
-                  {{ ail }}
-                  <button type="button" class="chip-remove-btn"
-                    (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ail">&times;</button>
-                </span>
-                <input id="ailmentInput" type="text" class="chip-inline-input"
-                  [(ngModel)]="newAilmentInput" name="newAilmentInput"
-                  placeholder="Type and press Enter..."
-                  aria-label="Add ailment"
-                  (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <!-- Time Slots -->
         <h3 class="section-title">Time Slot <span class="required">*</span></h3>

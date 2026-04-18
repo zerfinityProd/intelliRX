@@ -43,11 +43,11 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   @Input() visits: Visit[] = [];
   
   @ViewChild('visitTrendChart') visitTrendChartRef!: ElementRef<HTMLCanvasElement>;
-  @ViewChild('pastIllnessCard') pastIllnessCardRef!: ElementRef<HTMLElement>;
+  @ViewChild('ailmentsCard') ailmentsCardRef!: ElementRef<HTMLElement>;
   @ViewChild('allergiesCard') allergiesCardRef!: ElementRef<HTMLElement>;
   @ViewChild('calendarGrid') calendarGridRef!: ElementRef<HTMLElement>;
 
-  private pastIllnessTippy: TippyInstance | null = null;
+  private ailmentsTippy: TippyInstance | null = null;
   private allergiesTooltipTippy: TippyInstance | null = null;
   private calendarDayTippies: TippyInstance[] = [];
   
@@ -73,14 +73,14 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   private visitTrendChart: Chart | null = null;
   monthlyVisitsData: MonthlyVisitData[] = [];
   allergiesList: string[] = [];
-  pastIllnessList: string[] = [];
+  ailmentsList: string[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['patient'] || changes['visits']) {
       this.calculateStats();
       this.generateCalendar();
       this.prepareAllergiesList();
-      this.preparePastIllnessList();
+      this.prepareAilmentsList();
       this.prepareMonthlyVisitsData();
       
       // Update chart after a small delay to ensure DOM is ready
@@ -139,11 +139,12 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     this.allergiesList = this.patient.allergies.split(',').map(a => a.trim()).filter(a => a);
   }
 
-  private preparePastIllnessList(): void {
-    this.pastIllnessList = this.visits
-      .map(v => v.presentIllness)
-      .filter((ill): ill is string => !!ill && ill.trim().length > 0)
-      .map(ill => ill.trim());
+  private prepareAilmentsList(): void {
+    if (!this.patient || !this.patient.ailments) {
+      this.ailmentsList = [];
+      return;
+    }
+    this.ailmentsList = this.patient.ailments.split(',').map(a => a.trim()).filter(a => a);
   }
 
   private buildPill(text: string, type: 'illness' | 'allergy'): string {
@@ -176,17 +177,17 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   }
 
   private initTooltips(): void {
-    // Past Illness tooltip
-    if (this.pastIllnessCardRef?.nativeElement) {
-      if (this.pastIllnessTippy) {
-        this.pastIllnessTippy.destroy();
+    // Ailments tooltip
+    if (this.ailmentsCardRef?.nativeElement) {
+      if (this.ailmentsTippy) {
+        this.ailmentsTippy.destroy();
       }
-      const illnessContent = this.pastIllnessList.length > 0
-        ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${this.pastIllnessList.map(i => this.buildPill(i, 'illness')).join('')}</div>`
-        : `<span style="color:#64748b;font-size:12px;font-style:italic;">No illnesses recorded</span>`;
+      const ailmentsContent = this.ailmentsList.length > 0
+        ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${this.ailmentsList.map(i => this.buildPill(i, 'illness')).join('')}</div>`
+        : `<span style="color:#64748b;font-size:12px;font-style:italic;">No ailments recorded</span>`;
 
-      this.pastIllnessTippy = tippy(this.pastIllnessCardRef.nativeElement, {
-        content: illnessContent,
+      this.ailmentsTippy = tippy(this.ailmentsCardRef.nativeElement, {
+        content: ailmentsContent,
         allowHTML: true,
         placement: 'bottom-start',
         theme: 'medical',
@@ -595,8 +596,8 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     if (this.visitTrendChart) {
       this.visitTrendChart.destroy();
     }
-    if (this.pastIllnessTippy) {
-      this.pastIllnessTippy.destroy();
+    if (this.ailmentsTippy) {
+      this.ailmentsTippy.destroy();
     }
     if (this.allergiesTooltipTippy) {
       this.allergiesTooltipTippy.destroy();

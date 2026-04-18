@@ -1,5 +1,5 @@
 <!-- src/app/components/appointments-list/appointments-list.html -->
-<app-navbar></app-navbar>
+<app-navbar [showBack]="true"></app-navbar>
 
 <div class="kb-page">
 
@@ -54,13 +54,7 @@
         </svg>
         Book Appointment
       </button>
-      <button class="kb-btn kb-btn--ghost" (click)="goHome()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-        Back
-      </button>
+
     </div>
   </div>
 

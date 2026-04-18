@@ -23,7 +23,7 @@
   </div>
 
   <!-- ── Patient Details Content ── -->
-  <div *ngIf="!isLoadingPatient && !errorMessage && patient" class="px-3 px-md-4 py-4"
+  <div *ngIf="!isLoadingPatient && !errorMessage && patient" class="details-content-wrapper px-3 px-md-4 py-4"
     style="max-width:1400px; margin:0 auto">
 
     <!-- Patient Header Card -->
@@ -254,8 +254,8 @@
                     </div>
 
                     <div class="vg-cell vg-cell--type">
-                      <span *ngIf="visit.visitType === 'walk-in'" class="walk-in-badge">Walk-in</span>
-                      <span *ngIf="visit.visitType !== 'walk-in'" class="scheduled-badge">Scheduled</span>
+                      <span *ngIf="visit.visitType === 'appointment'" class="scheduled-badge">Appointment</span>
+                      <span *ngIf="visit.visitType !== 'appointment'" class="walk-in-badge">Walk-in</span>
                     </div>
 
                     <div class="vg-cell vg-cell--date">
@@ -312,7 +312,7 @@
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                               <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
                             </svg>
-                            Present Illness
+                            Clinical Findings
                           </span>
                           <span class="vg-detail-value">{{ visit.presentIllness }}</span>
                         </div>

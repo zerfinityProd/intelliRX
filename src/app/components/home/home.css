@@ -6,19 +6,20 @@
 /* ── Kanban Board Wrapper ── */
 .kanban-home {
   display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: 16px;
+  grid-template-columns: 1fr 350px;
+  gap: 14px;
   max-width: 1300px;
   margin: 0 auto;
-  padding: 18px 20px 60px;
-  min-height: calc(100vh - 64px);
+  padding: 14px 20px 12px;
+  height: calc(100vh - 64px);
   align-items: start;
+  overflow: hidden;
 }
 
 @media (max-width: 1024px) {
   .kanban-home {
     grid-template-columns: 1fr 340px;
-    padding: 20px 16px 80px;
+    padding: 18px 16px 16px;
     gap: 16px;
   }
 }
@@ -26,7 +27,9 @@
 @media (max-width: 768px) {
   .kanban-home {
     grid-template-columns: 1fr;
-    padding: 16px 12px 80px;
+    padding: 16px 12px 16px;
+    height: auto;
+    overflow: auto;
   }
 }
 
@@ -422,8 +425,8 @@
 .widget {
   background: var(--clr-surface, #fff);
   border: 1px solid var(--clr-border, #e2e8f0);
-  border-radius: 18px;
-  padding: 18px;
+  border-radius: 16px;
+  padding: 14px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
   transition: box-shadow 0.2s;
 }
@@ -432,7 +435,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   gap: 8px;
 }
 .widget__header-left {
@@ -450,24 +453,24 @@
 .widget--banner {
   background: linear-gradient(135deg, #148D9E 0%, #1CB5C9 100%);
   border: none;
-  padding: 18px 20px;
+  padding: 14px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 14px;
   box-shadow: 0 6px 20px rgba(20, 141, 158, 0.3);
 }
 
 .widget-banner__left {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .widget-banner__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
   background: rgba(255, 255, 255, 0.18);
   display: flex;
   align-items: center;
@@ -476,19 +479,19 @@
 }
 
 .widget-banner__num {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 800;
   color: #fff;
   line-height: 1;
 }
 
 .widget-banner__label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.75);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .widget-banner__cta {
@@ -497,8 +500,8 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
   font-size: 12px;
   font-weight: 600;
-  border-radius: 10px;
-  padding: 7px 16px;
+  border-radius: 9px;
+  padding: 6px 14px;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
@@ -560,7 +563,7 @@
 
 /* ── Calendar Widget ── */
 .widget--calendar {
-  padding: 16px;
+  padding: 12px 16px;
 }
 
 .cal-nav-row {
@@ -611,13 +614,13 @@
 
 /* ── Quick Actions Widget ── */
 .widget--quick-actions {
-  padding: 16px 18px;
+  padding: 12px 16px;
 }
 
 .quick-actions-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  gap: 8px;
 }
 
 .qa-btn {
@@ -625,10 +628,10 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 14px 8px;
+  gap: 6px;
+  padding: 12px 8px;
   border: 1.5px solid var(--clr-border, #e2e8f0);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--clr-bg, #f5f7fa);
   cursor: pointer;
   transition: all 0.15s;
@@ -650,9 +653,9 @@
 }
 
 .qa-btn__icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -745,7 +748,7 @@
 .cal-legend {
   display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
   font-size: 10px; color: var(--clr-text-muted, #94a3b8);
-  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--clr-border, #e2e8f0);
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--clr-border, #e2e8f0);
 }
 .cal-nav-btn {
   width: 28px; height: 28px; border: 1px solid var(--clr-border, #e2e8f0);

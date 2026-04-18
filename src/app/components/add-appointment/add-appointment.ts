@@ -13,7 +13,7 @@ import { NavbarComponent } from '../navbar/navbar';
 
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
-import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, getWeekdayCode, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicService } from '../../services/clinicService';
 import { todayLocalISO } from '../../utilities/local-date';
@@ -337,20 +337,30 @@ export class AddAppointmentComponent implements OnInit {
    * Falls back to global defaults when no clinic timings exist.
    */
   private async refreshTimeSlotsForClinic(dateStr?: string): Promise<void> {
+    const effectiveDate = dateStr || this.appointmentDate;
+    console.log(`🔄 refreshTimeSlotsForClinic: clinicId=${this.selectedClinicId}, date=${effectiveDate}`);
+
     if (!this.selectedClinicId) {
+      console.warn('⚠️ No selectedClinicId — using default time slots (no weekday filtering)');
       this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
       return;
     }
     try {
+      // Invalidate cache to ensure we get fresh schedule data
+      this.clinicService.invalidateCache();
       const clinic = await this.clinicService.getClinicById(this.selectedClinicId);
       let timings = clinic?.schedule?.timings;
+      const weekdays = clinic?.schedule?.weekdays;
 
-      const effectiveDate = dateStr || this.appointmentDate;
+      console.log(`📅 Clinic schedule: weekdays=${JSON.stringify(weekdays)}, timings=${timings?.length ?? 0} block(s)`);
 
       // Check if the clinic is open on this day (based on schedule.weekdays)
-      if (effectiveDate && clinic?.schedule?.weekdays) {
+      if (effectiveDate && weekdays && weekdays.length > 0) {
         const date = new Date(effectiveDate + 'T00:00:00');
-        if (!isClinicOpenOnDate(clinic.schedule.weekdays, date)) {
+        const dayCode = getWeekdayCode(date);
+        const isOpen = isClinicOpenOnDate(weekdays, date);
+        console.log(`📅 Date ${effectiveDate} → dayCode=${dayCode}, isOpen=${isOpen}`);
+        if (!isOpen) {
           // Clinic is closed on this day — no slots available
           this.allTimeSlots = [];
           return;
@@ -376,7 +386,8 @@ export class AddAppointmentComponent implements OnInit {
       }
 
       this.allTimeSlots = generateTimeSlotsFromClinicTimings(timings);
-    } catch {
+    } catch (err) {
+      console.error('❌ refreshTimeSlotsForClinic error:', err);
       this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
     }
   }
@@ -433,7 +444,7 @@ export class AddAppointmentComponent implements OnInit {
     await this.refreshDoctorsForSelectedClinic();
 
     // Re-run phone lookup if a phone was already searched — results are clinic-scoped.
-    if (this.phoneLookupStatus === 'done' && this.normalizedPhoneDigits.length === this.phoneMaxDigits) {
+    if (this.phoneLookupStatus === 'done' && this.normalizedPhoneDigits.length >= 3) {
       await this.lookupPatientsByPhone();
     }
 
@@ -599,7 +610,8 @@ export class AddAppointmentComponent implements OnInit {
 
   /** Whether name fields are required on step 1 */
   get needsNewPatientNames(): boolean {
-    return this.phoneLookupStatus === 'done' &&
+    const isFullPhone = this.normalizedPhoneDigits.length === this.phoneMaxDigits;
+    return this.phoneLookupStatus === 'done' && isFullPhone &&
       (this.phoneMatches.length === 0 || this.intentNewPatient);
   }
 
@@ -611,17 +623,22 @@ export class AddAppointmentComponent implements OnInit {
     if (this.canChooseDoctor && (!this.selectedClinicId || !this.selectedDoctorId)) {
       return false;
     }
-    if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits || this.phoneLookupStatus !== 'done') {
+    if (this.phoneLookupStatus !== 'done') {
+      return false;
+    }
+    // If an existing patient is selected, allow proceeding (their full phone is on file)
+    if (this.matchedPatient && !this.intentNewPatient) {
+      return true;
+    }
+    // For new patient registration, require full phone number
+    if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits) {
       return false;
     }
     // Block if duplicate patient detected (only when entering new patient names).
     if (this.newPatientWarning && this.needsNewPatientNames) {
       return false;
     }
-    if (this.phoneMatches.length > 0 && !this.intentNewPatient) {
-      return this.matchedPatient !== null;
-    }
-    return !!(this.firstName.trim() && this.lastName.trim());
+    return !!(this.firstName.trim() && this.lastName.trim() && this.dateOfBirth);
   }
 
   normalizePhoneDigits(phone: string): string {
@@ -639,13 +656,19 @@ export class AddAppointmentComponent implements OnInit {
     if (this.phoneLookupDebounce) {
       clearTimeout(this.phoneLookupDebounce);
     }
-    if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits) {
+    const digits = this.normalizedPhoneDigits;
+    if (digits.length < 3) {
       this.phoneLookupStatus = 'idle';
       this.phoneMatches = [];
       this.matchedPatient = null;
       this.intentNewPatient = false;
       this.cdr.markForCheck();
       return;
+    }
+    // Reset selection for partial input (not yet full phone)
+    if (digits.length < this.phoneMaxDigits) {
+      this.matchedPatient = null;
+      this.intentNewPatient = false;
     }
     this.phoneLookupDebounce = setTimeout(() => {
       void this.lookupPatientsByPhone();
@@ -654,77 +677,103 @@ export class AddAppointmentComponent implements OnInit {
 
   async lookupPatientsByPhone(): Promise<void> {
     const digits = this.normalizedPhoneDigits;
-    if (digits.length !== this.phoneMaxDigits) {
-      this.errorMessage = 'Enter a valid 10-digit phone number';
+    if (digits.length < 3) {
       return;
     }
+    const isFullPhone = digits.length === this.phoneMaxDigits;
+
     this.errorMessage = '';
     this.phoneLookupStatus = 'loading';
     this.phoneMatches = [];
     this.matchedPatient = null;
     this.intentNewPatient = false;
-    this.firstName = '';
-    this.middleName = '';
-    this.lastName = '';
-    this.dateOfBirth = '';
-    this.gender = '';
-    this.patientEmail = '';
-    this.allergyChips = [];
-    this.newAllergyInput = '';
-    this.familyIdPreview = '';
+
+    // Only reset new-patient form fields on full phone lookup
+    if (isFullPhone) {
+      this.firstName = '';
+      this.middleName = '';
+      this.lastName = '';
+      this.dateOfBirth = '';
+      this.gender = '';
+      this.patientEmail = '';
+      this.allergyChips = [];
+      this.newAllergyInput = '';
+      this.familyIdPreview = '';
+    }
 
     const clinicId = this.selectedClinicId || undefined;
-    let exact: import('../../models/patient.model').Patient[] = [];
+    let allResults: import('../../models/patient.model').Patient[] = [];
 
-    // Attempt 1: search with clinicId
+    // Run prefix search AND contains search in parallel (like home page)
     try {
-      const { results } = await this.firebaseService.searchPatientByPhone(digits, null, clinicId);
-      exact = results.filter(p => this.normalizePhoneDigits(p.phone) === digits);
-      console.log(`📞 Phone lookup (clinic=${clinicId}): ${results.length} raw, ${exact.length} exact`);
+      const [prefixSettled, containsSettled] = await Promise.allSettled([
+        this.firebaseService.searchPatientByPhone(digits, null, clinicId),
+        this.firebaseService.searchPatientsContaining(digits, clinicId)
+      ]);
+
+      const prefixResults = prefixSettled.status === 'fulfilled' ? prefixSettled.value.results : [];
+      const containsResults = containsSettled.status === 'fulfilled' ? containsSettled.value.results : [];
+
+      // Merge and deduplicate by patient id
+      const seen = new Set<string>();
+      const merged: import('../../models/patient.model').Patient[] = [];
+      for (const p of [...prefixResults, ...containsResults]) {
+        const key = p.id || p.phone;
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push(p);
+        }
+      }
+
+      // Filter: for full phone require exact match, for partial require startsWith or contains
+      if (isFullPhone) {
+        allResults = merged.filter(p => this.normalizePhoneDigits(p.phone) === digits);
+      } else {
+        allResults = merged.filter(p => {
+          const normalized = this.normalizePhoneDigits(p.phone);
+          return normalized.startsWith(digits) || normalized.includes(digits);
+        });
+      }
+      console.log(`📞 Phone lookup (clinic=${clinicId}): ${merged.length} raw, ${allResults.length} match(es)`);
     } catch (err) {
-      console.warn('Phone lookup (clinic-scoped) failed:', err);
+      console.warn('Phone lookup failed:', err);
     }
 
-    // Attempt 2: clinic-scoped contains search
-    if (exact.length === 0 && clinicId) {
-      try {
-        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, clinicId);
-        exact = containsResults.filter(p => this.normalizePhoneDigits(p.phone) === digits);
-        console.log(`📞 Phone lookup (clinic contains): ${exact.length} exact match(es)`);
-      } catch (err) {
-        console.warn('Phone lookup (clinic contains) failed:', err);
+    // Full fallback chain only for complete phone number with no results
+    if (isFullPhone && allResults.length === 0) {
+      // Attempt: retry WITHOUT clinicId to find patients not in any clinic
+      if (clinicId) {
+        try {
+          const [prefixSettled, containsSettled] = await Promise.allSettled([
+            this.firebaseService.searchPatientByPhone(digits, null, undefined),
+            this.firebaseService.searchPatientsContaining(digits, undefined)
+          ]);
+          const prefixResults = prefixSettled.status === 'fulfilled' ? prefixSettled.value.results : [];
+          const containsResults = containsSettled.status === 'fulfilled' ? containsSettled.value.results : [];
+          const seen = new Set<string>();
+          const merged: import('../../models/patient.model').Patient[] = [];
+          for (const p of [...prefixResults, ...containsResults]) {
+            const key = p.id || p.phone;
+            if (!seen.has(key)) {
+              seen.add(key);
+              merged.push(p);
+            }
+          }
+          allResults = merged.filter(p =>
+            this.normalizePhoneDigits(p.phone) === digits && (!p.clinic_ids || p.clinic_ids.length === 0)
+          );
+        } catch (err) {
+          console.warn('Phone lookup (fallback) failed:', err);
+        }
       }
     }
 
-    // Attempt 3: retry WITHOUT clinicId to find patients not in any clinic
-    if (exact.length === 0 && clinicId) {
-      try {
-        const { results: fallbackResults } = await this.firebaseService.searchPatientByPhone(digits, null, undefined);
-        exact = fallbackResults.filter(p =>
-          this.normalizePhoneDigits(p.phone) === digits && (!p.clinic_ids || p.clinic_ids.length === 0)
-        );
-      } catch (err) {
-        console.warn('Phone lookup (legacy fallback) failed:', err);
-      }
+    this.phoneMatches = allResults;
+    if (isFullPhone && allResults.length === 1) {
+      this.selectExistingPatient(allResults[0]);
     }
 
-    // Attempt 4: ultimate fallback — contains search without clinicId
-    if (exact.length === 0) {
-      try {
-        const { results: containsResults } = await this.firebaseService.searchPatientsContaining(digits, undefined);
-        exact = containsResults.filter(p =>
-          this.normalizePhoneDigits(p.phone) === digits && (!p.clinic_ids || p.clinic_ids.length === 0)
-        );
-      } catch (err) {
-        console.warn('Phone lookup (contains fallback) failed:', err);
-      }
-    }
-
-    this.phoneMatches = exact;
-    if (exact.length === 1) {
-      this.selectExistingPatient(exact[0]);
-    }
-
+    // Mark 'done' for any search (partial or full) so results display
     this.phoneLookupStatus = 'done';
     this.cdr.markForCheck();
   }
@@ -733,6 +782,8 @@ export class AddAppointmentComponent implements OnInit {
     this.intentNewPatient = false;
     this.matchedPatient = p;
     this.isExistingPatient = true;
+    // Auto-fill phone input with the selected patient's full phone
+    this.newPatientPhone = this.normalizePhoneDigits(p.phone);
     this.firstName = '';
     this.middleName = '';
     this.lastName = '';
@@ -750,6 +801,21 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   async proceedFromNewPatient(): Promise<void> {
+    // When an existing patient is selected, use their phone — no need for full digits in input
+    if (this.matchedPatient && !this.intentNewPatient) {
+      this.isExistingPatient = true;
+      this.errorMessage = '';
+      this.dobError = '';
+      this.isCheckingPhone = true;
+      try {
+        this.step = 'appointment-details';
+        if (this.appointmentDate) await this.onDateChange();
+      } finally {
+        this.isCheckingPhone = false;
+        this.cdr.markForCheck();
+      }
+      return;
+    }
     if (this.normalizedPhoneDigits.length !== this.phoneMaxDigits) {
       this.errorMessage = 'Valid 10-digit phone number is required';
       return;
@@ -937,7 +1003,7 @@ export class AddAppointmentComponent implements OnInit {
 
   /** Validate the dateOfBirth field. Returns an error message, or '' if valid. */
   validateDob(): string {
-    if (!this.dateOfBirth) return '';
+    if (!this.dateOfBirth) return 'Date of birth is required';
     const parsed = new Date(this.dateOfBirth);
     if (isNaN(parsed.getTime())) return 'Please enter a valid date of birth';
     const year = parsed.getFullYear();

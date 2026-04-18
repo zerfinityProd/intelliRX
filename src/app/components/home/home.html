@@ -19,11 +19,7 @@
         </svg>
       </div>
       <span class="kanban-col-header__title">Patient Search</span>
-      <ng-container *ngIf="(searchResults$ | async) as sr">
-        <div class="kanban-col-header__pill" *ngIf="sr.length > 0">
-          {{ sr.length }}{{ hasMoreResults ? '+' : '' }}
-        </div>
-      </ng-container>    </div>
+    </div>
 
     <!-- Search Input Card -->
     <div class="kb-search-card">
@@ -66,7 +62,7 @@
       <ng-container *ngIf="searchResults.length > 0">
         <div class="kb-results-header">
           <span class="kb-results-count">{{ searchResults.length }}{{ hasMoreResults ? '+' : '' }} result{{ searchResults.length !== 1 ? 's' : '' }} found</span>
-          <button class="kb-clear-link" (click)="clearSearch()">Clear</button>
+
         </div>
 
         <!-- Patient Cards (Kanban-style) -->
@@ -375,7 +371,7 @@
           <div style="width:8px;height:8px;border-radius:50%;background:#148D9E;flex-shrink:0"></div> Today
         </div>
         <div class="d-flex align-items-center gap-1">
-          <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0"></div> Has appts
+          <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0"></div> Appointments
         </div>
       </div>
     </div>

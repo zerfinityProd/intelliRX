@@ -31,56 +31,8 @@
       <!-- Form -->
       <form (ngSubmit)="onSubmit()" #visitForm="ngForm" novalidate class="avp-form">
 
-        <!-- ── Row 1: Present Illness · Allergies · Ailments ── -->
-        <div class="avp-form-row avp-three-col">
-          <div class="avp-form-section avp-flex-col">
-            <label for="illnessInput" class="avp-section-label">Present Illness</label>
-            <div class="chip-input-box" role="group" aria-label="Present illness chips" (click)="$any($event.currentTarget).querySelector('input').focus()">
-              <div class="chips-wrap">
-                <span *ngFor="let ill of presentIllnesses; let i = index" class="allergy-chip">
-                  {{ ill.description }}
-                  <button type="button" class="chip-remove-btn" (click)="removeIllness(i)" [attr.aria-label]="'Remove ' + ill.description">&times;</button>
-                </span>
-                <input id="illnessInput" type="text" class="chip-inline-input" [(ngModel)]="newIllnessInput" name="newIllnessInput"
-                  placeholder="Type and press Enter..." aria-label="Add present illness"
-                  (keydown)="onIllnessKeydown($event)" (blur)="onIllnessBlur()" />
-              </div>
-            </div>
-          </div>
-
-          <div class="avp-form-section avp-flex-col">
-            <label for="visitAllergyInput" class="avp-section-label">Allergies</label>
-            <div class="chip-input-box" role="group" aria-label="Allergies chips" (click)="$any($event.currentTarget).querySelector('input').focus()">
-              <div class="chips-wrap">
-                <span *ngFor="let allergy of existingAllergies; let i = index" class="allergy-chip">
-                  {{ allergy }}
-                  <button type="button" class="chip-remove-btn" (click)="removeAllergy(i)" [attr.aria-label]="'Remove allergy ' + allergy">&times;</button>
-                </span>
-                <input id="visitAllergyInput" type="text" class="chip-inline-input" [(ngModel)]="newAllergyInput" name="newAllergyInput"
-                  placeholder="Type and press Enter..." aria-label="Add allergy"
-                  (keydown)="onAllergyKeydown($event)" (blur)="onAllergyBlur()" />
-              </div>
-            </div>
-          </div>
-
-          <div class="avp-form-section avp-flex-col">
-            <label for="visitAilmentInput" class="avp-section-label">Ailments</label>
-            <div class="chip-input-box" role="group" aria-label="Ailments chips" (click)="$any($event.currentTarget).querySelector('input').focus()">
-              <div class="chips-wrap">
-                <span *ngFor="let ailment of existingAilments; let i = index" class="allergy-chip">
-                  {{ ailment }}
-                  <button type="button" class="chip-remove-btn" (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ailment">&times;</button>
-                </span>
-                <input id="visitAilmentInput" type="text" class="chip-inline-input" [(ngModel)]="newAilmentInput" name="newAilmentInput"
-                  placeholder="Type and press Enter..." aria-label="Add ailment"
-                  (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- ── Row 2: Chief Complaints · Diagnosis · Treatment Plan ── -->
-        <div class="avp-form-row avp-three-col">
+        <!-- ── Row 1: Chief Complaints · Clinical Findings ── -->
+        <div class="avp-form-row">
           <div class="avp-form-section avp-flex-col">
             <div class="avp-section-label">Chief Complaints <span class="required">*</span></div>
             <textarea name="chiefComplaintsText" [(ngModel)]="chiefComplaintsText"
@@ -88,7 +40,7 @@
               class="form-control avp-textarea"
               [class.is-invalid]="errorMessage === 'Chief complaints is required' || chiefComplaintsText.length > 200"
               maxlength="200"
-              rows="6"></textarea>
+              rows="2"></textarea>
             <div class="avp-char-row">
               <span *ngIf="errorMessage === 'Chief complaints is required'" class="avp-field-error">⚠ Chief complaints is required.</span>
               <span [class.avp-char-warn]="chiefComplaintsText.length >= 180 && chiefComplaintsText.length < 200" [class.avp-char-error]="chiefComplaintsText.length === 200" class="avp-char-count">{{ chiefComplaintsText.length }}/200</span>
@@ -96,12 +48,28 @@
           </div>
 
           <div class="avp-form-section avp-flex-col">
+            <div class="avp-section-label">Clinical Findings</div>
+            <textarea name="clinicalFindingsText" [(ngModel)]="clinicalFindingsText"
+              placeholder="Enter clinical findings"
+              class="form-control avp-textarea"
+              [class.is-invalid]="clinicalFindingsText.length > 200"
+              maxlength="200"
+              rows="2"></textarea>
+            <div class="avp-char-row">
+              <span [class.avp-char-warn]="clinicalFindingsText.length >= 180 && clinicalFindingsText.length < 200" [class.avp-char-error]="clinicalFindingsText.length === 200" class="avp-char-count">{{ clinicalFindingsText.length }}/200</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Row 2: Diagnosis · Treatment Plan ── -->
+        <div class="avp-form-row">
+          <div class="avp-form-section avp-flex-col">
             <div class="avp-section-label">Diagnosis</div>
             <textarea id="diagnosis" name="diagnosis" [(ngModel)]="diagnosis"
               placeholder="Enter diagnosis" class="form-control avp-textarea"
               [class.is-invalid]="diagnosis.length > 200"
               maxlength="200"
-              rows="6"></textarea>
+              rows="2"></textarea>
             <div class="avp-char-row">
               <span [class.avp-char-warn]="diagnosis.length >= 180 && diagnosis.length < 200" [class.avp-char-error]="diagnosis.length === 200" class="avp-char-count">{{ diagnosis.length }}/200</span>
             </div>
@@ -113,7 +81,7 @@
               placeholder="Outline the treatment plan" class="form-control avp-textarea"
               [class.is-invalid]="treatmentPlan.length > 200"
               maxlength="200"
-              rows="6"></textarea>
+              rows="3"></textarea>
             <div class="avp-char-row">
               <span [class.avp-char-warn]="treatmentPlan.length >= 180 && treatmentPlan.length < 200" [class.avp-char-error]="treatmentPlan.length === 200" class="avp-char-count">{{ treatmentPlan.length }}/200</span>
             </div>
@@ -197,6 +165,39 @@
           </div>
         </div>
 
+        <!-- ── Row 4: Allergies · Ailments ── -->
+        <div class="avp-form-row">
+          <div class="avp-form-section avp-flex-col">
+            <label for="visitAllergyInput" class="avp-section-label">Allergies</label>
+            <div class="chip-input-box" role="group" aria-label="Allergies chips" (click)="$any($event.currentTarget).querySelector('input').focus()">
+              <div class="chips-wrap">
+                <span *ngFor="let allergy of existingAllergies; let i = index" class="allergy-chip">
+                  {{ allergy }}
+                  <button type="button" class="chip-remove-btn" (click)="removeAllergy(i)" [attr.aria-label]="'Remove allergy ' + allergy">&times;</button>
+                </span>
+                <input id="visitAllergyInput" type="text" class="chip-inline-input" [(ngModel)]="newAllergyInput" name="newAllergyInput"
+                  placeholder="Type and press Enter..." aria-label="Add allergy"
+                  (keydown)="onAllergyKeydown($event)" (blur)="onAllergyBlur()" />
+              </div>
+            </div>
+          </div>
+
+          <div class="avp-form-section avp-flex-col">
+            <label for="visitAilmentInput" class="avp-section-label">Ailments</label>
+            <div class="chip-input-box" role="group" aria-label="Ailments chips" (click)="$any($event.currentTarget).querySelector('input').focus()">
+              <div class="chips-wrap">
+                <span *ngFor="let ailment of existingAilments; let i = index" class="allergy-chip">
+                  {{ ailment }}
+                  <button type="button" class="chip-remove-btn" (click)="removeAilment(i)" [attr.aria-label]="'Remove ailment ' + ailment">&times;</button>
+                </span>
+                <input id="visitAilmentInput" type="text" class="chip-inline-input" [(ngModel)]="newAilmentInput" name="newAilmentInput"
+                  placeholder="Type and press Enter..." aria-label="Add ailment"
+                  (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Form Actions ── -->
         <div class="avp-form-actions">
           <span *ngIf="errorMessage && errorMessage !== 'Chief complaints is required'" class="avp-error-msg"
@@ -264,7 +265,8 @@
           <div class="avp-visit-header" (click)="toggleVisitExpand(visit.id!)">
             <div class="avp-visit-meta">
               <span class="avp-visit-num">Visit #{{ visits.length - i }}</span>
-              <span *ngIf="visit.visitType === 'walk-in'" class="walk-in-badge">Walk-in visit</span>
+              <span *ngIf="visit.visitType !== 'appointment'" class="walk-in-badge">Walk-in visit</span>
+              <span *ngIf="visit.visitType === 'appointment'" class="scheduled-badge">Appointment</span>
               <span class="avp-visit-date">{{ formatDateTime(visit.created_at) }}</span>
             </div>
             <div class="avp-visit-preview" *ngIf="!isVisitExpanded(visit.id)">
@@ -280,7 +282,7 @@
           <!-- Expanded details -->
           <div class="avp-visit-details" *ngIf="isVisitExpanded(visit.id)">
             <div class="avp-visit-detail" *ngIf="visit.presentIllness">
-              <span class="avp-detail-label">Present Illness</span>
+              <span class="avp-detail-label">Clinical Findings</span>
               <span class="avp-detail-value">{{ visit.presentIllness }}</span>
             </div>
             <div class="avp-visit-detail" *ngIf="visit.chiefComplaints">

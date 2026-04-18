@@ -3,15 +3,15 @@
   <!-- Stats Cards -->
   <div class="row g-3">
     <div class="col-6">
-      <div class="stat-card" #pastIllnessCard>
+      <div class="stat-card" #ailmentsCard>
         <div class="stat-icon visits">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
           </svg>
         </div>
         <div>
-          <div class="stat-value">{{ pastIllnessList.length }}</div>
-          <div class="stat-label">Past Illness</div>
+          <div class="stat-value">{{ ailmentsList.length }}</div>
+          <div class="stat-label">Ailments</div>
         </div>
       </div>
     </div>
@@ -79,7 +79,7 @@
         <div class="visit-time">{{ formatDateTime(visit.created_at) }}</div>
 
         <div class="visit-detail-row" *ngIf="visit.presentIllness">
-          <span class="detail-label">Present Illness:</span>
+          <span class="detail-label">Clinical Findings:</span>
           <span class="detail-value">{{ visit.presentIllness }}</span>
         </div>
         <div class="visit-detail-row" *ngIf="visit.chiefComplaints">
