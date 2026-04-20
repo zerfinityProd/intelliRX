@@ -324,14 +324,14 @@
   border-color: #B5DDE5;
 }
 .kb-action-btn--appt {
-  background: #d1fae5;
-  color: #059669;
-  border: 1px solid #6ee7b7;
+  background: #E7F5F7;
+  color: #148D9E;
+  border: 1px solid #B5DDE5;
 }
 .kb-action-btn--appt:hover {
-  background: #059669;
+  background: #148D9E;
   color: #fff;
-  border-color: #059669;
+  border-color: #148D9E;
 }
 
 /* ── New Patient Button ── */
@@ -451,7 +451,7 @@
 
 /* ── Banner Widget ── */
 .widget--banner {
-  background: linear-gradient(135deg, #148D9E 0%, #1CB5C9 100%);
+  background: linear-gradient(135deg, #1a2332 0%, #1e3a4a 50%, #148D9E 100%);
   border: none;
   padding: 14px 18px;
   display: flex;
@@ -648,8 +648,8 @@
   border-color: #93c5fd;
 }
 .qa-btn--list:hover {
-  background: #d1fae5;
-  border-color: #6ee7b7;
+  background: #E7F5F7;
+  border-color: #B5DDE5;
 }
 
 .qa-btn__icon {
@@ -664,7 +664,7 @@
 
 .qa-btn--appt .qa-btn__icon { background: #E7F5F7; color: #148D9E; }
 .qa-btn--patient .qa-btn__icon { background: #dbeafe; color: #3b82f6; }
-.qa-btn--list .qa-btn__icon { background: #d1fae5; color: #10b981; }
+.qa-btn--list .qa-btn__icon { background: #E7F5F7; color: #148D9E; }
 
 .qa-btn__label {
   font-size: 11px;
@@ -742,7 +742,7 @@
 .cal-cell--selected { background: #117A8B !important; border-color: #117A8B !important;
   box-shadow: 0 3px 10px rgba(79, 70, 229, 0.4); }
 .cal-cell--selected .cal-day-num { color: #fff !important; font-weight: 700; }
-.cal-cell--has-appts { background: #f0fdf4; border-color: #6ee7b7; }
+.cal-cell--has-appts { background: #E7F5F7; border-color: #B5DDE5; }
 .cal-day-num { font-size: 11px; font-weight: 500; color: var(--clr-text, #1e293b); line-height: 1; }
 .cal-dot { width: 4px; height: 4px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
 .cal-legend {
@@ -925,14 +925,14 @@
 }
 
 [data-theme="dark"] .kb-action-btn--appt {
-  background: rgba(16, 185, 129, 0.12);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(20, 141, 158, 0.12);
+  color: #5dd8e8;
+  border-color: rgba(20, 141, 158, 0.3);
 }
 [data-theme="dark"] .kb-action-btn--appt:hover {
-  background: #059669;
+  background: #148D9E;
   color: #fff;
-  border-color: #059669;
+  border-color: #148D9E;
 }
 
 [data-theme="dark"] .kb-empty-state,
@@ -962,7 +962,7 @@
 [data-theme="dark"] .qa-btn__label { color: var(--dk-text2); }
 [data-theme="dark"] .qa-btn--appt:hover { background: rgba(20, 141, 158, 0.15); border-color: #117A8B; }
 [data-theme="dark"] .qa-btn--patient:hover { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; }
-[data-theme="dark"] .qa-btn--list:hover { background: rgba(16, 185, 129, 0.15); border-color: #10b981; }
+[data-theme="dark"] .qa-btn--list:hover { background: rgba(20, 141, 158, 0.15); border-color: #148D9E; }
 
 [data-theme="dark"] .appt-item {
   background: var(--dk-bg1);
@@ -1002,7 +1002,7 @@
 }
 
 .day-panel-free-count {
-  color: #10b981;
+  color: #148D9E;
   font-weight: 600;
 }
 
@@ -1096,11 +1096,11 @@
   height: 9px;
   border-radius: 3px;
 }
-.slot-legend__dot--free   { background: #d1fae5; border: 1px solid #6ee7b7; }
+.slot-legend__dot--free   { background: #E7F5F7; border: 1px solid #B5DDE5; }
 .slot-legend__dot--booked { background: #fee2e2; border: 1px solid #fecaca; }
 .slot-legend__free-count {
   margin-left: auto;
-  color: #10b981;
+  color: #148D9E;
   font-weight: 700;
   font-size: 11px;
 }
@@ -1136,16 +1136,16 @@
 }
 
 .slot-chip--free {
-  background: #d1fae5;
-  border-color: #6ee7b7;
-  color: #065f46;
+  background: #E7F5F7;
+  border-color: #B5DDE5;
+  color: #0c5d6b;
 }
 .slot-chip--free:hover {
-  background: #059669;
-  border-color: #059669;
+  background: #148D9E;
+  border-color: #148D9E;
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
+  box-shadow: 0 3px 10px rgba(20, 141, 158, 0.25);
 }
 .slot-chip--free:hover svg { stroke: #fff; }
 
@@ -1182,12 +1182,12 @@
 }
 
 [data-theme="dark"] .slot-chip--free {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #34d399;
+  background: rgba(20, 141, 158, 0.12);
+  border-color: rgba(20, 141, 158, 0.3);
+  color: #5dd8e8;
 }
 [data-theme="dark"] .slot-chip--free:hover {
-  background: #059669;
+  background: #148D9E;
   color: #fff;
 }
 

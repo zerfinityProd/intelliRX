@@ -511,8 +511,8 @@
   transition: all 0.15s;
 }
 
-.rh-card__btn--done { background: #d1fae5; color: #059669; }
-.rh-card__btn--done:hover:not(:disabled) { background: #059669; color: #fff; }
+.rh-card__btn--done { background: #E7F5F7; color: #148D9E; }
+.rh-card__btn--done:hover:not(:disabled) { background: #148D9E; color: #fff; }
 .rh-card__btn--visit { background: #DAF0F4; color: #0E6877; }
 .rh-card__btn--visit:hover:not(:disabled) { background: #B5DDE5; color: #fff; }
 .rh-card__btn--cancel { background: #fee2e2; color: #ef4444; }
@@ -618,7 +618,7 @@
 .rh-cal-cell--today .rh-cal-num { color: #fff !important; font-weight: 700; }
 .rh-cal-cell--selected { background: #117A8B !important; border-color: #117A8B !important; }
 .rh-cal-cell--selected .rh-cal-num { color: #fff !important; font-weight: 700; }
-.rh-cal-cell--has-appts { background: #f0fdf4; border-color: #6ee7b7; }
+.rh-cal-cell--has-appts { background: #E7F5F7; border-color: #B5DDE5; }
 
 .rh-cal-num { font-size: 10px; font-weight: 500; color: var(--clr-text, #1e293b); line-height: 1; }
 .rh-cal-dot { width: 4px; height: 4px; border-radius: 50%; margin-top: 2px; flex-shrink: 0; }
@@ -657,7 +657,7 @@
 .rh-stat__num { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; color: var(--clr-text, #1e293b); }
 .rh-stat__label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--clr-text-muted, #64748b); }
 .rh-stat--scheduled .rh-stat__num { color: #148D9E; }
-.rh-stat--completed .rh-stat__num { color: #10b981; }
+.rh-stat--completed .rh-stat__num { color: #1CB5C9; }
 
 /* Quick actions */
 .rh-qa-grid {
@@ -684,8 +684,8 @@
 
 .rh-qa-btn--book { color: #148D9E; }
 .rh-qa-btn--book:hover { background: #E7F5F7; border-color: #B5DDE5; }
-.rh-qa-btn--today { color: #059669; }
-.rh-qa-btn--today:hover { background: #d1fae5; border-color: #6ee7b7; }
+.rh-qa-btn--today { color: #148D9E; }
+.rh-qa-btn--today:hover { background: #E7F5F7; border-color: #B5DDE5; }
 
 /* ═══════════════════════════════════════════════
    DARK THEME
@@ -775,8 +775,8 @@
 }
 
 [data-theme="dark"] .rh-qa-btn--today:hover {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: #10b981;
+  background: rgba(20, 141, 158, 0.12);
+  border-color: #148D9E;
 }
 
 [data-theme="dark"] .rh-cal-label { color: var(--dk-text1); }

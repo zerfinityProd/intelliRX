@@ -94,7 +94,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     readonly columns = [
         { id: 'scheduled' as const, label: 'Scheduled', color: '#E7F5F7', accent: '#148D9E', icon: 'clock' },
-        { id: 'completed' as const, label: 'Completed', color: '#d1fae5', accent: '#10b981', icon: 'check' },
+        { id: 'completed' as const, label: 'Completed', color: '#E7F5F7', accent: '#1CB5C9', icon: 'check' },
         { id: 'cancelled' as const, label: 'Cancelled', color: '#fee2e2', accent: '#ef4444', icon: 'x' },
     ];
 

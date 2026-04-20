@@ -518,6 +518,384 @@
   border-color: rgba(225, 29, 72, 0.25) !important;
 }
 
+/*  Add-Appointment dark mode fixes (global scope for encapsulation compat)  */
+[data-theme="dark"] .appt-doctor-pill {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+[data-theme="dark"] .appt-doctor-pill__name {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .appt-doctor-pill__spec {
+  color: #a0a0a0 !important;
+}
+
+[data-theme="dark"] .slot-time {
+  color: #e0e0e0 !important;
+}
+[data-theme="dark"] .slot-btn.slot-past .slot-time {
+  color: #888888 !important;
+}
+[data-theme="dark"] .slot-btn:disabled .slot-time {
+  color: #888888 !important;
+}
+[data-theme="dark"] .slot-btn.slot-selected .slot-time {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .slot-btn {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .slot-btn:hover:not(:disabled) {
+  background: rgba(20, 141, 158, 0.15) !important;
+  border-color: #148D9E !important;
+}
+[data-theme="dark"] .slot-btn.slot-selected {
+  background: linear-gradient(135deg, #148D9E, #1CB5C9) !important;
+  border-color: #148D9E !important;
+}
+[data-theme="dark"] .slot-btn.slot-past {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+  opacity: 0.55;
+}
+[data-theme="dark"] .slot-btn:disabled {
+  background: rgba(220, 38, 38, 0.08) !important;
+  border-color: rgba(220, 38, 38, 0.2) !important;
+}
+
+[data-theme="dark"] .slot-tag--available {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+}
+[data-theme="dark"] .slot-tag--booked {
+  background: rgba(220, 38, 38, 0.15) !important;
+  color: #f87171 !important;
+}
+[data-theme="dark"] .slot-tag--past {
+  background: var(--dk-bg3) !important;
+  color: #888888 !important;
+}
+[data-theme="dark"] .slot-tag--selected {
+  background: rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .appt-slot-legend {
+  color: #b0b0b0 !important;
+}
+[data-theme="dark"] .appt-slot-count {
+  color: #5dd8e8 !important;
+}
+[data-theme="dark"] .appt-legend-dot {
+  border-color: transparent !important;
+}
+
+[data-theme="dark"] .appt-patient-chip {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .appt-patient-chip__name {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .appt-patient-chip__phone {
+  color: #a0a0a0 !important;
+}
+
+[data-theme="dark"] .appt-slot-placeholder {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+  color: #a0a0a0 !important;
+}
+
+/*  Home page dark mode fixes (global scope for encapsulation compat)  */
+
+/* Banner widget — green gradient */
+.widget--banner {
+  background: linear-gradient(135deg, #1a2332 0%, #1e3a4a 50%, #148D9E 100%) !important;
+  box-shadow: 0 6px 20px rgba(20, 141, 158, 0.3) !important;
+}
+
+[data-theme="dark"] .kanban-home {
+  background: var(--dk-bg1) !important;
+}
+[data-theme="dark"] .kanban-col {
+  background: var(--dk-bg2) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .kanban-col-header__title {
+  color: #ffffff !important;
+}
+[data-theme="dark"] .kanban-col-header__date {
+  background: var(--dk-bg3) !important;
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .kb-search-card {
+  background: var(--dk-bg2) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .kb-search-card__eyebrow {
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .kb-patient-card {
+  background: var(--dk-bg2) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .kb-patient-card:hover {
+  border-color: #117A8B !important;
+}
+[data-theme="dark"] .kb-patient-card__name { color: #ffffff !important; }
+[data-theme="dark"] .kb-patient-card__meta { color: #a0a0a0 !important; }
+[data-theme="dark"] .kb-patient-card__sub  { color: #888888 !important; }
+[data-theme="dark"] .kb-patient-card__fid  { background: rgba(20, 141, 158, 0.15) !important; }
+[data-theme="dark"] .kb-results-count      { color: #a0a0a0 !important; }
+
+[data-theme="dark"] .kb-action-btn--ghost {
+  background: var(--dk-bg3) !important;
+  border-color: var(--dk-border) !important;
+  color: #e0e0e0 !important;
+}
+[data-theme="dark"] .kb-action-btn--ghost:hover {
+  background: rgba(20, 141, 158, 0.15) !important;
+  color: #5dd8e8 !important;
+}
+[data-theme="dark"] .kb-action-btn--appt {
+  background: rgba(20, 141, 158, 0.12) !important;
+  color: #5dd8e8 !important;
+}
+[data-theme="dark"] .kb-action-btn--primary {
+  background: rgba(20, 141, 158, 0.15) !important;
+  color: #5dd8e8 !important;
+}
+
+[data-theme="dark"] .kb-empty-state,
+[data-theme="dark"] .kb-idle-state {
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .kb-idle-state__icon {
+  color: #888888 !important;
+}
+[data-theme="dark"] .kb-idle-state p {
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .kb-new-patient-btn {
+  background: rgba(20, 141, 158, 0.12) !important;
+  border-color: rgba(20, 141, 158, 0.4) !important;
+  color: #5dd8e8 !important;
+}
+
+/* Calendar widget dark mode */
+[data-theme="dark"] .widget {
+  background: var(--dk-bg2) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .widget__header-left {
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .cal-day-num       { color: #e0e0e0 !important; }
+[data-theme="dark"] .cal-day-header    { color: #888888 !important; }
+[data-theme="dark"] .cal-month-label   { color: #e0e0e0 !important; }
+[data-theme="dark"] .cal-nav-btn {
+  border-color: var(--dk-border) !important;
+  color: #e0e0e0 !important;
+}
+[data-theme="dark"] .cal-nav-btn:hover {
+  background: #148D9E !important;
+  border-color: #148D9E !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .cal-legend {
+  border-color: var(--dk-border) !important;
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .cal-cell:hover {
+  background: rgba(20, 141, 158, 0.15) !important;
+}
+[data-theme="dark"] .cal-cell--has-appts {
+  background: rgba(20, 141, 158, 0.12) !important;
+  border-color: rgba(20, 141, 158, 0.3) !important;
+}
+
+/* Quick Actions dark mode */
+[data-theme="dark"] .qa-btn {
+  background: var(--dk-bg3) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .qa-btn__label { color: #a0a0a0 !important; }
+[data-theme="dark"] .qa-btn__icon  { color: inherit !important; }
+[data-theme="dark"] .qa-btn--appt .qa-btn__icon  { background: rgba(20, 141, 158, 0.15) !important; color: #5dd8e8 !important; }
+[data-theme="dark"] .qa-btn--patient .qa-btn__icon { background: rgba(59, 130, 246, 0.15) !important; color: #93c5fd !important; }
+[data-theme="dark"] .qa-btn--list .qa-btn__icon   { background: rgba(20, 141, 158, 0.15) !important; color: #5dd8e8 !important; }
+[data-theme="dark"] .qa-btn--appt:hover   { background: rgba(20, 141, 158, 0.15) !important; border-color: #117A8B !important; }
+[data-theme="dark"] .qa-btn--patient:hover { background: rgba(59, 130, 246, 0.15) !important; border-color: #3b82f6 !important; }
+[data-theme="dark"] .qa-btn--list:hover    { background: rgba(20, 141, 158, 0.15) !important; border-color: #148D9E !important; }
+
+/* Widget stats dark mode */
+[data-theme="dark"] .widget-mini-stat {
+  background: var(--dk-bg2) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .widget-mini-stat__num   { color: #ffffff !important; }
+[data-theme="dark"] .widget-mini-stat__label { color: #a0a0a0 !important; }
+
+/* Doctor select widget dark mode */
+[data-theme="dark"] .widget--doctor-select {
+  border-color: rgba(20, 141, 158, 0.3) !important;
+  background: linear-gradient(135deg, rgba(20, 141, 158, 0.08), rgba(139, 92, 246, 0.06)) !important;
+}
+[data-theme="dark"] .doctor-select-label { color: #a0a0a0 !important; }
+[data-theme="dark"] .doctor-select-input {
+  background: var(--dk-bg2) !important;
+  border-color: var(--dk-border) !important;
+  color: #e0e0e0 !important;
+}
+[data-theme="dark"] .doctor-select-pill {
+  background: rgba(20, 141, 158, 0.15) !important;
+  border-color: rgba(20, 141, 158, 0.3) !important;
+}
+[data-theme="dark"] .doctor-select-pill__name { color: #ffffff !important; }
+[data-theme="dark"] .doctor-select-pill__spec { color: #5dd8e8 !important; }
+[data-theme="dark"] .doctor-select-prompt {
+  background: rgba(251, 191, 36, 0.1) !important;
+  border-color: rgba(251, 191, 36, 0.3) !important;
+  color: #fcd34d !important;
+}
+
+/* Appointment items dark mode */
+[data-theme="dark"] .appt-item {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .appt-item-name { color: #ffffff !important; }
+[data-theme="dark"] .appt-item-meta { color: #a0a0a0 !important; }
+
+/* Slot viewer dark mode */
+[data-theme="dark"] .slots-toggle-btn {
+  background: var(--dk-bg3) !important;
+  border-color: var(--dk-border) !important;
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .slots-toggle-btn:hover,
+[data-theme="dark"] .slots-toggle-btn--active {
+  background: rgba(20, 141, 158, 0.15) !important;
+  border-color: #148D9E !important;
+  color: #5dd8e8 !important;
+}
+[data-theme="dark"] .slot-viewer__inner {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .slot-legend { color: #a0a0a0 !important; }
+[data-theme="dark"] .slot-chip--free {
+  background: rgba(20, 141, 158, 0.12) !important;
+  border-color: rgba(20, 141, 158, 0.3) !important;
+  color: #5dd8e8 !important;
+}
+[data-theme="dark"] .slot-chip--booked {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  color: #f87171 !important;
+}
+
+/*  Day View Modal dark mode fixes (global scope)  */
+[data-theme="dark"] .dv-modal {
+  background: var(--dk-bg2) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .dv-header {
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .dv-header__title { color: #ffffff !important; }
+[data-theme="dark"] .dv-header__sub   { color: #a0a0a0 !important; }
+[data-theme="dark"] .dv-header__close {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .dv-header__close:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #f87171 !important;
+}
+[data-theme="dark"] .dv-summary {
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .dv-pill {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+  color: #a0a0a0 !important;
+}
+[data-theme="dark"] .dv-pill--scheduled { background: rgba(20, 141, 158, 0.12) !important; color: #5dd8e8 !important; }
+[data-theme="dark"] .dv-pill--completed { background: rgba(16, 185, 129, 0.12) !important; color: #34d399 !important; }
+[data-theme="dark"] .dv-pill--cancelled { background: rgba(239, 68, 68, 0.12) !important; color: #f87171 !important; }
+[data-theme="dark"] .dv-pill--doctor    { background: rgba(20, 141, 158, 0.1) !important; color: #5dd8e8 !important; }
+
+[data-theme="dark"] .dv-slot--hour-start {
+  border-bottom-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .dv-slot:not(.dv-slot--hour-start) {
+  border-bottom-color: rgba(255, 255, 255, 0.03) !important;
+}
+[data-theme="dark"] .dv-slot__time {
+  border-right-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .dv-slot__hour { color: #e0e0e0 !important; }
+[data-theme="dark"] .dv-slot__half { color: #888888 !important; }
+
+[data-theme="dark"] .dv-appt-block {
+  background: var(--dk-bg1) !important;
+  border-color: var(--dk-border) !important;
+}
+[data-theme="dark"] .dv-appt-block__name   { color: #ffffff !important; }
+[data-theme="dark"] .dv-appt-block__meta   { color: #a0a0a0 !important; }
+[data-theme="dark"] .dv-appt-block__detail { color: #a0a0a0 !important; }
+[data-theme="dark"] .dv-appt-block__actions {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+[data-theme="dark"] .dv-appt-block__cancel-reason {
+  background: rgba(239, 68, 68, 0.08) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  color: #f87171 !important;
+}
+
+[data-theme="dark"] .dv-action-btn--visit {
+  background: rgba(20, 141, 158, 0.15) !important;
+  color: #5dd8e8 !important;
+}
+[data-theme="dark"] .dv-action-btn--visit:hover {
+  background: #0E6877 !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .dv-action-btn--reschedule {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #fbbf24 !important;
+}
+[data-theme="dark"] .dv-action-btn--reschedule:hover {
+  background: #f59e0b !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .dv-action-btn--cancel {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+}
+[data-theme="dark"] .dv-action-btn--cancel:hover {
+  background: #ef4444 !important;
+  color: #fff !important;
+}
+
+[data-theme="dark"] .dv-empty-slot {
+  border-color: var(--dk-border) !important;
+  color: #888888 !important;
+}
+[data-theme="dark"] .dv-empty-slot:hover {
+  border-color: #148D9E !important;
+  background: rgba(20, 141, 158, 0.08) !important;
+  color: #5dd8e8 !important;
+}
+[data-theme="dark"] .dv-empty-slot__label { color: inherit !important; }
+[data-theme="dark"] .dv-past-slot__dash   { color: var(--dk-border) !important; }
+[data-theme="dark"] .dv-loading            { color: #a0a0a0 !important; }
+
 /*  Last visit strip  */
 [data-theme="dark"] .last-visit-strip {
   background: linear-gradient(135deg, #082D45, #0C3B54);
@@ -1190,8 +1568,8 @@ main {
 .info-badge {
   font-size: var(--fs-xs);
   font-weight: 600;
-  color: #10b981;
-  background: #d1fae5;
+  color: #148D9E;
+  background: #E7F5F7;
   padding: 3px 8px;
   border-radius: 8px;
   margin-left: 8px;

@@ -93,7 +93,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   readonly columns: KanbanColumn[] = [
     { id: 'scheduled',  label: 'Scheduled',  color: '#E7F5F7', accent: '#148D9E', icon: 'clock'    },
-    { id: 'completed',  label: 'Completed',  color: '#d1fae5', accent: '#10b981', icon: 'check'    },
+    { id: 'completed',  label: 'Completed',  color: '#E7F5F7', accent: '#1CB5C9', icon: 'check'    },
     { id: 'cancelled',  label: 'Cancelled',  color: '#fee2e2', accent: '#ef4444', icon: 'x'        },
   ];
 
@@ -149,6 +149,33 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   goToday(): void {
     this.selectedDate = todayLocalISO();
+  }
+
+  goToPrevDate(): void {
+    const [y, m, d] = this.selectedDate.split('-').map(Number);
+    const prev = new Date(y, m - 1, d - 1);
+    this.selectedDate = this.formatLocalDate(prev);
+  }
+
+  goToNextDate(): void {
+    const [y, m, d] = this.selectedDate.split('-').map(Number);
+    const next = new Date(y, m - 1, d + 1);
+    this.selectedDate = this.formatLocalDate(next);
+  }
+
+  /** Format a Date to YYYY-MM-DD local string */
+  private formatLocalDate(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  /** Formatted display label for the selected date (e.g. "19 Apr 2026") */
+  get selectedDateLabel(): string {
+    const [y, m, d] = this.selectedDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   onDateInput(value: string): void {

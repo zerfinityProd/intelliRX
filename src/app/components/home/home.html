@@ -187,7 +187,7 @@
   <div class="kanban-col kanban-col--widgets">
 
     <!-- ── WIDGET 1: Today's Summary Banner ── -->
-    <div class="widget widget--banner">
+    <div class="widget widget--banner" style="background: linear-gradient(135deg, #1a2332 0%, #1e3a4a 50%, #148D9E 100%); box-shadow: 0 6px 20px rgba(20, 141, 158, 0.3);">
       <div class="widget-banner__left">
         <div class="widget-banner__icon">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
@@ -248,7 +248,7 @@
           <span class="doctor-select-pill__name">Clinic {{ selectedDoctorClinicId }}</span>
           <span class="doctor-select-pill__spec">Currently active</span>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#148D9E" stroke-width="2.5"
           stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
@@ -301,7 +301,7 @@
           <span class="doctor-select-pill__name">{{ selectedDashboardDoctor.name }}</span>
           <span class="doctor-select-pill__spec">{{ selectedDashboardDoctor.specialty }}</span>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#148D9E" stroke-width="2.5"
           stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
@@ -360,7 +360,7 @@
             [title]="'Click to view — ' + appointmentsOnDate(day).length + ' appointment(s)'">
             <span class="cal-day-num">{{ day.getDate() }}</span>
             <span *ngIf="appointmentsOnDate(day).length > 0" class="cal-dot"
-              [style.background]="isToday(day)||isSelected(day) ? 'rgba(255,255,255,0.85)' : '#10b981'"></span>
+              [style.background]="isToday(day)||isSelected(day) ? 'rgba(255,255,255,0.85)' : '#1CB5C9'"></span>
           </div>
         </ng-container>
       </div>
@@ -371,7 +371,7 @@
           <div style="width:8px;height:8px;border-radius:50%;background:#148D9E;flex-shrink:0"></div> Today
         </div>
         <div class="d-flex align-items-center gap-1">
-          <div style="width:8px;height:8px;border-radius:50%;background:#10b981;flex-shrink:0"></div> Appointments
+          <div style="width:8px;height:8px;border-radius:50%;background:#1CB5C9;flex-shrink:0"></div> Appointments
         </div>
       </div>
     </div>

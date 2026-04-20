@@ -519,14 +519,16 @@
 [data-theme="dark"] .slot-btn.slot-past {
   background: var(--dk-bg1);
   border-color: var(--dk-border);
-  opacity: 0.45;
+  opacity: 0.55;
 }
+[data-theme="dark"] .slot-btn.slot-past .slot-time { color: var(--dk-text2); }
 
 /* Booked (disabled) slots in dark mode */
 [data-theme="dark"] .slot-btn:disabled {
   background: rgba(220, 38, 38, 0.06);
   border-color: rgba(220, 38, 38, 0.2);
 }
+[data-theme="dark"] .slot-btn:disabled .slot-time { color: var(--dk-text2); }
 
 [data-theme="dark"] .appt-slot-placeholder {
   background: var(--dk-bg1);
@@ -575,7 +577,8 @@
   background: rgba(20, 141, 158, 0.08);
 }
 
-[data-theme="dark"] .appt-slot-legend { color: var(--dk-text2); }
+[data-theme="dark"] .appt-slot-legend { color: #a0a0a0; }
+[data-theme="dark"] .appt-slot-count  { color: #5dd8e8; }
 [data-theme="dark"] .appt-badge--existing { background: rgba(16,185,129,0.15); color: #34d399; }
 [data-theme="dark"] .appt-badge--new { background: rgba(217,119,6,0.15); color: #fbbf24; }
 
