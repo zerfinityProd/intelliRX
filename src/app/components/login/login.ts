@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { ThemeService } from '../../services/themeService';
+import { NotificationService } from '../../services/notificationService';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { filter, take } from 'rxjs';
 
@@ -31,6 +32,7 @@ export class LoginComponent implements OnInit {
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
     private readonly clinicContextService = inject(ClinicContextService);
+    private readonly notificationService = inject(NotificationService);
 
     constructor() {}
 
@@ -61,6 +63,9 @@ export class LoginComponent implements OnInit {
 
     /** Navigate to home or reception-home based on Firestore role */
     private async navigateByRole(email: string): Promise<void> {
+        // Prompt for notification permission (non-blocking, runs in background)
+        this.promptNotificationPermission(email);
+
         const role = await this.authorizationService.getUserRole(email);
         if (role === 'receptionist') {
             this.router.navigate(['/reception-home']);
@@ -246,6 +251,19 @@ export class LoginComponent implements OnInit {
             this.isLoading = false;
             this.cdr.detectChanges();
         }
+    }
+
+    /**
+     * Fire-and-forget: look up the user's Firestore doc ID and ask the
+     * NotificationService to show the browser prompt if they haven't
+     * already responded.
+     */
+    private promptNotificationPermission(email: string): void {
+        this.authorizationService.getUserId(email).then(userId => {
+            if (userId) {
+                this.notificationService.promptIfNeeded(userId);
+            }
+        }).catch(err => console.warn('Notification prompt skipped:', err));
     }
 
     private isValidEmail(email: string): boolean {

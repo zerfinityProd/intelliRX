@@ -94,7 +94,12 @@
   <div *ngIf="!isLoading" class="kb-board">
 
     <div *ngFor="let col of columns"
-      class="kb-column">
+      class="kb-column"
+      [class.kb-column--drag-over]="dragOverColumn === col.id"
+      (dragover)="onColumnDragOver($event, col.id)"
+      (dragenter)="onColumnDragEnter($event, col.id)"
+      (dragleave)="onColumnDragLeave($event, col.id)"
+      (drop)="onColumnDrop($event, col.id)">
 
       <!-- Column Header -->
       <div class="kb-column__header" [style.border-top-color]="col.accent">
@@ -157,7 +162,11 @@
         <div *ngFor="let appt of cardsFor(col.id)"
           class="kb-card"
           [class.kb-card--updating]="updatingId === appt.id"
-          [class.kb-card--today]="isToday(appt.datetime)">
+          [class.kb-card--today]="isToday(appt.datetime)"
+          [class.kb-card--dragging]="draggingAppt?.id === appt.id"
+          [attr.draggable]="appt.status === 'scheduled'"
+          (dragstart)="onDragStart($event, appt)"
+          (dragend)="onDragEnd()">
 
           <!-- Spinner overlay when updating -->
           <div *ngIf="updatingId === appt.id" class="kb-card__overlay">
@@ -181,13 +190,23 @@
           <!-- Patient name -->
           <div class="kb-card__name">{{ appt.patientName }}</div>
 
-          <!-- Phone -->
-          <div class="kb-card__meta" *ngIf="appt.patientPhone">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
-            </svg>
-            {{ appt.patientPhone }}
+          <!-- Phone & Doctor -->
+          <div class="kb-card__meta-row" *ngIf="appt.patientPhone || getDoctorDisplayName(appt)">
+            <span class="kb-card__meta" *ngIf="appt.patientPhone">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+              {{ appt.patientPhone }}
+            </span>
+            <span class="kb-card__meta" *ngIf="getDoctorDisplayName(appt)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Dr. {{ getDoctorDisplayName(appt) }}
+            </span>
           </div>
 
           <!-- Ailments -->

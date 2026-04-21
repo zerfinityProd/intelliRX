@@ -92,6 +92,8 @@ export class AddAppointmentComponent implements OnInit {
   // Time slots
   allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
   bookedSlots: string[] = [];
+  /** Slots booked by the same patient on the same day (shown with a distinct indicator) */
+  samePatientBookedSlots: string[] = [];
   isLoadingSlots: boolean = false;
 
   errorMessage: string = '';
@@ -113,6 +115,8 @@ export class AddAppointmentComponent implements OnInit {
 
   // If opened from a patient card, we can skip phone/name entry.
   private openedFromPatientId: string | null = null;
+  /** Where to navigate when user presses Cancel/Back from step 1 */
+  private navigateBackTo: string = '/home';
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
@@ -127,6 +131,10 @@ export class AddAppointmentComponent implements OnInit {
       // Pre-select doctor when navigated from dashboard with a specific doctor
       if (params['doctorId']) {
         this.selectedDoctorId = params['doctorId'];
+      }
+      // Remember origin page for back navigation
+      if (params['from'] === 'appointments') {
+        this.navigateBackTo = '/appointments';
       }
     });
 
@@ -420,6 +428,11 @@ export class AddAppointmentComponent implements OnInit {
     return this.allTimeSlots.filter(s => !this.bookedSlots.includes(s) && !this.isSlotInPast(s));
   }
 
+  /** True when this slot is already booked by the same patient being booked */
+  isSlotBookedBySamePatient(slot: string): boolean {
+    return this.samePatientBookedSlots.includes(slot);
+  }
+
   async onDoctorChange(): Promise<void> {
     // Refresh time slots to apply the new doctor's availability
     await this.refreshTimeSlotsForClinic(this.appointmentDate);
@@ -557,7 +570,7 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   async onDateChange(): Promise<void> {
-    if (!this.appointmentDate) { this.bookedSlots = []; return; }
+    if (!this.appointmentDate) { this.bookedSlots = []; this.samePatientBookedSlots = []; return; }
     this.isLoadingSlots = true;
     this.selectedTimeSlot = '';
     // Refresh time slots to apply doctor availability for the new date's weekday
@@ -569,22 +582,36 @@ export class AddAppointmentComponent implements OnInit {
       // Use getAllAppointments() so we see the doctor's bookings across ALL clinics.
       // This prevents double-booking when a doctor works at multiple locations.
       const all = await this.appointmentService.getAllAppointments();
-      this.bookedSlots = all
-        .filter(a => {
-          const d = new Date(a.datetime);
-          const [y, mo, day] = this.appointmentDate.split('-').map(Number);
-          const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
-          const sameDoctor = (this.selectedDoctorId && selectedDoctorEmail)
-            ? normalizeEmail(a.doctor_id || '') === selectedDoctorEmail
-            : true;
-          return sameDay && sameDoctor && a.status !== 'cancelled';
-        })
-        .map(a => {
-          const dt = new Date(a.datetime);
-          return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
-        });
+
+      // Determine the current patient's ID (if selecting an existing patient)
+      const currentPatientId = this.matchedPatient?.id || '';
+
+      const sameDayAppointments = all.filter(a => {
+        const d = new Date(a.datetime);
+        const [y, mo, day] = this.appointmentDate.split('-').map(Number);
+        const sameDay = d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
+        const sameDoctor = (this.selectedDoctorId && selectedDoctorEmail)
+          ? normalizeEmail(a.doctor_id || '') === selectedDoctorEmail
+          : true;
+        return sameDay && sameDoctor && a.status !== 'cancelled';
+      });
+
+      const toTimeSlot = (a: any): string => {
+        const dt = new Date(a.datetime);
+        return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+      };
+
+      // Separate: slots booked by this patient vs. slots booked by others
+      this.samePatientBookedSlots = currentPatientId
+        ? sameDayAppointments.filter(a => a.patient_id === currentPatientId).map(toTimeSlot)
+        : [];
+
+      this.bookedSlots = sameDayAppointments
+        .filter(a => !currentPatientId || a.patient_id !== currentPatientId)
+        .map(toTimeSlot);
     } catch {
       this.bookedSlots = [];
+      this.samePatientBookedSlots = [];
     }
     this.isLoadingSlots = false;
     this.cdr.markForCheck();
@@ -987,7 +1014,7 @@ export class AddAppointmentComponent implements OnInit {
       }
       this.step = 'new-patient-info';
     } else {
-      this.router.navigate(['/home']);
+      this.router.navigate([this.navigateBackTo]);
     }
     this.errorMessage = '';
   }

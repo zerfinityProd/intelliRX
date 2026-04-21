@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { PatientService } from '../../services/patient';
 import { AppointmentService } from '../../services/appointmentService';
+import { AuthenticationService } from '../../services/authenticationService';
 import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import Swal from 'sweetalert2';
@@ -85,6 +86,7 @@ export class AddVisitPageComponent implements OnInit {
     private readonly router = inject(Router);
     private readonly patientService = inject(PatientService);
     private readonly appointmentService = inject(AppointmentService);
+    private readonly authService = inject(AuthenticationService);
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly ngZone = inject(NgZone);
 
@@ -199,7 +201,18 @@ export class AddVisitPageComponent implements OnInit {
             this.cdr.detectChanges();
         });
         try {
-            this.visits = await this.patientService.getPatientVisits(this.patient!.id);
+            let allVisits = await this.patientService.getPatientVisits(this.patient!.id);
+
+            // Doctor visit isolation: doctors only see their own visits
+            const currentUser = this.authService.currentUserValue;
+            if (currentUser?.role === 'doctor' && currentUser?.email) {
+                const doctorEmail = currentUser.email.trim().toLowerCase();
+                allVisits = allVisits.filter(v =>
+                    !v.doctor_id || v.doctor_id.trim().toLowerCase() === doctorEmail
+                );
+            }
+
+            this.visits = allVisits;
             this.ngZone.run(() => {
                 this.isLoadingVisits = false;
                 this.cdr.detectChanges();
@@ -332,12 +345,14 @@ export class AddVisitPageComponent implements OnInit {
             }
 
             // Build visit data
+            const currentEmail = this.authService.currentUserValue?.email || '';
             const visitData: any = {
                 chiefComplaints: this.chiefComplaintsText.trim(),
                 diagnosis: this.diagnosis.trim(),
                 examination: this.formatExaminations(),
                 treatmentPlan: this.treatmentPlan.trim(),
                 advice: this.advice.trim(),
+                doctor_id: currentEmail,
             };
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;

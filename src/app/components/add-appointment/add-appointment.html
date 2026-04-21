@@ -391,14 +391,16 @@
               class="slot-btn"
               [class.slot-selected]="selectedTimeSlot === slot"
               [class.slot-booked]="bookedSlots.includes(slot)"
+              [class.slot-same-patient]="isSlotBookedBySamePatient(slot)"
               [class.slot-past]="isSlotInPast(slot)"
-              [disabled]="bookedSlots.includes(slot) || isSlotInPast(slot)"
+              [disabled]="bookedSlots.includes(slot) || isSlotBookedBySamePatient(slot) || isSlotInPast(slot)"
               (click)="selectedTimeSlot = slot"
               type="button">
               <span class="slot-time">{{ formatSlotLabel(slot) }}</span>
-              <span *ngIf="bookedSlots.includes(slot)" class="slot-tag slot-tag--booked">Booked</span>
-              <span *ngIf="isSlotInPast(slot) && !bookedSlots.includes(slot)" class="slot-tag slot-tag--past">Past</span>
-              <span *ngIf="!bookedSlots.includes(slot) && !isSlotInPast(slot) && selectedTimeSlot !== slot"
+              <span *ngIf="isSlotBookedBySamePatient(slot)" class="slot-tag slot-tag--same-patient">Your Slot</span>
+              <span *ngIf="bookedSlots.includes(slot) && !isSlotBookedBySamePatient(slot)" class="slot-tag slot-tag--booked">Booked</span>
+              <span *ngIf="isSlotInPast(slot) && !bookedSlots.includes(slot) && !isSlotBookedBySamePatient(slot)" class="slot-tag slot-tag--past">Past</span>
+              <span *ngIf="!bookedSlots.includes(slot) && !isSlotBookedBySamePatient(slot) && !isSlotInPast(slot) && selectedTimeSlot !== slot"
                 class="slot-tag slot-tag--available">Free</span>
               <span *ngIf="selectedTimeSlot === slot" class="slot-tag slot-tag--selected">✓</span>
             </button>
@@ -407,6 +409,7 @@
             <span><span class="appt-legend-dot" style="background:#148D9E"></span>Selected</span>
             <span><span class="appt-legend-dot" style="background:#d1fae5;border:1px solid #6ee7b7"></span>Available</span>
             <span><span class="appt-legend-dot" style="background:#fee2e2;border:1px solid #fecaca"></span>Booked</span>
+            <span *ngIf="samePatientBookedSlots.length > 0"><span class="appt-legend-dot" style="background:#dbeafe;border:1px solid #93c5fd"></span>Your Slot</span>
             <span class="appt-slot-count">{{ availableSlots.length }}/{{ allTimeSlots.length }} free</span>
           </div>
         </div>

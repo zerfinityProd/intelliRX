@@ -494,6 +494,15 @@
   margin-top: 2px;
 }
 
+.widget-banner__specialization {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 3px;
+  font-style: italic;
+  letter-spacing: 0.02em;
+}
+
 .widget-banner__cta {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;

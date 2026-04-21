@@ -17,7 +17,7 @@ export class ClinicContextService {
   constructor() {
     this.contextSubject = new BehaviorSubject<ClinicContext>({
       clinicId: this.readStoredClinicId(),
-      subscriptionId: this.readStoredSubscriptionId()
+      subscriptionId: null  // Always resolved fresh from Firestore on login/page load
     });
     this.context$ = this.contextSubject.asObservable();
   }
@@ -58,12 +58,12 @@ export class ClinicContextService {
     if (clinicId) localStorage.setItem(LS_CLINIC_ID, clinicId);
     else localStorage.removeItem(LS_CLINIC_ID);
 
-    if (subscriptionId) localStorage.setItem(LS_SUBSCRIPTION_ID, subscriptionId);
-    else localStorage.removeItem(LS_SUBSCRIPTION_ID);
+    // subscriptionId is kept in-memory only — not persisted to localStorage
   }
 
   clear(): void {
     this.setClinicContext(null, null);
+    localStorage.removeItem(LS_SUBSCRIPTION_ID); // Clean up any legacy stored value
   }
 
   private readStoredClinicId(): string | null {
@@ -74,11 +74,4 @@ export class ClinicContextService {
     }
   }
 
-  private readStoredSubscriptionId(): string | null {
-    try {
-      return localStorage.getItem(LS_SUBSCRIPTION_ID);
-    } catch {
-      return null;
-    }
-  }
 }

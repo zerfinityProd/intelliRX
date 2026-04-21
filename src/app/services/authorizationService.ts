@@ -39,6 +39,8 @@ interface UserLookupResult {
     userId: string;
     /** Display name from the users collection */
     userName: string;
+    /** Doctor specialization (e.g. "Cardiologist", "General Physician") */
+    specialization: string;
     subscriptionId: string;
     clinicIds: string[];
     role: 'doctor' | 'receptionist';
@@ -204,6 +206,9 @@ export class AuthorizationService {
             // Extract display name from user doc
             const userName: string = getField(userData, 'name') || '';
 
+            // Extract specialization from user doc (fallback checked in clinic_users later)
+            let specialization: string = getField(userData, 'specialization') || getField(userData, 'specialty') || '';
+
             // Check for per-user permission overrides
             let userPermissionOverrides: string[] | null = null;
             const perms = getField(userData, 'permissions');
@@ -263,9 +268,19 @@ export class AuthorizationService {
                 }
             }
 
+            // If specialization not found on user doc, check clinic_users docs
+            if (!specialization) {
+                for (const cuDoc of cuSnapshot.docs) {
+                    const cuData = cuDoc.data();
+                    const cuSpec = cuData['specialization'] || cuData['specialty'] || '';
+                    if (cuSpec) { specialization = cuSpec; break; }
+                }
+            }
+
             const result: UserLookupResult = {
                 userId,
                 userName,
+                specialization,
                 subscriptionId,
                 clinicIds,
                 role,
@@ -539,6 +554,19 @@ export class AuthorizationService {
             return result?.userName ?? '';
         } catch (error) {
             console.warn('getUserName failed for:', email, error);
+            return '';
+        }
+    }
+
+    /**
+     * Returns the specialization from the users or clinic_users collection for a given email.
+     */
+    async getUserSpecialization(email: string): Promise<string> {
+        try {
+            const result = await this.lookupUser(email);
+            return result?.specialization ?? '';
+        } catch (error) {
+            console.warn('getUserSpecialization failed for:', email, error);
             return '';
         }
     }

@@ -57,12 +57,19 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   canCancel = false;
   userRole: 'doctor' | 'receptionist' = 'doctor';
 
+  // Doctor name cache for display
+  private doctorNameCache = new Map<string, string>();
+
   // Cancel modal state
   showCancelModal = false;
   cancellingAppt: Appointment | null = null;
   cancelReason = '';
   isCancelling = false;
   cancelError = '';
+
+  // Drag-and-drop state
+  draggingAppt: Appointment | null = null;
+  dragOverColumn: string | null = null;
 
   // ── Postpone Modal State ──
   showPostponeModal = false;
@@ -204,6 +211,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     // Resolve permissions for the current user
     await this.loadPermissions();
 
+    // Build doctor name cache for card display
+    await this.buildDoctorNameCache();
+
     try {
       this.appointments = await this.appointmentService.getAppointments();
     } catch (e) {
@@ -219,6 +229,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
     // Auto-cancel appointments from past dates that are still "scheduled"
     await this.autoCancelPastAppointments();
+
+    // Auto-advance to next day if today's slots are exhausted and no scheduled appointments remain
+    this.autoAdvanceDateIfNeeded();
 
     this.scheduleAutoCancelAtCutoff();
     // Keep UI in sync when appointments are updated from other screens (e.g. adding a visit).
@@ -429,13 +442,28 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     this.isCancelling = true;
     this.cancelError = '';
     this.cdr.detectChanges();
+
+    const apptId = this.cancellingAppt.id;
+
     try {
-      await this.appointmentService.cancelAppointment(this.cancellingAppt.id, reason);
-      this.cancellingAppt.status = 'cancelled';
-      this.cancellingAppt.cancellationReason = reason;
+      // Wrap in a timeout so the UI doesn't get stuck if Firestore hangs
+      const cancelPromise = this.appointmentService.cancelAppointment(apptId, reason);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Cancel request timed out')), 10000)
+      );
+      await Promise.race([cancelPromise, timeoutPromise]);
+
+      // Success — update local state and close
+      if (this.cancellingAppt) {
+        this.cancellingAppt.status = 'cancelled';
+        this.cancellingAppt.cancellationReason = reason;
+      }
       this.closeCancelModal();
-    } catch {
-      this.cancelError = 'Failed to cancel appointment. Please try again.';
+    } catch (err: any) {
+      this.cancelError = err?.message === 'Cancel request timed out'
+        ? 'Request timed out. Please check your connection and try again.'
+        : 'Failed to cancel appointment. Please try again.';
+    } finally {
       this.isCancelling = false;
       this.cdr.detectChanges();
     }
@@ -635,7 +663,144 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   goHome(): void { this.router.navigate(['/home']); }
-  bookNew(): void { this.router.navigate(['/add-appointment']); }
+  bookNew(): void { this.router.navigate(['/add-appointment'], { queryParams: { from: 'appointments' } }); }
+
+  // ── Drag-and-Drop ──
+
+  onDragStart(event: DragEvent, appt: Appointment): void {
+    if (appt.status !== 'scheduled') {
+      event.preventDefault();
+      return;
+    }
+    this.draggingAppt = appt;
+    // Store appointment id in the transfer data
+    event.dataTransfer?.setData('text/plain', appt.id || '');
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  onDragEnd(): void {
+    this.draggingAppt = null;
+    this.dragOverColumn = null;
+    this.cdr.detectChanges();
+  }
+
+  onColumnDragOver(event: DragEvent, columnId: string): void {
+    // Only allow drop on the cancelled column
+    if (columnId !== 'cancelled' || !this.draggingAppt) return;
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+    this.dragOverColumn = columnId;
+  }
+
+  onColumnDragEnter(event: DragEvent, columnId: string): void {
+    if (columnId !== 'cancelled' || !this.draggingAppt) return;
+    event.preventDefault();
+    this.dragOverColumn = columnId;
+    this.cdr.detectChanges();
+  }
+
+  onColumnDragLeave(event: DragEvent, columnId: string): void {
+    // Only clear if we're actually leaving the column (not entering a child)
+    const relatedTarget = event.relatedTarget as HTMLElement;
+    const currentTarget = event.currentTarget as HTMLElement;
+    if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) return;
+    if (this.dragOverColumn === columnId) {
+      this.dragOverColumn = null;
+      this.cdr.detectChanges();
+    }
+  }
+
+  onColumnDrop(event: DragEvent, columnId: string): void {
+    event.preventDefault();
+    this.dragOverColumn = null;
+
+    if (columnId !== 'cancelled' || !this.draggingAppt) {
+      this.draggingAppt = null;
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const appt = this.draggingAppt;
+    this.draggingAppt = null;
+
+    // Only scheduled appointments can be cancelled
+    if (appt.status === 'scheduled') {
+      this.openCancelModal(appt);
+    }
+    this.cdr.detectChanges();
+  }
+
+  // ── Doctor name helpers ──
+
+  private async buildDoctorNameCache(): Promise<void> {
+    const email = this.authService.currentUserValue?.email;
+    if (!email) return;
+    try {
+      const clinicIds = await this.authorizationService.getUserClinicIds(email);
+      const seenEmails = new Set<string>();
+      for (const clinicId of clinicIds) {
+        const doctors = await this.authorizationService.getDoctorsForClinic(clinicId);
+        for (const doc of doctors) {
+          const normEmail = normalizeEmail(doc.email);
+          if (seenEmails.has(normEmail)) continue;
+          seenEmails.add(normEmail);
+          this.doctorNameCache.set(normEmail, doc.name);
+        }
+      }
+    } catch {
+      // Non-critical — cards will just not show a doctor name
+    }
+  }
+
+  /** Resolve doctor display name from the doctor_id (email) stored on the appointment */
+  getDoctorDisplayName(appt: Appointment): string {
+    // First try the denormalized field
+    if (appt.doctor_name) return appt.doctor_name;
+    const email = (appt.doctor_id || '').trim().toLowerCase();
+    if (!email) return '';
+    return this.doctorNameCache.get(email) || '';
+  }
+
+  /**
+   * Auto-advance to next day if:
+   * 1. Currently viewing today
+   * 2. All time slots have passed (current time > last slot)
+   * 3. No scheduled appointments remain for today
+   */
+  private autoAdvanceDateIfNeeded(): void {
+    if (!this.isSelectedToday) return;
+
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Check if all slots have passed
+    if (this.allTimeSlots.length > 0) {
+      const lastSlot = this.allTimeSlots[this.allTimeSlots.length - 1];
+      const [lh, lm] = lastSlot.split(':').map(Number);
+      const lastSlotMinutes = lh * 60 + lm;
+      if (nowMinutes <= lastSlotMinutes) return; // Still have slots remaining today
+    }
+
+    // Check if there are any scheduled appointments remaining for today
+    const todayScheduled = this.appointments.filter(a => {
+      if (a.status !== 'scheduled') return false;
+      const d = new Date(a.datetime);
+      return d.getFullYear() === now.getFullYear()
+        && d.getMonth() === now.getMonth()
+        && d.getDate() === now.getDate();
+    });
+
+    if (todayScheduled.length === 0) {
+      // All slots exhausted and no scheduled appointments — advance to tomorrow
+      const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      this.selectedDate = this.formatLocalDate(tomorrow);
+      this.cdr.detectChanges();
+    }
+  }
 
   private async loadPermissions(): Promise<void> {
     const email = this.authService.currentUserValue?.email;

@@ -207,6 +207,9 @@
           <div class="widget-banner__label">
             {{ selectedDashboardDoctor ? selectedDashboardDoctor.name + "'s" : "Today's" }} Appointments
           </div>
+          <div class="widget-banner__specialization" *ngIf="selectedDashboardDoctor?.specialty">
+            {{ selectedDashboardDoctor?.specialty }}
+          </div>
         </div>
       </div>
       <button class="widget-banner__cta" (click)="goToAppointments()">View All →</button>

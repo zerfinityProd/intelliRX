@@ -206,13 +206,21 @@ export class HomeComponent implements OnInit {
       const dbName = currentUser?.name || '';
       const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
 
+      // Fetch specialization from Firebase
+      let specialty = '';
+      if (rawEmail) {
+        try {
+          specialty = await this.authorizationService.getUserSpecialization(rawEmail);
+        } catch { /* non-critical */ }
+      }
+
       // Build doctor entry from database user info
       if (dbName && authEmail) {
         const initials = dbName.split(' ').filter(Boolean).map(w => w[0]?.toUpperCase() || '').join('').slice(0, 2);
         const doctorEntry: DashboardDoctor = {
           id: `dr_${authEmail}`,
           name: dbName,
-          specialty: '',
+          specialty,
           avatar: initials,
           email: rawEmail
         };
@@ -475,10 +483,12 @@ export class HomeComponent implements OnInit {
 
   prevMonth(): void {
     this.calendarDate = new Date(this.calendarYear, this.calendarMonth - 1, 1);
+    this.cdr.detectChanges();
   }
 
   nextMonth(): void {
     this.calendarDate = new Date(this.calendarYear, this.calendarMonth + 1, 1);
+    this.cdr.detectChanges();
   }
 
   onDayClick(date: Date): void {

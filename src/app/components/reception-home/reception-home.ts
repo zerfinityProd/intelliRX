@@ -386,8 +386,14 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         return days;
     }
 
-    prevMonth(): void { this.calendarDate = new Date(this.calYear, this.calMonth - 1, 1); }
-    nextMonth(): void { this.calendarDate = new Date(this.calYear, this.calMonth + 1, 1); }
+    prevMonth(): void {
+        this.calendarDate = new Date(this.calYear, this.calMonth - 1, 1);
+        this.cdr.detectChanges();
+    }
+    nextMonth(): void {
+        this.calendarDate = new Date(this.calYear, this.calMonth + 1, 1);
+        this.cdr.detectChanges();
+    }
 
     isToday(date: Date): boolean {
         const t = new Date();

@@ -138,7 +138,18 @@ export class PatientDetailsComponent implements OnInit {
 
     try {
       console.log('📡 Fetching visits...');
-      this.visits = await this.patientService.getPatientVisits(this.patient.id!);
+      let allVisits = await this.patientService.getPatientVisits(this.patient.id!);
+
+      // Doctor visit isolation: doctors only see their own visits
+      const currentUser = this.authService.currentUserValue;
+      if (currentUser?.role === 'doctor' && currentUser?.email) {
+        const doctorEmail = currentUser.email.trim().toLowerCase();
+        allVisits = allVisits.filter(v =>
+          !v.doctor_id || v.doctor_id.trim().toLowerCase() === doctorEmail
+        );
+      }
+
+      this.visits = allVisits;
       console.log('✅ Visits loaded:', this.visits.length);
 
       this.ngZone.run(() => {
