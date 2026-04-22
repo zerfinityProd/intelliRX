@@ -614,15 +614,15 @@
 /* Banner widget — green gradient */
 .widget--banner {
   background: linear-gradient(135deg, #1a2332 0%, #1e3a4a 50%, #148D9E 100%) !important;
-  box-shadow: 0 6px 20px rgba(20, 141, 158, 0.3) !important;
+  box-shadow: none !important;
 }
 
 [data-theme="dark"] .kanban-home {
   background: var(--dk-bg1) !important;
 }
 [data-theme="dark"] .kanban-col {
-  background: var(--dk-bg2) !important;
-  border-color: var(--dk-border) !important;
+  background: transparent !important;
+  border-color: transparent !important;
 }
 [data-theme="dark"] .kanban-col-header__title {
   color: #ffffff !important;
@@ -2170,6 +2170,7 @@ main {
   align-items: flex-end;
   gap: 14px;
   z-index: 1000;
+  pointer-events: none;
 }
 
 .fab-main-btn {
@@ -2187,6 +2188,7 @@ main {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   position: relative;
   flex-shrink: 0;
+  pointer-events: auto;
 }
 
 .fab-main-btn:hover {
