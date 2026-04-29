@@ -8,6 +8,7 @@ import { AuthenticationService } from '../../services/authenticationService';
 import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import Swal from 'sweetalert2';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 
 
 interface Examination {
@@ -381,36 +382,63 @@ export class AddVisitPageComponent implements OnInit {
             } else {
                 // ── CREATE new visit ──
 
-                // Check for a matching appointment BEFORE saving the visit
+                // ── Appointment–Visit linking logic ──
+                // Rules:
+                //   1. Explicit navigation (routeAppointmentId) → always link
+                //   2. Same-day, within time slot → auto-link silently
+                //   3. Same-day, before or after slot → popup "Link to appointment?"
+                //   4. Different day → never link (walk-in)
                 let matchedAppointment: any = null;
-                try {
-                    const allAppts = await this.appointmentService.getAppointments();
-                    const patientName = (this.patient.name || '').trim().toLowerCase();
-                    const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
-                    const now = new Date();
+                let shouldLinkAppointment = false;
 
-                    const todayStart = new Date(now);
-                    todayStart.setHours(0, 0, 0, 0);
+                if (this.routeAppointmentId) {
+                    // Explicitly navigated from an appointment card — always link
+                    shouldLinkAppointment = true;
+                } else {
+                    try {
+                        const allAppts = await this.appointmentService.getAppointments();
+                        const patientName = (this.patient.name || '').trim().toLowerCase();
+                        const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
+                        const now = new Date();
 
-                    const candidates = allAppts
-                        .filter(a => a.status === 'scheduled')
-                        .filter(a => new Date(a.datetime) >= todayStart)
-                        .filter(a => {
-                            const apptPatientId = (a.patient_id || '').trim();
-                            if (apptPatientId) return apptPatientId === patientId;
-                            const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
-                            const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
-                            return nameMatch && phoneMatch;
-                        });
+                        // Only match SAME-DAY appointments (not future dates)
+                        const candidates = allAppts
+                            .filter(a => a.status === 'scheduled')
+                            .filter(a => this.isSameLocalDay(new Date(a.datetime), now))
+                            .filter(a => {
+                                const apptPatientId = (a.patient_id || '').trim();
+                                if (apptPatientId) return apptPatientId === patientId;
+                                const nameMatch = (a.patientName || '').trim().toLowerCase() === patientName;
+                                const phoneMatch = this.normalizePhoneDigits(a.patientPhone || '') === patientPhoneDigits;
+                                return nameMatch && phoneMatch;
+                            });
 
-                    matchedAppointment = this.pickClosestAppointmentByTime(candidates, now);
-                } catch {
-                    // Silent — if appointment lookup fails, treat as walk-in
+                        matchedAppointment = this.pickClosestAppointmentByTime(candidates, now);
+
+                        if (matchedAppointment) {
+                            const timing = this.classifyAppointmentTiming(matchedAppointment, now);
+                            if (timing === 'within-slot') {
+                                // Within the appointment's time slot — auto-complete silently
+                                shouldLinkAppointment = true;
+                            } else {
+                                // Before or after the time slot — ask the user
+                                const linkResult = await this.askLinkToAppointment(matchedAppointment);
+                                if (linkResult === 'cancel') {
+                                    // User closed the popup — abort save, go back to form
+                                    this.isSubmitting = false;
+                                    return;
+                                }
+                                shouldLinkAppointment = linkResult === 'link';
+                            }
+                        }
+                    } catch {
+                        // Silent — if appointment lookup fails, treat as walk-in
+                    }
                 }
 
-                const hasAppointment = !!(this.routeAppointmentId || matchedAppointment?.id);
+                const hasAppointment = shouldLinkAppointment && !!(this.routeAppointmentId || matchedAppointment?.id);
                 const visitType = hasAppointment ? 'appointment' : 'walk-in';
-                const appointmentId = this.routeAppointmentId || matchedAppointment?.id || '';
+                const appointmentId = hasAppointment ? (this.routeAppointmentId || matchedAppointment?.id || '') : '';
 
                 visitData.visitType = visitType;
                 if (appointmentId) {
@@ -419,11 +447,10 @@ export class AddVisitPageComponent implements OnInit {
 
                 await this.patientService.addVisit(patientId, visitData);
 
-                // Auto-complete the matched appointment
-                const apptIdToComplete = this.routeAppointmentId || matchedAppointment?.id;
-                if (apptIdToComplete) {
+                // Auto-complete the linked appointment
+                if (hasAppointment && appointmentId) {
                     try {
-                        await this.appointmentService.updateAppointmentStatus(apptIdToComplete, 'completed');
+                        await this.appointmentService.updateAppointmentStatus(appointmentId, 'completed');
                     } catch {
                         // Silent — don't block visit save if appointment update fails
                     }
@@ -592,5 +619,48 @@ export class AddVisitPageComponent implements OnInit {
             }
         }
         return best;
+    }
+
+    /**
+     * Classify the timing of a visit relative to an appointment's time slot.
+     * Slot = [appointment.datetime, appointment.datetime + slotMinutes].
+     */
+    private classifyAppointmentTiming(appointment: any, now: Date): 'within-slot' | 'before-slot' | 'after-slot' {
+        const apptTime = new Date(appointment.datetime);
+        const slotDurationMs = DEFAULT_SYSTEM_SETTINGS.timeSlots.slotMinutes * 60 * 1000;
+        const slotEnd = new Date(apptTime.getTime() + slotDurationMs);
+        if (now < apptTime) return 'before-slot';
+        if (now <= slotEnd) return 'within-slot';
+        return 'after-slot';
+    }
+
+    /**
+     * Show a SweetAlert2 popup asking if the visit should be linked to an appointment.
+     * Returns 'link' if user confirms, 'walkin' if user denies, 'cancel' if dismissed.
+     */
+    private async askLinkToAppointment(appointment: any): Promise<'link' | 'walkin' | 'cancel'> {
+        const apptTime = new Date(appointment.datetime);
+        const timeStr = apptTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+        const result = await Swal.fire({
+            title: 'Link to Appointment?',
+            text: `This patient has an appointment at ${timeStr} today. Is this visit against that appointment?`,
+            icon: 'question',
+            showConfirmButton: true,
+            confirmButtonText: 'Yes, link it',
+            confirmButtonColor: '#148D9E',
+            showDenyButton: true,
+            denyButtonText: 'No, walk-in',
+            denyButtonColor: '#6b7280',
+            showCloseButton: true,
+            allowOutsideClick: false,
+            background: isDark ? '#1f1f1f' : '#ffffff',
+            color: isDark ? '#e0e0e0' : '#1e293b',
+        });
+
+        if (result.isConfirmed) return 'link';
+        if (result.isDenied) return 'walkin';
+        return 'cancel';
     }
 }

@@ -1,0 +1,239 @@
+<!-- ═══ Kanban Board (toolbar + columns) ═══ -->
+<div class="rh-board-col">
+
+  <!-- Toolbar -->
+  <div class="rh-toolbar">
+    <!-- Search -->
+    <div class="rh-search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" style="color:var(--clr-text-light);flex-shrink:0">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input type="text" [ngModel]="searchTerm" (ngModelChange)="searchTermChange.emit($event)" class="rh-search-input" placeholder="Search patient name or phone…" />
+      <button *ngIf="searchTerm" class="rh-search-clear" (click)="searchTermChange.emit('')">✕</button>
+    </div>
+
+    <!-- Date filter -->
+    <div class="rh-date-filter">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" style="color:var(--clr-text-muted);flex-shrink:0">
+        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+        <line x1="16" y1="2" x2="16" y2="6"></line>
+        <line x1="8" y1="2" x2="8" y2="6"></line>
+        <line x1="3" y1="10" x2="21" y2="10"></line>
+      </svg>
+      <input type="date" [ngModel]="selectedDate" class="rh-date-input"
+        [min]="appointmentsDateMin" [max]="appointmentsDateMax" (ngModelChange)="onDateInput($event)" />
+      <button *ngIf="!isSelectedToday" class="rh-today-chip" (click)="goTodayClicked.emit()">Today</button>
+    </div>
+
+    <!-- Clinic filter -->
+    <div *ngIf="clinicOptions.length > 0" class="rh-filter-select">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" style="color:var(--clr-text-muted);flex-shrink:0">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+      </svg>
+      <select [ngModel]="filterClinicId" (ngModelChange)="onFilterClinicChange($event)" class="rh-filter-dropdown">
+        <option value="">All Clinics</option>
+        <option *ngFor="let c of clinicOptions" [value]="c.id">{{ c.label }}</option>
+      </select>
+    </div>
+
+    <!-- Doctor filter -->
+    <div *ngIf="doctorFilterOptions.length > 0" class="rh-filter-select">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" style="color:var(--clr-text-muted);flex-shrink:0">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+        <circle cx="12" cy="7" r="4"></circle>
+      </svg>
+      <select [ngModel]="filterDoctorId" (ngModelChange)="onFilterDoctorChange($event)" class="rh-filter-dropdown">
+        <option value="">All Doctors</option>
+        <option *ngFor="let d of doctorFilterOptions" [value]="d.email">{{ d.name }}</option>
+      </select>
+    </div>
+
+    <!-- Clear filters -->
+    <button *ngIf="hasActiveFilters" class="rh-today-chip" style="background:#ef4444" (click)="clearFiltersClicked.emit()">✕ Clear Filters</button>
+
+    <!-- Book for date -->
+    <button class="rh-btn rh-btn--ghost" (click)="bookOnDateClicked.emit()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Book for This Date
+    </button>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage" class="rh-error-banner">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    {{ errorMessage }}
+    <button (click)="errorDismissed.emit()">✕</button>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="rh-loading">
+    <div class="rh-loading__spinner"></div>
+    <span>Loading appointments…</span>
+  </div>
+
+  <!-- Kanban Board -->
+  <div *ngIf="!isLoading" class="rh-kanban">
+
+    <div *ngFor="let col of columns"
+      class="rh-column"
+      [class.rh-column--dragover]="dragOverColumn === col.id"
+      (dragover)="columnDragOver.emit({ event: $event, columnId: col.id })"
+      (dragenter)="columnDragEnter.emit({ event: $event, columnId: col.id })"
+      (dragleave)="columnDragLeave.emit({ event: $event, columnId: col.id })"
+      (drop)="columnDrop.emit({ event: $event, columnId: col.id })">
+
+      <!-- Column header -->
+      <div class="rh-column__header" [style.border-top-color]="col.accent">
+        <div class="rh-column__header-left">
+          <!-- Clock -->
+          <ng-container *ngIf="col.icon === 'clock'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" [attr.stroke]="col.accent" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </ng-container>
+          <!-- Check -->
+          <ng-container *ngIf="col.icon === 'check'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" [attr.stroke]="col.accent" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </ng-container>
+          <!-- X -->
+          <ng-container *ngIf="col.icon === 'x'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" [attr.stroke]="col.accent" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </ng-container>
+          <span class="rh-column__title">{{ col.label }}</span>
+        </div>
+        <span class="rh-column__count" [style.background]="col.color" [style.color]="col.accent">
+          {{ cardsFor(col.id).length }}
+        </span>
+      </div>
+
+
+
+      <!-- Cards list -->
+      <div class="rh-cards-list">
+        <div *ngIf="cardsFor(col.id).length === 0" class="rh-col-empty">
+          <div class="rh-col-empty__dot" [style.background]="col.color"></div>
+          <span>No {{ col.label | lowercase }} appointments</span>
+        </div>
+
+        <!-- Appointment card -->
+        <div *ngFor="let appt of cardsFor(col.id)"
+          class="rh-card"
+          [class.rh-card--updating]="updatingId === appt.id"
+          [class.rh-card--today]="isToday(appt.datetime)"
+          [class.rh-card--dragging]="draggingAppt?.id === appt.id"
+          [attr.draggable]="appt.status === 'scheduled'"
+          (dragstart)="dragStarted.emit({ event: $event, appt: appt })"
+          (dragend)="dragEnded.emit()">
+
+          <!-- Updating overlay -->
+          <div *ngIf="updatingId === appt.id" class="rh-card__overlay">
+            <div class="rh-card__spinner"></div>
+          </div>
+
+          <div class="rh-card__top">
+            <div class="rh-card__date-block">
+              <span class="rh-card__day">{{ appt.datetime | date:'d' }}</span>
+              <span class="rh-card__month">{{ appt.datetime | date:'MMM' }}</span>
+            </div>
+            <div *ngIf="!isSelectedToday" class="rh-card__top-right">
+              <span *ngIf="isToday(appt.datetime)" class="rh-today-badge">Today</span>
+              <span *ngIf="appt.isNewPatient" class="rh-new-badge">New</span>
+              <span class="rh-card__time">{{ formatTime(appt.datetime) }}</span>
+            </div>
+          </div>
+
+          <div class="rh-card__name">{{ appt.patientName }}</div>
+
+          <div class="rh-card__meta" *ngIf="appt.patientPhone">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6z"></path>
+            </svg>
+            {{ appt.patientPhone }}
+          </div>
+
+          <!-- Doctor & Clinic info -->
+          <div class="rh-card__meta" *ngIf="getDoctorDisplayName(appt)">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            {{ getDoctorDisplayName(appt) }}
+          </div>
+          <div class="rh-card__meta rh-card__clinic" *ngIf="appt.clinic_id">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            Clinic {{ appt.clinic_id }}
+          </div>
+
+          <div class="rh-card__reason" *ngIf="appt.ailments">{{ appt.ailments }}</div>
+
+          <!-- Cancellation reason (shown on cancelled cards) -->
+          <div *ngIf="appt.status === 'cancelled' && appt.cancellationReason" class="rh-card__cancel-reason">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>{{ appt.cancellationReason }}</span>
+          </div>
+
+          <!-- Quick actions (scheduled only) -->
+          <div *ngIf="appt.status === 'scheduled'" class="rh-card__actions">
+            <button class="rh-card__btn rh-card__btn--reschedule"
+              (click)="openRescheduleClicked.emit(appt)"
+              [disabled]="updatingId === appt.id">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              Reschedule
+            </button>
+            <button *ngIf="permissions.canCancel" class="rh-card__btn rh-card__btn--cancel"
+              (click)="openCancelClicked.emit(appt)"
+              [disabled]="updatingId === appt.id">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Cancel
+            </button>
+          </div>
+
+        </div><!-- /rh-card -->
+      </div><!-- /rh-cards-list -->
+    </div><!-- /rh-column -->
+  </div><!-- /rh-kanban -->
+
+</div><!-- /rh-board-col -->

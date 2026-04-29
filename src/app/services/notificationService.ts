@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
+import { FirestoreApiService } from './api/firestore-api.service';
 
 /**
  * Handles browser push notification permission requests and persists
@@ -8,7 +8,7 @@ import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  private firestore = inject(Firestore);
+  private api = inject(FirestoreApiService);
 
   /**
    * Check whether the browser supports the Notification API at all.
@@ -27,11 +27,10 @@ export class NotificationService {
     if (!this.isSupported || !userId) return;
 
     // 1. Check Firestore to see if the user already answered
-    const userDocRef = doc(this.firestore, 'users', userId);
     try {
-      const snap = await getDoc(userDocRef);
-      if (snap.exists()) {
-        const data = snap.data();
+      const result = await this.api.getDocument('users', userId);
+      if (result) {
+        const data = result.data;
         // If preference is already stored, don't prompt again
         if (data['notification_permission']) {
           console.log('[Notifications] Preference already stored:', data['notification_permission']);
@@ -72,8 +71,7 @@ export class NotificationService {
    */
   private async savePreference(userId: string, preference: 'allowed' | 'not_allowed'): Promise<void> {
     try {
-      const userDocRef = doc(this.firestore, 'users', userId);
-      await updateDoc(userDocRef, { notification_permission: preference });
+      await this.api.updateDocument('users', userId, { notification_permission: preference });
       console.log('[Notifications] Saved preference for', userId, '→', preference);
     } catch (err) {
       console.error('[Notifications] Failed to save preference:', err);

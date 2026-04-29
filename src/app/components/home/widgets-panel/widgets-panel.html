@@ -1,0 +1,203 @@
+<!-- ═══════════════════════════════════════════
+     RIGHT COLUMN  —  Widgets Panel
+═══════════════════════════════════════════ -->
+<div class="kanban-col kanban-col--widgets">
+
+  <!-- ── WIDGET 1: Today's Summary Banner ── -->
+  <div class="widget widget--banner">
+    <div class="widget-banner__left">
+      <div class="widget-banner__icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </div>
+      <div>
+        <div class="widget-banner__num">
+          <span *ngIf="!isLoadingAppts">{{ todayAppointmentCount }}</span>
+          <span *ngIf="isLoadingAppts" class="spinner-border spinner-border-sm"
+            style="color:#fff;width:16px;height:16px;border-width:2px"></span>
+        </div>
+        <div class="widget-banner__label">
+          {{ selectedDashboardDoctor ? selectedDashboardDoctor.name + "'s" : "Today's" }} Appointments
+        </div>
+        <div class="widget-banner__specialization" *ngIf="selectedDashboardDoctor?.specialty">
+          {{ selectedDashboardDoctor?.specialty }}
+        </div>
+      </div>
+    </div>
+    <button class="widget-banner__cta" (click)="goToAppointmentsClicked.emit()">View All →</button>
+  </div>
+
+  <!-- ── WIDGET: Doctor Clinic Switcher (doctors with multiple clinics) ── -->
+  <div *ngIf="doctorContextReady && userRole === 'doctor' && doctorClinics.length > 1" class="widget widget--doctor-select" (click)="$event.stopPropagation()">
+    <div class="widget__header">
+      <div class="widget__header-left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+        <span>Switch Clinic</span>
+      </div>
+    </div>
+
+    <div class="doctor-select-row">
+      <div class="doctor-select-field" style="flex:1">
+        <label for="doctorClinicSwitch" class="doctor-select-label">Active Clinic</label>
+        <select id="doctorClinicSwitch" [ngModel]="selectedDoctorClinicId" class="doctor-select-input"
+          (ngModelChange)="onDoctorClinicChange($event)">
+          <option *ngFor="let c of doctorClinics" [value]="c.id">{{ c.label }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Current clinic pill -->
+    <div class="doctor-select-pill" *ngIf="selectedDoctorClinicId">
+      <div class="doctor-select-pill__avatar" style="background:linear-gradient(135deg,#148D9E,#1CB5C9)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </div>
+      <div class="doctor-select-pill__info">
+        <span class="doctor-select-pill__name">Clinic {{ selectedDoctorClinicId }}</span>
+        <span class="doctor-select-pill__spec">Currently active</span>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#148D9E" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── WIDGET 2: Doctor Selection (receptionist only) ── -->
+  <div *ngIf="doctorContextReady && userRole === 'receptionist'" class="widget widget--doctor-select" (click)="$event.stopPropagation()">
+    <div class="widget__header">
+      <div class="widget__header-left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        <span>Select Doctor</span>
+      </div>
+    </div>
+
+    <div class="doctor-select-row">
+      <!-- Clinic dropdown -->
+      <div class="doctor-select-field" *ngIf="dashboardClinics.length > 1">
+        <label for="dashClinic" class="doctor-select-label">Clinic</label>
+        <select id="dashClinic" [ngModel]="selectedDashboardClinicId" class="doctor-select-input"
+          (ngModelChange)="onDashboardClinicChange($event)">
+          <option value="">— All clinics —</option>
+          <option *ngFor="let c of dashboardClinics" [value]="c.id">{{ c.label }}</option>
+        </select>
+      </div>
+
+      <!-- Doctor dropdown -->
+      <div class="doctor-select-field">
+        <label for="dashDoctor" class="doctor-select-label">Doctor <span style="color:#ef4444">*</span></label>
+        <select id="dashDoctor" [ngModel]="selectedDashboardDoctorId" class="doctor-select-input"
+          (ngModelChange)="onDashboardDoctorChange($event)">
+          <option value="">— Choose a doctor —</option>
+          <option *ngFor="let doc of dashboardDoctors" [value]="doc.id">
+            {{ doc.name }}{{ doc.specialty ? ' · ' + doc.specialty : '' }}
+          </option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Selected doctor pill -->
+    <div *ngIf="selectedDashboardDoctor" class="doctor-select-pill">
+      <div class="doctor-select-pill__avatar">{{ selectedDashboardDoctor.avatar }}</div>
+      <div class="doctor-select-pill__info">
+        <span class="doctor-select-pill__name">{{ selectedDashboardDoctor.name }}</span>
+        <span class="doctor-select-pill__spec">{{ selectedDashboardDoctor.specialty }}</span>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#148D9E" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+
+    <!-- No doctor prompt -->
+    <div *ngIf="!selectedDashboardDoctorId" class="doctor-select-prompt">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span>Select a doctor to view their availability and book appointments</span>
+    </div>
+  </div>
+
+
+  <!-- ── WIDGET 3: Calendar ── -->
+  <div class="widget widget--calendar" (click)="$event.stopPropagation()">
+    <div class="widget__header">
+      <div class="widget__header-left">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+        <span>Calendar</span>
+      </div>
+      <div class="cal-nav-row">
+        <button class="cal-nav-btn" (click)="prevMonthClicked.emit()" aria-label="Previous month">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+        </button>
+        <span class="cal-month-label">{{ calendarMonthLabel }}</span>
+        <button class="cal-nav-btn" (click)="nextMonthClicked.emit()" aria-label="Next month">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="cal-grid mb-1">
+      <div *ngFor="let d of ['S','M','T','W','T','F','S']" class="cal-day-header">{{ d }}</div>
+    </div>
+    <div class="cal-grid">
+      <ng-container *ngFor="let day of calendarDays">
+        <div *ngIf="!day" class="cal-cell cal-cell--empty"></div>
+        <div *ngIf="day" class="cal-cell"
+          [class.cal-cell--today]="isToday(day)"
+          [class.cal-cell--selected]="isSelected(day)"
+          [class.cal-cell--has-appts]="appointmentsOnDate(day).length > 0 && !isToday(day) && !isSelected(day)"
+          (click)="dayClicked.emit(day)"
+          [title]="'Click to view — ' + appointmentsOnDate(day).length + ' appointment(s)'">
+          <span class="cal-day-num">{{ day.getDate() }}</span>
+          <span *ngIf="appointmentsOnDate(day).length > 0" class="cal-dot"
+            [style.background]="isToday(day)||isSelected(day) ? 'rgba(255,255,255,0.85)' : '#1CB5C9'"></span>
+        </div>
+      </ng-container>
+    </div>
+
+    <!-- Calendar legend -->
+    <div class="cal-legend">
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:8px;height:8px;border-radius:50%;background:#148D9E;flex-shrink:0"></div> Today
+      </div>
+      <div class="d-flex align-items-center gap-1">
+        <div style="width:8px;height:8px;border-radius:50%;background:#1CB5C9;flex-shrink:0"></div> Appointments
+      </div>
+    </div>
+  </div>
+
+
+
+
+
+</div><!-- /kanban-col--widgets -->

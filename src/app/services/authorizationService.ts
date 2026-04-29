@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { Firestore, collection, query, where, getDocs, doc, getDoc, updateDoc, deleteField } from '@angular/fire/firestore';
+import { FirestoreApiService, DELETE_FIELD } from './api/firestore-api.service';
 import { normalizeEmail } from '../utilities/normalize-email';
 import { ClinicUserAvailability } from '../models/clinic-user.model';
 import { ClinicContextService } from './clinicContextService';
@@ -55,7 +55,7 @@ interface UserLookupResult {
     providedIn: 'root'
 })
 export class AuthorizationService {
-    private firestore = inject(Firestore);
+    private api = inject(FirestoreApiService);
     private clinicContext = inject(ClinicContextService);
 
     /** Per-email lookup cache */
@@ -88,21 +88,24 @@ export class AuthorizationService {
 
         try {
             // Step 1: Find user in top-level users collection by email
-            const usersCol = collection(this.firestore, 'users');
-            const userQuery = query(usersCol, where('email', '==', normalized));
-            let userSnapshot = await getDocs(userQuery);
+            let userDocs = await this.api.runQuery('', {
+                collectionId: 'users',
+                filters: [
+                    { field: 'email', op: '==', value: normalized }
+                ],
+            });
 
             // Fallback: if where-query returned 0 docs, fetch all and match client-side.
             // This handles cases where Firestore field keys have invisible characters,
             // security rules silently block the query, or field name casing differs.
-            if (userSnapshot.empty) {
+            let corruptedKey: string | null = null;
+            if (userDocs.length === 0) {
                 console.warn('[AuthZ] where-query returned 0 docs for', normalized, '— trying client-side fallback');
-                const allUsersSnap = await getDocs(usersCol);
-                console.log('[AuthZ] Fetched', allUsersSnap.size, 'docs from users collection for fallback');
+                const allUsers = await this.api.listDocuments('users', 300);
+                console.log('[AuthZ] Fetched', allUsers.length, 'docs from users collection for fallback');
 
-                let corruptedKey: string | null = null;
-                const matchedDoc = allUsersSnap.docs.find(d => {
-                    const data = d.data();
+                const matchedDoc = allUsers.find(d => {
+                    const data = d.data;
                     for (const key of Object.keys(data)) {
                         if (typeof data[key] !== 'string') continue;
                         // Compare after stripping invisible chars from BOTH the stored value and the search email
@@ -123,8 +126,8 @@ export class AuthorizationService {
                 if (!matchedDoc) {
                     // Log detailed diagnostics for debugging
                     console.warn('[AuthZ] User not found in users collection (even with fallback):', normalized);
-                    allUsersSnap.docs.forEach(d => {
-                        const data = d.data();
+                    allUsers.forEach(d => {
+                        const data = d.data;
                         const keys = Object.keys(data);
                         const emailLikeValues = keys
                             .filter(k => typeof data[k] === 'string' && data[k].includes('@'))
@@ -137,10 +140,9 @@ export class AuthorizationService {
                 // Auto-fix corrupted field key (e.g. "email\t" → "email")
                 if (corruptedKey) {
                     try {
-                        const docRef = doc(this.firestore, 'users', matchedDoc.id);
-                        await updateDoc(docRef, {
-                            'email': matchedDoc.data()[corruptedKey],
-                            [corruptedKey]: deleteField()
+                        await this.api.updateDocument('users', matchedDoc.id, {
+                            'email': matchedDoc.data[corruptedKey],
+                            [corruptedKey]: DELETE_FIELD
                         });
                         console.log('[AuthZ] Auto-fixed corrupted field', JSON.stringify(corruptedKey),
                             '→ "email" on doc', matchedDoc.id);
@@ -150,28 +152,31 @@ export class AuthorizationService {
                 }
 
                 console.log('[AuthZ] Found user via client-side fallback:', matchedDoc.id);
-                userSnapshot = { empty: false, size: 1, docs: [matchedDoc] } as any;
+                userDocs = [matchedDoc];
             }
 
             // Handle duplicate user documents: prefer the one with clinic_users entries
-            let userDoc = userSnapshot.docs[0];
-            if (userSnapshot.size > 1) {
-                console.warn('[AuthZ] Found', userSnapshot.size, 'user docs for email:', normalized,
-                    '— IDs:', userSnapshot.docs.map((d: any) => d.id).join(', '));
+            let userDoc = userDocs[0];
+            if (userDocs.length > 1) {
+                console.warn('[AuthZ] Found', userDocs.length, 'user docs for email:', normalized,
+                    '— IDs:', userDocs.map(d => d.id).join(', '));
 
                 // Check which user doc has associated clinic_users entries
-                const clinicUsersCol2 = collection(this.firestore, 'clinic_users');
-                for (const candidateDoc of userSnapshot.docs) {
-                    const candidateQuery = query(clinicUsersCol2, where('user_id', '==', candidateDoc.id));
-                    const candidateSnap = await getDocs(candidateQuery);
-                    if (!candidateSnap.empty) {
-                        console.log('[AuthZ] Preferring user doc', candidateDoc.id, 'which has', candidateSnap.size, 'clinic_users entries');
+                for (const candidateDoc of userDocs) {
+                    const candidateResults = await this.api.runQuery('', {
+                        collectionId: 'clinic_users',
+                        filters: [
+                            { field: 'user_id', op: '==', value: candidateDoc.id }
+                        ],
+                    });
+                    if (candidateResults.length > 0) {
+                        console.log('[AuthZ] Preferring user doc', candidateDoc.id, 'which has', candidateResults.length, 'clinic_users entries');
                         userDoc = candidateDoc;
                         break;
                     }
                 }
             }
-            const userData = userDoc.data();
+            const userData = userDoc.data;
             const userId = userDoc.id;
 
             // Helper: get a field value by name, tolerating invisible chars in keys
@@ -219,11 +224,14 @@ export class AuthorizationService {
             // Step 2: Find clinic_users entries for this user.
             // Query by user_id only; filter status client-side because documents
             // may lack the 'status' field entirely (treat missing → active).
-            const clinicUsersCol = collection(this.firestore, 'clinic_users');
-            const cuQuery = query(clinicUsersCol, where('user_id', '==', userId));
-            const cuSnapshot = await getDocs(cuQuery);
+            const cuDocs = await this.api.runQuery('', {
+                collectionId: 'clinic_users',
+                filters: [
+                    { field: 'user_id', op: '==', value: userId }
+                ],
+            });
 
-            if (cuSnapshot.empty) {
+            if (cuDocs.length === 0) {
                 console.warn('[AuthZ] No clinic_users entries found for user_id:', userId,
                     '(email:', normalized, '). The user needs a clinic_users record.');
             }
@@ -232,8 +240,8 @@ export class AuthorizationService {
             const clinicIds: string[] = [];
             const clinicUserPermissions = new Map<string, string[] | null>();
 
-            for (const cuDoc of cuSnapshot.docs) {
-                const cuData = cuDoc.data();
+            for (const cuDoc of cuDocs) {
+                const cuData = cuDoc.data;
                 // Treat missing status as active; skip only explicitly inactive/disabled
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') continue;
@@ -270,8 +278,8 @@ export class AuthorizationService {
 
             // If specialization not found on user doc, check clinic_users docs
             if (!specialization) {
-                for (const cuDoc of cuSnapshot.docs) {
-                    const cuData = cuDoc.data();
+                for (const cuDoc of cuDocs) {
+                    const cuData = cuDoc.data;
                     const cuSpec = cuData['specialization'] || cuData['specialty'] || '';
                     if (cuSpec) { specialization = cuSpec; break; }
                 }
@@ -313,12 +321,11 @@ export class AuthorizationService {
         }
 
         try {
-            const roleDocRef = doc(this.firestore, 'roles', roleName);
-            const roleDoc = await getDoc(roleDocRef);
+            const result = await this.api.getDocument('roles', roleName);
 
             let permissions: string[] = [];
-            if (roleDoc.exists()) {
-                const data = roleDoc.data();
+            if (result) {
+                const data = result.data;
                 // The roles collection stores permissions as an array value
                 // e.g. roles/doctor: ["VIEW_APPOINTMENT", "WRITE_PRESCRIPTION"]
                 // or as a permissions field
@@ -368,10 +375,9 @@ export class AuthorizationService {
     private async loadSubscriptionPermissions(subscriptionId: string, roleName: string): Promise<string[] | null> {
         if (!subscriptionId) return null;
         try {
-            const subDocRef = doc(this.firestore, 'subscriptions', subscriptionId);
-            const subDoc = await getDoc(subDocRef);
-            if (subDoc.exists()) {
-                const data = subDoc.data();
+            const result = await this.api.getDocument('subscriptions', subscriptionId);
+            if (result) {
+                const data = result.data;
                 const perms = data['permissions'];
                 if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
                     const rolePerms = perms[roleName];
@@ -394,10 +400,9 @@ export class AuthorizationService {
     private async loadClinicPermissions(clinicId: string, roleName: string): Promise<string[] | null> {
         if (!clinicId) return null;
         try {
-            const clinicDocRef = doc(this.firestore, 'clinics', clinicId);
-            const clinicDoc = await getDoc(clinicDocRef);
-            if (clinicDoc.exists()) {
-                const data = clinicDoc.data();
+            const result = await this.api.getDocument('clinics', clinicId);
+            if (result) {
+                const data = result.data;
                 const perms = data['permissions'];
                 if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
                     const rolePerms = perms[roleName];
@@ -606,22 +611,22 @@ export class AuthorizationService {
             const result = await this.lookupUser(email);
             if (!result) return null;
 
-            const clinicUsersCol = collection(this.firestore, 'clinic_users');
-            const q = query(
-                clinicUsersCol,
-                where('user_id', '==', result.userId),
-                where('clinic_id', '==', clinicId)
-            );
-            const snapshot = await getDocs(q);
+            const cuDocs = await this.api.runQuery('', {
+                collectionId: 'clinic_users',
+                filters: [
+                    { field: 'user_id', op: '==', value: result.userId },
+                    { field: 'clinic_id', op: '==', value: clinicId }
+                ],
+            });
 
             // Filter client-side: treat missing status as active
-            const activeDocs = snapshot.docs.filter(d => {
-                const s = d.data()['status'] || 'active';
+            const activeDocs = cuDocs.filter(d => {
+                const s = d.data['status'] || 'active';
                 return s === 'active';
             });
             if (activeDocs.length === 0) return null;
 
-            const cuData = activeDocs[0].data();
+            const cuData = activeDocs[0].data;
             const availability = cuData['availability'];
             if (!availability || typeof availability !== 'object') return null;
 
@@ -640,15 +645,18 @@ export class AuthorizationService {
     async getDoctorsForClinic(clinicId: string): Promise<Array<{ id: string; name: string; specialty: string; avatar: string; email: string }>> {
         if (!clinicId) return [];
         try {
-            const clinicUsersCol = collection(this.firestore, 'clinic_users');
-            const q = query(clinicUsersCol, where('clinic_id', '==', clinicId));
-            const snapshot = await getDocs(q);
+            const cuDocs = await this.api.runQuery('', {
+                collectionId: 'clinic_users',
+                filters: [
+                    { field: 'clinic_id', op: '==', value: clinicId }
+                ],
+            });
 
             const doctors: Array<{ id: string; name: string; specialty: string; avatar: string; email: string }> = [];
             const seenUserIds = new Set<string>();
 
-            for (const cuDoc of snapshot.docs) {
-                const cuData = cuDoc.data();
+            for (const cuDoc of cuDocs) {
+                const cuData = cuDoc.data;
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') continue;
 
@@ -663,14 +671,13 @@ export class AuthorizationService {
 
                 // Fetch user document for name/email
                 try {
-                    const userDocRef = doc(this.firestore, 'users', userId);
-                    const userDoc = await getDoc(userDocRef);
-                    if (!userDoc.exists()) continue;
+                    const userResult = await this.api.getDocument('users', userId);
+                    if (!userResult) continue;
 
-                    const userData = userDoc.data();
+                    const userData = userResult.data;
                     const email = (userData['email'] || '').trim().toLowerCase();
                     const name = userData['name'] || email.split('@')[0] || 'Doctor';
-                    const specialty = cuData['specialty'] || userData['specialty'] || '';
+                    const specialty = cuData['specialization'] || cuData['specialty'] || userData['specialization'] || userData['specialty'] || '';
                     const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
 
                     doctors.push({
@@ -699,15 +706,18 @@ export class AuthorizationService {
     async getDoctorsForSubscription(subscriptionId: string): Promise<Array<{ id: string; name: string; specialty: string; avatar: string; email: string }>> {
         if (!subscriptionId) return [];
         try {
-            const clinicUsersCol = collection(this.firestore, 'clinic_users');
-            const q = query(clinicUsersCol, where('subscription_id', '==', subscriptionId));
-            const snapshot = await getDocs(q);
+            const cuDocs = await this.api.runQuery('', {
+                collectionId: 'clinic_users',
+                filters: [
+                    { field: 'subscription_id', op: '==', value: subscriptionId }
+                ],
+            });
 
             const doctors: Array<{ id: string; name: string; specialty: string; avatar: string; email: string }> = [];
             const seenUserIds = new Set<string>();
 
-            for (const cuDoc of snapshot.docs) {
-                const cuData = cuDoc.data();
+            for (const cuDoc of cuDocs) {
+                const cuData = cuDoc.data;
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') continue;
 
@@ -720,14 +730,13 @@ export class AuthorizationService {
                 seenUserIds.add(userId);
 
                 try {
-                    const userDocRef = doc(this.firestore, 'users', userId);
-                    const userDoc = await getDoc(userDocRef);
-                    if (!userDoc.exists()) continue;
+                    const userResult = await this.api.getDocument('users', userId);
+                    if (!userResult) continue;
 
-                    const userData = userDoc.data();
+                    const userData = userResult.data;
                     const email = (userData['email'] || '').trim().toLowerCase();
                     const name = userData['name'] || email.split('@')[0] || 'Doctor';
-                    const specialty = cuData['specialty'] || userData['specialty'] || '';
+                    const specialty = cuData['specialization'] || cuData['specialty'] || userData['specialization'] || userData['specialty'] || '';
                     const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
 
                     doctors.push({

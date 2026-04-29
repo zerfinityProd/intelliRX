@@ -267,6 +267,42 @@ export class PatientService {
     return validatePatientData(data);
   }
 
+  // ──── PHONE SEARCH (parallel prefix + contains) ────
+
+  /**
+   * Search for patients by phone number (prefix + contains, deduplicated).
+   * Combines results from `searchPatientByPhone()` and `searchPatientsContaining()`
+   * in a single reusable call. Used by components that need to find patients by phone.
+   *
+   * @param digits  The phone digits to search for (partial or full)
+   * @param clinicId  Optional clinic scoping
+   * @returns Merged, deduplicated array of matching patients
+   */
+  async searchPatientsByPhoneNumber(
+    digits: string,
+    clinicId?: string
+  ): Promise<Patient[]> {
+    const [prefixSettled, containsSettled] = await Promise.allSettled([
+      this.firebaseService.searchPatientByPhone(digits, null, clinicId),
+      this.firebaseService.searchPatientsContaining(digits, clinicId)
+    ]);
+
+    const prefixResults = prefixSettled.status === 'fulfilled' ? prefixSettled.value.results : [];
+    const containsResults = containsSettled.status === 'fulfilled' ? containsSettled.value.results : [];
+
+    // Merge and deduplicate by patient id
+    const seen = new Set<string>();
+    const merged: Patient[] = [];
+    for (const p of [...prefixResults, ...containsResults]) {
+      const key = p.id || p.phone;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(p);
+      }
+    }
+    return merged;
+  }
+
   // ──── EXISTENCE CHECKS ────
 
   /**

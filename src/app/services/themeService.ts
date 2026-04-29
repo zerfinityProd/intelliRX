@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { Firestore, doc, getDoc, setDoc } from '@angular/fire/firestore';
+import { FirestoreApiService } from './api/firestore-api.service';
 import { AuthenticationService } from './authenticationService';
 import { ClinicContextService } from './clinicContextService';
 import { normalizeEmail } from '../utilities/normalize-email';
@@ -17,7 +17,7 @@ import { normalizeEmail } from '../utilities/normalize-email';
 export class ThemeService {
     private readonly isDarkTheme$ = new BehaviorSubject<boolean>(this.loadThemeFromLocal());
 
-    private firestore = inject(Firestore);
+    private api = inject(FirestoreApiService);
     private authService = inject(AuthenticationService);
     private clinicContext = inject(ClinicContextService);
 
@@ -36,16 +36,19 @@ export class ThemeService {
     }
 
     /**
-     * Build the Firestore path to the current user's clinic user doc.
+     * Build the Firestore collection path and doc ID for the current user's clinic user doc.
      * Returns null if context is not ready.
      */
-    private getUserDocPath(): string | null {
+    private getUserDocInfo(): { collectionPath: string; docId: string } | null {
         const subId = this.clinicContext.getSubscriptionId();
         const clinicId = this.clinicContext.getSelectedClinicId();
         const email = this.authService.currentUserValue?.email;
         if (!subId || !clinicId || !email) return null;
         const normalized = normalizeEmail(email);
-        return `subscriptions/${subId}/clinics/${clinicId}/users/${normalized}`;
+        return {
+            collectionPath: `subscriptions/${subId}/clinics/${clinicId}/users`,
+            docId: normalized
+        };
     }
 
     /**
@@ -54,16 +57,15 @@ export class ThemeService {
      * Call this once after login.
      */
     async loadThemeFromFirebase(): Promise<void> {
-        const path = this.getUserDocPath();
-        if (!path) return;
+        const info = this.getUserDocInfo();
+        if (!info) return;
 
         try {
-            const userDocRef = doc(this.firestore, path);
-            const userDoc = await getDoc(userDocRef);
+            const result = await this.api.getDocument(info.collectionPath, info.docId);
 
-            if (userDoc.exists()) {
-                const data = userDoc.data();
-                const theme = data?.['preferences']?.['theme'];
+            if (result) {
+                const data = result.data;
+                const theme = data?.preferences?.theme;
                 if (theme) {
                     const isDark = theme === 'dark';
                     this.isDarkTheme$.next(isDark);
@@ -132,12 +134,11 @@ export class ThemeService {
      * Write theme to: subscriptions/{subId}/clinics/{clinicId}/users/{email}.preferences.theme
      */
     private async saveThemeToFirestore(theme: string): Promise<void> {
-        const path = this.getUserDocPath();
-        if (!path) return;
+        const info = this.getUserDocInfo();
+        if (!info) return;
 
-        const userDocRef = doc(this.firestore, path);
-        await setDoc(userDocRef, {
+        await this.api.setDocument(info.collectionPath, info.docId, {
             preferences: { theme }
-        }, { merge: true });
+        }, true); // merge = true
     }
 }

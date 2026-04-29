@@ -4,7 +4,6 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AppointmentService } from '../../services/appointmentService';
-import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { PatientService } from '../../services/patient';
@@ -103,7 +102,6 @@ export class AddAppointmentComponent implements OnInit {
   isCheckingPhone: boolean = false;
 
   private appointmentService = inject(AppointmentService);
-  private firebaseService = inject(FirebaseService);
   private authService = inject(AuthenticationService);
   private authorizationService = inject(AuthorizationService);
   private patientService = inject(PatientService);
@@ -167,10 +165,15 @@ export class AddAppointmentComponent implements OnInit {
         const currentUser = this.authService.currentUserValue;
         const dbName = currentUser?.name || authEmail.split('@')[0];
         const initials = dbName.split(' ').filter(Boolean).map(w => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+        // Fetch specialization from DB (users / clinic_users collection)
+        let dbSpecialty = '';
+        try {
+          dbSpecialty = await this.authorizationService.getUserSpecialization(rawEmail);
+        } catch { /* keep empty */ }
         const doctorEntry: Doctor = {
           id: `dr_${authEmail}`,
           name: dbName,
-          specialty: '',
+          specialty: dbSpecialty,
           avatar: initials,
           email: rawEmail
         };
@@ -731,26 +734,9 @@ export class AddAppointmentComponent implements OnInit {
     const clinicId = this.selectedClinicId || undefined;
     let allResults: import('../../models/patient.model').Patient[] = [];
 
-    // Run prefix search AND contains search in parallel (like home page)
+    // Run parallel search via PatientService
     try {
-      const [prefixSettled, containsSettled] = await Promise.allSettled([
-        this.firebaseService.searchPatientByPhone(digits, null, clinicId),
-        this.firebaseService.searchPatientsContaining(digits, clinicId)
-      ]);
-
-      const prefixResults = prefixSettled.status === 'fulfilled' ? prefixSettled.value.results : [];
-      const containsResults = containsSettled.status === 'fulfilled' ? containsSettled.value.results : [];
-
-      // Merge and deduplicate by patient id
-      const seen = new Set<string>();
-      const merged: import('../../models/patient.model').Patient[] = [];
-      for (const p of [...prefixResults, ...containsResults]) {
-        const key = p.id || p.phone;
-        if (!seen.has(key)) {
-          seen.add(key);
-          merged.push(p);
-        }
-      }
+      const merged = await this.patientService.searchPatientsByPhoneNumber(digits, clinicId);
 
       // Filter: for full phone require exact match, for partial require startsWith or contains
       if (isFullPhone) {
@@ -771,21 +757,7 @@ export class AddAppointmentComponent implements OnInit {
       // Attempt: retry WITHOUT clinicId to find patients not in any clinic
       if (clinicId) {
         try {
-          const [prefixSettled, containsSettled] = await Promise.allSettled([
-            this.firebaseService.searchPatientByPhone(digits, null, undefined),
-            this.firebaseService.searchPatientsContaining(digits, undefined)
-          ]);
-          const prefixResults = prefixSettled.status === 'fulfilled' ? prefixSettled.value.results : [];
-          const containsResults = containsSettled.status === 'fulfilled' ? containsSettled.value.results : [];
-          const seen = new Set<string>();
-          const merged: import('../../models/patient.model').Patient[] = [];
-          for (const p of [...prefixResults, ...containsResults]) {
-            const key = p.id || p.phone;
-            if (!seen.has(key)) {
-              seen.add(key);
-              merged.push(p);
-            }
-          }
+          const merged = await this.patientService.searchPatientsByPhoneNumber(digits, undefined);
           allResults = merged.filter(p =>
             this.normalizePhoneDigits(p.phone) === digits && (!p.clinic_ids || p.clinic_ids.length === 0)
           );

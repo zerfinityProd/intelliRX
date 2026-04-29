@@ -1,12 +1,10 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Observable, firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import {
-  Firestore, collection, query, where, getCountFromServer
-} from '@angular/fire/firestore';
+import { FirebaseService } from '../../services/firebase';
 import { PatientService } from '../../services/patient';
 import { UIStateService } from '../../services/uiStateService';
 import { AppointmentService } from '../../services/appointmentService';
@@ -20,6 +18,9 @@ import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
 import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
 import { NavbarComponent } from '../navbar/navbar';
+import { SearchPanelComponent } from './search-panel/search-panel';
+import { WidgetsPanelComponent } from './widgets-panel/widgets-panel';
+import { FabMenuComponent } from './fab-menu/fab-menu';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
@@ -37,9 +38,10 @@ export interface DashboardDoctor {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, FormsModule, AddPatientComponent, NavbarComponent, MomentDatePipe, DayViewModalComponent],
+  imports: [CommonModule, FormsModule, AddPatientComponent, NavbarComponent, DayViewModalComponent, SearchPanelComponent, WidgetsPanelComponent, FabMenuComponent],
   templateUrl: './home.html',
-  styleUrl: './home.css'
+  styleUrl: './home.css',
+  encapsulation: ViewEncapsulation.None
 })
 export class HomeComponent implements OnInit {
   searchTerm: string = '';
@@ -107,7 +109,7 @@ export class HomeComponent implements OnInit {
     private authorizationService: AuthorizationService,
     private clinicContextService: ClinicContextService,
     private clinicService: ClinicService,
-    private db: Firestore,
+    private firebaseService: FirebaseService,
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
@@ -383,13 +385,8 @@ export class HomeComponent implements OnInit {
       if (!userId) return;
       const subId = this.clinicContextService.getSubscriptionId();
       if (!subId) return;
-      const col = collection(this.db, 'patients');
       const clinicId = this.clinicContextService.getSelectedClinicId();
-      const q = clinicId
-        ? query(col, where('subscription_id', '==', subId), where('clinic_ids', 'array-contains', clinicId))
-        : query(col, where('subscription_id', '==', subId));
-      const snap = await getCountFromServer(q);
-      this.totalPatients = snap.data().count;
+      this.totalPatients = await this.firebaseService.getPatientCount(subId, clinicId);
       this.cdr.detectChanges();
     } catch (e) {
       this.totalPatients = 0;

@@ -1,295 +1,40 @@
 <!-- src/app/components/appointments-list/appointments-list.html -->
 <app-navbar [showBack]="true"></app-navbar>
 
-<div class="kb-page">
-
-  <!-- ── Page Header ── -->
-  <div class="kb-page-header">
-    <div class="kb-page-header__left">
-      <div class="kb-page-header__icon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"
-          stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-          <line x1="16" y1="2" x2="16" y2="6"></line>
-          <line x1="8" y1="2" x2="8" y2="6"></line>
-          <line x1="3" y1="10" x2="21" y2="10"></line>
-        </svg>
-      </div>
-      <div>
-        <h1 class="kb-page-header__title">Appointments Board</h1>
-        <p class="kb-page-header__sub">Manage your appointment schedule</p>
-      </div>
-    </div>
-    <div class="kb-page-header__actions">
-      <!-- Search -->
-      <div class="kb-search-wrap">
-        <svg class="kb-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="m21 21-4.35-4.35"></path>
-        </svg>
-        <input type="text" [(ngModel)]="searchTerm" class="kb-search-input"
-          placeholder="Search name or phone…" />
-        <button *ngIf="searchTerm" class="kb-search-clear" (click)="searchTerm = ''" aria-label="Clear search">✕</button>
-      </div>
-      <!-- Date navigation -->
-      <div class="kb-date-nav">
-        <button class="kb-date-nav__btn" (click)="goToPrevDate()" aria-label="Previous day" title="Previous day">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-        </button>
-
-        <div class="kb-date-nav__center" (click)="dateInputEl.showPicker()" title="Click to pick a date">
-          <svg class="kb-date-nav__cal-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
-          <span class="kb-date-nav__label">{{ selectedDateLabel }}</span>
-          <input #dateInputEl type="date" [(ngModel)]="selectedDate" class="kb-date-input--hidden"
-            [min]="appointmentsDateMin" [max]="appointmentsDateMax"
-            (ngModelChange)="onDateInput($event)" />
-        </div>
-
-        <button class="kb-date-nav__btn" (click)="goToNextDate()" aria-label="Next day" title="Next day">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </button>
-
-      </div>
-      <button *ngIf="canAppointment" class="kb-btn kb-btn--primary" (click)="bookNew()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-          stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        Book Appointment
-      </button>
-
-    </div>
-  </div>
-
-  <!-- Error -->
-  <div *ngIf="errorMessage" class="kb-error-banner">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-      stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="10"></circle>
-      <line x1="12" y1="8" x2="12" y2="12"></line>
-      <line x1="12" y1="16" x2="12.01" y2="16"></line>
-    </svg>
-    {{ errorMessage }}
-    <button (click)="errorMessage = ''">✕</button>
-  </div>
-
-  <!-- Loading -->
-  <div *ngIf="isLoading" class="kb-loading">
-    <div class="kb-loading__spinner"></div>
-    <span>Loading appointments…</span>
-  </div>
-
-  <!-- ── Kanban Board ── -->
-  <div *ngIf="!isLoading" class="kb-board">
-
-    <div *ngFor="let col of columns"
-      class="kb-column"
-      [class.kb-column--drag-over]="dragOverColumn === col.id"
-      (dragover)="onColumnDragOver($event, col.id)"
-      (dragenter)="onColumnDragEnter($event, col.id)"
-      (dragleave)="onColumnDragLeave($event, col.id)"
-      (drop)="onColumnDrop($event, col.id)">
-
-      <!-- Column Header -->
-      <div class="kb-column__header" [style.border-top-color]="col.accent">
-        <div class="kb-column__header-left">
-          <!-- Clock icon for scheduled -->
-          <ng-container *ngIf="col.icon === 'clock'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" [attr.stroke]="col.accent" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-          </ng-container>
-          <!-- Check icon for completed -->
-          <ng-container *ngIf="col.icon === 'check'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" [attr.stroke]="col.accent" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </ng-container>
-          <!-- X icon for cancelled -->
-          <ng-container *ngIf="col.icon === 'x'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" [attr.stroke]="col.accent" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </ng-container>
-          <!-- Alert icon for no-show -->
-          <ng-container *ngIf="col.icon === 'alert'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" [attr.stroke]="col.accent" stroke-width="2.2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </ng-container>
-
-          <span class="kb-column__title">{{ col.label }}</span>
-        </div>
-        <span class="kb-column__count"
-          [style.background]="col.color"
-          [style.color]="col.accent">
-          {{ cardsFor(col.id).length }}
-        </span>
-      </div>
-
-
-
-      <!-- Cards -->
-      <div class="kb-cards-list">
-
-        <!-- Empty column state -->
-        <div *ngIf="cardsFor(col.id).length === 0"
-          class="kb-empty-col">
-          <div class="kb-empty-col__dot" [style.background]="col.color"></div>
-          <span>No {{ col.label | lowercase }} appointments</span>
-        </div>
-
-        <!-- Appointment Card -->
-        <div *ngFor="let appt of cardsFor(col.id)"
-          class="kb-card"
-          [class.kb-card--updating]="updatingId === appt.id"
-          [class.kb-card--today]="isToday(appt.datetime)"
-          [class.kb-card--dragging]="draggingAppt?.id === appt.id"
-          [attr.draggable]="appt.status === 'scheduled'"
-          (dragstart)="onDragStart($event, appt)"
-          (dragend)="onDragEnd()">
-
-          <!-- Spinner overlay when updating -->
-          <div *ngIf="updatingId === appt.id" class="kb-card__overlay">
-            <div class="kb-card__spinner"></div>
-          </div>
-
-          <!-- Card top: date + today badge -->
-          <div class="kb-card__top">
-            <div class="kb-card__date-block">
-              <span class="kb-card__day">{{ appt.datetime | date:'d' }}</span>
-              <span class="kb-card__month">{{ appt.datetime | date:'MMM' }}</span>
-            </div>
-            <div class="kb-card__top-right">
-              <span *ngIf="isToday(appt.datetime)" class="kb-today-badge">Today</span>
-              <span *ngIf="appt.isNewPatient" class="kb-new-badge">New</span>
-              <span class="kb-card__time">{{ formatTime(appt.datetime) }}</span>
-            </div>
-
-          </div>
-
-          <!-- Patient name -->
-          <div class="kb-card__name">{{ appt.patientName }}</div>
-
-          <!-- Phone & Doctor -->
-          <div class="kb-card__meta-row" *ngIf="appt.patientPhone || getDoctorDisplayName(appt)">
-            <span class="kb-card__meta" *ngIf="appt.patientPhone">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12 19.79 19.79 0 0 1 1.85 3.5 2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"></path>
-              </svg>
-              {{ appt.patientPhone }}
-            </span>
-            <span class="kb-card__meta" *ngIf="getDoctorDisplayName(appt)">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                <circle cx="12" cy="7" r="4"></circle>
-              </svg>
-              Dr. {{ getDoctorDisplayName(appt) }}
-            </span>
-          </div>
-
-          <!-- Ailments -->
-          <div *ngIf="appt.ailments" class="kb-card__reason">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-            </svg>
-            {{ appt.ailments }}
-          </div>
-
-          <!-- Cancellation reason (shown on cancelled cards) -->
-          <div *ngIf="appt.status === 'cancelled' && appt.cancellationReason" class="kb-card__cancel-reason">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="12"></line>
-              <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-            <span>{{ appt.cancellationReason }}</span>
-          </div>
-
-          <!-- Quick action buttons (only on scheduled cards) -->
-          <div *ngIf="appt.status === 'scheduled'" class="kb-card__actions">
-            <button class="kb-card__action-btn kb-card__action-btn--visit"
-              (click)="openVisitFromAppointment(appt)"
-              [disabled]="updatingId === appt.id">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="12" y1="11" x2="12" y2="17"></line>
-                <line x1="9" y1="14" x2="15" y2="14"></line>
-              </svg>
-              Add Visit
-            </button>
-            <button class="kb-card__action-btn kb-card__action-btn--postpone"
-              (click)="openPostponeModal(appt)"
-              [disabled]="updatingId === appt.id">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <polyline points="12 6 12 12 16 14"></polyline>
-              </svg>
-              Reschedule
-            </button>
-            <button *ngIf="canCancel" class="kb-card__action-btn kb-card__action-btn--cancel"
-              (click)="openCancelModal(appt)"
-              [disabled]="updatingId === appt.id">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-              Cancel
-            </button>
-          </div>
-
-          <!-- Add Visit button on completed cards (doctor only) -->
-          <div *ngIf="appt.status === 'completed' && userRole === 'doctor'" class="kb-card__actions">
-            <button class="kb-card__action-btn kb-card__action-btn--visit"
-              (click)="openVisitFromAppointment(appt)"
-              [disabled]="updatingId === appt.id">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="12" y1="11" x2="12" y2="17"></line>
-                <line x1="9" y1="14" x2="15" y2="14"></line>
-              </svg>
-              Add Visit
-            </button>
-          </div>
-
-        </div><!-- /kb-card -->
-
-      </div><!-- /kb-cards-list -->
-
-    </div><!-- /kb-column -->
-
-  </div><!-- /kb-board -->
-
-</div><!-- /kb-page -->
+<!-- ═══ Kanban Board (child component) ═══ -->
+<app-al-kanban-board
+  [searchTerm]="searchTerm"
+  [selectedDate]="selectedDate"
+  [selectedDateLabel]="selectedDateLabel"
+  [appointmentsDateMin]="appointmentsDateMin"
+  [appointmentsDateMax]="appointmentsDateMax"
+  [canAppointment]="canAppointment"
+  [columns]="columns"
+  [filteredAppointments]="filteredAppointments"
+  [isLoading]="isLoading"
+  [errorMessage]="errorMessage"
+  [updatingId]="updatingId"
+  [userRole]="userRole"
+  [canCancel]="canCancel"
+  [draggingAppt]="draggingAppt"
+  [dragOverColumn]="dragOverColumn"
+  [doctorNameResolver]="getDoctorDisplayNameFn"
+  (searchTermChange)="searchTerm = $event"
+  (dateInputChanged)="onDateInput($event)"
+  (goToPrevDateClicked)="goToPrevDate()"
+  (goToNextDateClicked)="goToNextDate()"
+  (bookNewClicked)="bookNew()"
+  (errorDismissed)="errorMessage = ''"
+  (openVisitClicked)="openVisitFromAppointment($event)"
+  (openPostponeClicked)="openPostponeModal($event)"
+  (openCancelClicked)="openCancelModal($event)"
+  (dragStarted)="onDragStart($event.event, $event.appt)"
+  (dragEnded)="onDragEnd()"
+  (columnDragOver)="onColumnDragOver($event.event, $event.columnId)"
+  (columnDragEnter)="onColumnDragEnter($event.event, $event.columnId)"
+  (columnDragLeave)="onColumnDragLeave($event.event, $event.columnId)"
+  (columnDrop)="onColumnDrop($event.event, $event.columnId)">
+</app-al-kanban-board>
 
 <!-- ══════════════════════════════════════════════
      POSTPONE MODAL

@@ -1,38 +1,18 @@
 // src/app/services/clinicService.ts
-import { Injectable } from '@angular/core';
-import {
-  Firestore,
-  collection,
-  doc,
-  setDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  query,
-  where,
-  CollectionReference,
-  DocumentData
-} from '@angular/fire/firestore';
+import { Injectable, inject } from '@angular/core';
+import { FirestoreApiService } from './api/firestore-api.service';
 import { ClinicContextService } from './clinicContextService';
 import { Clinic, ClinicSchedule } from '../models/clinic.model';
 
 @Injectable({ providedIn: 'root' })
 export class ClinicService {
 
+  private api = inject(FirestoreApiService);
+  private clinicContext = inject(ClinicContextService);
+
   /** In-memory cache: clinicId → Clinic */
   private cache = new Map<string, { clinic: Clinic; timestamp: number }>();
   private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
-
-  constructor(
-    private db: Firestore,
-    private clinicContext: ClinicContextService
-  ) {}
-
-  // ─── Collection reference ───
-
-  private getClinicsCollection(): CollectionReference<DocumentData> {
-    return collection(this.db, 'clinics');
-  }
 
   private getSubscriptionId(): string {
     return this.clinicContext.requireSubscriptionId();
@@ -51,12 +31,14 @@ export class ClinicService {
   private async fetchScheduleSubcollection(clinicId: string): Promise<ClinicSchedule> {
     const defaultSchedule: ClinicSchedule = { weekdays: [], timings: [] };
     try {
-      const scheduleCol = collection(this.db, 'clinics', clinicId, 'schedule');
-      const snap = await getDocs(scheduleCol);
-      if (snap.empty) return defaultSchedule;
+      // Query the schedule subcollection under clinics/{clinicId}
+      const docs = await this.api.runQuery(`clinics/${clinicId}`, {
+        collectionId: 'schedule',
+      });
+      if (docs.length === 0) return defaultSchedule;
 
       // Use the first schedule document
-      const data = snap.docs[0].data();
+      const data = docs[0].data;
       const weekdays: string[] = Array.isArray(data['weekdays']) ? data['weekdays'] : [];
       const rawTimings = Array.isArray(data['timings']) ? data['timings'] : [];
       const timings = rawTimings.map((t: any) => ({
@@ -73,6 +55,30 @@ export class ClinicService {
     }
   }
 
+  /**
+   * Transform raw document data into a Clinic object.
+   */
+  private async transformToClinic(data: any, id: string, subId: string): Promise<Clinic> {
+    // Try document-level schedule field first, then fetch subcollection
+    let schedule: ClinicSchedule = data['schedule'] || { weekdays: [], timings: [] };
+    if (!schedule.weekdays?.length && !schedule.timings?.length) {
+      schedule = await this.fetchScheduleSubcollection(id);
+    }
+
+    return {
+      id,
+      subscription_id: data['subscription_id'] || subId,
+      name: data['name'] || '',
+      address: data['address'],
+      phone: data['phone'],
+      email: data['email'],
+      schedule,
+      doctor_ids: data['doctor_ids'] || [],
+      created_at: data['created_at'],
+      updated_at: data['updated_at']
+    };
+  }
+
   // ─── READ ───
 
   /**
@@ -80,33 +86,17 @@ export class ClinicService {
    */
   async getClinics(): Promise<Clinic[]> {
     try {
-      const clinicsCol = this.getClinicsCollection();
       const subId = this.getSubscriptionId();
-      const q = query(clinicsCol, where('subscription_id', '==', subId));
-      const snapshot = await getDocs(q);
+      const docs = await this.api.runQuery('', {
+        collectionId: 'clinics',
+        filters: [
+          { field: 'subscription_id', op: '==', value: subId }
+        ],
+      });
 
       const clinics: Clinic[] = [];
-      for (const d of snapshot.docs) {
-        const data = d.data();
-
-        // Try document-level schedule field first, then fetch subcollection
-        let schedule: ClinicSchedule = data['schedule'] || { weekdays: [], timings: [] };
-        if (!schedule.weekdays?.length && !schedule.timings?.length) {
-          schedule = await this.fetchScheduleSubcollection(d.id);
-        }
-
-        const clinic: Clinic = {
-          id: d.id,
-          subscription_id: data['subscription_id'] || subId,
-          name: data['name'] || '',
-          address: data['address'],
-          phone: data['phone'],
-          email: data['email'],
-          schedule,
-          doctor_ids: data['doctor_ids'] || [],
-          created_at: data['created_at'],
-          updated_at: data['updated_at']
-        };
+      for (const d of docs) {
+        const clinic = await this.transformToClinic(d.data, d.id, subId);
         this.addToCache(clinic);
         clinics.push(clinic);
       }
@@ -129,30 +119,10 @@ export class ClinicService {
     if (cached) return cached;
 
     try {
-      const clinicDoc = doc(this.getClinicsCollection(), clinicId);
-      const snap = await getDoc(clinicDoc);
-      if (!snap.exists()) return null;
+      const result = await this.api.getDocument('clinics', clinicId);
+      if (!result) return null;
 
-      const data = snap.data();
-
-      // Try document-level schedule field first, then fetch subcollection
-      let schedule: ClinicSchedule = data['schedule'] || { weekdays: [], timings: [] };
-      if (!schedule.weekdays?.length && !schedule.timings?.length) {
-        schedule = await this.fetchScheduleSubcollection(clinicId);
-      }
-
-      const clinic: Clinic = {
-        id: snap.id,
-        subscription_id: data['subscription_id'] || '',
-        name: data['name'] || '',
-        address: data['address'],
-        phone: data['phone'],
-        email: data['email'],
-        schedule,
-        doctor_ids: data['doctor_ids'] || [],
-        created_at: data['created_at'],
-        updated_at: data['updated_at']
-      };
+      const clinic = await this.transformToClinic(result.data, result.id, '');
       this.addToCache(clinic);
       return clinic;
     } catch (error) {
@@ -179,9 +149,7 @@ export class ClinicService {
     clinicData: Omit<Clinic, 'id' | 'created_at' | 'updated_at'>
   ): Promise<string> {
     try {
-      const clinicsCol = this.getClinicsCollection();
-      const clinicDoc = doc(clinicsCol);
-      const id = clinicDoc.id;
+      const id = this.api.generateDocId();
       const now = new Date().toISOString();
 
       const clinic: Clinic = {
@@ -192,7 +160,7 @@ export class ClinicService {
         updated_at: now
       };
 
-      await setDoc(clinicDoc, this.removeUndefined(clinic));
+      await this.api.setDocument('clinics', id, this.removeUndefined(clinic));
       this.addToCache(clinic);
       console.log('✓ Clinic created:', id);
       return id;
@@ -209,13 +177,12 @@ export class ClinicService {
    */
   async updateClinic(clinicId: string, updates: Partial<Clinic>): Promise<void> {
     try {
-      const clinicDoc = doc(this.getClinicsCollection(), clinicId);
       const { id: _, ...dataWithoutId } = updates as any;
       const updatePayload = {
         ...dataWithoutId,
         updated_at: new Date().toISOString()
       };
-      await updateDoc(clinicDoc, this.removeUndefined(updatePayload));
+      await this.api.updateDocument('clinics', clinicId, this.removeUndefined(updatePayload));
       this.removeFromCache(clinicId);
       console.log('✓ Clinic updated:', clinicId);
     } catch (error) {

@@ -3,14 +3,13 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseService } from './firebase';
 import { ClinicContextService } from './clinicContextService';
 import { Patient } from '../models/patient.model';
-import { QueryDocumentSnapshot, DocumentData } from '@angular/fire/firestore';
 
 /**
  * Pagination state for a single search query
  */
 interface PaginationState {
-    lastPhoneDoc: QueryDocumentSnapshot<DocumentData> | null;
-    lastNameDoc: QueryDocumentSnapshot<DocumentData> | null;
+    lastPhoneCursor: any;
+    lastNameCursor: any;
     hasMore: boolean;
 }
 
@@ -29,8 +28,8 @@ export class PatientSearchService {
     private currentIsNumeric: boolean = false;
     private cachedResults: Patient[] = [];
     private paginationState: PaginationState = {
-        lastPhoneDoc: null,
-        lastNameDoc: null,
+        lastPhoneCursor: null,
+        lastNameCursor: null,
         hasMore: false
     };
 
@@ -63,10 +62,10 @@ export class PatientSearchService {
                     this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
                 ]);
 
-                const phoneResult = phoneSettled.status === 'fulfilled' ? phoneSettled.value : { results: [], lastDoc: null, hasMore: false };
-                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastDoc: null, hasMore: false };
+                const phoneResult = phoneSettled.status === 'fulfilled' ? phoneSettled.value : { results: [], lastCursor: null, hasMore: false };
+                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastCursor: null, hasMore: false };
 
-                this.paginationState.lastPhoneDoc = phoneResult.lastDoc;
+                this.paginationState.lastPhoneCursor = phoneResult.lastCursor;
                 this.paginationState.hasMore = phoneResult.hasMore;
 
                 allResults = this.mergeAndDeduplicateResults(phoneResult.results, containsResult.results);
@@ -77,10 +76,10 @@ export class PatientSearchService {
                     this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
                 ]);
 
-                const nameResult = nameSettled.status === 'fulfilled' ? nameSettled.value : { results: [], lastDoc: null, hasMore: false };
-                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastDoc: null, hasMore: false };
+                const nameResult = nameSettled.status === 'fulfilled' ? nameSettled.value : { results: [], lastCursor: null, hasMore: false };
+                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastCursor: null, hasMore: false };
 
-                this.paginationState.lastNameDoc = nameResult.lastDoc;
+                this.paginationState.lastNameCursor = nameResult.lastCursor;
                 this.paginationState.hasMore = nameResult.hasMore;
 
                 allResults = this.mergeAndDeduplicateResults(nameResult.results, containsResult.results);
@@ -107,26 +106,26 @@ export class PatientSearchService {
 
             if (this.currentIsNumeric) {
                 const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
-                const { results, lastDoc, hasMore } = await this.firebaseService.searchPatientByPhone(
+                const { results, lastCursor, hasMore } = await this.firebaseService.searchPatientByPhone(
                     this.currentSearchTerm,
-                    this.paginationState.lastPhoneDoc,
+                    this.paginationState.lastPhoneCursor,
                     clinicId
                 );
                 newResults = results;
-                this.paginationState.lastPhoneDoc = lastDoc;
+                this.paginationState.lastPhoneCursor = lastCursor;
                 this.paginationState.hasMore = hasMore;
             } else {
                 const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
-                const { results, lastDoc, hasMore } = await this.firebaseService.searchPatientByName(
+                const { results, lastCursor, hasMore } = await this.firebaseService.searchPatientByName(
                     this.currentSearchTerm,
-                    this.paginationState.lastNameDoc,
+                    this.paginationState.lastNameCursor,
                     clinicId
                 );
 
                 // Filter out duplicates
                 const existingIds = new Set(this.cachedResults.map(p => p.id));
                 newResults = results.filter(p => !existingIds.has(p.id));
-                this.paginationState.lastNameDoc = lastDoc;
+                this.paginationState.lastNameCursor = lastCursor;
                 this.paginationState.hasMore = hasMore;
             }
 
@@ -155,8 +154,8 @@ export class PatientSearchService {
 
     private resetPaginationState(): void {
         this.paginationState = {
-            lastPhoneDoc: null,
-            lastNameDoc: null,
+            lastPhoneCursor: null,
+            lastNameCursor: null,
             hasMore: false
         };
     }

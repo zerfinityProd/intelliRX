@@ -7,9 +7,9 @@ import {
   withInMemoryScrolling,
   withComponentInputBinding
 } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
 import { provideAuth, getAuth } from '@angular/fire/auth';
-import { provideFirestore, getFirestore } from '@angular/fire/firestore';
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
 
@@ -25,8 +25,10 @@ export const appConfig: ApplicationConfig = {
       // Bind route params directly to component @Input()
       withComponentInputBinding()
     ),
+    provideHttpClient(),
+    // Firebase Auth SDK — kept for login/OAuth flows
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAuth(() => getAuth()),
-    provideFirestore(() => getFirestore())
+    provideAuth(() => getAuth())
+    // provideFirestore removed — all Firestore access now goes through REST API
   ]
 };

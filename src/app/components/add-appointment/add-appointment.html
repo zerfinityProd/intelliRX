@@ -82,7 +82,7 @@
               <select id="doctorSelect" [(ngModel)]="selectedDoctorId" class="form-select" (ngModelChange)="onDoctorChange()">
                 <option value="">— Choose a doctor —</option>
                 <option *ngFor="let doc of doctors" [value]="doc.id">
-                  {{ doc.name }} · {{ doc.specialty }}
+                  {{ doc.name }}{{ doc.specialty ? ' · ' + doc.specialty : '' }}
                 </option>
               </select>
             </div>

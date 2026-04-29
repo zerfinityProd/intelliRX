@@ -1,0 +1,4 @@
+/* Make the host element transparent to parent grid layout */
+:host {
+  display: contents;
+}

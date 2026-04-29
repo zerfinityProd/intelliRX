@@ -1,15 +1,15 @@
 // src/app/components/appointments-list/appointments-list.ts
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, ViewEncapsulation } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
+import { AlKanbanBoardComponent } from './al-kanban-board/al-kanban-board';
 import { AppointmentService } from '../../services/appointmentService';
 import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
-import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { Patient } from '../../models/patient.model';
@@ -32,14 +32,18 @@ export interface KanbanColumn {
 @Component({
   selector: 'app-appointments-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, NavbarComponent],
+  imports: [CommonModule, FormsModule, NavbarComponent, AlKanbanBoardComponent],
   templateUrl: './appointments-list.html',
-  styleUrl: './appointments-list.css'
+  styleUrl: './appointments-list.css',
+  encapsulation: ViewEncapsulation.None
 })
 export class AppointmentsListComponent implements OnInit, OnDestroy {
   appointments: Appointment[] = [];
   isLoading = true;
   errorMessage = '';
+
+  // Bound function reference for child component
+  getDoctorDisplayNameFn = (appt: Appointment): string => this.getDoctorDisplayName(appt);
 
   // Date filter — defaults to today
   selectedDate: string = todayLocalISO();
@@ -86,7 +90,6 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   private appointmentService = inject(AppointmentService);
   private patientService = inject(PatientService);
-  private firebaseService = inject(FirebaseService);
   private authService = inject(AuthenticationService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
@@ -308,7 +311,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       } else {
         const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
         if (phoneDigits) {
-          const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits);
+          const results = await this.patientService.searchPatientsByPhoneNumber(phoneDigits);
           const nameLower = (appt.patientName || '').trim().toLowerCase();
           const candidates = results.filter(p =>
             (p.name || '').trim().toLowerCase() === nameLower &&

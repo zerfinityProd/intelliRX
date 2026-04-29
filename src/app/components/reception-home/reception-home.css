@@ -274,9 +274,9 @@
 }
 
 .rh-column--dragover {
-  border-color: #148D9E;
-  box-shadow: 0 0 0 3px rgba(20, 141, 158, 0.15);
-  background: #f5f3ff;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2), inset 0 0 20px rgba(239, 68, 68, 0.05);
+  background: rgba(254, 226, 226, 0.3);
 }
 
 .rh-column__header {
@@ -378,6 +378,22 @@
 }
 
 
+
+/* Draggable cursor for scheduled cards */
+.rh-card[draggable="true"] {
+  cursor: grab;
+}
+.rh-card[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Card being dragged */
+.rh-card--dragging {
+  opacity: 0.5;
+  transform: scale(0.96) rotate(1deg);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  border-color: var(--clr-primary, #148D9E);
+}
 
 .rh-card--today { border-color: #B5DDE5; }
 .rh-card--updating { pointer-events: none; }
@@ -720,7 +736,9 @@
 }
 
 [data-theme="dark"] .rh-column--dragover {
-  background: rgba(20, 141, 158, 0.08);
+  border-color: #f87171 !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.2), inset 0 0 20px rgba(239, 68, 68, 0.08);
+  background: rgba(220, 38, 38, 0.08);
 }
 
 [data-theme="dark"] .rh-column__header {

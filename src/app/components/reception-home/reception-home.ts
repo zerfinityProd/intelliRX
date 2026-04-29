@@ -1,12 +1,14 @@
 // src/app/components/reception-home/reception-home.ts
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, inject, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
 import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
+import { RhHeroComponent } from './rh-hero/rh-hero';
+import { RhKanbanBoardComponent } from './rh-kanban-board/rh-kanban-board';
+import { RhSidebarComponent } from './rh-sidebar/rh-sidebar';
 import { AppointmentService } from '../../services/appointmentService';
-import { FirebaseService } from '../../services/firebase';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService, UserPermissions } from '../../services/authorizationService';
 import { Appointment } from '../../models/appointment.model';
@@ -23,19 +25,28 @@ import { ClinicContextService } from '../../services/clinicContextService';
 @Component({
     selector: 'app-reception-home',
     standalone: true,
-    imports: [CommonModule, FormsModule, NavbarComponent, DayViewModalComponent],
+    imports: [CommonModule, FormsModule, NavbarComponent, DayViewModalComponent, RhHeroComponent, RhKanbanBoardComponent, RhSidebarComponent],
     templateUrl: './reception-home.html',
-    styleUrl: './reception-home.css'
+    styleUrl: './reception-home.css',
+    encapsulation: ViewEncapsulation.None
 })
 export class ReceptionHomeComponent implements OnInit, OnDestroy {
     appointments: Appointment[] = [];
     isLoading = true;
     errorMessage = '';
 
+    // Bound function reference for child component
+    getDoctorDisplayNameFn = (appt: Appointment): string => this.getDoctorDisplayName(appt);
+
     // Search
     searchTerm = '';
 
+
     updatingId: string | null = null;
+
+    // Drag-and-drop state
+    draggingAppt: Appointment | null = null;
+    dragOverColumn: string | null = null;
 
     // Cancel modal state
     showCancelModal = false;
@@ -102,7 +113,6 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     private authService = inject(AuthenticationService);
     private authorizationService = inject(AuthorizationService);
     private patientService = inject(PatientService);
-    private firebaseService = inject(FirebaseService);
     private clinicService = inject(ClinicService);
     private clinicContextService = inject(ClinicContextService);
     private router = inject(Router);
@@ -143,7 +153,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         // Guard: skip if subscription context isn't ready yet
         if (!this.clinicContextService.getSubscriptionId()) return;
         try {
-            this.appointments = await this.appointmentService.getAllAppointments();
+            this.appointments = await this.appointmentService.getAppointments();
             this.cdr.detectChanges();
         } catch {
             // No-op
@@ -199,7 +209,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             } else {
                 const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
                 if (phoneDigits) {
-                    const { results } = await this.firebaseService.searchPatientByPhone(phoneDigits);
+                    const results = await this.patientService.searchPatientsByPhoneNumber(phoneDigits);
                     const nameLower = (appt.patientName || '').trim().toLowerCase();
                     const candidates = results.filter((p: Patient) =>
                         (p.name || '').trim().toLowerCase() === nameLower &&
@@ -264,7 +274,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     async loadAppointments(): Promise<void> {
         this.isLoading = true;
         try {
-            this.appointments = await this.appointmentService.getAllAppointments();
+            this.appointments = await this.appointmentService.getAppointments();
         } catch {
             this.errorMessage = 'Failed to load appointments.';
         } finally {
@@ -490,6 +500,71 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             this.updatingId = null;
             this.cdr.detectChanges();
         }
+    }
+
+    // ── Drag-and-Drop ──
+
+    onDragStart(event: DragEvent, appt: Appointment): void {
+        if (appt.status !== 'scheduled') {
+            event.preventDefault();
+            return;
+        }
+        this.draggingAppt = appt;
+        event.dataTransfer?.setData('text/plain', appt.id || '');
+        if (event.dataTransfer) {
+            event.dataTransfer.effectAllowed = 'move';
+        }
+    }
+
+    onDragEnd(): void {
+        this.draggingAppt = null;
+        this.dragOverColumn = null;
+        this.cdr.detectChanges();
+    }
+
+    onColumnDragOver(event: DragEvent, columnId: string): void {
+        if (columnId !== 'cancelled' || !this.draggingAppt) return;
+        event.preventDefault();
+        if (event.dataTransfer) {
+            event.dataTransfer.dropEffect = 'move';
+        }
+        this.dragOverColumn = columnId;
+    }
+
+    onColumnDragEnter(event: DragEvent, columnId: string): void {
+        if (columnId !== 'cancelled' || !this.draggingAppt) return;
+        event.preventDefault();
+        this.dragOverColumn = columnId;
+        this.cdr.detectChanges();
+    }
+
+    onColumnDragLeave(event: DragEvent, columnId: string): void {
+        const relatedTarget = event.relatedTarget as HTMLElement;
+        const currentTarget = event.currentTarget as HTMLElement;
+        if (currentTarget && relatedTarget && currentTarget.contains(relatedTarget)) return;
+        if (this.dragOverColumn === columnId) {
+            this.dragOverColumn = null;
+            this.cdr.detectChanges();
+        }
+    }
+
+    onColumnDrop(event: DragEvent, columnId: string): void {
+        event.preventDefault();
+        this.dragOverColumn = null;
+
+        if (columnId !== 'cancelled' || !this.draggingAppt) {
+            this.draggingAppt = null;
+            this.cdr.detectChanges();
+            return;
+        }
+
+        const appt = this.draggingAppt;
+        this.draggingAppt = null;
+
+        if (appt.status === 'scheduled') {
+            this.openCancelModal(appt);
+        }
+        this.cdr.detectChanges();
     }
 
     async openVisitFromAppointment(appt: Appointment): Promise<void> {
