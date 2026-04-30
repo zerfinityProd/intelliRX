@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { FirebaseService } from './firebase';
+import { PatientDataService } from './firebase';
 import { AuthenticationService } from './authenticationService';
 import { PatientSearchService } from './patientSearchService';
 import { ClinicContextService } from './clinicContextService';
@@ -42,7 +42,7 @@ export class PatientService {
   }
 
   constructor(
-    private firebaseService: FirebaseService,
+    private firebaseService: PatientDataService,
     private authService: AuthenticationService,
     private searchService: PatientSearchService,
     private clinicContextService: ClinicContextService
@@ -402,5 +402,15 @@ export class PatientService {
     }
 
     return null;
+  }
+
+  // ──── PATIENT COUNT ────
+
+  /**
+   * Get the count of patients matching subscription (and optional clinic).
+   * Centralised here so components don't need to import PatientDataService directly.
+   */
+  async getPatientCount(subscriptionId: string, clinicId?: string | null): Promise<number> {
+    return this.firebaseService.getPatientCount(subscriptionId, clinicId);
   }
 }

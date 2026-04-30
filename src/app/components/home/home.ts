@@ -4,8 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Observable, firstValueFrom } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { FirebaseService } from '../../services/firebase';
 import { PatientService } from '../../services/patient';
+import { TimeSlotService } from '../../services/timeSlotService';
 import { UIStateService } from '../../services/uiStateService';
 import { AppointmentService } from '../../services/appointmentService';
 import { AuthenticationService } from '../../services/authenticationService';
@@ -23,8 +23,9 @@ import { WidgetsPanelComponent } from './widgets-panel/widgets-panel';
 import { FabMenuComponent } from './fab-menu/fab-menu';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
-import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import { normalizeEmail } from '../../utilities/normalize-email';
+import { formatTime as sharedFormatTime, formatSlotLabel as sharedFormatSlotLabel } from '../../utilities/date-helpers';
 
 
 export interface DashboardDoctor {
@@ -109,7 +110,7 @@ export class HomeComponent implements OnInit {
     private authorizationService: AuthorizationService,
     private clinicContextService: ClinicContextService,
     private clinicService: ClinicService,
-    private firebaseService: FirebaseService,
+    private timeSlotService: TimeSlotService,
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
@@ -386,7 +387,7 @@ export class HomeComponent implements OnInit {
       const subId = this.clinicContextService.getSubscriptionId();
       if (!subId) return;
       const clinicId = this.clinicContextService.getSelectedClinicId();
-      this.totalPatients = await this.firebaseService.getPatientCount(subId, clinicId);
+      this.totalPatients = await this.patientService.getPatientCount(subId, clinicId);
       this.cdr.detectChanges();
     } catch (e) {
       this.totalPatients = 0;
@@ -540,49 +541,15 @@ export class HomeComponent implements OnInit {
    * Falls back to global defaults when no clinic timings exist.
    */
   private async refreshTimeSlotsForClinic(clinicId?: string | null, date?: Date): Promise<void> {
-    const id = clinicId || this.clinicContextService.getSelectedClinicId();
-    if (!id) {
-      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
-      return;
-    }
-    try {
-      const clinic = await this.clinicService.getClinicById(id);
-      let timings = clinic?.schedule?.timings;
-
-      const effectiveDate = date || this.selectedDate;
-
-      // Check if the clinic is open on this day (based on schedule.weekdays)
-      if (effectiveDate && clinic?.schedule?.weekdays) {
-        if (!isClinicOpenOnDate(clinic.schedule.weekdays, effectiveDate)) {
-          // Clinic is closed on this day — no slots available
-          this.allTimeSlots = [];
-          return;
-        }
-      }
-
-      // Apply doctor availability filtering if a doctor and date are known
-      const doctorEmail = this.selectedDoctorEmail;
-
-      if (doctorEmail && effectiveDate && timings && timings.length > 0) {
-        const availability = await this.authorizationService.getDoctorAvailability(doctorEmail, id);
-        if (availability) {
-          const dayKey = getWeekdayKey(effectiveDate);
-          const dayLabels = availability[dayKey];
-          // Pass true: availability map exists, so a missing day means "not available"
-          timings = filterTimingsByAvailability(timings, dayLabels, true);
-        }
-      }
-
-      this.allTimeSlots = generateTimeSlotsFromClinicTimings(timings);
-    } catch {
-      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
-    }
+    this.allTimeSlots = await this.timeSlotService.getTimeSlotsForClinic(
+      clinicId,
+      date || this.selectedDate,
+      this.selectedDoctorEmail
+    );
   }
 
   formatSlotLabel(time: string): string {
-    const [h, m] = time.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    return `${h % 12 || 12}:${m.toString().padStart(2,'0')} ${period}`;
+    return sharedFormatSlotLabel(time);
   }
 
   /** True when the selected date is today */
@@ -677,10 +644,7 @@ export class HomeComponent implements OnInit {
   }
 
   formatTime(time: string): string {
-    if (!time) return '';
-    const [h, m] = time.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
+    return sharedFormatTime(time);
   }
 
   // ── Search ──

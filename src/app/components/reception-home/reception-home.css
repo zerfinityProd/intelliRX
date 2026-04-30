@@ -797,10 +797,11 @@
   border-color: #148D9E;
 }
 
-[data-theme="dark"] .rh-cal-label { color: var(--dk-text1); }
-[data-theme="dark"] .rh-cal-nav { border-color: var(--dk-border); color: var(--dk-text1); }
-[data-theme="dark"] .rh-cal-num { color: var(--dk-text1); }
-[data-theme="dark"] .rh-cal-legend { border-color: var(--dk-border); }
+[data-theme="dark"] .rh-cal-label { color: #e0e0e0 !important; }
+[data-theme="dark"] .rh-cal-nav { border-color: var(--dk-border); color: #e0e0e0 !important; }
+[data-theme="dark"] .rh-cal-num { color: #e0e0e0 !important; }
+[data-theme="dark"] .rh-cal-dh { color: #888888 !important; }
+[data-theme="dark"] .rh-cal-legend { border-color: var(--dk-border) !important; color: #a0a0a0 !important; }
 
 [data-theme="dark"] .rh-error-banner {
   background: rgba(220, 38, 38, 0.1);
@@ -820,6 +821,92 @@
   color: var(--dk-text1);
   background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
+
+[data-theme="dark"] .rh-filter-dropdown option {
+  background: var(--dk-bg2);
+  color: var(--dk-text1);
+}
+
+/* Card text elements missing dark overrides */
+[data-theme="dark"] .rh-card__reason { color: var(--dk-text2); }
+[data-theme="dark"] .rh-card__clinic { color: var(--dk-text2); }
+[data-theme="dark"] .rh-card__month { color: var(--dk-text2); }
+
+/* Widget header text */
+[data-theme="dark"] .rh-widget__header-left { color: #a0a0a0 !important; }
+
+/* Calendar hover/has-appts states */
+[data-theme="dark"] .rh-cal-cell:hover {
+  background: rgba(20, 141, 158, 0.15) !important;
+  border-color: #148D9E !important;
+}
+[data-theme="dark"] .rh-cal-cell--has-appts {
+  background: rgba(20, 141, 158, 0.12) !important;
+  border-color: rgba(20, 141, 158, 0.3) !important;
+}
+
+/* Stat number & label */
+[data-theme="dark"] .rh-stat__num { color: var(--dk-text1); }
+[data-theme="dark"] .rh-stat--scheduled .rh-stat__num { color: #5dd8e8; }
+[data-theme="dark"] .rh-stat--completed .rh-stat__num { color: #1CB5C9; }
+
+/* Ghost button hover in dark mode */
+[data-theme="dark"] .rh-btn--ghost:hover {
+  background: rgba(20, 141, 158, 0.15);
+}
+
+/* Quick action buttons */
+[data-theme="dark"] .rh-qa-btn--book,
+[data-theme="dark"] .rh-qa-btn--today {
+  color: #5dd8e8;
+}
+
+/* Search placeholder & clear */
+[data-theme="dark"] .rh-search-input::placeholder { color: var(--dk-text2); }
+[data-theme="dark"] .rh-search-clear { color: var(--dk-text2); }
+
+/* New badge dark mode */
+[data-theme="dark"] .rh-new-badge {
+  background: rgba(217, 119, 6, 0.15);
+  color: #fbbf24;
+}
+
+/* Card button dark mode tweaks */
+[data-theme="dark"] .rh-card__btn--done {
+  background: rgba(20, 141, 158, 0.15);
+  color: #5dd8e8;
+}
+[data-theme="dark"] .rh-card__btn--done:hover:not(:disabled) {
+  background: #148D9E;
+  color: #fff;
+}
+[data-theme="dark"] .rh-card__btn--visit {
+  background: rgba(14, 104, 119, 0.15);
+  color: #5dd8e8;
+}
+[data-theme="dark"] .rh-card__btn--visit:hover:not(:disabled) {
+  background: #0E6877;
+  color: #fff;
+}
+[data-theme="dark"] .rh-card__btn--cancel {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+}
+[data-theme="dark"] .rh-card__btn--cancel:hover:not(:disabled) {
+  background: #ef4444;
+  color: #fff;
+}
+[data-theme="dark"] .rh-card__btn--reschedule {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+[data-theme="dark"] .rh-card__btn--reschedule:hover:not(:disabled) {
+  background: #f59e0b;
+  color: #fff;
+}
+
+/* Error banner dark mode */
+[data-theme="dark"] .rh-error-banner button { color: #f87171; }
 
 /* ── Reschedule Action Button ── */
 .rh-card__btn--reschedule {

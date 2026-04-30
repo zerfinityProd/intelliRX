@@ -13,7 +13,7 @@ export interface PagedResult {
 @Injectable({
   providedIn: 'root'
 })
-export class FirebaseService {
+export class PatientDataService {
   private api = inject(FirestoreApiService);
   private clinicContext = inject(ClinicContextService);
 

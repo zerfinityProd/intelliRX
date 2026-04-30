@@ -50,7 +50,7 @@
       </svg>
       <select [ngModel]="filterDoctorId" (ngModelChange)="onFilterDoctorChange($event)" class="rh-filter-dropdown">
         <option value="">All Doctors</option>
-        <option *ngFor="let d of doctorFilterOptions" [value]="d.email">{{ d.name }}</option>
+        <option *ngFor="let d of doctorFilterOptions" [value]="d.email">{{ d.name }} ({{ d.email }})</option>
       </select>
     </div>
 

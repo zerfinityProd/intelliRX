@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { FirebaseService } from './firebase';
+import { PatientDataService } from './firebase';
 import { ClinicContextService } from './clinicContextService';
 import { Patient } from '../models/patient.model';
 
@@ -36,7 +36,7 @@ export class PatientSearchService {
     public hasMoreResults: boolean = false;
     public isLoadingMore: boolean = false;
 
-    constructor(private firebaseService: FirebaseService, private clinicContextService: ClinicContextService) { }
+    constructor(private firebaseService: PatientDataService, private clinicContextService: ClinicContextService) { }
 
     /**
      * Execute new search (resets pagination)

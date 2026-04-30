@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { PatientService } from './patient';
 import { PatientSearchService } from './patientSearchService';
 import { AuthenticationService } from './authenticationService';
-import { FirebaseService } from './firebase';
+import { PatientDataService } from './firebase';
 import { ClinicContextService } from './clinicContextService';
 import { Patient } from '../models/patient.model';
 
@@ -63,7 +63,7 @@ describe('PatientService (Orchestrator)', () => {
       providers: [
         PatientService,
         { provide: PatientSearchService, useValue: searchService },
-        { provide: FirebaseService, useValue: firebaseService },
+        { provide: PatientDataService, useValue: firebaseService },
         { provide: AuthenticationService, useValue: authService },
         { provide: ClinicContextService, useValue: clinicContextService }
       ]

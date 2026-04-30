@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { PatientSearchService } from './patientSearchService';
-import { FirebaseService } from './firebase';
+import { PatientDataService } from './firebase';
 import { ClinicContextService } from './clinicContextService';
 import { Patient } from '../models/patient.model';
 
@@ -45,7 +45,7 @@ describe('PatientSearchService', () => {
         TestBed.configureTestingModule({
             providers: [
                 PatientSearchService,
-                { provide: FirebaseService, useValue: firebaseService },
+                { provide: PatientDataService, useValue: firebaseService },
                 { provide: ClinicContextService, useValue: clinicContextService }
             ]
         });

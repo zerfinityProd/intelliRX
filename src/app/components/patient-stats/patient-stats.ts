@@ -399,8 +399,10 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
               }
             },
             grid: {
-              color: '#f1f5f9',
-              drawBorder: false
+              color: '#f1f5f9'
+            },
+            border: {
+              display: false
             }
           },
           x: {

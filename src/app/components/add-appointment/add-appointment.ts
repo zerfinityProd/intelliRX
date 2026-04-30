@@ -12,10 +12,12 @@ import { NavbarComponent } from '../navbar/navbar';
 
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
-import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings, filterTimingsByAvailability, getWeekdayKey, getWeekdayCode, isClinicOpenOnDate } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicService } from '../../services/clinicService';
+import { TimeSlotService } from '../../services/timeSlotService';
 import { todayLocalISO } from '../../utilities/local-date';
+import { isSlotInPast as sharedIsSlotInPast } from '../../utilities/date-helpers';
 
 export interface Doctor {
   id: string;
@@ -73,7 +75,7 @@ export class AddAppointmentComponent implements OnInit {
   ailmentChips: string[] = [];
   newAilmentInput: string = '';
   minDate: string = todayLocalISO();
-  maxDate: string = '9999-12-31';
+  maxDate: string = this.computeMaxDate();
 
   userRole: 'doctor' | 'receptionist' = 'doctor';
   canChooseDoctor: boolean = true;
@@ -107,6 +109,7 @@ export class AddAppointmentComponent implements OnInit {
   private patientService = inject(PatientService);
   private clinicContextService = inject(ClinicContextService);
   private clinicService = inject(ClinicService);
+  private timeSlotService = inject(TimeSlotService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
@@ -349,58 +352,16 @@ export class AddAppointmentComponent implements OnInit {
    */
   private async refreshTimeSlotsForClinic(dateStr?: string): Promise<void> {
     const effectiveDate = dateStr || this.appointmentDate;
-    console.log(`🔄 refreshTimeSlotsForClinic: clinicId=${this.selectedClinicId}, date=${effectiveDate}`);
+    const doctorEmail = this.selectedDoctor?.email
+      ? normalizeEmail(this.selectedDoctor.email)
+      : '';
 
-    if (!this.selectedClinicId) {
-      console.warn('⚠️ No selectedClinicId — using default time slots (no weekday filtering)');
-      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
-      return;
-    }
-    try {
-      // Invalidate cache to ensure we get fresh schedule data
-      this.clinicService.invalidateCache();
-      const clinic = await this.clinicService.getClinicById(this.selectedClinicId);
-      let timings = clinic?.schedule?.timings;
-      const weekdays = clinic?.schedule?.weekdays;
-
-      console.log(`📅 Clinic schedule: weekdays=${JSON.stringify(weekdays)}, timings=${timings?.length ?? 0} block(s)`);
-
-      // Check if the clinic is open on this day (based on schedule.weekdays)
-      if (effectiveDate && weekdays && weekdays.length > 0) {
-        const date = new Date(effectiveDate + 'T00:00:00');
-        const dayCode = getWeekdayCode(date);
-        const isOpen = isClinicOpenOnDate(weekdays, date);
-        console.log(`📅 Date ${effectiveDate} → dayCode=${dayCode}, isOpen=${isOpen}`);
-        if (!isOpen) {
-          // Clinic is closed on this day — no slots available
-          this.allTimeSlots = [];
-          return;
-        }
-      }
-
-      // Apply doctor availability filtering if a doctor and date are selected
-      const doctorEmail = this.selectedDoctor?.email
-        ? normalizeEmail(this.selectedDoctor.email)
-        : '';
-
-      if (doctorEmail && effectiveDate && timings && timings.length > 0) {
-        const availability = await this.authorizationService.getDoctorAvailability(
-          doctorEmail, this.selectedClinicId
-        );
-        if (availability) {
-          const date = new Date(effectiveDate + 'T00:00:00');
-          const dayKey = getWeekdayKey(date);
-          const dayLabels = availability[dayKey];
-          // Pass true: availability map exists, so a missing day means "not available"
-          timings = filterTimingsByAvailability(timings, dayLabels, true);
-        }
-      }
-
-      this.allTimeSlots = generateTimeSlotsFromClinicTimings(timings);
-    } catch (err) {
-      console.error('❌ refreshTimeSlotsForClinic error:', err);
-      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
-    }
+    this.allTimeSlots = await this.timeSlotService.getTimeSlotsForClinic(
+      this.selectedClinicId || null,
+      effectiveDate,
+      doctorEmail,
+      true // invalidate cache to get fresh schedule data
+    );
   }
 
   formatSlotLabel(time: string): string {
@@ -416,15 +377,7 @@ export class AddAppointmentComponent implements OnInit {
 
   /** True when the slot is in the past for today's date */
   isSlotInPast(slot: string): boolean {
-    if (!this.appointmentDate) return false;
-    const today = new Date();
-    const [y, mo, day] = this.appointmentDate.split('-').map(Number);
-    const isToday = today.getFullYear() === y && today.getMonth() === mo - 1 && today.getDate() === day;
-    if (!isToday) return false;
-    const [h, m] = slot.split(':').map(Number);
-    const slotMinutes = h * 60 + m;
-    const nowMinutes = today.getHours() * 60 + today.getMinutes();
-    return slotMinutes <= nowMinutes;
+    return sharedIsSlotInPast(slot, this.appointmentDate);
   }
 
   get availableSlots(): string[] {
@@ -573,7 +526,25 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   async onDateChange(): Promise<void> {
-    if (!this.appointmentDate) { this.bookedSlots = []; this.samePatientBookedSlots = []; return; }
+    if (!this.appointmentDate) {
+      this.bookedSlots = [];
+      this.samePatientBookedSlots = [];
+      this.errorMessage = '';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    // Validate date format and value
+    const dateError = this.validateAppointmentDate(this.appointmentDate);
+    if (dateError) {
+      this.errorMessage = dateError;
+      this.bookedSlots = [];
+      this.samePatientBookedSlots = [];
+      this.cdr.markForCheck();
+      return;
+    }
+    this.errorMessage = '';
+
     this.isLoadingSlots = true;
     this.selectedTimeSlot = '';
     // Refresh time slots to apply doctor availability for the new date's weekday
@@ -649,8 +620,11 @@ export class AddAppointmentComponent implements OnInit {
    *  Receptionist must also have clinic + doctor selected.
    *  Blocked when duplicate patient warning is active. */
   get canProceedStep1(): boolean {
-    // Receptionist must pick clinic & doctor first.
-    if (this.canChooseDoctor && (!this.selectedClinicId || !this.selectedDoctorId)) {
+    // Receptionist must pick clinic & doctor — but only block once the
+    // dropdowns have actually loaded (doctorContextReady). Before that the
+    // UI doesn't show the dropdowns, so blocking silently is confusing.
+    if (this.canChooseDoctor && this.doctorContextReady &&
+        (!this.selectedClinicId || !this.selectedDoctorId)) {
       return false;
     }
     if (this.phoneLookupStatus !== 'done') {
@@ -800,6 +774,15 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   async proceedFromNewPatient(): Promise<void> {
+    // Guard: receptionist must have clinic + doctor selected
+    if (this.canChooseDoctor && this.doctorContextReady &&
+        (!this.selectedClinicId || !this.selectedDoctorId)) {
+      this.errorMessage = !this.selectedClinicId
+        ? 'Please select a clinic before continuing.'
+        : 'Please select a doctor before continuing.';
+      this.cdr.markForCheck();
+      return;
+    }
     // When an existing patient is selected, use their phone — no need for full digits in input
     if (this.matchedPatient && !this.intentNewPatient) {
       this.isExistingPatient = true;
@@ -871,14 +854,10 @@ export class AddAppointmentComponent implements OnInit {
 
   async onSubmit(): Promise<void> {
     if (!this.appointmentDate) { this.errorMessage = 'Date is required'; return; }
-    // Enforce YYYY-MM-DD and 4-digit year.
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(this.appointmentDate)) {
-      this.errorMessage = 'Invalid date format';
-      return;
-    }
-    const year = new Date(this.appointmentDate).getFullYear();
-    if (!Number.isFinite(year) || year < 1000 || year > 9999) {
-      this.errorMessage = 'Year must be 4 digits';
+    // Full date validation (format, past, invalid calendar dates like Apr 31)
+    const dateError = this.validateAppointmentDate(this.appointmentDate);
+    if (dateError) {
+      this.errorMessage = dateError;
       return;
     }
     if (!this.selectedTimeSlot) { this.errorMessage = 'Please select a time slot'; return; }
@@ -1014,5 +993,57 @@ export class AddAppointmentComponent implements OnInit {
   onDobChange(): void {
     this.dobError = this.validateDob();
     if (!this.dobError) this.errorMessage = '';
+  }
+
+  /** Compute a reasonable max appointment date (1 year from today). */
+  private computeMaxDate(): string {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  /**
+   * Validate an appointment date string.
+   * Returns an error message, or '' if valid.
+   * Catches: bad format, past dates, invalid calendar dates (e.g. Apr 31).
+   */
+  private validateAppointmentDate(dateStr: string): string {
+    // Must be YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return 'Invalid date format. Please use a valid date.';
+    }
+    const [y, mo, day] = dateStr.split('-').map(Number);
+
+    // 4-digit year sanity
+    if (y < 2000 || y > 2099) {
+      return 'Please enter a valid year.';
+    }
+
+    // Detect impossible dates like April 31:
+    // JavaScript's new Date(2026, 3, 31) silently becomes May 1.
+    // We compare the parsed date's components back to the input.
+    const parsed = new Date(y, mo - 1, day);
+    if (isNaN(parsed.getTime()) ||
+        parsed.getFullYear() !== y ||
+        parsed.getMonth() !== mo - 1 ||
+        parsed.getDate() !== day) {
+      return `Invalid date: ${dateStr} does not exist on the calendar.`;
+    }
+
+    // Must not be in the past
+    const today = todayLocalISO();
+    if (dateStr < today) {
+      return 'Cannot book an appointment for a past date. Please select today or a future date.';
+    }
+
+    // Must not exceed max date
+    if (dateStr > this.maxDate) {
+      return 'Appointment date is too far in the future. Please select a closer date.';
+    }
+
+    return '';
   }
 }

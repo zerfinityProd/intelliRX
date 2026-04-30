@@ -16,10 +16,14 @@ import { Patient } from '../../models/patient.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { AppointmentCleanupService } from '../../services/appointmentCleanupService';
 import { todayLocalISO } from '../../utilities/local-date';
-import { generateTimeSlotsFromConfig, generateTimeSlotsFromClinicTimings } from '../../utilities/timeSlotUtils';
+import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicService } from '../../services/clinicService';
+import { TimeSlotService } from '../../services/timeSlotService';
+import { DoctorCacheService } from '../../services/doctorCacheService';
+import { AutoCancelService } from '../../services/autoCancelService';
+import { formatTime as sharedFormatTime, formatDate as sharedFormatDate, formatSlotLabel as sharedFormatSlotLabel, formatLocalDate as sharedFormatLocalDate, normalizePhoneDigits, isSameLocalDay, isToday as sharedIsToday, isFuture as sharedIsFuture } from '../../utilities/date-helpers';
 
 export interface KanbanColumn {
   id: Appointment['status'];
@@ -97,9 +101,12 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private clinicContextService = inject(ClinicContextService);
   private clinicService = inject(ClinicService);
   private authorizationService = inject(AuthorizationService);
+  private timeSlotService = inject(TimeSlotService);
+  private doctorCacheService = inject(DoctorCacheService);
+  private autoCancelService = inject(AutoCancelService);
 
-  private autoCancelTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
+  private autoCancelCleanup: (() => void) | null = null;
 
   readonly columns: KanbanColumn[] = [
     { id: 'scheduled',  label: 'Scheduled',  color: '#E7F5F7', accent: '#148D9E', icon: 'clock'    },
@@ -122,11 +129,11 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     const termRaw = this.searchTerm.trim();
     const term = termRaw.toLowerCase();
     if (term) {
-      const digitsQuery = this.normalizePhoneDigits(termRaw);
+      const digitsQuery = normalizePhoneDigits(termRaw);
       result = result.filter(a => {
         const name = (a.patientName ?? '').toLowerCase();
         const ailments = (a.ailments ?? '').toLowerCase();
-        const phoneDigits = this.normalizePhoneDigits(a.patientPhone ?? '');
+        const phoneDigits = normalizePhoneDigits(a.patientPhone ?? '');
 
         const matchesNameOrAilments = name.includes(term) || ailments.includes(term);
         const matchesPhoneDigits = digitsQuery ? phoneDigits.includes(digitsQuery) : false;
@@ -175,10 +182,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   /** Format a Date to YYYY-MM-DD local string */
   private formatLocalDate(date: Date): string {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    return sharedFormatLocalDate(date);
   }
 
   /** Formatted display label for the selected date (e.g. "19 Apr 2026") */
@@ -215,7 +219,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     await this.loadPermissions();
 
     // Build doctor name cache for card display
-    await this.buildDoctorNameCache();
+    await this.initDoctorCache();
 
     try {
       this.appointments = await this.appointmentService.getAppointments();
@@ -231,12 +235,16 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     await this.refreshTimeSlotsForClinic();
 
     // Auto-cancel appointments from past dates that are still "scheduled"
-    await this.autoCancelPastAppointments();
+    await this.autoCancelService.autoCancelPastAppointments(this.appointments);
+    this.cdr.detectChanges();
 
     // Auto-advance to next day if today's slots are exhausted and no scheduled appointments remain
     this.autoAdvanceDateIfNeeded();
 
-    this.scheduleAutoCancelAtCutoff();
+    this.autoCancelCleanup = this.autoCancelService.scheduleAtCutoff(
+      () => this.appointments,
+      () => this.cdr.detectChanges()
+    );
     // Keep UI in sync when appointments are updated from other screens (e.g. adding a visit).
     this.refreshTimer = setInterval(() => {
       void this.refreshAppointments();
@@ -247,7 +255,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.autoCancelTimer) clearTimeout(this.autoCancelTimer);
+    if (this.autoCancelCleanup) this.autoCancelCleanup();
     if (this.refreshTimer) clearInterval(this.refreshTimer);
   }
 
@@ -262,133 +270,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     }
   }
 
-  private scheduleAutoCancelAtCutoff(): void {
-    if (this.autoCancelTimer) clearTimeout(this.autoCancelTimer);
-
-    const now = new Date();
-    const cutoff = new Date(now);
-    cutoff.setHours(
-      DEFAULT_SYSTEM_SETTINGS.autoCancelAt.hour,
-      DEFAULT_SYSTEM_SETTINGS.autoCancelAt.minute,
-      0,
-      0
-    );
-
-    const delay = cutoff.getTime() - now.getTime();
-    if (delay <= 0) {
-      void this.runAutoCancel();
-      return;
-    }
-    this.autoCancelTimer = setTimeout(() => void this.runAutoCancel(), delay);
-  }
-
-  private isSameLocalDay(a: Date, b: Date): boolean {
-    return a.getFullYear() === b.getFullYear()
-      && a.getMonth() === b.getMonth()
-      && a.getDate() === b.getDate();
-  }
-
-  private normalizePhoneDigits(phone: string): string {
-    return String(phone || '').replace(/\D/g, '');
-  }
-
-  private async hasAnyVisitTodayForAppointment(appt: Appointment, today: Date, cache: Map<string, boolean>): Promise<boolean> {
-    const cacheKey = appt.patient_id
-      ? `pid:${appt.patient_id}`
-      : `np:${(appt.patientName || '').trim().toLowerCase()}|${this.normalizePhoneDigits(appt.patientPhone || '')}`;
-
-    if (cache.has(cacheKey)) return cache.get(cacheKey)!;
-
-    const checkVisitsForPatientId = async (patientId: string): Promise<boolean> => {
-      const visits = await this.patientService.getPatientVisits(patientId);
-      return visits.some(v => this.isSameLocalDay(new Date((v as any).created_at), today));
-    };
-
-    let result = false;
-    try {
-      if (appt.patient_id) {
-        result = await checkVisitsForPatientId(appt.patient_id);
-      } else {
-        const phoneDigits = this.normalizePhoneDigits(appt.patientPhone || '');
-        if (phoneDigits) {
-          const results = await this.patientService.searchPatientsByPhoneNumber(phoneDigits);
-          const nameLower = (appt.patientName || '').trim().toLowerCase();
-          const candidates = results.filter(p =>
-            (p.name || '').trim().toLowerCase() === nameLower &&
-            this.normalizePhoneDigits((p as any).phone) === phoneDigits
-          );
-          for (const p of candidates) {
-            if (p.id && await checkVisitsForPatientId(p.id)) {
-              result = true;
-              break;
-            }
-          }
-        }
-      }
-    } catch {
-      result = false;
-    }
-
-    cache.set(cacheKey, result);
-    return result;
-  }
-
-  private async runAutoCancel(): Promise<void> {
-    const now = new Date();
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-
-    const cache = new Map<string, boolean>();
-    const todaysScheduled = this.appointments.filter(a =>
-      a.status === 'scheduled' && this.isSameLocalDay(new Date(a.datetime), now)
-    );
-
-    for (const appt of todaysScheduled) {
-      if (!appt.id) continue;
-      const hasVisitToday = await this.hasAnyVisitTodayForAppointment(appt, now, cache);
-      if (!hasVisitToday) {
-        try {
-          await this.appointmentService.updateAppointmentStatus(appt.id, 'cancelled');
-          appt.status = 'cancelled';
-        } catch {
-          // keep going
-        }
-      }
-    }
-
-    this.cdr.detectChanges();
-  }
-
-  /**
-   * Auto-cancel all past-date appointments that are still 'scheduled'.
-   * If the appointment day has fully passed, the patient didn't show up.
-   */
-  private async autoCancelPastAppointments(): Promise<void> {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const pastScheduled = this.appointments.filter(a => {
-      if (a.status !== 'scheduled') return false;
-      const apptDate = new Date(a.datetime);
-      const apptDay = new Date(apptDate.getFullYear(), apptDate.getMonth(), apptDate.getDate());
-      return apptDay < todayStart;
-    });
-
-    if (pastScheduled.length === 0) return;
-
-    for (const appt of pastScheduled) {
-      if (!appt.id) continue;
-      try {
-        await this.appointmentService.updateAppointmentStatus(appt.id, 'cancelled');
-        appt.status = 'cancelled';
-        console.log(`🕐 Auto-cancelled past appointment: ${appt.patientName} (${new Date(appt.datetime).toLocaleDateString()})`);
-      } catch {
-        // keep going
-      }
-    }
-
-    this.cdr.detectChanges();
-  }
+  // Auto-cancel logic is now handled by AutoCancelService
 
 
   async updateStatus(appt: Appointment, status: Appointment['status']): Promise<void> {
@@ -610,9 +492,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   formatSlotLabel(time: string): string {
-    const [h, m] = time.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
+    return sharedFormatSlotLabel(time);
   }
 
   /**
@@ -620,17 +500,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
    * Falls back to global defaults when no clinic timings exist.
    */
   private async refreshTimeSlotsForClinic(): Promise<void> {
-    const clinicId = this.clinicContextService.getSelectedClinicId();
-    if (!clinicId) {
-      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
-      return;
-    }
-    try {
-      const clinic = await this.clinicService.getClinicById(clinicId);
-      this.allTimeSlots = generateTimeSlotsFromClinicTimings(clinic?.schedule?.timings);
-    } catch {
-      this.allTimeSlots = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
-    }
+    this.allTimeSlots = await this.timeSlotService.getTimeSlotsForClinic();
   }
 
   /**
@@ -739,33 +609,18 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
   // ── Doctor name helpers ──
 
-  private async buildDoctorNameCache(): Promise<void> {
-    const email = this.authService.currentUserValue?.email;
-    if (!email) return;
-    try {
-      const clinicIds = await this.authorizationService.getUserClinicIds(email);
-      const seenEmails = new Set<string>();
-      for (const clinicId of clinicIds) {
-        const doctors = await this.authorizationService.getDoctorsForClinic(clinicId);
-        for (const doc of doctors) {
-          const normEmail = normalizeEmail(doc.email);
-          if (seenEmails.has(normEmail)) continue;
-          seenEmails.add(normEmail);
-          this.doctorNameCache.set(normEmail, doc.name);
-        }
-      }
-    } catch {
-      // Non-critical — cards will just not show a doctor name
+  /** Build doctor name cache using DoctorCacheService */
+  private async initDoctorCache(): Promise<void> {
+    await this.doctorCacheService.buildCache();
+    // Sync local cache reference
+    for (const doc of this.doctorCacheService.getAllDoctors()) {
+      this.doctorNameCache.set(normalizeEmail(doc.email), doc.name);
     }
   }
 
   /** Resolve doctor display name from the doctor_id (email) stored on the appointment */
   getDoctorDisplayName(appt: Appointment): string {
-    // First try the denormalized field
-    if (appt.doctor_name) return appt.doctor_name;
-    const email = (appt.doctor_id || '').trim().toLowerCase();
-    if (!email) return '';
-    return this.doctorNameCache.get(email) || '';
+    return this.doctorCacheService.getDoctorDisplayName(appt);
   }
 
   /**
@@ -845,29 +700,18 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   }
 
   formatDate(date: Date): string {
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return sharedFormatDate(date);
   }
 
   formatTime(time: Date | string): string {
-    if (!time) return '';
-    if (time instanceof Date) {
-      const h = time.getHours();
-      const m = time.getMinutes();
-      return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-    }
-    const [h, m] = time.split(':').map(Number);
-    const period = h >= 12 ? 'PM' : 'AM';
-    return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
+    return sharedFormatTime(time);
   }
 
   isToday(date: Date): boolean {
-    const t = new Date(), d = new Date(date);
-    return d.getFullYear() === t.getFullYear()
-      && d.getMonth() === t.getMonth()
-      && d.getDate() === t.getDate();
+    return sharedIsToday(new Date(date));
   }
 
   isFuture(date: Date): boolean {
-    return new Date(date) > new Date();
+    return sharedIsFuture(date);
   }
 }

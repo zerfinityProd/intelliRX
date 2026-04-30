@@ -65,7 +65,7 @@ vi.mock('@angular/core', () => ({
 }));
 
 // ─── Import service AFTER mocks are registered ───────────────────────────────
-import { FirebaseService } from './firebase';
+import { PatientDataService } from './firebase';
 import { Patient, Visit } from '../models/patient.model';
 
 // ─── Mock ClinicContextService ───────────────────────────────────────────────
@@ -80,9 +80,9 @@ const mockClinicContext = {
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function makeService(): FirebaseService {
+function makeService(): PatientDataService {
   mockCollection.mockReturnValue({ id: 'patients' } as any);
-  return new FirebaseService({} as any, mockClinicContext as any);
+  return new PatientDataService({} as any, mockClinicContext as any);
 }
 
 function makeMockPatient(overrides: Partial<Patient> = {}): Patient {
@@ -98,9 +98,9 @@ function makeMockPatient(overrides: Partial<Patient> = {}): Patient {
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
-describe('FirebaseService', () => {
+describe('PatientDataService', () => {
 
-  let service: FirebaseService;
+  let service: PatientDataService;
 
   beforeEach(() => {
     vi.clearAllMocks();
