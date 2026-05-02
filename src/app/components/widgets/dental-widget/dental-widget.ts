@@ -113,7 +113,6 @@ export class DentalWidgetComponent {
     }
 
     onMouseLeave(element: any) {
-        // Placeholder for mouse leave logic
         element.childNodes.forEach((x: any) => {
             x.style.fill = 'none';
         });
