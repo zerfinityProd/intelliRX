@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
-import { AlKanbanBoardComponent } from './al-kanban-board/al-kanban-board';
+import { AlKanbanBoardComponent } from '../al-kanban-board/al-kanban-board';
 import { AppointmentService } from '../../services/appointmentService';
 import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
@@ -24,14 +24,7 @@ import { TimeSlotService } from '../../services/timeSlotService';
 import { DoctorCacheService } from '../../services/doctorCacheService';
 import { AutoCancelService } from '../../services/autoCancelService';
 import { formatTime as sharedFormatTime, formatDate as sharedFormatDate, formatSlotLabel as sharedFormatSlotLabel, formatLocalDate as sharedFormatLocalDate, normalizePhoneDigits, isSameLocalDay, isToday as sharedIsToday, isFuture as sharedIsFuture } from '../../utilities/date-helpers';
-
-export interface KanbanColumn {
-  id: Appointment['status'];
-  label: string;
-  color: string;
-  accent: string;
-  icon: string;
-}
+import { KanbanColumn } from '../../interfaces/kanban-column';
 
 @Component({
   selector: 'app-appointments-list',
@@ -109,9 +102,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private autoCancelCleanup: (() => void) | null = null;
 
   readonly columns: KanbanColumn[] = [
-    { id: 'scheduled',  label: 'Scheduled',  color: '#E7F5F7', accent: '#148D9E', icon: 'clock'    },
-    { id: 'completed',  label: 'Completed',  color: '#E7F5F7', accent: '#1CB5C9', icon: 'check'    },
-    { id: 'cancelled',  label: 'Cancelled',  color: '#fee2e2', accent: '#ef4444', icon: 'x'        },
+    { id: 'scheduled', label: 'Scheduled', color: '#E7F5F7', accent: '#148D9E', icon: 'clock' },
+    { id: 'completed', label: 'Completed', color: '#E7F5F7', accent: '#1CB5C9', icon: 'check' },
+    { id: 'cancelled', label: 'Cancelled', color: '#fee2e2', accent: '#ef4444', icon: 'x' },
   ];
 
   get filteredAppointments(): Appointment[] {
@@ -449,7 +442,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
         })
         .map(a => {
           const dt = new Date(a.datetime);
-          return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+          return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
         });
     } catch {
       this.postponeBookedSlots = [];

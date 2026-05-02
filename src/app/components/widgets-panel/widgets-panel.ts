@@ -1,9 +1,9 @@
 import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Appointment } from '../../../models/appointment.model';
-import { UserPermissions } from '../../../services/authorizationService';
-import { DashboardDoctor } from '../home';
+import { Appointment } from '../../models/appointment.model';
+import { UserPermissions } from '../../services/authorizationService';
+import { DashboardDoctor } from '../home/home';
 
 @Component({
   selector: 'app-widgets-panel',

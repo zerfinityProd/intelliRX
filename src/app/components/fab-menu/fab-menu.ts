@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { UserPermissions } from '../../../services/authorizationService';
+import { UserPermissions } from '../../services/authorizationService';
 
 @Component({
   selector: 'app-fab-menu',

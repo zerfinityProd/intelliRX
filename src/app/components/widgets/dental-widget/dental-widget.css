@@ -1,0 +1,25 @@
+.odontogram-svg {
+    width: 800px;
+    background: #f3f3f3;
+}
+
+.tooth-group {
+    cursor: pointer;
+}
+
+.tooth-shape {
+    fill: white;
+    stroke: black;
+    stroke-width: 2;
+}
+
+.tooth-label {
+    font-size: 18px;
+    font-weight: 600;
+    text-anchor: middle;
+}
+
+.tooth-group.selected .tooth-shape {
+    fill: #bfdbfe;
+    stroke: #2563eb;
+}

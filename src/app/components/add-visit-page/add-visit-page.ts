@@ -7,6 +7,7 @@ import { AppointmentService } from '../../services/appointmentService';
 import { AuthenticationService } from '../../services/authenticationService';
 import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
+import { DentalWidgetComponent } from '../widgets/dental-widget/dental-widget';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 
@@ -31,7 +32,7 @@ interface Medicine {
 @Component({
     selector: 'app-add-visit-page',
     standalone: true,
-    imports: [CommonModule, FormsModule, NavbarComponent],
+    imports: [CommonModule, FormsModule, NavbarComponent, DentalWidgetComponent],
     templateUrl: './add-visit-page.html',
     styleUrl: './add-visit-page.css'
 })

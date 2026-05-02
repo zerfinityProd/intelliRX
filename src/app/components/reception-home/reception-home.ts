@@ -5,9 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
 import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
-import { RhHeroComponent } from './rh-hero/rh-hero';
-import { RhKanbanBoardComponent } from './rh-kanban-board/rh-kanban-board';
-import { RhSidebarComponent } from './rh-sidebar/rh-sidebar';
+import { RhHeroComponent } from '../rh-hero/rh-hero';
+import { RhKanbanBoardComponent } from '../rh-kanban-board/rh-kanban-board';
+import { RhSidebarComponent } from '../rh-sidebar/rh-sidebar';
 import { AppointmentService } from '../../services/appointmentService';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService, UserPermissions } from '../../services/authorizationService';
@@ -724,7 +724,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             })
             .map(a => {
                 const dt = new Date(a.datetime);
-                return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+                return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
             });
         this.isLoadingRescheduleSlots = false;
         this.cdr.detectChanges();
@@ -803,7 +803,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             .filter(a => a.status !== 'cancelled')
             .map(a => {
                 const dt = new Date(a.datetime);
-                return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+                return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
             });
         this.isLoadingDayView = false;
         this.cdr.detectChanges();
@@ -875,4 +875,4 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         if (!this.filterDoctorId) return '';
         return this.doctorNameCache.get(this.filterDoctorId) || '';
     }
-}
+}

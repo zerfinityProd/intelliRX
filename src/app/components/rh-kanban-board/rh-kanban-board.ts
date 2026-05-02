@@ -1,55 +1,69 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, ViewEncapsulation } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Appointment } from '../../../models/appointment.model';
-import { KanbanColumn } from '../appointments-list';
+import { Appointment } from '../../models/appointment.model';
+import { UserPermissions } from '../../services/authorizationService';
+
+export interface RhKanbanColumn {
+  id: Appointment['status'];
+  label: string;
+  color: string;
+  accent: string;
+  icon: string;
+}
 
 @Component({
-  selector: 'app-al-kanban-board',
+  selector: 'app-rh-kanban-board',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './al-kanban-board.html',
-  styleUrl: './al-kanban-board.css',
+  templateUrl: './rh-kanban-board.html',
+  styleUrl: './rh-kanban-board.css',
   encapsulation: ViewEncapsulation.None
 })
-export class AlKanbanBoardComponent {
-  @ViewChild('dateInputEl') dateInputEl!: ElementRef<HTMLInputElement>;
-
-  // Header data
+export class RhKanbanBoardComponent {
+  // Toolbar inputs
   @Input() searchTerm: string = '';
   @Input() selectedDate: string = '';
-  @Input() selectedDateLabel: string = '';
+  @Input() filterClinicId: string = '';
+  @Input() filterDoctorId: string = '';
+  @Input() clinicOptions: Array<{ id: string; label: string }> = [];
+  @Input() doctorFilterOptions: Array<{ name: string; email: string }> = [];
+  @Input() isSelectedToday: boolean = true;
   @Input() appointmentsDateMin: string = '';
   @Input() appointmentsDateMax: string = '';
-  @Input() canAppointment: boolean = false;
+  @Input() hasActiveFilters: boolean = false;
 
-  // Board data
-  @Input() columns: KanbanColumn[] = [];
+  // Kanban data
+  @Input() columns: RhKanbanColumn[] = [];
   @Input() filteredAppointments: Appointment[] = [];
   @Input() isLoading: boolean = false;
   @Input() errorMessage: string = '';
   @Input() updatingId: string | null = null;
-  @Input() userRole: 'doctor' | 'receptionist' = 'doctor';
-  @Input() canCancel: boolean = false;
+  @Input() permissions!: UserPermissions;
 
   // Drag state
   @Input() draggingAppt: Appointment | null = null;
   @Input() dragOverColumn: string | null = null;
 
-  // Doctor name resolver
+  // Doctor name resolver - passed from parent
   @Input() doctorNameResolver: (appt: Appointment) => string = () => '';
 
-  // Header outputs
+  // Toolbar outputs
   @Output() searchTermChange = new EventEmitter<string>();
+  @Output() selectedDateChange = new EventEmitter<string>();
   @Output() dateInputChanged = new EventEmitter<string>();
-  @Output() goToPrevDateClicked = new EventEmitter<void>();
-  @Output() goToNextDateClicked = new EventEmitter<void>();
-  @Output() bookNewClicked = new EventEmitter<void>();
+  @Output() filterClinicIdChange = new EventEmitter<string>();
+  @Output() filterClinicChanged = new EventEmitter<void>();
+  @Output() filterDoctorIdChange = new EventEmitter<string>();
+  @Output() filterDoctorChanged = new EventEmitter<void>();
+  @Output() clearFiltersClicked = new EventEmitter<void>();
+  @Output() bookOnDateClicked = new EventEmitter<void>();
+  @Output() goTodayClicked = new EventEmitter<void>();
   @Output() errorDismissed = new EventEmitter<void>();
 
   // Card action outputs
   @Output() openVisitClicked = new EventEmitter<Appointment>();
-  @Output() openPostponeClicked = new EventEmitter<Appointment>();
+  @Output() openRescheduleClicked = new EventEmitter<Appointment>();
   @Output() openCancelClicked = new EventEmitter<Appointment>();
 
   // Drag outputs
@@ -82,5 +96,20 @@ export class AlKanbanBoardComponent {
 
   getDoctorDisplayName(appt: Appointment): string {
     return this.doctorNameResolver(appt);
+  }
+
+  onDateInput(value: string): void {
+    this.selectedDateChange.emit(value);
+    this.dateInputChanged.emit(value);
+  }
+
+  onFilterClinicChange(value: string): void {
+    this.filterClinicIdChange.emit(value);
+    this.filterClinicChanged.emit();
+  }
+
+  onFilterDoctorChange(value: string): void {
+    this.filterDoctorIdChange.emit(value);
+    this.filterDoctorChanged.emit();
   }
 }

@@ -18,9 +18,9 @@ import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
 import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
 import { NavbarComponent } from '../navbar/navbar';
-import { SearchPanelComponent } from './search-panel/search-panel';
-import { WidgetsPanelComponent } from './widgets-panel/widgets-panel';
-import { FabMenuComponent } from './fab-menu/fab-menu';
+import { SearchPanelComponent } from '../search-panel/search-panel';
+import { WidgetsPanelComponent } from '../widgets-panel/widgets-panel';
+import { FabMenuComponent } from '../fab-menu/fab-menu';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
@@ -405,7 +405,7 @@ export class HomeComponent implements OnInit {
 
   get calendarDays(): (Date | null)[] {
     const first = new Date(this.calendarYear, this.calendarMonth, 1);
-    const last  = new Date(this.calendarYear, this.calendarMonth + 1, 0);
+    const last = new Date(this.calendarYear, this.calendarMonth + 1, 0);
     const days: (Date | null)[] = [];
     const startDay = first.getDay();
     for (let i = 0; i < startDay; i++) days.push(null);
@@ -621,7 +621,7 @@ export class HomeComponent implements OnInit {
         })
         .map(a => {
           const dt = new Date(a.datetime);
-          return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+          return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
         });
     } catch {
       this.bookedSlotsForSelected = [];
@@ -741,7 +741,7 @@ export class HomeComponent implements OnInit {
     this.router.navigate(['/add-appointment']);
   }
   closeAddAppointmentForm(): void { this.uiStateService.closeAddAppointmentForm(); }
-  onAppointmentBooked(id: string): void {}
+  onAppointmentBooked(id: string): void { }
 
   // ═══════════════════════════════════════════
   //  Day View Modal
@@ -767,7 +767,7 @@ export class HomeComponent implements OnInit {
       .filter(a => a.status !== 'cancelled')
       .map(a => {
         const dt = new Date(a.datetime);
-        return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
       });
     this.isLoadingDayView = false;
     this.cdr.detectChanges();

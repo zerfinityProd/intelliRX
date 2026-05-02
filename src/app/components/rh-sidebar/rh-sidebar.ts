@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Appointment } from '../../../models/appointment.model';
+import { Appointment } from '../../models/appointment.model';
 
 @Component({
   selector: 'app-rh-sidebar',

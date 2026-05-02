@@ -2,9 +2,9 @@ import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angu
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
-import { Patient } from '../../../models/patient.model';
-import { UserPermissions } from '../../../services/authorizationService';
-import { MomentDatePipe } from '../../../pipes/moment-date.pipe';
+import { Patient } from '../../models/patient.model';
+import { UserPermissions } from '../../services/authorizationService';
+import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 
 @Component({
   selector: 'app-search-panel',
