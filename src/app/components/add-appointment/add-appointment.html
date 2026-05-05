@@ -29,7 +29,7 @@
             <span class="appt-step__label">Appointment</span>
           </div>
         </div>
-        <button class="close-button" (click)="goBack()" aria-label="Go back">
+        <button class="close-button" (click)="closeForm()" aria-label="Close form">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -130,10 +130,7 @@
               <span *ngIf="normalizedPhoneDigits.length > 0 && normalizedPhoneDigits.length < phoneMaxDigits" class="appt-phone-meta__warn">
                 {{ phoneMaxDigits - normalizedPhoneDigits.length }} more digit{{ (phoneMaxDigits - normalizedPhoneDigits.length) === 1 ? '' : 's' }} to proceed
               </span>
-              <span *ngIf="phoneLookupStatus === 'done' && normalizedPhoneDigits.length === phoneMaxDigits" class="appt-phone-meta__ok">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                Lookup complete
-              </span>
+
             </div>
           </div>
         </div>
@@ -303,7 +300,7 @@
       <div *ngIf="step === 'appointment-details'">
 
         <!-- Patient summary chip -->
-        <div class="appt-patient-chip mb-3">
+        <div class="appt-patient-chip mb-2">
           <div class="appt-patient-chip__avatar">{{ displayPatientName.charAt(0).toUpperCase() }}</div>
           <div class="appt-patient-chip__info">
             <span class="appt-patient-chip__name">{{ displayPatientName }}</span>
@@ -315,10 +312,8 @@
           </span>
         </div>
 
-        <h3 class="section-title">Booking Details</h3>
-
         <!-- Date + Doctor pill row -->
-        <div class="row g-3 mb-3">
+        <div class="row g-2 mb-2">
           <!-- Date -->
           <div class="col-md-4">
             <label for="apptDate" class="form-label fw-semibold" style="font-size:12px">
@@ -330,7 +325,7 @@
         </div>
 
         <!-- Selected doctor pill (doctor role - auto-locked) -->
-        <div *ngIf="doctorContextReady && !canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-3">
+        <div *ngIf="doctorContextReady && !canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-2">
           <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
           <div class="appt-doctor-pill__info">
             <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
@@ -343,7 +338,7 @@
         </div>
 
         <!-- Selected clinic & doctor summary (receptionist - chosen in step 1) -->
-        <div *ngIf="canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-3">
+        <div *ngIf="canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-2">
           <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
           <div class="appt-doctor-pill__info">
             <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>

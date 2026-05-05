@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { FirestoreApiService, DELETE_FIELD } from './api/firestore-api.service';
 import { normalizeEmail } from '../utilities/normalize-email';
 import { ClinicUserAvailability } from '../models/clinic-user.model';
-import { ClinicContextService } from './clinicContextService';
+
 
 /** Strip non-printable / invisible characters from a string */
 function stripInvisible(s: string): string {
@@ -44,10 +44,6 @@ interface UserLookupResult {
     subscriptionId: string;
     clinicIds: string[];
     role: 'doctor' | 'receptionist';
-    /** Per-user permission overrides (if present on the user doc) */
-    userPermissionOverrides: string[] | null;
-    /** Per-clinic_user permission overrides (from clinic_users doc for active clinic) */
-    clinicUserPermissions: Map<string, string[] | null>;
     timestamp: number;
 }
 
@@ -56,7 +52,6 @@ interface UserLookupResult {
 })
 export class AuthorizationService {
     private api = inject(FirestoreApiService);
-    private clinicContext = inject(ClinicContextService);
 
     /** Per-email lookup cache */
     private lookupCache = new Map<string, UserLookupResult>();
@@ -214,12 +209,8 @@ export class AuthorizationService {
             // Extract specialization from user doc (fallback checked in clinic_users later)
             let specialization: string = getField(userData, 'specialization') || getField(userData, 'specialty') || '';
 
-            // Check for per-user permission overrides
-            let userPermissionOverrides: string[] | null = null;
-            const perms = getField(userData, 'permissions');
-            if (perms && Array.isArray(perms)) {
-                userPermissionOverrides = perms;
-            }
+            // Note: permissions are resolved solely from the roles collection.
+            // Any permissions fields on user docs are ignored.
 
             // Step 2: Find clinic_users entries for this user.
             // Query by user_id only; filter status client-side because documents
@@ -238,7 +229,6 @@ export class AuthorizationService {
 
             let subscriptionId = '';
             const clinicIds: string[] = [];
-            const clinicUserPermissions = new Map<string, string[] | null>();
 
             for (const cuDoc of cuDocs) {
                 const cuData = cuDoc.data;
@@ -269,11 +259,8 @@ export class AuthorizationService {
                         }
                     }
                 }
-                // Capture per-clinic_user permission overrides (Layer 4)
-                if (cId) {
-                    const cuPerms = cuData['permissions'];
-                    clinicUserPermissions.set(cId, (cuPerms && Array.isArray(cuPerms)) ? cuPerms : null);
-                }
+                // Note: permissions on clinic_users docs are ignored;
+                // permissions are resolved solely from the roles collection.
             }
 
             // If specialization not found on user doc, check clinic_users docs
@@ -292,15 +279,13 @@ export class AuthorizationService {
                 subscriptionId,
                 clinicIds,
                 role,
-                userPermissionOverrides,
-                clinicUserPermissions,
                 timestamp: Date.now()
             };
 
             this.lookupCache.set(normalized, result);
             console.log('Resolved user context for', normalized,
                 '→ name:', userName, 'sub:', subscriptionId, 'clinics:', clinicIds,
-                'role:', role, 'overrides:', userPermissionOverrides ? 'yes' : 'no');
+                'role:', role);
             return result;
         } catch (error: any) {
             console.error('User lookup failed for:', normalized, error);
@@ -367,55 +352,8 @@ export class AuthorizationService {
         return permissions;
     }
 
-    /**
-     * Load subscription-level permission overrides for a given role.
-     * Reads: subscriptions/{subId}.permissions[roleName]
-     * Returns the override array if present, or null to fall through.
-     */
-    private async loadSubscriptionPermissions(subscriptionId: string, roleName: string): Promise<string[] | null> {
-        if (!subscriptionId) return null;
-        try {
-            const result = await this.api.getDocument('subscriptions', subscriptionId);
-            if (result) {
-                const data = result.data;
-                const perms = data['permissions'];
-                if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
-                    const rolePerms = perms[roleName];
-                    if (rolePerms && Array.isArray(rolePerms)) {
-                        return rolePerms;
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('Failed to load subscription permissions:', subscriptionId, error);
-        }
-        return null;
-    }
-
-    /**
-     * Load clinic-level permission overrides for a given role.
-     * Reads: clinics/{clinicId}.permissions[roleName]
-     * Returns the override array if present, or null to fall through.
-     */
-    private async loadClinicPermissions(clinicId: string, roleName: string): Promise<string[] | null> {
-        if (!clinicId) return null;
-        try {
-            const result = await this.api.getDocument('clinics', clinicId);
-            if (result) {
-                const data = result.data;
-                const perms = data['permissions'];
-                if (perms && typeof perms === 'object' && !Array.isArray(perms)) {
-                    const rolePerms = perms[roleName];
-                    if (rolePerms && Array.isArray(rolePerms)) {
-                        return rolePerms;
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn('Failed to load clinic permissions:', clinicId, error);
-        }
-        return null;
-    }
+    // Note: Subscription-level and clinic-level permission overrides have been removed.
+    // Permissions are resolved solely from the roles/{roleName} collection.
 
     /**
      * Check if an email is allowed (exists in users collection).
@@ -444,16 +382,11 @@ export class AuthorizationService {
     }
 
     /**
-     * Resolve permissions using a 4-layer hierarchical approach.
-     * Each layer REPLACES the previous if it defines permissions for the user's role.
+     * Resolve permissions from the roles collection only.
+     * Reads: roles/{roleName} → permissions array
      *
-     * Layer 1: Global role defaults       → roles/{roleName}                          (base)
-     * Layer 2: Subscription overrides     → subscriptions/{subId}.permissions[role]   (org-level)
-     * Layer 3: Clinic overrides           → clinics/{clinicId}.permissions[role]       (clinic-level)
-     * Layer 4: Individual overrides       → clinic_users/{cuId}.permissions            (per-doctor)
-     * Layer 5: User-doc overrides         → users/{userId}.permissions                 (super override)
-     *
-     * Higher layers win (replace semantics). If a layer has no permissions, previous layer carries through.
+     * Permissions are defined centrally in the roles collection and are not
+     * overridden at the subscription, clinic, clinic_user, or user level.
      */
     async getUserPermissions(email: string): Promise<UserPermissions> {
         try {
@@ -461,49 +394,13 @@ export class AuthorizationService {
             if (!result) return { ...DEFAULT_PERMISSIONS };
 
             const roleName = result.role;
-            const currentClinicId = this.clinicContext.getSelectedClinicId();
-            let permNames: string[];
-            let resolvedFrom = 'Layer 1 (global role defaults)';
 
-            // Layer 1: Global role defaults
-            permNames = await this.loadRoleDefaults(roleName);
-
-            // Layer 2: Subscription overrides
-            if (result.subscriptionId) {
-                const subPerms = await this.loadSubscriptionPermissions(result.subscriptionId, roleName);
-                if (subPerms) {
-                    permNames = subPerms;
-                    resolvedFrom = 'Layer 2 (subscription)';
-                }
-            }
-
-            // Layer 3: Clinic overrides (based on currently selected clinic)
-            if (currentClinicId) {
-                const clinicPerms = await this.loadClinicPermissions(currentClinicId, roleName);
-                if (clinicPerms) {
-                    permNames = clinicPerms;
-                    resolvedFrom = 'Layer 3 (clinic)';
-                }
-            }
-
-            // Layer 4: Individual overrides (from clinic_users doc for current clinic)
-            if (currentClinicId && result.clinicUserPermissions.has(currentClinicId)) {
-                const cuPerms = result.clinicUserPermissions.get(currentClinicId);
-                if (cuPerms) {
-                    permNames = cuPerms;
-                    resolvedFrom = 'Layer 4 (clinic_user)';
-                }
-            }
-
-            // Layer 5: User-doc overrides (super override — always wins)
-            if (result.userPermissionOverrides) {
-                permNames = result.userPermissionOverrides;
-                resolvedFrom = 'Layer 5 (user-doc override)';
-            }
+            // Load permissions from roles/{roleName} — the single source of truth
+            const permNames = await this.loadRoleDefaults(roleName);
 
             const permissions = this.mapPermissionNames(permNames);
             console.log('Resolved permissions for', normalizeEmail(email),
-                '→', resolvedFrom, permissions);
+                '→ role:', roleName, permissions);
             return permissions;
         } catch (error) {
             console.warn('getUserPermissions failed for:', email, error);

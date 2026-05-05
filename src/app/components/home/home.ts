@@ -120,7 +120,16 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.clearSearch();
+    // Restore search term from sessionStorage (e.g. when returning from add-appointment)
+    const savedSearch = sessionStorage.getItem('home_searchTerm');
+    if (savedSearch) {
+      this.searchTerm = savedSearch;
+      sessionStorage.removeItem('home_searchTerm');
+      // Re-run the search after component initializes
+      setTimeout(() => this.performSearch(savedSearch), 0);
+    } else {
+      this.clearSearch();
+    }
 
     // If navigated here with prefill query params, open Add Patient modal.
     const qp = this.route.snapshot.queryParams || {};
@@ -728,6 +737,10 @@ export class HomeComponent implements OnInit {
   }
 
   openAddAppointmentForm(patient?: Patient): void {
+    // Persist the current search term so it's restored when the user comes back
+    if (this.searchTerm.trim()) {
+      sessionStorage.setItem('home_searchTerm', this.searchTerm.trim());
+    }
     if (patient) {
       this.router.navigate(['/add-appointment'], {
         queryParams: {

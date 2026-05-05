@@ -258,11 +258,11 @@
 .appt-doctor-pill {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: 10px;
+  padding: 6px 12px;
   animation: appt-fade-in 0.2s ease;
 }
 
@@ -272,49 +272,49 @@
 }
 
 .appt-doctor-pill__avatar {
-  width: 36px;
-  height: 36px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.appt-doctor-pill__info { flex: 1; display: flex; flex-direction: column; gap: 1px; }
-.appt-doctor-pill__name { font-size: 13px; font-weight: 600; color: var(--clr-text, #1e293b); }
-.appt-doctor-pill__spec { font-size: 11px; color: var(--clr-text-muted, #64748b); }
+.appt-doctor-pill__info { flex: 1; display: flex; flex-direction: column; gap: 0; }
+.appt-doctor-pill__name { font-size: 12px; font-weight: 600; color: var(--clr-text, #1e293b); }
+.appt-doctor-pill__spec { font-size: 10px; color: var(--clr-text-muted, #64748b); }
 
 /* ── Patient chip ── */
 .appt-patient-chip {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   background: var(--clr-bg, #f8fafc);
   border: 1px solid var(--clr-border, #e2e8f0);
-  border-radius: 14px;
-  padding: 12px 14px;
+  border-radius: 10px;
+  padding: 8px 12px;
 }
 .appt-patient-chip__avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 800;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.appt-patient-chip__info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.appt-patient-chip__name { font-size: 14px; font-weight: 700; color: var(--clr-text, #1e293b); }
-.appt-patient-chip__phone { font-size: 12px; color: var(--clr-text-muted, #64748b); }
-.appt-patient-chip__badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; flex-shrink: 0; }
+.appt-patient-chip__info { flex: 1; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.appt-patient-chip__name { font-size: 13px; font-weight: 700; color: var(--clr-text, #1e293b); }
+.appt-patient-chip__phone { font-size: 11px; color: var(--clr-text-muted, #64748b); }
+.appt-patient-chip__badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; }
 .appt-badge--existing { background: #d1fae5; color: #059669; }
 .appt-badge--new      { background: #fef3c7; color: #d97706; }
 
@@ -370,9 +370,9 @@
 /* ── Slot grid ── */
 .slots-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-  max-height: 260px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  max-height: 210px;
   overflow-y: auto;
   padding: 2px;
   scrollbar-width: thin;
@@ -384,9 +384,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 11px;
-  border-radius: 10px;
-  border: 1.5px solid var(--clr-border, #e2e8f0);
+  padding: 5px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--clr-border, #e2e8f0);
   background: var(--clr-bg, #f8fafc);
   cursor: pointer;
   transition: all 0.12s;
@@ -408,8 +408,8 @@
 }
 .slot-btn.slot-selected .slot-time { color: #fff !important; }
 
-.slot-time { font-size: 11px; font-weight: 600; color: var(--clr-text, #1e293b); }
-.slot-tag { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+.slot-time { font-size: 10px; font-weight: 600; color: var(--clr-text, #1e293b); }
+.slot-tag { font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
 .slot-tag--available { background: #d1fae5; color: #059669; }
 .slot-tag--booked    { background: #fee2e2; color: #dc2626; }
 .slot-tag--past      { background: #f1f5f9; color: #94a3b8; }
@@ -434,9 +434,9 @@
 .appt-slot-legend {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 8px;
-  font-size: 10px;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 9px;
   color: var(--clr-text-muted, #94a3b8);
   flex-wrap: wrap;
 }
@@ -459,7 +459,7 @@
 ═══════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   .appt-stepper { display: none; }
-  .slots-grid { grid-template-columns: repeat(2, 1fr); }
+  .slots-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 576px) {
@@ -601,3 +601,95 @@
 
 [data-theme="dark"] .appt-phone-meta__warn { color: var(--dk-text2); }
 [data-theme="dark"] .appt-phone-meta__ok { color: #34d399; }
+
+/* ═══════════════════════════════════════════════════════════
+   ADDITIONAL RESPONSIVE — Ultra-small screens
+═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+
+  /* Stepper hidden at 768 already, but ensure step badge too */
+  .appt-step-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    margin-left: 6px;
+  }
+
+  /* Phone row — already columns at 576, but tighten */
+  .appt-search-phone-btn {
+    min-width: 80px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+  /* Lookup panel */
+  .appt-lookup-panel {
+    padding: 10px 10px 8px;
+    border-radius: 12px;
+  }
+
+  .appt-patient-pick {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: 10px;
+  }
+
+  .appt-patient-pick__avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    font-size: 13px;
+  }
+
+  .appt-patient-pick__name {
+    font-size: 13px;
+  }
+
+  /* Patient chip */
+  .appt-patient-chip {
+    padding: 6px 10px;
+    gap: 8px;
+  }
+
+  .appt-patient-chip__avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 11px;
+  }
+
+  .appt-patient-chip__name {
+    font-size: 12px;
+  }
+
+  /* Doctor pill */
+  .appt-doctor-pill {
+    padding: 5px 10px;
+    gap: 6px;
+  }
+
+  /* Slot grid — already 1col at 576, but compact */
+  .slot-btn {
+    padding: 6px 8px;
+  }
+
+  .slot-time {
+    font-size: 11px;
+  }
+
+  .slot-tag {
+    font-size: 8px;
+  }
+
+  /* Error */
+  .appt-error {
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+  }
+
+  /* Slot placeholder */
+  .appt-slot-placeholder {
+    padding: 12px;
+    font-size: 12px;
+  }
+}

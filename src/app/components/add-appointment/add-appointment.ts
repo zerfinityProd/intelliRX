@@ -1,6 +1,6 @@
 // src/app/components/add-appointment/add-appointment.ts
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AppointmentService } from '../../services/appointmentService';
@@ -975,6 +975,13 @@ export class AddAppointmentComponent implements OnInit {
     if (d.length <= 5) return d;
     if (d.length <= 10) return `${d.slice(0, 5)} ${d.slice(5)}`;
     return d;
+  }
+
+  private location = inject(Location);
+
+  /** Close the entire form and navigate back to the previous page in history. */
+  closeForm(): void {
+    this.location.back();
   }
 
   goHome(): void { this.router.navigate(['/home']); }

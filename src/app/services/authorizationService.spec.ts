@@ -232,165 +232,50 @@ describe('AuthorizationService', () => {
         });
     });
 
-    // ── getUserPermissions — Layer 2: Subscription overrides ──────────────────
-    describe('getUserPermissions() — Layer 2 (subscription overrides)', () => {
-        it('subscription permissions override global role defaults', async () => {
-            setupUserLookup([DOCTOR_USER], [DOCTOR_CU]);
-            setupDocReads({
-                'roles/doctor': { permissions: DOCTOR_ROLE_PERMS },
-                'subscriptions/sub_01': {
-                    permissions: {
-                        doctor: ['canEdit', 'canAddPatient', 'canAddVisit'],  // removed canDelete
-                    },
-                },
-            });
-
-            const perms = await service.getUserPermissions('doctor@test.com');
-            expect(perms.canDelete).toBe(false);  // removed at subscription level
-            expect(perms.canEdit).toBe(true);
-            expect(perms.canAddPatient).toBe(true);
-            expect(perms.canAddVisit).toBe(true);
-            expect(perms.canAppointment).toBe(false);  // not in subscription override
-        });
-
-        it('subscription without permissions for this role falls through to Layer 1', async () => {
-            setupUserLookup([DOCTOR_USER], [DOCTOR_CU]);
-            setupDocReads({
-                'roles/doctor': { permissions: DOCTOR_ROLE_PERMS },
-                'subscriptions/sub_01': {
-                    permissions: {
-                        receptionist: ['canAppointment'],  // only receptionist defined, not doctor
-                    },
-                },
-            });
-
-            const perms = await service.getUserPermissions('doctor@test.com');
-            // Should fall through to Layer 1 (all doctor perms)
-            expect(perms.canDelete).toBe(true);
-            expect(perms.canEdit).toBe(true);
-        });
-    });
-
-    // ── getUserPermissions — Layer 3: Clinic overrides ────────────────────────
-    describe('getUserPermissions() — Layer 3 (clinic overrides)', () => {
-        it('clinic permissions override subscription permissions', async () => {
-            hoisted.selectedClinicId = 'clinic_01';
-            setupUserLookup([DOCTOR_USER], [DOCTOR_CU]);
-            setupDocReads({
-                'roles/doctor': { permissions: DOCTOR_ROLE_PERMS },
-                'subscriptions/sub_01': {
-                    permissions: {
-                        doctor: ['canEdit', 'canAddPatient', 'canAddVisit', 'canAppointment'],
-                    },
-                },
-                'clinics/clinic_01': {
-                    permissions: {
-                        doctor: ['canEdit', 'canAddPatient'],  // further restricted
-                    },
-                },
-            });
-
-            const perms = await service.getUserPermissions('doctor@test.com');
-            expect(perms.canEdit).toBe(true);
-            expect(perms.canAddPatient).toBe(true);
-            expect(perms.canAddVisit).toBe(false);
-            expect(perms.canAppointment).toBe(false);
-            expect(perms.canDelete).toBe(false);
-        });
-
-        it('no clinic selected → skips Layer 3', async () => {
-            hoisted.selectedClinicId = null;
-            setupUserLookup([DOCTOR_USER], [DOCTOR_CU]);
-            setupDocReads({
-                'roles/doctor': { permissions: DOCTOR_ROLE_PERMS },
-                'clinics/clinic_01': {
-                    permissions: { doctor: ['canEdit'] },  // this should be ignored
-                },
-            });
-
-            const perms = await service.getUserPermissions('doctor@test.com');
-            // Should use Layer 1 defaults (all perms)
-            expect(perms.canDelete).toBe(true);
-            expect(perms.canEdit).toBe(true);
-        });
-    });
-
-    // ── getUserPermissions — Layer 4: Individual (clinic_user) overrides ──────
-    describe('getUserPermissions() — Layer 4 (clinic_user overrides)', () => {
-        it('clinic_user permissions override all lower layers', async () => {
+    // ── getUserPermissions — permissions come only from roles collection ──────
+    describe('getUserPermissions() — roles-only resolution', () => {
+        it('ignores permissions on clinic_users docs (uses roles collection only)', async () => {
             hoisted.selectedClinicId = 'clinic_01';
             const cuWithPerms = {
                 id: 'cu_doc',
                 data: {
                     ...DOCTOR_CU.data,
-                    permissions: ['canEdit'],  // only canEdit at individual level
+                    permissions: ['canEdit'],  // should be ignored
                 },
             };
             setupUserLookup([DOCTOR_USER], [cuWithPerms]);
             setupDocReads({
                 'roles/doctor': { permissions: DOCTOR_ROLE_PERMS },
-                'subscriptions/sub_01': {
-                    permissions: { doctor: ['canEdit', 'canAddPatient', 'canAddVisit'] },
-                },
-                'clinics/clinic_01': {
-                    permissions: { doctor: ['canEdit', 'canAddPatient'] },
-                },
             });
 
             const perms = await service.getUserPermissions('doctor@test.com');
-            expect(perms.canEdit).toBe(true);
-            expect(perms.canAddPatient).toBe(false);  // overridden at Layer 4
-            expect(perms.canAddVisit).toBe(false);
-            expect(perms.canDelete).toBe(false);
-        });
-
-        it('clinic_user without permissions falls through to Layer 3', async () => {
-            hoisted.selectedClinicId = 'clinic_01';
-            setupUserLookup([DOCTOR_USER], [DOCTOR_CU]);  // no permissions on clinic_user
-            setupDocReads({
-                'roles/doctor': { permissions: DOCTOR_ROLE_PERMS },
-                'clinics/clinic_01': {
-                    permissions: { doctor: ['canEdit', 'canAddPatient'] },
-                },
-            });
-
-            const perms = await service.getUserPermissions('doctor@test.com');
+            // All doctor role perms should be present (clinic_user override ignored)
+            expect(perms.canDelete).toBe(true);
             expect(perms.canEdit).toBe(true);
             expect(perms.canAddPatient).toBe(true);
-            expect(perms.canAddVisit).toBe(false);  // from Layer 3
+            expect(perms.canAddVisit).toBe(true);
+            expect(perms.canAppointment).toBe(true);
+            expect(perms.canCancel).toBe(true);
         });
-    });
 
-    // ── getUserPermissions — Layer 5: User-doc overrides (super override) ─────
-    describe('getUserPermissions() — Layer 5 (user-doc super override)', () => {
-        it('user-doc permissions override ALL layers', async () => {
-            hoisted.selectedClinicId = 'clinic_01';
+        it('ignores permissions on user docs (uses roles collection only)', async () => {
             const userWithPerms = {
                 id: 'user_doc',
                 data: {
                     ...DOCTOR_USER.data,
-                    permissions: ['canDelete'],  // super override: only canDelete
+                    permissions: ['canDelete'],  // should be ignored
                 },
             };
-            const cuWithPerms = {
-                id: 'cu_doc',
-                data: { ...DOCTOR_CU.data, permissions: ['canEdit', 'canAddPatient'] },
-            };
-            setupUserLookup([userWithPerms], [cuWithPerms]);
+            setupUserLookup([userWithPerms], [DOCTOR_CU]);
             setupDocReads({
                 'roles/doctor': { permissions: DOCTOR_ROLE_PERMS },
-                'subscriptions/sub_01': {
-                    permissions: { doctor: ['canEdit', 'canAddPatient', 'canAddVisit'] },
-                },
-                'clinics/clinic_01': {
-                    permissions: { doctor: ['canEdit', 'canAddPatient'] },
-                },
             });
 
             const perms = await service.getUserPermissions('doctor@test.com');
-            expect(perms.canDelete).toBe(true);   // from user-doc override
-            expect(perms.canEdit).toBe(false);     // NOT from lower layers
-            expect(perms.canAddPatient).toBe(false);
+            // All doctor role perms should be present (user-doc override ignored)
+            expect(perms.canDelete).toBe(true);
+            expect(perms.canEdit).toBe(true);
+            expect(perms.canAddPatient).toBe(true);
         });
     });
 

@@ -1232,4 +1232,142 @@
   border-color: rgba(251, 191, 36, 0.3);
   color: #fcd34d;
 }
-[data-theme="dark"] .doctor-select-prompt svg { color: #fbbf24; }
+[data-theme="dark"] .doctor-select-prompt svg { color: #fbbf24; }
+
+/* ═══════════════════════════════════════════════════════════
+   ADDITIONAL RESPONSIVE — Small screens
+═══════════════════════════════════════════════════════════ */
+
+/* 480px: ultra-small phones */
+@media (max-width: 480px) {
+
+  /* Stack stats to 2 columns */
+  .widget-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* Quick actions 2-col */
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .qa-btn {
+    padding: 10px 6px;
+  }
+
+  .qa-btn__icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .qa-btn__label {
+    font-size: 10px;
+  }
+
+  /* Banner — compact */
+  .widget--banner {
+    padding: 12px 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .widget-banner__num {
+    font-size: 22px;
+  }
+
+  .widget-banner__cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Patient cards */
+  .kb-patient-card {
+    padding: 10px 12px;
+    border-radius: 12px;
+    gap: 10px;
+  }
+
+  .kb-patient-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+    border-radius: 10px;
+  }
+
+  .kb-patient-card__name {
+    font-size: 13px;
+  }
+
+  .kb-patient-card__meta {
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  /* Actions stack on small */
+  .kb-patient-card__actions {
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  .kb-action-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  /* Search card */
+  .kb-search-card {
+    padding: 12px 14px 10px;
+    border-radius: 14px;
+  }
+
+  /* Column header */
+  .kanban-col-header__title {
+    font-size: 12px;
+  }
+
+  /* Empty/idle states */
+  .kb-empty-state,
+  .kb-idle-state {
+    padding: 32px 14px;
+    border-radius: 14px;
+  }
+
+  .kb-idle-state__icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Calendar widget */
+  .widget--calendar {
+    padding: 10px 12px;
+  }
+
+  /* Day panel items */
+  .appt-items {
+    max-height: 150px;
+  }
+
+  /* Slot viewer chips */
+  .slot-chips-grid {
+    grid-template-columns: 1fr;
+    max-height: 180px;
+  }
+
+  /* Widget padding */
+  .widget {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  /* Doctor select widget */
+  .widget--doctor-select {
+    padding: 12px 14px;
+  }
+
+  .doctor-select-row {
+    flex-direction: column;
+  }
+}

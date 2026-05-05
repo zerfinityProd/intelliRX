@@ -1,14 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { FirestoreApiService } from './api/firestore-api.service';
 import { AuthenticationService } from './authenticationService';
-import { ClinicContextService } from './clinicContextService';
-import { normalizeEmail } from '../utilities/normalize-email';
+import { AuthorizationService } from './authorizationService';
+import { ConfigService } from './configService';
 
 /**
  * Manages application theme (light/dark mode).
- * Persists to Firestore under:
- *   subscriptions/{subId}/clinics/{clinicId}/users/{email}.preferences.theme
+ * Persists to Firestore via ConfigService at:
+ *   users/{userId}/config/settings → preferences.theme
  * Falls back to system preference before Firebase loads.
  */
 @Injectable({
@@ -17,9 +16,12 @@ import { normalizeEmail } from '../utilities/normalize-email';
 export class ThemeService {
     private readonly isDarkTheme$ = new BehaviorSubject<boolean>(this.loadThemeFromLocal());
 
-    private api = inject(FirestoreApiService);
     private authService = inject(AuthenticationService);
-    private clinicContext = inject(ClinicContextService);
+    private authorizationService = inject(AuthorizationService);
+    private configService = inject(ConfigService);
+
+    /** Cached user doc ID so we don't re-fetch on every toggle */
+    private resolvedUserId: string | null = null;
 
     /**
      * Observable that emits when theme changes
@@ -36,19 +38,22 @@ export class ThemeService {
     }
 
     /**
-     * Build the Firestore collection path and doc ID for the current user's clinic user doc.
-     * Returns null if context is not ready.
+     * Resolve the Firestore user document ID for the current user.
+     * Returns null if user context is not ready.
      */
-    private getUserDocInfo(): { collectionPath: string; docId: string } | null {
-        const subId = this.clinicContext.getSubscriptionId();
-        const clinicId = this.clinicContext.getSelectedClinicId();
+    private async resolveUserId(): Promise<string | null> {
+        if (this.resolvedUserId) return this.resolvedUserId;
+
         const email = this.authService.currentUserValue?.email;
-        if (!subId || !clinicId || !email) return null;
-        const normalized = normalizeEmail(email);
-        return {
-            collectionPath: `subscriptions/${subId}/clinics/${clinicId}/users`,
-            docId: normalized
-        };
+        if (!email) return null;
+
+        try {
+            const userId = await this.authorizationService.getUserId(email);
+            this.resolvedUserId = userId;
+            return userId;
+        } catch {
+            return null;
+        }
     }
 
     /**
@@ -57,26 +62,22 @@ export class ThemeService {
      * Call this once after login.
      */
     async loadThemeFromFirebase(): Promise<void> {
-        const info = this.getUserDocInfo();
-        if (!info) return;
+        const userId = await this.resolveUserId();
+        if (!userId) return;
 
         try {
-            const result = await this.api.getDocument(info.collectionPath, info.docId);
+            const config = await this.configService.getDoctorConfig(userId);
 
-            if (result) {
-                const data = result.data;
-                const theme = data?.preferences?.theme;
-                if (theme) {
-                    const isDark = theme === 'dark';
-                    this.isDarkTheme$.next(isDark);
-                    this.applyTheme(isDark);
-                    return;
-                }
+            if (config?.preferences?.theme) {
+                const isDark = config.preferences.theme === 'dark';
+                this.isDarkTheme$.next(isDark);
+                this.applyTheme(isDark);
+                return;
             }
 
             // No theme saved yet — persist current default to Firestore
             const currentTheme = this.isDarkTheme$.value ? 'dark' : 'light';
-            await this.saveThemeToFirestore(currentTheme);
+            await this.saveThemeToConfig(currentTheme);
         } catch (error) {
             console.warn('Failed to load theme from Firestore:', error);
             // Keep the local/system default
@@ -121,24 +122,24 @@ export class ThemeService {
     }
 
     /**
-     * Persist theme preference to Firestore (on the clinic user doc)
+     * Persist theme preference to Firestore via ConfigService
      */
     private persistTheme(isDark: boolean): void {
         const theme = isDark ? 'dark' : 'light';
-        this.saveThemeToFirestore(theme).catch(err => {
+        this.saveThemeToConfig(theme).catch(err => {
             console.warn('Failed to save theme to Firestore:', err);
         });
     }
 
     /**
-     * Write theme to: subscriptions/{subId}/clinics/{clinicId}/users/{email}.preferences.theme
+     * Write theme to: users/{userId}/config/settings → preferences.theme
      */
-    private async saveThemeToFirestore(theme: string): Promise<void> {
-        const info = this.getUserDocInfo();
-        if (!info) return;
+    private async saveThemeToConfig(theme: string): Promise<void> {
+        const userId = await this.resolveUserId();
+        if (!userId) return;
 
-        await this.api.setDocument(info.collectionPath, info.docId, {
-            preferences: { theme }
-        }, true); // merge = true
+        await this.configService.setDoctorConfig(userId, {
+            preferences: { theme: theme as 'light' | 'dark' }
+        });
     }
 }

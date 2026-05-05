@@ -1351,4 +1351,130 @@
   border-color: #ef4444;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ADDITIONAL RESPONSIVE — Small screens
+═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+
+  .kb-page {
+    padding: 12px 10px 60px;
+  }
+
+  /* Page header — stack */
+  .kb-page-header {
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .kb-page-header__icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+  }
+
+  .kb-page-header__title {
+    font-size: 18px;
+  }
+
+  .kb-page-header__sub {
+    font-size: 12px;
+  }
+
+  .kb-page-header__actions {
+    width: 100%;
+    gap: 6px;
+  }
+
+  /* Stat pills — wrap */
+  .kb-stat-pills {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .kb-stat-pill {
+    font-size: 11px;
+    padding: 4px 10px;
+  }
+
+  /* Search box — fluid width */
+  .kb-search-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .kb-search-wrap {
+    flex: 1;
+  }
+
+  /* Date nav */
+  .kb-date-nav__btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  .kb-date-nav__center {
+    padding: 5px 10px;
+  }
+
+  .kb-date-nav__label {
+    font-size: 12px;
+  }
+
+  /* Buttons */
+  .kb-btn {
+    font-size: 12px;
+    padding: 7px 14px;
+  }
+
+  /* Column */
+  .kb-column {
+    border-radius: 14px;
+  }
+
+  .kb-column__header {
+    padding: 12px 12px 10px;
+  }
+
+  /* Cards */
+  .kb-card {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .kb-card__name {
+    font-size: 13px;
+  }
+
+  .kb-card__meta {
+    font-size: 11px;
+  }
+
+  .kb-card__actions {
+    gap: 4px;
+  }
+
+  .kb-card__action-btn {
+    font-size: 10px;
+    padding: 5px 8px;
+  }
+
+  /* Postpone/reschedule modal */
+  .pp-modal {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .pp-slots-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Cancel modal */
+  .cc-modal {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+  }
+}
 

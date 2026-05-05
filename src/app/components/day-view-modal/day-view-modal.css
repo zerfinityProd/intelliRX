@@ -656,3 +656,89 @@
 }
 
 [data-theme="dark"] .dv-past-slot__dash { color: var(--dk-border); }
+
+/* ═══════════════════════════════════════════════════════════
+   ADDITIONAL RESPONSIVE — Ultra-small screens
+═══════════════════════════════════════════════════════════ */
+
+@media (max-width: 480px) {
+  .dv-modal {
+    max-height: 100vh;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .dv-header {
+    padding: 14px 14px 10px;
+    gap: 10px;
+  }
+
+  .dv-header__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .dv-header__title {
+    font-size: 14px;
+  }
+
+  .dv-header__sub {
+    font-size: 11px;
+  }
+
+  .dv-header__close {
+    width: 32px;
+    height: 32px;
+  }
+
+  .dv-summary {
+    padding: 8px 14px;
+    gap: 6px;
+  }
+
+  .dv-pill {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  .dv-slot__time {
+    width: 48px;
+    padding: 6px 6px 6px 8px;
+  }
+
+  .dv-slot__hour {
+    font-size: 11px;
+  }
+
+  .dv-slot__content {
+    padding: 4px 10px 4px 6px;
+  }
+
+  .dv-appt-block {
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .dv-appt-block__avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 10px;
+  }
+
+  .dv-appt-block__name {
+    font-size: 12px;
+  }
+
+  .dv-appt-block__meta {
+    font-size: 10px;
+  }
+
+  .dv-action-btn {
+    font-size: 9px;
+    padding: 4px 6px;
+  }
+
+  .dv-now-dot {
+    margin-left: 50px;
+  }
+}

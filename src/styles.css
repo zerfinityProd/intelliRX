@@ -1873,9 +1873,9 @@ main {
   background: #ffffff;
   border-radius: 20px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-  padding: 40px;
+  padding: 28px 32px;
   width: 100%;
-  max-width: 440px;
+  max-width: 420px;
   animation: fadeIn 0.5s ease;
 }
 
@@ -1890,7 +1890,7 @@ main {
 .divider {
   position: relative;
   text-align: center;
-  margin: 20px 0;
+  margin: 14px 0;
 }
 
 .divider::before {
@@ -1918,12 +1918,12 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 11px;
+  gap: 10px;
+  padding: 8px;
   background: #ffffff;
   color: var(--clr-text);
-  border: 2px solid var(--clr-border);
-  border-radius: 12px;
+  border: 1.5px solid var(--clr-border);
+  border-radius: 10px;
   font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
@@ -1951,17 +1951,17 @@ main {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 11px;
+  gap: 10px;
+  padding: 8px;
   background: #ffffff;
   color: var(--clr-text);
-  border: 2px solid var(--clr-border);
-  border-radius: 12px;
+  border: 1.5px solid var(--clr-border);
+  border-radius: 10px;
   font-size: var(--fs-sm);
   font-weight: 600;
   cursor: pointer;
   transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .microsoft-btn:hover:not(:disabled),
@@ -5606,4 +5606,215 @@ main {
   .avp-history-panel { max-height: 300px; border-radius: 12px; }
   .avp-form-actions { gap: 8px; }
   .avp-form-actions .btn { flex: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADDITIONAL RESPONSIVE — Ultra-small & polish
+   Fills gaps for ≤480px phones and improves touch targets
+═══════════════════════════════════════════════════════════ */
+
+/* 480px: ultra-small phones */
+@media (max-width: 480px) {
+
+  /* Login — social buttons stack vertically */
+  .social-buttons-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .login-card {
+    padding: 22px 14px;
+    border-radius: 16px;
+  }
+
+  .login-logo .h3 {
+    font-size: 20px;
+  }
+
+  /* Navbar — tighter */
+  .app-navbar .px-4 {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  .app-navbar .navbar-brand {
+    font-size: 16px;
+    gap: 6px;
+  }
+
+  .app-navbar .navbar-brand svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .user-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 11px;
+  }
+
+  .theme-toggle-btn {
+    width: 30px;
+    height: 30px;
+  }
+
+  /* Modal — fullscreen on very small phones */
+  .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-height: 100vh;
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-header h2,
+  .modal-header h3 {
+    font-size: 16px;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+  }
+
+  /* Form actions — stack on very small */
+  .form-actions {
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px 16px;
+  }
+
+  .form-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Section titles */
+  .section-title {
+    font-size: 12px;
+  }
+
+  /* Patient header card */
+  .patient-header-card {
+    padding: 16px 14px;
+    border-radius: 14px;
+    gap: 12px;
+  }
+
+  .patient-avatar-large {
+    width: 48px;
+    height: 48px;
+    font-size: 18px;
+  }
+
+  .patient-name-heading {
+    font-size: 18px;
+  }
+
+  /* Detail tabs */
+  .detail-tabs {
+    gap: 4px;
+    padding: 4px;
+    border-radius: 10px;
+  }
+
+  .detail-tab {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+
+  /* Stat cards */
+  .stat-card {
+    padding: 10px 8px !important;
+    gap: 8px !important;
+  }
+
+  .stat-value {
+    font-size: 22px !important;
+  }
+
+  /* Info card */
+  .info-label {
+    font-size: 11px;
+  }
+
+  .info-value {
+    font-size: 13px;
+  }
+
+  /* Visit cards */
+  .visit-details-card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  /* FAB */
+  .fab-container {
+    bottom: 16px;
+    right: 14px;
+  }
+
+  .fab-main-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .fab-option-btn {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Back button */
+  .navbar-back-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* 360px: micro screens */
+@media (max-width: 360px) {
+
+  .login-card {
+    padding: 18px 12px;
+  }
+
+  .modal-header h2,
+  .modal-header h3 {
+    font-size: 14px;
+  }
+
+  .stat-card {
+    flex-direction: column;
+    text-align: center;
+    padding: 10px 6px !important;
+  }
+
+  .patient-name-heading {
+    font-size: 16px;
+  }
+
+  .detail-tab {
+    padding: 8px 10px;
+    font-size: 11px;
+  }
+}
+
+/* Touch-friendly: ensure minimum tap targets */
+@media (hover: none) and (pointer: coarse) {
+  .btn,
+  .form-control,
+  .form-select,
+  button {
+    min-height: 44px;
+  }
+
+  .detail-tab {
+    min-height: 40px;
+  }
 }
