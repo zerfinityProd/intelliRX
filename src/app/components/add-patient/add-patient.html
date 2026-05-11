@@ -82,7 +82,15 @@
                 <option value="Other">Other</option>
               </select>
             </div>
-            <div class="col-md-8">
+            <div class="col-md-4">
+              <label for="bloodGroup" class="form-label fw-semibold" style="font-size:12px">Blood Group</label>
+              <select id="bloodGroup" name="bloodGroup" [(ngModel)]="selectedBloodGroup"
+                (ngModelChange)="clearSuccessMessage()" class="form-select">
+                <option value="">Select blood group</option>
+                <option *ngFor="let bg of bloodGroupOptions" [value]="bg">{{ bg }}</option>
+              </select>
+            </div>
+            <div class="col-md-4">
               <label for="email" class="form-label fw-semibold" style="font-size:12px">Email</label>
               <input type="email" id="email" name="email" [(ngModel)]="email" (ngModelChange)="clearSuccessMessage()"
                 placeholder="patient@example.com" class="form-control" />

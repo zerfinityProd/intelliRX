@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService, DocumentResult } from './api/firestore-api.service';
+import { FirestoreApiService, DocumentResult } from './firestore-api.service';
 import { Patient, Visit } from '../models/patient.model';
 import { ClinicContextService } from './clinicContextService';
 
@@ -32,7 +32,7 @@ export class PatientDataService {
   ): Promise<string> {
     try {
       const now = new Date().toISOString();
-      const id = this.api.generateDocId();
+      const id = await this.generatePatientId();
 
       const patient: Patient = {
         ...patientData,
@@ -185,7 +185,8 @@ export class PatientDataService {
       const results = allPatients.filter((p: Patient) => {
         const nameMatch = p.name && p.name.toLowerCase().includes(lowerTerm);
         const phoneMatch = p.phone && p.phone.toString().includes(lowerTerm);
-        return nameMatch || phoneMatch;
+        const idMatch = p.id && p.id.toLowerCase().includes(lowerTerm);
+        return nameMatch || phoneMatch || idMatch;
       });
 
       results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
@@ -323,6 +324,67 @@ export class PatientDataService {
       filters.push({ field: 'clinic_ids', op: 'array-contains', value: clinicId });
     }
     return this.api.runCount('', { collectionId: 'patients', filters });
+  }
+
+  // ── Sequential Patient ID Generation ──────────────────────
+
+  /**
+   * Generate a sequential patient ID in the format YYYYMM#####
+   * e.g. 20260500001, 20260500002, ...
+   *
+   * Uses a Firestore counter document at `counters/patient_seq` to track
+   * the next sequence number per year-month prefix.
+   */
+  private async generatePatientId(maxRetries = 3): Promise<string> {
+    const now = new Date();
+    const yyyy = String(now.getFullYear());
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const currentPrefix = `${yyyy}${mm}`;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Read the current counter document
+        const counterDoc = await this.api.getDocument('counters', 'patient_seq');
+        let nextSeq = 1;
+
+        if (counterDoc) {
+          const storedPrefix = counterDoc.data.current_prefix || '';
+          if (storedPrefix === currentPrefix) {
+            // Same month — use the stored sequence
+            nextSeq = (counterDoc.data.next_seq || 1);
+          }
+          // else: new month — reset to 1
+        }
+
+        const patientId = `${currentPrefix}${String(nextSeq).padStart(5, '0')}`;
+
+        // Check if a patient with this ID already exists (race condition guard)
+        const existing = await this.api.getDocument('patients', patientId);
+        if (existing) {
+          // Someone else already used this sequence — bump and retry
+          await this.api.setDocument('counters', 'patient_seq', {
+            current_prefix: currentPrefix,
+            next_seq: nextSeq + 1
+          });
+          continue;
+        }
+
+        // Reserve the next number by incrementing the counter
+        await this.api.setDocument('counters', 'patient_seq', {
+          current_prefix: currentPrefix,
+          next_seq: nextSeq + 1
+        });
+
+        return patientId;
+      } catch (error) {
+        if (attempt === maxRetries - 1) throw error;
+        // Brief pause before retry
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+
+    // Fallback — should never reach here
+    throw new Error('Failed to generate patient ID after retries');
   }
 
   // ── Cache ─────────────────────────────────────────────────

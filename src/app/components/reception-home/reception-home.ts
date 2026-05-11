@@ -5,9 +5,9 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
 import { DayViewModalComponent } from '../day-view-modal/day-view-modal';
-import { RhHeroComponent } from '../rh-hero/rh-hero';
-import { RhKanbanBoardComponent } from '../rh-kanban-board/rh-kanban-board';
-import { RhSidebarComponent } from '../rh-sidebar/rh-sidebar';
+import { DashboardBannerComponent } from '../dashboard-banner/dashboard-banner';
+import { ReceptionAppointmentBoardComponent } from '../reception-appointment-board/reception-appointment-board';
+import { DashboardSidebarComponent } from '../dashboard-sidebar/dashboard-sidebar';
 import { AppointmentService } from '../../services/appointmentService';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService, UserPermissions } from '../../services/authorizationService';
@@ -29,7 +29,7 @@ import { formatTime as sharedFormatTime, formatSlotLabel as sharedFormatSlotLabe
 @Component({
     selector: 'app-reception-home',
     standalone: true,
-    imports: [CommonModule, FormsModule, NavbarComponent, DayViewModalComponent, RhHeroComponent, RhKanbanBoardComponent, RhSidebarComponent],
+    imports: [CommonModule, FormsModule, NavbarComponent, DayViewModalComponent, DashboardBannerComponent, ReceptionAppointmentBoardComponent, DashboardSidebarComponent],
     templateUrl: './reception-home.html',
     styleUrl: './reception-home.css',
     encapsulation: ViewEncapsulation.None
@@ -497,10 +497,16 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     async openVisitFromAppointment(appt: Appointment): Promise<void> {
         const directPatientId = (appt.patient_id || '').trim();
         if (directPatientId) {
-            // Keep patient ailments in sync with what was entered during appointment booking.
             if (appt.ailments && appt.ailments.trim()) {
                 try {
                     await this.patientService.updatePatient(directPatientId, { ailments: appt.ailments });
+                } catch {
+                    // Don't block navigation if this fails.
+                }
+            }
+            if (appt.bloodGroup && appt.bloodGroup.trim()) {
+                try {
+                    await this.patientService.updatePatient(directPatientId, { bloodGroup: appt.bloodGroup });
                 } catch {
                     // Don't block navigation if this fails.
                 }
@@ -517,7 +523,8 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
                 openAddPatient: '1',
                 name: appt.patientName || '',
                 phone: appt.patientPhone || '',
-                ailments: appt.ailments || ''
+                ailments: appt.ailments || '',
+                bloodGroup: appt.bloodGroup || ''
             }
         });
     }

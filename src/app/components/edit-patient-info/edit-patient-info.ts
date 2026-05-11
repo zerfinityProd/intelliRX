@@ -26,6 +26,8 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
   email: string = '';
   gender: string = '';
   familyId: string = '';
+  readonly bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  selectedBloodGroup: string = '';
 
   errorMessage: string = '';
   successMessage: string = '';
@@ -55,6 +57,7 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
       this.phone = this.patientData.phone || '';
       this.email = this.patientData.email || '';
       this.gender = this.patientData.gender || '';
+      this.selectedBloodGroup = this.patientData.bloodGroup || '';
       
       // Format date for input
       if (this.patientData.dob) {
@@ -176,6 +179,7 @@ export class EditPatientInfoComponent implements OnInit, OnChanges {
         phone: this.phone,
         email: this.email || '',
         gender: this.gender || '',
+        bloodGroup: this.selectedBloodGroup || '',
         dob: this.dateOfBirth || undefined
       };
 

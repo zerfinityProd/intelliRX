@@ -18,14 +18,9 @@ import { ClinicService } from '../../services/clinicService';
 import { TimeSlotService } from '../../services/timeSlotService';
 import { todayLocalISO } from '../../utilities/local-date';
 import { isSlotInPast as sharedIsSlotInPast } from '../../utilities/date-helpers';
+import { Doctor } from '../../interfaces/doctor';
 
-export interface Doctor {
-  id: string;
-  name: string;
-  specialty: string;
-  avatar: string;
-  email: string;
-}
+
 
 @Component({
   selector: 'app-add-appointment',
@@ -74,6 +69,9 @@ export class AddAppointmentComponent implements OnInit {
   // Ailments chips (same style/idea as Add Patient)
   ailmentChips: string[] = [];
   newAilmentInput: string = '';
+  // Blood Group
+  readonly bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  selectedBloodGroup: string = '';
   minDate: string = todayLocalISO();
   maxDate: string = this.computeMaxDate();
 
@@ -867,6 +865,7 @@ export class AddAppointmentComponent implements OnInit {
     try {
       const ailmentsText = this.ailmentChips.join(', ');
       const allergiesText = this.allergyChips.join(', ');
+      const bloodGroup = this.selectedBloodGroup;
 
       const rawEmail = this.authService.currentUserValue?.email || '';
       const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
@@ -886,6 +885,7 @@ export class AddAppointmentComponent implements OnInit {
         const updateData: any = {};
         if (ailmentsText.trim()) updateData.ailments = ailmentsText;
         if (allergiesText.trim()) updateData.allergies = allergiesText;
+        if (bloodGroup) updateData.bloodGroup = bloodGroup;
         if (Object.keys(updateData).length > 0) {
           await this.patientService.updatePatient(patientId, updateData);
         }
@@ -900,6 +900,7 @@ export class AddAppointmentComponent implements OnInit {
         if (this.gender) patientData.gender = this.gender;
         if (allergiesText) patientData.allergies = allergiesText;
         if (ailmentsText) patientData.ailments = ailmentsText;
+        if (bloodGroup) patientData.bloodGroup = bloodGroup;
 
         patientId = await this.patientService.createPatient({
           ...patientData,
@@ -921,6 +922,7 @@ export class AddAppointmentComponent implements OnInit {
         patientPhone,
         datetime: apptDatetime,
         ailments: ailmentsText,
+        bloodGroup: bloodGroup,
         status: 'scheduled',
         isNewPatient: !this.isExistingPatient,
         doctor_id: this.selectedDoctor?.email

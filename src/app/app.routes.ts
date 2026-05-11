@@ -1,6 +1,6 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
-import { authGuard, doctorGuard, receptionGuard } from './guards/auth-guard';
+import { authGuard, doctorGuard } from './guards/auth-guard';
 
 export const routes: Routes = [
     {
@@ -13,13 +13,14 @@ export const routes: Routes = [
         loadComponent: () =>
             import('./components/login/login').then(m => m.LoginComponent)
     },
-    // ── Doctor-only routes ───────────────────────────────────────────────────
+    // ── Home (shared by doctor + receptionist, role-based UI inside) ─────────
     {
         path: 'home',
         loadComponent: () =>
             import('./components/home/home').then(m => m.HomeComponent),
-        canActivate: [doctorGuard]
+        canActivate: [authGuard]
     },
+    // ── Doctor-only routes ───────────────────────────────────────────────────
     {
         path: 'patient/:id',
         loadComponent: () =>
@@ -35,15 +36,6 @@ export const routes: Routes = [
                 m => m.AddVisitPageComponent
             ),
         canActivate: [doctorGuard]
-    },
-    // ── Receptionist-only routes ─────────────────────────────────────────────
-    {
-        path: 'reception-home',
-        loadComponent: () =>
-            import('./components/reception-home/reception-home').then(
-                m => m.ReceptionHomeComponent
-            ),
-        canActivate: [receptionGuard]
     },
     // ── Shared routes (both roles) ───────────────────────────────────────────
     {

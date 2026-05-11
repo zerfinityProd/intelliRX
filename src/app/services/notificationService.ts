@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService } from './api/firestore-api.service';
+import { FirestoreApiService } from './firestore-api.service';
 
 /**
  * Handles browser push notification permission requests and persists

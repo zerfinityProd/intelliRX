@@ -26,7 +26,7 @@ export const authGuard: CanActivateFn = () => {
 
 /**
  * Doctor guard — allows only users with role === 'doctor'.
- * Redirects receptionists to /reception-home.
+ * Redirects receptionists to /home.
  * Redirects unauthenticated users to /login.
  */
 export const doctorGuard: CanActivateFn = () => {
@@ -46,7 +46,7 @@ export const doctorGuard: CanActivateFn = () => {
             return from(authorizationService.getUserRole(email)).pipe(
                 map(role => {
                     if (role === 'receptionist') {
-                        router.navigate(['/reception-home']);
+                        router.navigate(['/home']);
                         return false;
                     }
                     return true;

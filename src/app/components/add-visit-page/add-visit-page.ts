@@ -51,6 +51,11 @@ export class AddVisitPageComponent implements OnInit {
     newAllergyInput: string = '';
     existingAilments: string[] = [];
     newAilmentInput: string = '';
+
+    // Blood Group
+    readonly bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+    selectedBloodGroup: string = '';
+
     diagnosis: string = '';
     examinations: Examination[] = [];
     newExamTestName: string = '';
@@ -73,7 +78,7 @@ export class AddVisitPageComponent implements OnInit {
     editVisitId: string = '';
 
     // ── Expanded visit tracking ───────────────────────────────
-    expandedVisitIds: Set<string> = new Set();
+    expandedVisitIds: Set<number> = new Set();
 
     // ── Navigation origin ─────────────────────────────────────
     private origin: 'home' | 'patient' | 'appointments' = 'home';
@@ -194,6 +199,7 @@ export class AddVisitPageComponent implements OnInit {
             : [];
         this.originalAllergies = [...this.existingAllergies];
         this.originalAilments = [...this.existingAilments];
+        this.selectedBloodGroup = this.patient.bloodGroup || '';
     }
 
     async loadVisits(): Promise<void> {
@@ -300,15 +306,15 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     // ── Visit History helpers ─────────────────────────────────
-    toggleVisitExpand(visitId: string): void {
-        if (this.expandedVisitIds.has(visitId)) {
-            this.expandedVisitIds.delete(visitId);
-        } else {
-            this.expandedVisitIds.add(visitId);
-        }
+    selectedVisit: Visit | null = null;
+    selectedVisitNum: number = 0;
+
+    openVisitModal(visit: Visit, visitNum: number): void {
+        this.selectedVisit = visit;
+        this.selectedVisitNum = visitNum;
     }
-    isVisitExpanded(visitId: string | undefined): boolean {
-        return visitId ? this.expandedVisitIds.has(visitId) : false;
+    closeVisitModal(): void {
+        this.selectedVisit = null;
     }
 
     // ── Submit ────────────────────────────────────────────────
@@ -344,6 +350,9 @@ export class AddVisitPageComponent implements OnInit {
             const ailmentsText = this.existingAilments.join(', ');
             if (ailmentsText !== (this.patient.ailments || '').trim()) {
                 await this.patientService.updatePatient(patientId, { ailments: ailmentsText });
+            }
+            if (this.selectedBloodGroup && this.selectedBloodGroup !== (this.patient.bloodGroup || '')) {
+                await this.patientService.updatePatient(patientId, { bloodGroup: this.selectedBloodGroup });
             }
 
             // Build visit data
@@ -498,6 +507,7 @@ export class AddVisitPageComponent implements OnInit {
             clinicalFindings: this.clinicalFindingsText.trim(),
             allergies: [...this.existingAllergies].sort(),
             ailments: [...this.existingAilments].sort(),
+            bloodGroup: this.selectedBloodGroup,
             diagnosis: this.diagnosis.trim(),
             treatmentPlan: this.treatmentPlan.trim(),
             examinations: this.examinations.map(e => `${e.testName}|${e.status}|${e.result}`),

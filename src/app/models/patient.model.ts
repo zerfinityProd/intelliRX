@@ -8,6 +8,7 @@ export interface Patient {
   gender?: string;
   allergies?: string;          // comma-separated string
   ailments?: string;           // comma-separated string
+  bloodGroup?: string;         // e.g. "A+", "B-", "O+", "AB-"
   clinic_ids: string[];        // array of clinic IDs patient is associated with
   family_id?: string;          // auto-generated family identifier (e.g. "sharma_9876543210")
   created_at?: string;         // ISO datetime — when the patient was first registered

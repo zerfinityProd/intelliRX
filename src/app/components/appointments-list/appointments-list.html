@@ -2,7 +2,7 @@
 <app-navbar [showBack]="true"></app-navbar>
 
 <!-- ═══ Kanban Board (child component) ═══ -->
-<app-al-kanban-board
+<app-appointment-status-board
   [searchTerm]="searchTerm"
   [selectedDate]="selectedDate"
   [selectedDateLabel]="selectedDateLabel"
@@ -34,7 +34,7 @@
   (columnDragEnter)="onColumnDragEnter($event.event, $event.columnId)"
   (columnDragLeave)="onColumnDragLeave($event.event, $event.columnId)"
   (columnDrop)="onColumnDrop($event.event, $event.columnId)">
-</app-al-kanban-board>
+</app-appointment-status-board>
 
 <!-- ══════════════════════════════════════════════
      POSTPONE MODAL

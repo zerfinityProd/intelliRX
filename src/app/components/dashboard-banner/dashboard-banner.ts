@@ -2,14 +2,14 @@ import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angu
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'app-rh-hero',
+  selector: 'app-dashboard-banner',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './rh-hero.html',
-  styleUrl: './rh-hero.css',
+  templateUrl: './dashboard-banner.html',
+  styleUrl: './dashboard-banner.css',
   encapsulation: ViewEncapsulation.None
 })
-export class RhHeroComponent {
+export class DashboardBannerComponent {
   @Input() greeting: string = '';
   @Input() userName: string = '';
   @Input() todayCount: number = 0;

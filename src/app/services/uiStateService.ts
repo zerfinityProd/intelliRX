@@ -24,7 +24,7 @@ interface UIState {
 })
 export class UIStateService {
     private readonly initialState: UIState = {
-        showAddPatientForm: false,
+        showAddPatientForm: sessionStorage.getItem('home_addPatientFormOpen') === '1',
         isFabOpen: false,
         showAddVisitForm: false,
         selectedPatientForVisit: null,
@@ -53,6 +53,7 @@ export class UIStateService {
      * Open add patient form and close FAB
      */
     openAddPatientForm(): void {
+        sessionStorage.setItem('home_addPatientFormOpen', '1');
         this.updateUIState({
             showAddPatientForm: true,
             isFabOpen: false
@@ -63,6 +64,7 @@ export class UIStateService {
      * Close add patient form
      */
     closeAddPatientForm(): void {
+        sessionStorage.removeItem('home_addPatientFormOpen');
         this.updateUIState({ showAddPatientForm: false });
     }
 

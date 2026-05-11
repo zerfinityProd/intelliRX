@@ -3,14 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Appointment } from '../../models/appointment.model';
 
 @Component({
-  selector: 'app-rh-sidebar',
+  selector: 'app-dashboard-sidebar',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './rh-sidebar.html',
-  styleUrl: './rh-sidebar.css',
+  templateUrl: './dashboard-sidebar.html',
+  styleUrl: './dashboard-sidebar.css',
   encapsulation: ViewEncapsulation.None
 })
-export class RhSidebarComponent {
+export class DashboardSidebarComponent {
   @Input() calMonthLabel: string = '';
   @Input() calendarDays: (Date | null)[] = [];
   @Input() selectedCalDate: Date | null = null;

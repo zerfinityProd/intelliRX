@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService, DELETE_FIELD } from './api/firestore-api.service';
+import { FirestoreApiService, DELETE_FIELD } from './firestore-api.service';
 import { normalizeEmail } from '../utilities/normalize-email';
 import { ClinicUserAvailability } from '../models/clinic-user.model';
 

@@ -26,15 +26,10 @@ import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { formatTime as sharedFormatTime, formatSlotLabel as sharedFormatSlotLabel } from '../../utilities/date-helpers';
+import { Doctor } from '../../interfaces/doctor';
 
 
-export interface DashboardDoctor {
-  id: string;
-  name: string;
-  specialty: string;
-  avatar: string;
-  email: string;
-}
+
 
 @Component({
   selector: 'app-home',
@@ -61,7 +56,7 @@ export class HomeComponent implements OnInit {
 
   // Doctor / clinic selection (receptionist flow)
   userRole: 'doctor' | 'receptionist' = 'doctor';
-  dashboardDoctors: DashboardDoctor[] = [];
+  dashboardDoctors: Doctor[] = [];
   selectedDashboardDoctorId: string = '';
   dashboardClinics: Array<{ id: string; label: string }> = [];
   selectedDashboardClinicId: string = '';
@@ -120,11 +115,10 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Restore search term from sessionStorage (e.g. when returning from add-appointment)
+    // Restore search term from sessionStorage (persists across refresh)
     const savedSearch = sessionStorage.getItem('home_searchTerm');
     if (savedSearch) {
       this.searchTerm = savedSearch;
-      sessionStorage.removeItem('home_searchTerm');
       // Re-run the search after component initializes
       setTimeout(() => this.performSearch(savedSearch), 0);
     } else {
@@ -147,6 +141,9 @@ export class HomeComponent implements OnInit {
       this.cdr.markForCheck();
     });
 
+    // Restore pending patient success popup if page was refreshed mid-popup
+    this.restorePendingPatientSuccess();
+
     // Ensure clinic/subscription context is resolved BEFORE loading appointments
     void this.initializeAndLoad();
   }
@@ -159,10 +156,17 @@ export class HomeComponent implements OnInit {
     await this.ensureClinicContext();
     await this.initDashboardDoctorContext();
     await this.loadAppointments();
-    // Auto-select today's date for calendar highlighting (but don't open modal)
-    const today = new Date();
-    this.selectedDate = today;
-    void this.loadSlotsForDate(today);
+
+    // Restore day view modal if it was open before refresh
+    const savedDayView = sessionStorage.getItem('home_dayViewDate');
+    if (savedDayView) {
+      this.restoreDayViewFromSession();
+    } else {
+      // Auto-select today's date for calendar highlighting (but don't open modal)
+      const today = new Date();
+      this.selectedDate = today;
+      void this.loadSlotsForDate(today);
+    }
     this.loadPatientCount();
   }
 
@@ -229,7 +233,7 @@ export class HomeComponent implements OnInit {
       // Build doctor entry from database user info
       if (dbName && authEmail) {
         const initials = dbName.split(' ').filter(Boolean).map(w => w[0]?.toUpperCase() || '').join('').slice(0, 2);
-        const doctorEntry: DashboardDoctor = {
+        const doctorEntry: Doctor = {
           id: `dr_${authEmail}`,
           name: dbName,
           specialty,
@@ -318,12 +322,12 @@ export class HomeComponent implements OnInit {
   private async refreshDashboardDoctors(): Promise<void> {
     if (this.selectedDashboardClinicId) {
       // Fetch doctors assigned to this specific clinic from the database
-      this.dashboardDoctors = await this.authorizationService.getDoctorsForClinic(this.selectedDashboardClinicId) as DashboardDoctor[];
+      this.dashboardDoctors = await this.authorizationService.getDoctorsForClinic(this.selectedDashboardClinicId) as Doctor[];
     } else {
       // Fetch all doctors in the subscription
       const subId = this.clinicContextService.getSubscriptionId();
       if (subId) {
-        this.dashboardDoctors = await this.authorizationService.getDoctorsForSubscription(subId) as DashboardDoctor[];
+        this.dashboardDoctors = await this.authorizationService.getDoctorsForSubscription(subId) as Doctor[];
       } else {
         this.dashboardDoctors = [];
       }
@@ -333,7 +337,7 @@ export class HomeComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  get selectedDashboardDoctor(): DashboardDoctor | null {
+  get selectedDashboardDoctor(): Doctor | null {
     return this.dashboardDoctors.find(d => d.id === this.selectedDashboardDoctorId) ?? null;
   }
 
@@ -662,6 +666,12 @@ export class HomeComponent implements OnInit {
     this.errorMessage = '';
     if (this.searchTimeout) clearTimeout(this.searchTimeout);
     const trimmed = this.searchTerm.trim();
+    // Persist search term for page refresh
+    if (trimmed) {
+      sessionStorage.setItem('home_searchTerm', trimmed);
+    } else {
+      sessionStorage.removeItem('home_searchTerm');
+    }
     if (!trimmed || trimmed.length < 3) {
       this.patientService.clearSearchResults();
       this.isSearching = false;
@@ -734,6 +744,7 @@ export class HomeComponent implements OnInit {
     this.errorMessage = '';
     this.isSearching = false;
     this.patientService.clearSearchResults();
+    sessionStorage.removeItem('home_searchTerm');
   }
 
   openAddAppointmentForm(patient?: Patient): void {
@@ -806,6 +817,38 @@ export class HomeComponent implements OnInit {
     this.openDayViewModal(date);
   }
 
+  /**
+   * If the page was refreshed while the "Patient Added Successfully!" popup was showing,
+   * re-show it so the user can still choose "Add Visit" or "OK".
+   */
+  private async restorePendingPatientSuccess(): Promise<void> {
+    const patientId = sessionStorage.getItem('pendingPatientSuccess');
+    if (!patientId) return;
+
+    const { default: Swal } = await import('sweetalert2');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const result = await Swal.fire({
+      title: 'Patient Added Successfully!',
+      icon: 'success',
+      showConfirmButton: true,
+      confirmButtonText: 'Add Visit',
+      confirmButtonColor: '#148D9E',
+      showDenyButton: true,
+      denyButtonText: 'OK',
+      denyButtonColor: '#94a3b8',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      background: isDark ? '#1f1f1f' : '#ffffff',
+      color: isDark ? '#e0e0e0' : '#1e293b',
+    });
+
+    sessionStorage.removeItem('pendingPatientSuccess');
+
+    if (result.isConfirmed) {
+      this.router.navigate(['/patient', patientId, 'add-visit'], { state: { origin: 'home' } });
+    }
+  }
+
   onDayViewBookSlot(time: string): void {
     if (!this.dayViewDate) return;
     this.closeDayView();
@@ -825,15 +868,15 @@ export class HomeComponent implements OnInit {
           openAddPatient: '1',
           name: appt.patientName || '',
           phone: appt.patientPhone || '',
-          ailments: appt.ailments || ''
+          ailments: appt.ailments || '',
+          bloodGroup: appt.bloodGroup || ''
         }
       });
     }
   }
 
   onDayViewReschedule(appt: Appointment): void {
-    // Close modal — the parent page handles reschedule modals differently
-    // For doctor home, navigate to appointments page for full management
+    // Close modal — navigate to appointments page for full management
     this.closeDayView();
     this.router.navigate(['/appointments']);
   }

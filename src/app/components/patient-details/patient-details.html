@@ -155,6 +155,10 @@
                   <span class="info-label">Gender</span>
                   <span class="info-value">{{ patient.gender || 'Not specified' }}</span>
                 </div>
+                <div class="col" *ngIf="patient.bloodGroup">
+                  <span class="info-label">Blood Group</span>
+                  <span class="info-value fw-semibold" style="color:#dc2626">{{ patient.bloodGroup }}</span>
+                </div>
               </div>
             </div>
 

@@ -102,7 +102,7 @@
           </div>
         </div>
 
-        <h3 class="section-title">Phone & Patient</h3>
+
 
         <!-- Phone input row -->
         <div class="row g-3 mb-3">
@@ -168,7 +168,7 @@
           <h3 class="section-title">
             {{ phoneMatches.length === 0 ? 'New Patient' : 'Name for New Record' }}
           </h3>
-          <div class="row g-3 mb-3">
+          <div class="row g-2 mb-2">
             <div class="col-md-4">
               <label for="firstName" class="form-label fw-semibold" style="font-size:12px">
                 First Name <span class="required">*</span>
@@ -192,7 +192,7 @@
           </div>
 
           <!-- Row 2: Family ID, DOB, Gender -->
-          <div class="row g-3 mb-3">
+          <div class="row g-2 mb-2">
             <div class="col-md-4">
               <label for="familyIdPreview" class="form-label fw-semibold" style="font-size:12px">
                 Family ID <span class="auto-label">(Auto)</span>
@@ -217,13 +217,24 @@
             </div>
           </div>
 
-          <!-- Row 3: Email + Ailments -->
-          <div class="row g-3 mb-3">
+          <!-- Row 3: Email + Blood Group + Ailments -->
+          <div class="row g-2 mb-2">
             <div class="col-md-6">
               <label for="patientEmail" class="form-label fw-semibold" style="font-size:12px">Email</label>
               <input type="email" id="patientEmail" [(ngModel)]="patientEmail" class="form-control"
                 placeholder="patient@example.com" />
             </div>
+            <div class="col-md-6">
+              <label for="bloodGroup" class="form-label fw-semibold" style="font-size:12px">Blood Group</label>
+              <select id="bloodGroup" [(ngModel)]="selectedBloodGroup" class="form-select">
+                <option value="">Select blood group</option>
+                <option *ngFor="let bg of bloodGroupOptions" [value]="bg">{{ bg }}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Row 4: Ailments + Allergies -->
+          <div class="row g-2 mb-2">
             <div class="col-md-6">
               <label for="ailmentInput" class="form-label fw-semibold" style="font-size:12px">Ailments</label>
               <div class="chip-input-box" role="group" aria-label="Ailments chips"
@@ -243,10 +254,6 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Row 4: Allergies -->
-          <div class="row g-3 mb-3">
             <div class="col-md-6">
               <label for="allergyInput" class="form-label fw-semibold" style="font-size:12px">Allergies</label>
               <div class="chip-input-box" role="group" aria-label="Allergies chips"

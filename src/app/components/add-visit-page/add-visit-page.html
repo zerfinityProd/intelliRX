@@ -174,8 +174,8 @@
           </div>
         </div>
 
-        <!-- ── Row 4: Allergies · Ailments ── -->
-        <div class="avp-form-row">
+        <!-- ── Row 4: Allergies · Ailments · Blood Group ── -->
+        <div class="avp-form-row avp-row-three-col">
           <div class="avp-form-section avp-flex-col">
             <label for="visitAllergyInput" class="avp-section-label">Allergies</label>
             <div class="chip-input-box" role="group" aria-label="Allergies chips"
@@ -208,6 +208,14 @@
                   (keydown)="onAilmentKeydown($event)" (blur)="onAilmentBlur()" />
               </div>
             </div>
+          </div>
+
+          <div class="avp-form-section avp-flex-col">
+            <label for="visitBloodGroup" class="avp-section-label">Blood Group</label>
+            <select id="visitBloodGroup" name="visitBloodGroup" [(ngModel)]="selectedBloodGroup" class="form-select">
+              <option value="">Select</option>
+              <option *ngFor="let bg of bloodGroupOptions" [value]="bg">{{ bg }}</option>
+            </select>
           </div>
         </div>
 
@@ -277,61 +285,69 @@
 
       <!-- Visit cards -->
       <div *ngIf="!isLoadingVisits && visits.length > 0" class="avp-history-list">
-        <div *ngFor="let visit of visits; let i = index" class="avp-visit-card">
-
-          <!-- Card header (always visible) -->
-          <div class="avp-visit-header" (click)="toggleVisitExpand(visit.id!)">
-            <div class="avp-visit-meta">
-              <span class="avp-visit-num">Visit #{{ visits.length - i }}</span>
-              <span *ngIf="visit.visitType !== 'appointment'" class="walk-in-badge">Walk-in visit</span>
-              <span *ngIf="visit.visitType === 'appointment'" class="scheduled-badge">Appointment</span>
-              <span class="avp-visit-date">{{ formatDateTime(visit.created_at) }}</span>
-            </div>
-            <div class="avp-visit-preview" *ngIf="!isVisitExpanded(visit.id)">
-              {{ visit.chiefComplaints }}
-            </div>
-            <button class="avp-expand-btn" [class.expanded]="isVisitExpanded(visit.id)" type="button">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <polyline points="6 9 12 15 18 9"></polyline>
-              </svg>
-            </button>
+        <div *ngFor="let visit of visits; let i = index" class="avp-visit-card"
+             (click)="openVisitModal(visit, visits.length - i)">
+          <div class="avp-visit-meta-top">
+            <span class="avp-visit-num">Visit #{{ visits.length - i }}</span>
+            <span *ngIf="visit.visitType !== 'appointment'" class="walk-in-badge">Walk-in visit</span>
+            <span *ngIf="visit.visitType === 'appointment'" class="scheduled-badge">Appointment</span>
           </div>
-
-          <!-- Expanded details -->
-          <div class="avp-visit-details" *ngIf="isVisitExpanded(visit.id)">
-            <div class="avp-visit-detail" *ngIf="visit.presentIllness">
-              <span class="avp-detail-label">Clinical Findings</span>
-              <span class="avp-detail-value">{{ visit.presentIllness }}</span>
-            </div>
-            <div class="avp-visit-detail" *ngIf="visit.chiefComplaints">
-              <span class="avp-detail-label">Chief Complaints</span>
-              <span class="avp-detail-value">{{ visit.chiefComplaints }}</span>
-            </div>
-            <div class="avp-visit-detail" *ngIf="visit.diagnosis">
-              <span class="avp-detail-label">Diagnosis</span>
-              <span class="avp-detail-value">{{ visit.diagnosis }}</span>
-            </div>
-            <div class="avp-visit-detail" *ngIf="visit.examination?.length">
-              <span class="avp-detail-label">Examination</span>
-              <span class="avp-detail-value">{{ visit.examination!.join(', ') }}</span>
-            </div>
-            <div class="avp-visit-detail" *ngIf="visit.medicines?.length">
-              <span class="avp-detail-label">Medicines</span>
-              <span class="avp-detail-value">{{ visit.medicines!.join(', ') }}</span>
-            </div>
-            <div class="avp-visit-detail" *ngIf="visit.treatmentPlan">
-              <span class="avp-detail-label">Treatment Plan</span>
-              <span class="avp-detail-value">{{ visit.treatmentPlan }}</span>
-            </div>
-            <div class="avp-visit-detail" *ngIf="visit.advice">
-              <span class="avp-detail-label">Advice</span>
-              <span class="avp-detail-value">{{ visit.advice }}</span>
-            </div>
-          </div>
-
+          <span class="avp-visit-date">{{ formatDateTime(visit.created_at) }}</span>
         </div>
       </div>
     </div>
 
+  </div>
+</div>
+
+<!-- ── Visit Detail Modal ── -->
+<div class="avp-modal-overlay" *ngIf="selectedVisit" (click)="closeVisitModal()">
+  <div class="avp-modal" (click)="$event.stopPropagation()">
+    <div class="avp-modal-header">
+      <div>
+        <h3 class="avp-modal-title">Visit #{{ selectedVisitNum }}</h3>
+        <div class="avp-modal-meta">
+          <span *ngIf="selectedVisit.visitType !== 'appointment'" class="walk-in-badge">Walk-in visit</span>
+          <span *ngIf="selectedVisit.visitType === 'appointment'" class="scheduled-badge">Appointment</span>
+          <span class="avp-visit-date" style="opacity:1">{{ formatDateTime(selectedVisit.created_at) }}</span>
+        </div>
+      </div>
+      <button class="avp-modal-close" (click)="closeVisitModal()" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="avp-modal-body">
+      <div class="avp-modal-field" *ngIf="selectedVisit.chiefComplaints">
+        <span class="avp-modal-label">Chief Complaints</span>
+        <span class="avp-modal-value">{{ selectedVisit.chiefComplaints }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="selectedVisit.presentIllness">
+        <span class="avp-modal-label">Clinical Findings</span>
+        <span class="avp-modal-value">{{ selectedVisit.presentIllness }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="selectedVisit.diagnosis">
+        <span class="avp-modal-label">Diagnosis</span>
+        <span class="avp-modal-value">{{ selectedVisit.diagnosis }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="selectedVisit.examination?.length">
+        <span class="avp-modal-label">Examination</span>
+        <span class="avp-modal-value">{{ selectedVisit.examination!.join(', ') }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="selectedVisit.medicines?.length">
+        <span class="avp-modal-label">Medicines</span>
+        <span class="avp-modal-value">{{ selectedVisit.medicines!.join(', ') }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="selectedVisit.treatmentPlan">
+        <span class="avp-modal-label">Treatment Plan</span>
+        <span class="avp-modal-value">{{ selectedVisit.treatmentPlan }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="selectedVisit.advice">
+        <span class="avp-modal-label">Advice</span>
+        <span class="avp-modal-value">{{ selectedVisit.advice }}</span>
+      </div>
+    </div>
   </div>
 </div>

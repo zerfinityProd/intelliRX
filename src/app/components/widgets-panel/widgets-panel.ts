@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Appointment } from '../../models/appointment.model';
 import { UserPermissions } from '../../services/authorizationService';
-import { DashboardDoctor } from '../home/home';
+import { Doctor } from '../../interfaces/doctor';
 
 @Component({
   selector: 'app-widgets-panel',
@@ -17,7 +17,7 @@ export class WidgetsPanelComponent {
   // Banner
   @Input() todayAppointmentCount: number = 0;
   @Input() isLoadingAppts: boolean = true;
-  @Input() selectedDashboardDoctor: DashboardDoctor | null = null;
+  @Input() selectedDashboardDoctor: Doctor | null = null;
 
   // Doctor/Clinic context
   @Input() userRole: 'doctor' | 'receptionist' = 'doctor';
@@ -28,7 +28,7 @@ export class WidgetsPanelComponent {
   @Input() selectedDoctorClinicId: string = '';
 
   // Receptionist doctor selection
-  @Input() dashboardDoctors: DashboardDoctor[] = [];
+  @Input() dashboardDoctors: Doctor[] = [];
   @Input() selectedDashboardDoctorId: string = '';
   @Input() dashboardClinics: Array<{ id: string; label: string }> = [];
   @Input() selectedDashboardClinicId: string = '';

@@ -61,19 +61,17 @@ export class LoginComponent implements OnInit {
         });
     }
 
-    /** Navigate to home or reception-home based on Firestore role */
+    /** Navigate to home based on role — both roles use /home now */
     private async navigateByRole(email: string): Promise<void> {
         // Prompt for notification permission (non-blocking, runs in background)
         this.promptNotificationPermission(email);
 
         const role = await this.authorizationService.getUserRole(email);
-        if (role === 'receptionist') {
-            this.router.navigate(['/reception-home']);
-            return;
-        }
 
         // If this doctor belongs to multiple clinics, prompt which clinic to use.
-        await this.ensureDoctorClinicSelected(email);
+        if (role === 'doctor') {
+            await this.ensureDoctorClinicSelected(email);
+        }
         this.router.navigate(['/home']);
     }
 

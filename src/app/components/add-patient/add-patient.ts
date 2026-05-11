@@ -42,6 +42,10 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   ailmentChips: string[] = [];
   newAilmentInput: string = '';
 
+  // Blood Group
+  readonly bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  selectedBloodGroup: string = '';
+
   todayDate: string = todayLocalISO();
 
   errorMessage: string = '';
@@ -56,8 +60,10 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
+  private static readonly FORM_STORAGE_KEY = 'addPatientFormData';
+
   ngOnInit(): void {
-    this.resetForm();
+    this.restoreFormData();
     this.applyPrefill();
   }
 
@@ -88,9 +94,51 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     this.newAllergyInput = '';
     this.ailmentChips = [];
     this.newAilmentInput = '';
+    this.selectedBloodGroup = '';
     this.errorMessage = '';
     this.successMessage = '';
     this.warningMessage = '';
+    sessionStorage.removeItem(AddPatientComponent.FORM_STORAGE_KEY);
+  }
+
+  /** Save all form field values to sessionStorage */
+  private persistFormData(): void {
+    const data = {
+      firstName: this.firstName,
+      middleName: this.middleName,
+      lastName: this.lastName,
+      phone: this.phone,
+      dateOfBirth: this.dateOfBirth,
+      email: this.email,
+      gender: this.gender,
+      allergyChips: this.allergyChips,
+      ailmentChips: this.ailmentChips,
+      selectedBloodGroup: this.selectedBloodGroup,
+    };
+    sessionStorage.setItem(AddPatientComponent.FORM_STORAGE_KEY, JSON.stringify(data));
+  }
+
+  /** Restore form field values from sessionStorage (if any) */
+  private restoreFormData(): void {
+    const saved = sessionStorage.getItem(AddPatientComponent.FORM_STORAGE_KEY);
+    if (!saved) return;
+    try {
+      const data = JSON.parse(saved);
+      this.firstName = data.firstName || '';
+      this.middleName = data.middleName || '';
+      this.lastName = data.lastName || '';
+      this.phone = data.phone || '';
+      this.dateOfBirth = data.dateOfBirth || '';
+      this.email = data.email || '';
+      this.gender = data.gender || '';
+      this.allergyChips = data.allergyChips || [];
+      this.ailmentChips = data.ailmentChips || [];
+      this.selectedBloodGroup = data.selectedBloodGroup || '';
+      // Recompute familyId preview from restored data
+      void this.updateFamilyId();
+    } catch {
+      // Corrupted data — ignore
+    }
   }
 
   private showPrefillAllowed(): boolean {
@@ -139,10 +187,12 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
   onNameChange(): void {
     this.updateFamilyId();
+    this.persistFormData();
   }
 
   onPhoneChange(): void {
     this.updateFamilyId();
+    this.persistFormData();
   }
 
   private async updateFamilyId(): Promise<void> {
@@ -184,6 +234,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     if (this.errorMessage) this.errorMessage = '';
     // Note: warningMessage is NOT cleared here — it is managed exclusively
     // by updateFamilyId() to preserve duplicate-patient warnings.
+    this.persistFormData();
   }
 
   private generateFamilyIdPreview(name: string, phone: string): string {
@@ -202,6 +253,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       if (trimmed && !this.allergyChips.includes(trimmed)) {
         this.allergyChips.push(trimmed);
         this.newAllergyInput = '';
+        this.persistFormData();
       }
     }
   }
@@ -211,11 +263,13 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     if (trimmed && !this.allergyChips.includes(trimmed)) {
       this.allergyChips.push(trimmed);
       this.newAllergyInput = '';
+      this.persistFormData();
     }
   }
 
   removeAllergy(index: number): void {
     this.allergyChips.splice(index, 1);
+    this.persistFormData();
   }
 
   // ── Ailment chips ──
@@ -226,6 +280,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       if (trimmed && !this.ailmentChips.includes(trimmed)) {
         this.ailmentChips.push(trimmed);
         this.newAilmentInput = '';
+        this.persistFormData();
       }
     }
   }
@@ -235,11 +290,13 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     if (trimmed && !this.ailmentChips.includes(trimmed)) {
       this.ailmentChips.push(trimmed);
       this.newAilmentInput = '';
+      this.persistFormData();
     }
   }
 
   removeAilment(index: number): void {
     this.ailmentChips.splice(index, 1);
+    this.persistFormData();
   }
 
   async onSubmit(): Promise<void> {
@@ -269,6 +326,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       if (allergiesText) patientData.allergies = allergiesText;
       const ailmentsText = this.ailmentChips.join(', ');
       if (ailmentsText) patientData.ailments = ailmentsText;
+      if (this.selectedBloodGroup) patientData.bloodGroup = this.selectedBloodGroup;
 
       const clinicId = this.clinicContextService.getSelectedClinicId();
       const patientId = await this.patientService.createPatient({
@@ -280,6 +338,9 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       this.patientAdded.emit(patientId);
       this.resetForm();  // Clear form so onClose() doesn't trigger "Discard changes?"
       this.onClose();
+
+      // Persist patientId so the success popup survives a browser refresh
+      sessionStorage.setItem('pendingPatientSuccess', patientId);
 
       // Dynamically import Swal only at the point it is needed
       const { default: Swal } = await import('sweetalert2');
@@ -293,11 +354,14 @@ export class AddPatientComponent implements OnInit, OnDestroy {
         showDenyButton: true,
         denyButtonText: 'OK',
         denyButtonColor: '#94a3b8',
-        timer: 2000,
-        timerProgressBar: true,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
         background: isDark ? '#1f1f1f' : '#ffffff',
         color: isDark ? '#e0e0e0' : '#1e293b',
       });
+
+      // Clear the pending flag — user has acted on the popup
+      sessionStorage.removeItem('pendingPatientSuccess');
 
       if (result.isConfirmed) {
         this.router.navigate(['/patient', patientId, 'add-visit'], { state: { origin: 'home' } });
@@ -361,12 +425,13 @@ export class AddPatientComponent implements OnInit, OnDestroy {
     if (this.dateOfBirth > this.todayDate) { this.dobError = 'Date of birth cannot be a future date'; return; }
     this.dobError = '';
     if (this.errorMessage) this.errorMessage = '';
+    this.persistFormData();
   }
 
   onClose(): void {
     const hasData = this.firstName.trim() || this.lastName.trim() || this.phone.trim() ||
         this.middleName.trim() || this.email.trim() || this.dateOfBirth ||
-        this.gender || this.allergyChips.length || this.ailmentChips.length;
+        this.gender || this.selectedBloodGroup || this.allergyChips.length || this.ailmentChips.length;
 
     if (hasData) {
       // Dynamically import Swal only when the dialog is actually needed

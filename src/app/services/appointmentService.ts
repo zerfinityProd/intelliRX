@@ -1,6 +1,6 @@
 // src/app/services/appointmentService.ts
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService } from './api/firestore-api.service';
+import { FirestoreApiService } from './firestore-api.service';
 import { AuthenticationService } from './authenticationService';
 import { AuthorizationService } from './authorizationService';
 import { ClinicContextService } from './clinicContextService';
@@ -92,6 +92,7 @@ export class AppointmentService {
         ...(data.doctor_name ? { doctor_name: data.doctor_name } : {}),
         ...(data.clinic_name ? { clinic_name: data.clinic_name } : {}),
         ...(data.ailments ? { ailments: data.ailments } : {}),
+        ...(data.bloodGroup ? { bloodGroup: data.bloodGroup } : {}),
         ...(data.reason ? { reason: data.reason } : {}),
         ...(data.notes ? { notes: data.notes } : {}),
         ...(data.isNewPatient !== undefined ? { isNewPatient: data.isNewPatient } : {}),

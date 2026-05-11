@@ -1,6 +1,6 @@
 // src/app/services/configService.ts
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService } from './api/firestore-api.service';
+import { FirestoreApiService } from './firestore-api.service';
 import { ClinicContextService } from './clinicContextService';
 import {
   SystemSettings,

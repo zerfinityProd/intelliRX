@@ -3,7 +3,7 @@
 <div class="rh-page">
 
   <!-- ── Hero Banner (child component) ── -->
-  <app-rh-hero
+  <app-dashboard-banner
     [greeting]="greeting"
     [userName]="userName"
     [todayCount]="todayCount"
@@ -11,13 +11,13 @@
     [completedTodayCount]="completedTodayCount"
     [isLoading]="isLoading"
     (bookNewClicked)="bookNew()">
-  </app-rh-hero>
+  </app-dashboard-banner>
 
   <!-- ── Main Layout ── -->
   <div class="rh-layout">
 
     <!-- ═══ LEFT: Kanban Board (child component) ═══ -->
-    <app-rh-kanban-board
+    <app-reception-appointment-board
       [searchTerm]="searchTerm"
       [selectedDate]="selectedDate"
       [filterClinicId]="filterClinicId"
@@ -57,10 +57,10 @@
       (columnDragEnter)="onColumnDragEnter($event.event, $event.columnId)"
       (columnDragLeave)="onColumnDragLeave($event.event, $event.columnId)"
       (columnDrop)="onColumnDrop($event.event, $event.columnId)">
-    </app-rh-kanban-board>
+    </app-reception-appointment-board>
 
     <!-- ═══ RIGHT: Sidebar (child component) ═══ -->
-    <app-rh-sidebar
+    <app-dashboard-sidebar
       [calMonthLabel]="calMonthLabel"
       [calendarDays]="calendarDays"
       [selectedCalDate]="selectedCalDate"
@@ -72,7 +72,7 @@
       (calDayClicked)="onCalDayClick($event)"
       (bookNewClicked)="bookNew()"
       (goTodayClicked)="goToday()">
-    </app-rh-sidebar>
+    </app-dashboard-sidebar>
 
   </div><!-- /rh-layout -->
 </div>

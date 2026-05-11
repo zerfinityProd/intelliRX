@@ -21,6 +21,7 @@ export interface Appointment {
   reason?: string;
   notes?: string;
   ailments?: string;
+  bloodGroup?: string;
   cancellationReason?: string;
   isNewPatient?: boolean;
 

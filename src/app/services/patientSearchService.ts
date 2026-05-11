@@ -55,34 +55,46 @@ export class PatientSearchService {
             let allResults: Patient[] = [];
             const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
 
+            // Always try a direct patient ID lookup in parallel
+            const idLookupPromise = this.firebaseService.getPatientById(trimmedTerm)
+                .catch(() => null);
+
             if (this.currentIsNumeric) {
                 // Run phone prefix search AND contains search in parallel
-                const [phoneSettled, containsSettled] = await Promise.allSettled([
-                    this.firebaseService.searchPatientByPhone(trimmedTerm, null, clinicId),
+                const [phoneSettled, containsSettled, idResult] = await Promise.all([
+                    this.firebaseService.searchPatientByPhone(trimmedTerm, null, clinicId)
+                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
                     this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
+                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
+                    idLookupPromise
                 ]);
 
-                const phoneResult = phoneSettled.status === 'fulfilled' ? phoneSettled.value : { results: [], lastCursor: null, hasMore: false };
-                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastCursor: null, hasMore: false };
+                this.paginationState.lastPhoneCursor = phoneSettled.lastCursor;
+                this.paginationState.hasMore = phoneSettled.hasMore;
 
-                this.paginationState.lastPhoneCursor = phoneResult.lastCursor;
-                this.paginationState.hasMore = phoneResult.hasMore;
-
-                allResults = this.mergeAndDeduplicateResults(phoneResult.results, containsResult.results);
+                const idResults = idResult ? [idResult] : [];
+                allResults = this.mergeAndDeduplicateResults(
+                    [...idResults, ...phoneSettled.results],
+                    containsSettled.results
+                );
             } else {
                 // Run name prefix search AND contains search in parallel
-                const [nameSettled, containsSettled] = await Promise.allSettled([
-                    this.firebaseService.searchPatientByName(trimmedTerm, null, clinicId),
+                const [nameSettled, containsSettled, idResult] = await Promise.all([
+                    this.firebaseService.searchPatientByName(trimmedTerm, null, clinicId)
+                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
                     this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
+                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
+                    idLookupPromise
                 ]);
 
-                const nameResult = nameSettled.status === 'fulfilled' ? nameSettled.value : { results: [], lastCursor: null, hasMore: false };
-                const containsResult = containsSettled.status === 'fulfilled' ? containsSettled.value : { results: [], lastCursor: null, hasMore: false };
+                this.paginationState.lastNameCursor = nameSettled.lastCursor;
+                this.paginationState.hasMore = nameSettled.hasMore;
 
-                this.paginationState.lastNameCursor = nameResult.lastCursor;
-                this.paginationState.hasMore = nameResult.hasMore;
-
-                allResults = this.mergeAndDeduplicateResults(nameResult.results, containsResult.results);
+                const idResults = idResult ? [idResult] : [];
+                allResults = this.mergeAndDeduplicateResults(
+                    [...idResults, ...nameSettled.results],
+                    containsSettled.results
+                );
             }
 
             this.updateResults(allResults);

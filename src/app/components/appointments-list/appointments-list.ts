@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { NavbarComponent } from '../navbar/navbar';
-import { AlKanbanBoardComponent } from '../al-kanban-board/al-kanban-board';
+import { AppointmentStatusBoardComponent } from '../appointment-status-board/appointment-status-board';
 import { AppointmentService } from '../../services/appointmentService';
 import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
@@ -24,12 +24,12 @@ import { TimeSlotService } from '../../services/timeSlotService';
 import { DoctorCacheService } from '../../services/doctorCacheService';
 import { AutoCancelService } from '../../services/autoCancelService';
 import { formatTime as sharedFormatTime, formatDate as sharedFormatDate, formatSlotLabel as sharedFormatSlotLabel, formatLocalDate as sharedFormatLocalDate, normalizePhoneDigits, isSameLocalDay, isToday as sharedIsToday, isFuture as sharedIsFuture } from '../../utilities/date-helpers';
-import { KanbanColumn } from '../../interfaces/kanban-column';
+import { BoardColumn } from '../../interfaces/board-column';
 
 @Component({
   selector: 'app-appointments-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, NavbarComponent, AlKanbanBoardComponent],
+  imports: [CommonModule, FormsModule, NavbarComponent, AppointmentStatusBoardComponent],
   templateUrl: './appointments-list.html',
   styleUrl: './appointments-list.css',
   encapsulation: ViewEncapsulation.None
@@ -101,7 +101,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private autoCancelCleanup: (() => void) | null = null;
 
-  readonly columns: KanbanColumn[] = [
+  readonly columns: BoardColumn[] = [
     { id: 'scheduled', label: 'Scheduled', color: '#E7F5F7', accent: '#148D9E', icon: 'clock' },
     { id: 'completed', label: 'Completed', color: '#E7F5F7', accent: '#1CB5C9', icon: 'check' },
     { id: 'cancelled', label: 'Cancelled', color: '#fee2e2', accent: '#ef4444', icon: 'x' },
@@ -677,6 +677,13 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
           // Don't block navigation if the update fails.
         }
       }
+      if (appt.bloodGroup && appt.bloodGroup.trim()) {
+        try {
+          await this.patientService.updatePatient(directPatientId, { bloodGroup: appt.bloodGroup });
+        } catch {
+          // Don't block navigation if the update fails.
+        }
+      }
       this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'appointments' } });
       return;
     }
@@ -687,7 +694,8 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
         openAddPatient: '1',
         name: appt.patientName || '',
         phone: appt.patientPhone || '',
-        ailments: appt.ailments || ''
+        ailments: appt.ailments || '',
+        bloodGroup: appt.bloodGroup || ''
       }
     });
   }

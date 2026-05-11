@@ -1,6 +1,6 @@
 .odontogram-svg {
     width: 800px;
-    background: #f3f3f3;
+    background: #E0F4F7;
 }
 
 .tooth-group {
@@ -20,6 +20,6 @@
 }
 
 .tooth-group.selected .tooth-shape {
-    fill: #bfdbfe;
-    stroke: #2563eb;
+    fill: #E0F4F7;
+    stroke: #148D9E;
 }

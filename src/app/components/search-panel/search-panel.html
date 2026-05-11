@@ -3,17 +3,6 @@
 ═══════════════════════════════════════════ -->
 <div class="kanban-col kanban-col--search">
 
-  <!-- Column Header -->
-  <div class="kanban-col-header">
-    <div class="kanban-col-header__icon kanban-col-header__icon--search">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
-        stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <path d="m21 21-4.35-4.35"></path>
-      </svg>
-    </div>
-    <span class="kanban-col-header__title">Patient Search</span>
-  </div>
 
   <!-- Search Input Card -->
   <div class="kb-search-card">
@@ -25,8 +14,8 @@
         <path d="m21 21-4.35-4.35"></path>
       </svg>
       <input id="patient-search" type="text" [ngModel]="searchTerm" (ngModelChange)="onSearchTermChange($event); onSearchInput()"
-        placeholder="Phone, Family ID or Name" class="form-control" autocomplete="off"
-        aria-label="Search patients by phone, family ID or name" />
+        placeholder="Patient Search" class="form-control" autocomplete="off"
+        aria-label="Search patients by phone, family ID, patient ID or name" />
       <button *ngIf="searchTerm && !isSearching" class="clear-btn" (click)="clearSearch()" aria-label="Clear search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
@@ -107,7 +96,7 @@
             </svg>
             Visit
           </button>
-          <button class="kb-action-btn kb-action-btn--ghost"
+          <button *ngIf="permissions.canEdit" class="kb-action-btn kb-action-btn--ghost"
             [attr.aria-label]="'View details for ' + patient.name"
             (click)="viewPatientDetails(patient); $event.stopPropagation()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -130,8 +119,8 @@
     </div>
   </div>
 
-  <!-- Empty state when searched but no results -->
-  <ng-container *ngIf="searchResults.length === 0 && searchTerm && !isSearching && !errorMessage">
+  <!-- Empty state when searched but no results (only shown for 3+ char searches) -->
+  <ng-container *ngIf="searchResults.length === 0 && searchTerm && searchTerm.trim().length >= 3 && !isSearching && !errorMessage">
     <div class="kb-empty-state">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
         stroke-linecap="round" stroke-linejoin="round">
@@ -139,34 +128,12 @@
         <path d="m21 21-4.35-4.35"></path>
       </svg>
       <p>No patients found for <strong>"{{ searchTerm }}"</strong></p>
-      <button *ngIf="permissions.canAddPatient" class="kb-action-btn kb-action-btn--primary" (click)="openAddPatientForm()">
-        + Add as New Patient
-      </button>
     </div>
   </ng-container>
 
   <!-- Idle state — no search yet -->
   <ng-container *ngIf="searchResults.length === 0 && !searchTerm">
-    <div class="kb-idle-state">
-      <div class="kb-idle-state__icon">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-          stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-        </svg>
-      </div>
-      <p>Type a name, phone number,<br>or family ID to search</p>
-      <button *ngIf="permissions.canAddPatient" class="kb-new-patient-btn" (click)="openAddPatientForm()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-          stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        New Patient
-      </button>
-    </div>
+    <div class="kb-idle-state"></div>
   </ng-container>
 
 </div><!-- /kanban-col--search -->
