@@ -134,8 +134,8 @@
   background: rgba(12, 26, 46, 0.9) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--dk-border);
-  box-shadow: 0 1px 0 rgba(20, 141, 158, 0.1);
+  border-bottom: 1.5px solid var(--dk-border);
+  box-shadow: none;
 }
 /*  Navbar Back Button (shown on inner pages)  */
 .navbar-back-btn {
@@ -656,22 +656,21 @@
 [data-theme="dark"] .kb-patient-card__fid  { background: rgba(20, 141, 158, 0.15) !important; }
 [data-theme="dark"] .kb-results-count      { color: #5A8A9C !important; }
 
-[data-theme="dark"] .kb-action-btn--ghost {
-  background: var(--dk-bg3) !important;
-  border-color: var(--dk-border) !important;
-  color: #D8E8ED !important;
-}
-[data-theme="dark"] .kb-action-btn--ghost:hover {
-  background: rgba(20, 141, 158, 0.15) !important;
-  color: #1CB5C9 !important;
-}
-[data-theme="dark"] .kb-action-btn--appt {
-  background: rgba(20, 141, 158, 0.12) !important;
-  color: #1CB5C9 !important;
-}
+[data-theme="dark"] .kb-action-btn--ghost,
+[data-theme="dark"] .kb-action-btn--appt,
 [data-theme="dark"] .kb-action-btn--primary {
-  background: rgba(20, 141, 158, 0.15) !important;
+  background: rgba(20, 141, 158, 0.12) !important;
+  border-color: rgba(20, 141, 158, 0.3) !important;
   color: #1CB5C9 !important;
+}
+[data-theme="dark"] .kb-action-btn--ghost:hover,
+[data-theme="dark"] .kb-action-btn--appt:hover,
+[data-theme="dark"] .kb-action-btn--primary:hover {
+  background: #148D9E !important;
+  color: #fff !important;
+  border-color: #148D9E !important;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(20, 141, 158, 0.3);
 }
 
 [data-theme="dark"] .kb-empty-state,
@@ -2073,8 +2072,8 @@ main {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--clr-border);
-  box-shadow: 0 1px 0 rgba(20, 141, 158, 0.08);
+  border-bottom: 1.5px solid var(--clr-border);
+  box-shadow: none;
 }
 
 .app-navbar .navbar-brand {

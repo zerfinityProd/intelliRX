@@ -305,23 +305,28 @@
   letter-spacing: 0.01em;
 }
 .kb-action-btn--primary {
-  background: var(--clr-primary, #148D9E);
-  color: #fff;
+  background: #E0F4F7;
+  color: #148D9E;
+  border: 1px solid #C8DDE3;
 }
 .kb-action-btn--primary:hover {
-  background: var(--clr-primary-dark, #0E6877);
+  background: #148D9E;
+  color: #fff;
+  border-color: #148D9E;
   transform: translateY(-1px);
   box-shadow: 0 3px 10px rgba(20, 141, 158, 0.3);
 }
 .kb-action-btn--ghost {
-  background: var(--clr-bg, #E0F4F7);
-  color: var(--clr-text, #0A2540);
-  border: 1px solid var(--clr-border, #C8DDE3);
+  background: #E0F4F7;
+  color: #148D9E;
+  border: 1px solid #C8DDE3;
 }
 .kb-action-btn--ghost:hover {
-  background: var(--clr-primary-light, #E0F4F7);
-  color: var(--clr-primary, #148D9E);
-  border-color: #C8DDE3;
+  background: #148D9E;
+  color: #fff;
+  border-color: #148D9E;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(20, 141, 158, 0.3);
 }
 .kb-action-btn--appt {
   background: #E0F4F7;
@@ -332,6 +337,8 @@
   background: #148D9E;
   color: #fff;
   border-color: #148D9E;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(20, 141, 158, 0.3);
 }
 
 /* ── New Patient Button ── */
@@ -453,7 +460,7 @@
 /* ── Banner Widget ── */
 .widget--banner {
   background: linear-gradient(135deg, #0C1A2E 0%, #0E6877 50%, #148D9E 100%);
-  border: none;
+  border: 1.5px solid var(--clr-border, #C8DDE3);
   padding: 14px 18px;
   display: flex;
   align-items: center;
@@ -923,26 +930,21 @@
 [data-theme="dark"] .kb-patient-card__meta { color: var(--dk-text2); }
 [data-theme="dark"] .kb-patient-card__fid { background: rgba(20, 141, 158, 0.15); }
 
-[data-theme="dark"] .kb-action-btn--ghost {
-  background: var(--dk-bg3);
-  border-color: var(--dk-border);
-  color: var(--dk-text1);
-}
-[data-theme="dark"] .kb-action-btn--ghost:hover {
-  background: rgba(20, 141, 158, 0.15);
-  color: var(--clr-primary);
-  border-color: #0E6877;
-}
-
-[data-theme="dark"] .kb-action-btn--appt {
+[data-theme="dark"] .kb-action-btn--ghost,
+[data-theme="dark"] .kb-action-btn--appt,
+[data-theme="dark"] .kb-action-btn--primary {
   background: rgba(20, 141, 158, 0.12);
-  color: #1CB5C9;
   border-color: rgba(20, 141, 158, 0.3);
+  color: #1CB5C9;
 }
-[data-theme="dark"] .kb-action-btn--appt:hover {
+[data-theme="dark"] .kb-action-btn--ghost:hover,
+[data-theme="dark"] .kb-action-btn--appt:hover,
+[data-theme="dark"] .kb-action-btn--primary:hover {
   background: #148D9E;
   color: #fff;
   border-color: #148D9E;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(20, 141, 158, 0.3);
 }
 
 [data-theme="dark"] .kb-empty-state,

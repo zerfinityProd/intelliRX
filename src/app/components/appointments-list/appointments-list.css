@@ -381,7 +381,6 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 16px 14px;
-  border-top: 3px solid transparent;
   border-bottom: 1px solid var(--clr-border, #C8DDE3);
   background: var(--clr-surface, #fff);
 }

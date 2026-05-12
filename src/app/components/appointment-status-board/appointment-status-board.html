@@ -98,7 +98,7 @@
       (drop)="columnDrop.emit({ event: $event, columnId: col.id })">
 
       <!-- Column Header -->
-      <div class="kb-column__header" [style.border-top-color]="col.accent">
+      <div class="kb-column__header">
         <div class="kb-column__header-left">
           <!-- Clock icon for scheduled -->
           <ng-container *ngIf="col.icon === 'clock'">
