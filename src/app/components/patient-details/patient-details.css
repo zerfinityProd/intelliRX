@@ -4,3 +4,12 @@
   height: 100vh;
   overflow: hidden;
 }
+
+/* On mobile, allow the page to scroll */
+@media (max-width: 768px) {
+  :host {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+}

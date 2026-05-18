@@ -23,8 +23,7 @@
   </div>
 
   <!-- ── Patient Details Content ── -->
-  <div *ngIf="!isLoadingPatient && !errorMessage && patient" class="details-content-wrapper px-3 px-md-4 py-4"
-    style="max-width:1400px; margin:0 auto">
+  <div *ngIf="!isLoadingPatient && !errorMessage && patient" class="details-content-wrapper px-3 px-md-4 py-4">
 
     <!-- Patient Header Card -->
     <div class="patient-header-card mb-4">
@@ -157,7 +156,7 @@
                 </div>
                 <div class="col" *ngIf="patient.bloodGroup">
                   <span class="info-label">Blood Group</span>
-                  <span class="info-value fw-semibold" style="color:#dc2626">{{ patient.bloodGroup }}</span>
+                  <span class="info-value fw-semibold" style="color:var(--clr-primary)">{{ patient.bloodGroup }}</span>
                 </div>
               </div>
             </div>

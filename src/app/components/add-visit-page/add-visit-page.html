@@ -29,9 +29,6 @@
         </div>
       </div>
 
-      <!-- Dental Widget -->
-      <app-dental-widget></app-dental-widget>
-
       <!-- Form -->
       <form (ngSubmit)="onSubmit()" #visitForm="ngForm" novalidate class="avp-form">
 
@@ -42,7 +39,8 @@
             <textarea name="chiefComplaintsText" [(ngModel)]="chiefComplaintsText" placeholder="Enter chief complaints"
               class="form-control avp-textarea"
               [class.is-invalid]="errorMessage === 'Chief complaints is required' || chiefComplaintsText.length > 200"
-              maxlength="200" rows="2"></textarea>
+              maxlength="200" rows="2"
+              (input)="errorMessage === 'Chief complaints is required' ? errorMessage = '' : null"></textarea>
             <div class="avp-char-row">
               <span *ngIf="errorMessage === 'Chief complaints is required'" class="avp-field-error">⚠ Chief complaints
                 is required.</span>
@@ -161,9 +159,77 @@
                 <input type="text" [(ngModel)]="newMedicineDosage" name="newMedicineDosage" placeholder="Dosage"
                   class="form-control form-control-sm medicine-part-input" aria-label="Medicine dosage"
                   (keydown)="onMedicineKeydown($event)" />
-                <input type="text" [(ngModel)]="newMedicineFrequency" name="newMedicineFrequency"
-                  placeholder="Frequency" class="form-control form-control-sm medicine-part-input"
-                  aria-label="Medicine frequency" (keydown)="onMedicineKeydown($event)" />
+                <!-- Frequency dropdown trigger -->
+                <div class="freq-dropdown-wrap" (click)="$event.stopPropagation()">
+                  <button type="button" class="freq-dropdown-trigger form-control form-control-sm medicine-part-input"
+                    (click)="isFreqDropdownOpen = !isFreqDropdownOpen" aria-label="Select frequency"
+                    [class.freq-has-value]="getFrequencyPreview()">
+                    <span class="freq-trigger-text">{{ getFrequencyPreview() || 'Frequency' }}</span>
+                    <svg class="freq-trigger-arrow" [class.freq-arrow-open]="isFreqDropdownOpen"
+                      width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M2.5 3.5L5 6.5L7.5 3.5"/>
+                    </svg>
+                  </button>
+                  <div class="freq-dropdown-panel" *ngIf="isFreqDropdownOpen">
+                    <div class="freq-dd-group">
+                      <label class="freq-dd-main">
+                        <input type="checkbox" [(ngModel)]="newMedicineFrequency.morning" name="freqMorning" />
+                        <span class="freq-dd-check"></span>
+                        <span class="freq-dd-label-text">Morning</span>
+                      </label>
+                      <div class="freq-dd-food-options" *ngIf="newMedicineFrequency.morning">
+                        <label class="freq-dd-food">
+                          <input type="radio" [value]="true" [(ngModel)]="newMedicineFrequency.morningBeforeFood" name="morningFood" />
+                          <span class="freq-dd-radio"></span>
+                          Before Food
+                        </label>
+                        <label class="freq-dd-food">
+                          <input type="radio" [value]="false" [(ngModel)]="newMedicineFrequency.morningBeforeFood" name="morningFood" />
+                          <span class="freq-dd-radio"></span>
+                          After Food
+                        </label>
+                      </div>
+                    </div>
+                    <div class="freq-dd-group">
+                      <label class="freq-dd-main">
+                        <input type="checkbox" [(ngModel)]="newMedicineFrequency.afternoon" name="freqAfternoon" />
+                        <span class="freq-dd-check"></span>
+                        <span class="freq-dd-label-text">Afternoon</span>
+                      </label>
+                      <div class="freq-dd-food-options" *ngIf="newMedicineFrequency.afternoon">
+                        <label class="freq-dd-food">
+                          <input type="radio" [value]="true" [(ngModel)]="newMedicineFrequency.afternoonBeforeFood" name="afternoonFood" />
+                          <span class="freq-dd-radio"></span>
+                          Before Food
+                        </label>
+                        <label class="freq-dd-food">
+                          <input type="radio" [value]="false" [(ngModel)]="newMedicineFrequency.afternoonBeforeFood" name="afternoonFood" />
+                          <span class="freq-dd-radio"></span>
+                          After Food
+                        </label>
+                      </div>
+                    </div>
+                    <div class="freq-dd-group">
+                      <label class="freq-dd-main">
+                        <input type="checkbox" [(ngModel)]="newMedicineFrequency.night" name="freqNight" />
+                        <span class="freq-dd-check"></span>
+                        <span class="freq-dd-label-text">Night</span>
+                      </label>
+                      <div class="freq-dd-food-options" *ngIf="newMedicineFrequency.night">
+                        <label class="freq-dd-food">
+                          <input type="radio" [value]="true" [(ngModel)]="newMedicineFrequency.nightBeforeFood" name="nightFood" />
+                          <span class="freq-dd-radio"></span>
+                          Before Food
+                        </label>
+                        <label class="freq-dd-food">
+                          <input type="radio" [value]="false" [(ngModel)]="newMedicineFrequency.nightBeforeFood" name="nightFood" />
+                          <span class="freq-dd-radio"></span>
+                          After Food
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <input type="text" [(ngModel)]="newMedicineDuration" name="newMedicineDuration" placeholder="Days"
                   class="form-control form-control-sm medicine-part-input medicine-duration-input"
                   aria-label="Duration in days" inputmode="numeric" (keydown)="onMedicineKeydown($event)" />
@@ -252,47 +318,92 @@
       </form>
     </div>
 
-    <!-- ════════════════════ RIGHT PANEL — Visit History ════════════════════ -->
-    <div class="avp-history-panel">
-      <div class="avp-history-header">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-          aria-hidden="true" focusable="false">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-        </svg>
-        <h2 class="avp-history-title">Visit History</h2>
-        <span class="avp-history-count" *ngIf="!isLoadingVisits" aria-label="{{ visits.length }} visits">{{
-          visits.length }}</span>
+    <!-- ════════════════════ RIGHT AREA — Dental Chart + Slide Panels ════════════════════ -->
+    <div class="avp-right-area">
+      <div class="avp-dental-panel">
+        <app-dental-widget></app-dental-widget>
       </div>
 
-      <!-- Loading visits -->
-      <div *ngIf="isLoadingVisits" class="avp-history-loading">
-        <div class="page-spinner"></div>
-        <p class="text-muted">Loading visits...</p>
-      </div>
+      <!-- ── Visit History Slide Panel ── -->
+      <div class="avp-history-slide" [class.avp-history-slide-open]="isHistoryOpen">
+        <div class="avp-history-slide-header">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            aria-hidden="true" focusable="false">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          <h2 class="avp-history-title">Visit History</h2>
+          <button class="avp-history-slide-close" (click)="toggleHistoryPanel()" type="button" aria-label="Close history">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
 
-      <!-- Empty state -->
-      <div *ngIf="!isLoadingVisits && visits.length === 0" class="avp-history-empty">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-        </svg>
-        <p>No visit history yet.</p>
-        <span>This will be the first visit.</span>
-      </div>
+        <!-- Loading visits -->
+        <div *ngIf="isLoadingVisits" class="avp-history-loading">
+          <div class="page-spinner"></div>
+          <p class="text-muted">Loading visits...</p>
+        </div>
 
-      <!-- Visit cards -->
-      <div *ngIf="!isLoadingVisits && visits.length > 0" class="avp-history-list">
-        <div *ngFor="let visit of visits; let i = index" class="avp-visit-card"
-             (click)="openVisitModal(visit, visits.length - i)">
-          <div class="avp-visit-meta-top">
-            <span class="avp-visit-num">Visit #{{ visits.length - i }}</span>
-            <span *ngIf="visit.visitType !== 'appointment'" class="walk-in-badge">Walk-in visit</span>
-            <span *ngIf="visit.visitType === 'appointment'" class="scheduled-badge">Appointment</span>
+        <!-- Empty state -->
+        <div *ngIf="!isLoadingVisits && visits.length === 0" class="avp-history-empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+          </svg>
+          <p>No visit history yet.</p>
+          <span>This will be the first visit.</span>
+        </div>
+
+        <!-- Visit cards -->
+        <div *ngIf="!isLoadingVisits && visits.length > 0" class="avp-history-list">
+          <div *ngFor="let visit of visits; let i = index" class="avp-visit-card"
+               (click)="openVisitModal(visit, visits.length - i)">
+            <div class="avp-visit-meta-top">
+              <span class="avp-visit-num">Visit #{{ visits.length - i }}</span>
+              <span *ngIf="visit.visitType !== 'appointment'" class="walk-in-badge">Walk-in visit</span>
+              <span *ngIf="visit.visitType === 'appointment'" class="scheduled-badge">Appointment</span>
+            </div>
+            <span class="avp-visit-date">{{ formatDateTime(visit.created_at) }}</span>
           </div>
-          <span class="avp-visit-date">{{ formatDateTime(visit.created_at) }}</span>
+        </div>
+      </div>
+
+      <!-- ── AI Assistance Slide Panel ── -->
+      <div class="avp-ai-slide" [class.avp-ai-slide-open]="isAiOpen">
+        <div class="avp-ai-slide-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3h-1v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4H7a3 3 0 0 1-3-3v-1a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
+            <circle cx="9" cy="10" r="1"></circle>
+            <circle cx="15" cy="10" r="1"></circle>
+            <path d="M9.5 15a3.5 3.5 0 0 0 5 0"></path>
+          </svg>
+          <h2 class="avp-ai-title">AI Assistance</h2>
+          <button class="avp-ai-slide-close" (click)="toggleAiPanel()" type="button" aria-label="Close AI panel">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="avp-ai-body">
+          <div class="avp-ai-empty-state">
+            <div class="avp-ai-icon-wrap">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3h-1v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4H7a3 3 0 0 1-3-3v-1a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
+                <circle cx="9" cy="10" r="1"></circle>
+                <circle cx="15" cy="10" r="1"></circle>
+                <path d="M9.5 15a3.5 3.5 0 0 0 5 0"></path>
+              </svg>
+            </div>
+            <h3>AI Assistant</h3>
+            <p>Get intelligent suggestions for diagnosis, treatment plans, and medicine recommendations based on patient data.</p>
+            <span class="avp-ai-coming-soon">Coming Soon</span>
+          </div>
         </div>
       </div>
     </div>
@@ -300,8 +411,35 @@
   </div>
 </div>
 
+<!-- ════════════════════ RIGHT-EDGE TAB BUTTONS ════════════════════ -->
+<div class="avp-edge-tabs">
+  <button class="avp-edge-tab" [class.avp-edge-tab-active]="isHistoryOpen"
+    (click)="toggleHistoryPanel()" aria-label="Toggle visit history" title="Visit History">
+    <svg class="avp-edge-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+    </svg>
+    <span class="avp-edge-tab-label">History</span>
+  </button>
+
+  <button class="avp-edge-tab" [class.avp-edge-tab-active]="isAiOpen"
+    (click)="toggleAiPanel()" aria-label="AI Assistance" title="AI Assistance">
+    <svg class="avp-edge-tab-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 3 3v1a3 3 0 0 1-3 3h-1v4a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-4H7a3 3 0 0 1-3-3v-1a3 3 0 0 1 3-3h1V6a4 4 0 0 1 4-4z"></path>
+      <circle cx="9" cy="10" r="1"></circle>
+      <circle cx="15" cy="10" r="1"></circle>
+      <path d="M9.5 15a3.5 3.5 0 0 0 5 0"></path>
+    </svg>
+    <span class="avp-edge-tab-label">AI Assist</span>
+  </button>
+</div>
+
+<!-- Backdrops removed: panels close via X button only -->
+
 <!-- ── Visit Detail Modal ── -->
-<div class="avp-modal-overlay" *ngIf="selectedVisit" (click)="closeVisitModal()">
+<div class="avp-modal-overlay" *ngIf="selectedVisit">
   <div class="avp-modal" (click)="$event.stopPropagation()">
     <div class="avp-modal-header">
       <div>

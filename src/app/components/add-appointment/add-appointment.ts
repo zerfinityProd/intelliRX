@@ -1,5 +1,5 @@
 // src/app/components/add-appointment/add-appointment.ts
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -19,6 +19,7 @@ import { TimeSlotService } from '../../services/timeSlotService';
 import { todayLocalISO } from '../../utilities/local-date';
 import { isSlotInPast as sharedIsSlotInPast } from '../../utilities/date-helpers';
 import { Doctor } from '../../interfaces/doctor';
+import { NotificationService } from '../../services/notificationService';
 
 
 
@@ -108,6 +109,7 @@ export class AddAppointmentComponent implements OnInit {
   private clinicContextService = inject(ClinicContextService);
   private clinicService = inject(ClinicService);
   private timeSlotService = inject(TimeSlotService);
+  private notificationService = inject(NotificationService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
@@ -116,6 +118,13 @@ export class AddAppointmentComponent implements OnInit {
   private openedFromPatientId: string | null = null;
   /** Where to navigate when user presses Cancel/Back from step 1 */
   private navigateBackTo: string = '/home';
+  private static readonly SESSION_KEY = 'appt_formState';
+  private static readonly SESSION_TTL = 2 * 60 * 60 * 1000; // 2 hours
+
+  @HostListener('window:beforeunload')
+  onBeforeUnload(): void {
+    this.saveFormToSession();
+  }
 
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
@@ -136,6 +145,9 @@ export class AddAppointmentComponent implements OnInit {
         this.navigateBackTo = '/appointments';
       }
     });
+
+    // Restore persisted form state before doctor context init
+    this.restoreFormFromSession();
 
     // Set doctor dropdown + slot availability based on user role.
     void this.initDoctorContext();
@@ -948,6 +960,15 @@ export class AddAppointmentComponent implements OnInit {
         background: isDark ? '#1f1f1f' : '#ffffff',
         color:      isDark ? '#e0e0e0' : '#1e293b',
       });
+
+      // Fire browser notification
+      this.notificationService.send(
+        '📅 Appointment Booked',
+        `Appointment for ${patientName} on ${this.appointmentDate} at ${this.formatSlotLabel(this.selectedTimeSlot)}.`,
+        `appointment-booked-${Date.now()}`
+      );
+
+      this.clearFormSession();
       if (result.isConfirmed) {
         this.router.navigate(['/appointments']);
       } else {
@@ -962,11 +983,13 @@ export class AddAppointmentComponent implements OnInit {
   goBack(): void {
     if (this.step === 'appointment-details') {
       if (this.openedFromPatientId) {
+        this.clearFormSession();
         this.router.navigate(['/patient', this.openedFromPatientId]);
         return;
       }
       this.step = 'new-patient-info';
     } else {
+      this.clearFormSession();
       this.router.navigate([this.navigateBackTo]);
     }
     this.errorMessage = '';
@@ -983,7 +1006,95 @@ export class AddAppointmentComponent implements OnInit {
 
   /** Close the entire form and navigate back to the previous page in history. */
   closeForm(): void {
+    this.clearFormSession();
     this.location.back();
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  Session Storage Persistence
+  // ═══════════════════════════════════════════════════════════
+
+  private saveFormToSession(): void {
+    try {
+      const state: Record<string, any> = {
+        ts: Date.now(),
+        step: this.step,
+        newPatientPhone: this.newPatientPhone,
+        firstName: this.firstName,
+        middleName: this.middleName,
+        lastName: this.lastName,
+        dateOfBirth: this.dateOfBirth,
+        gender: this.gender,
+        patientEmail: this.patientEmail,
+        allergyChips: this.allergyChips,
+        ailmentChips: this.ailmentChips,
+        selectedBloodGroup: this.selectedBloodGroup,
+        appointmentDate: this.appointmentDate,
+        selectedTimeSlot: this.selectedTimeSlot,
+        selectedDoctorId: this.selectedDoctorId,
+        selectedClinicId: this.selectedClinicId,
+        isExistingPatient: this.isExistingPatient,
+        intentNewPatient: this.intentNewPatient,
+        navigateBackTo: this.navigateBackTo,
+        openedFromPatientId: this.openedFromPatientId,
+        matchedPatient: this.matchedPatient ? {
+          id: this.matchedPatient.id,
+          name: this.matchedPatient.name,
+          phone: this.matchedPatient.phone,
+          subscription_id: this.matchedPatient.subscription_id,
+          clinic_ids: this.matchedPatient.clinic_ids
+        } : null,
+        phoneLookupStatus: this.phoneLookupStatus,
+      };
+      sessionStorage.setItem(AddAppointmentComponent.SESSION_KEY, JSON.stringify(state));
+    } catch { /* quota exceeded — non-critical */ }
+  }
+
+  private restoreFormFromSession(): void {
+    try {
+      const raw = sessionStorage.getItem(AddAppointmentComponent.SESSION_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+      // Expire after TTL
+      if (Date.now() - (s.ts || 0) > AddAppointmentComponent.SESSION_TTL) {
+        sessionStorage.removeItem(AddAppointmentComponent.SESSION_KEY);
+        return;
+      }
+      this.step = s.step || 'new-patient-info';
+      this.newPatientPhone = s.newPatientPhone || '';
+      this.firstName = s.firstName || '';
+      this.middleName = s.middleName || '';
+      this.lastName = s.lastName || '';
+      this.dateOfBirth = s.dateOfBirth || '';
+      this.gender = s.gender || '';
+      this.patientEmail = s.patientEmail || '';
+      this.allergyChips = s.allergyChips || [];
+      this.ailmentChips = s.ailmentChips || [];
+      this.selectedBloodGroup = s.selectedBloodGroup || '';
+      this.appointmentDate = s.appointmentDate || todayLocalISO();
+      this.selectedTimeSlot = s.selectedTimeSlot || '';
+      this.selectedDoctorId = s.selectedDoctorId || '';
+      this.selectedClinicId = s.selectedClinicId || '';
+      this.isExistingPatient = !!s.isExistingPatient;
+      this.intentNewPatient = !!s.intentNewPatient;
+      this.navigateBackTo = s.navigateBackTo || '/home';
+      this.openedFromPatientId = s.openedFromPatientId || null;
+      this.phoneLookupStatus = s.phoneLookupStatus || 'idle';
+      if (s.matchedPatient) {
+        this.matchedPatient = s.matchedPatient as Patient;
+        this.phoneMatches = [this.matchedPatient];
+      }
+      // Re-run phone lookup if user had results showing
+      if (this.newPatientPhone && this.phoneLookupStatus === 'done' && !this.matchedPatient) {
+        setTimeout(() => { void this.lookupPatientsByPhone(); }, 200);
+      }
+    } catch {
+      sessionStorage.removeItem(AddAppointmentComponent.SESSION_KEY);
+    }
+  }
+
+  private clearFormSession(): void {
+    sessionStorage.removeItem(AddAppointmentComponent.SESSION_KEY);
   }
 
   goHome(): void { this.router.navigate(['/home']); }

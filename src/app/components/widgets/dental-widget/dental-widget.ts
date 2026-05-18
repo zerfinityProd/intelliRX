@@ -107,14 +107,22 @@ export class DentalWidgetComponent {
     }
 
     onMouseEnter(element: any) {
-        element.childNodes.forEach((x: any) => {
-            x.style.fill = 'red'
-        });
+        const children = element.childNodes;
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i] as HTMLElement;
+            if (child.classList && Array.from(child.classList).some((c: string) => c.endsWith('-parent'))) {
+                child.style.fill = 'red';
+            }
+        }
     }
 
     onMouseLeave(element: any) {
-        element.childNodes.forEach((x: any) => {
-            x.style.fill = 'none';
-        });
+        const children = element.childNodes;
+        for (let i = 0; i < children.length; i++) {
+            const child = children[i] as HTMLElement;
+            if (child.classList && Array.from(child.classList).some((c: string) => c.endsWith('-parent'))) {
+                child.style.fill = 'none';
+            }
+        }
     }
 }

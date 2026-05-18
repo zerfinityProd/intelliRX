@@ -678,8 +678,10 @@ export class HomeComponent implements OnInit {
       this.cdr.markForCheck();
       return;
     }
+    // Show spinner immediately so the user doesn't see a flash of "No patients found"
+    this.isSearching = true;
+    this.cdr.markForCheck();
     this.searchTimeout = setTimeout(() => {
-      this.isSearching = true;
       this.performSearch(trimmed);
     }, 1000);
   }
@@ -688,7 +690,7 @@ export class HomeComponent implements OnInit {
     if (!searchTerm) { this.patientService.clearSearchResults(); this.isSearching = false; return; }
     try {
       await this.patientService.searchPatients(searchTerm);
-      this.errorMessage = this.searchResults.length === 0 ? 'No patients found' : '';
+      this.errorMessage = '';
       this.isSearching = false;
     } catch (error) {
       this.errorMessage = 'Error searching for patients. Please try again.';

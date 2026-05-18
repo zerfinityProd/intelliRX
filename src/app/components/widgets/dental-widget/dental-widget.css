@@ -1,25 +1,101 @@
-.odontogram-svg {
-    width: 800px;
-    background: #E0F4F7;
+/* ── Dental Chart Widget ── */
+:host {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Target the SVG directly — it has inline width/height attributes */
+:host svg,
+svg {
+  width: 100%;
+  max-width: 290px;
+  height: auto;
+  background: transparent;
+  display: block;
+  margin: 0 auto;
 }
 
 .tooth-group {
-    cursor: pointer;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.tooth-group:hover {
+  filter: drop-shadow(0 0 4px rgba(20, 141, 158, 0.35));
 }
 
 .tooth-shape {
-    fill: white;
-    stroke: black;
-    stroke-width: 2;
+  fill: #fff;
+  stroke: var(--clr-text, #0A2540);
+  stroke-width: 1.5;
+  transition: fill 0.15s ease, stroke 0.15s ease;
 }
 
 .tooth-label {
-    font-size: 18px;
-    font-weight: 600;
-    text-anchor: middle;
+  font-size: 18px;
+  font-weight: 600;
+  text-anchor: middle;
+  fill: var(--clr-text-muted, #5A8A9C);
 }
 
 .tooth-group.selected .tooth-shape {
-    fill: #E0F4F7;
-    stroke: #148D9E;
+  fill: rgba(20, 141, 158, 0.12);
+  stroke: #148D9E;
+  stroke-width: 2;
+}
+
+.tooth-group:hover .tooth-shape {
+  fill: rgba(20, 141, 158, 0.06);
+  stroke: #148D9E;
+}
+
+/* ── Dark Mode ── */
+:host-context([data-theme="dark"]) .tooth-shape,
+[data-theme="dark"] .tooth-shape {
+  fill: var(--dk-bg3, #132640) !important;
+  stroke: var(--dk-text2, #5A8A9C) !important;
+}
+
+:host-context([data-theme="dark"]) .tooth-label,
+[data-theme="dark"] .tooth-label {
+  fill: var(--dk-text2, #5A8A9C) !important;
+}
+
+:host-context([data-theme="dark"]) .tooth-group.selected .tooth-shape,
+[data-theme="dark"] .tooth-group.selected .tooth-shape {
+  fill: rgba(20, 141, 158, 0.2) !important;
+  stroke: #17A2B5 !important;
+}
+
+:host-context([data-theme="dark"]) .tooth-group:hover .tooth-shape,
+[data-theme="dark"] .tooth-group:hover .tooth-shape {
+  fill: rgba(20, 141, 158, 0.1) !important;
+  stroke: #17A2B5 !important;
+}
+
+/* Override hardcoded inline stroke:#0A2540 on SVG paths/elements in dark mode */
+:host-context([data-theme="dark"]) svg path,
+:host-context([data-theme="dark"]) svg ellipse,
+:host-context([data-theme="dark"]) svg circle,
+:host-context([data-theme="dark"]) svg line,
+:host-context([data-theme="dark"]) svg polyline,
+:host-context([data-theme="dark"]) svg polygon,
+:host-context([data-theme="dark"]) svg rect,
+[data-theme="dark"] svg path,
+[data-theme="dark"] svg ellipse,
+[data-theme="dark"] svg circle,
+[data-theme="dark"] svg line,
+[data-theme="dark"] svg polyline,
+[data-theme="dark"] svg polygon,
+[data-theme="dark"] svg rect {
+  stroke: #5A8A9C !important;
+}
+
+/* Also override any inline fill on SVG elements that use the dark color */
+:host-context([data-theme="dark"]) svg text,
+[data-theme="dark"] svg text {
+  fill: #8AB4C2 !important;
 }

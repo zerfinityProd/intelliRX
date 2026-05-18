@@ -64,8 +64,8 @@ export class ConfigService {
       this.addToCache(this.subscriptionCache, subscriptionId, config);
       console.log('⚙️  Subscription config loaded for:', subscriptionId);
       return config;
-    } catch (error) {
-      console.warn('Failed to load subscription config:', subscriptionId, error);
+    } catch {
+      // Config may not exist yet — return null silently
       return null;
     }
   }
@@ -112,8 +112,8 @@ export class ConfigService {
       this.addToCache(this.clinicCache, clinicId, config);
       console.log('⚙️  Clinic config loaded for:', clinicId);
       return config;
-    } catch (error) {
-      console.warn('Failed to load clinic config:', clinicId, error);
+    } catch {
+      // Config may not exist yet — return null silently
       return null;
     }
   }
@@ -160,8 +160,8 @@ export class ConfigService {
       this.addToCache(this.doctorCache, userId, config);
       console.log('⚙️  Doctor config loaded for:', userId);
       return config;
-    } catch (error) {
-      console.warn('Failed to load doctor config:', userId, error);
+    } catch {
+      // Config may not exist yet — return null silently
       return null;
     }
   }

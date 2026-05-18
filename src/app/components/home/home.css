@@ -27,9 +27,74 @@
 @media (max-width: 768px) {
   .kanban-home {
     grid-template-columns: 1fr;
-    padding: 16px 12px 16px;
+    padding: 12px 10px 80px;
     height: auto;
     overflow: auto;
+    gap: 12px;
+  }
+
+  /* On mobile: show widgets column FIRST (appointments, calendar) */
+  .kanban-col--widgets {
+    order: -1;
+  }
+
+  /* Hide the column headers on mobile — save vertical space */
+  .kanban-col-header {
+    display: none;
+  }
+
+  /* Collapse idle state — no search yet, don't waste space */
+  .kb-idle-state {
+    min-height: 0;
+    padding: 16px 14px;
+    border-radius: 12px;
+    gap: 8px;
+  }
+
+  .kb-idle-state__icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
+
+  .kb-idle-state__icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* Empty search state also compact */
+  .kb-empty-state {
+    min-height: 120px;
+    padding: 24px 14px;
+    border-radius: 14px;
+  }
+
+  /* Search card tighter */
+  .kb-search-card {
+    padding: 12px 14px 10px;
+    border-radius: 14px;
+  }
+
+  /* Banner — slightly more compact */
+  .widget--banner {
+    padding: 12px 16px;
+    border-radius: 14px;
+  }
+
+  /* Widgets tighter */
+  .widget {
+    border-radius: 14px;
+  }
+
+  /* Calendar — compact */
+  .widget--calendar {
+    padding: 10px 12px;
+  }
+
+  /* Patient card actions row on mobile */
+  .kb-patient-card__actions {
+    flex-direction: row;
+    gap: 5px;
   }
 }
 
@@ -149,9 +214,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #E0F4F7;
-  border: 1px solid #C13B3B;
-  color: #C13B3B;
+  background: #FFF7ED;
+  border: 1px solid #F59E0B;
+  color: #B45309;
   border-radius: 12px;
   padding: 10px 14px;
   font-size: 14px;
@@ -479,7 +544,8 @@
   width: 40px;
   height: 40px;
   border-radius: 11px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(20, 141, 158, 0.5);
+  border: 1px solid rgba(28, 181, 201, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -512,20 +578,24 @@
 }
 
 .widget-banner__cta {
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: #fff;
+  color: #0E6877;
+  border: none;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 9px;
   padding: 6px 14px;
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
 }
 .widget-banner__cta:hover {
-  background: rgba(255, 255, 255, 0.35);
+  background: #E0F4F7;
+  color: #148D9E;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Mini Stat Row ── */
@@ -912,9 +982,9 @@
 }
 
 [data-theme="dark"] .kb-alert {
-  background: rgba(220, 38, 38, 0.1);
-  border-color: rgba(220, 38, 38, 0.3);
-  color: #C13B3B;
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #FBBF24;
 }
 
 [data-theme="dark"] .kb-patient-card {
@@ -1241,8 +1311,47 @@
    ADDITIONAL RESPONSIVE — Small screens
 ═══════════════════════════════════════════════════════════ */
 
-/* 480px: ultra-small phones */
+/* 640px: small tablets / large phones */
+@media (max-width: 640px) {
+
+  .kanban-home {
+    padding: 10px 8px 80px;
+    gap: 10px;
+  }
+
+  /* Banner — stack on small screens */
+  .widget--banner {
+    padding: 12px 14px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    border-radius: 12px;
+  }
+
+  .widget-banner__cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Quick actions 2-col */
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  /* Doctor select stacks */
+  .doctor-select-row {
+    flex-direction: column;
+  }
+}
+
+/* 480px: standard phones */
 @media (max-width: 480px) {
+
+  .kanban-home {
+    padding: 8px 8px 80px;
+    gap: 8px;
+  }
 
   /* Stack stats to 2 columns */
   .widget-stats-row {
@@ -1271,86 +1380,139 @@
 
   /* Banner — compact */
   .widget--banner {
-    padding: 12px 14px;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
+    padding: 10px 12px;
+    gap: 8px;
   }
 
   .widget-banner__num {
-    font-size: 18px;
+    font-size: 16px;
   }
 
-  .widget-banner__cta {
-    width: 100%;
-    justify-content: center;
+  .widget-banner__label {
+    font-size: 11px;
+  }
+
+  .widget-banner__icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 9px;
   }
 
   /* Patient cards */
   .kb-patient-card {
-    padding: 10px 12px;
+    padding: 10px 10px;
     border-radius: 12px;
-    gap: 10px;
+    gap: 8px;
   }
 
   .kb-patient-avatar {
-    width: 36px;
-    height: 36px;
-    font-size: 14px;
-    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+    border-radius: 9px;
   }
 
   .kb-patient-card__name {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .kb-patient-card__meta {
-    font-size: 12px;
+    font-size: 11px;
     gap: 6px;
   }
 
-  /* Actions stack on small */
+  .kb-patient-card__sub {
+    font-size: 11px;
+  }
+
+  /* Actions row on small */
   .kb-patient-card__actions {
     flex-direction: row;
     gap: 4px;
   }
 
   .kb-action-btn {
-    padding: 5px 10px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: 11px;
+    border-radius: 8px;
   }
 
   /* Search card */
   .kb-search-card {
-    padding: 12px 14px 10px;
-    border-radius: 14px;
+    padding: 10px 12px 8px;
+    border-radius: 12px;
   }
 
-  /* Column header */
-  .kanban-col-header__title {
-    font-size: 12px;
+  /* Search hints */
+  .kb-search-hints {
+    gap: 6px;
+    margin-top: 10px;
   }
 
-  /* Empty/idle states */
-  .kb-empty-state,
+  .kb-hint-chip {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+
+  /* Empty/idle states — minimal */
+  .kb-empty-state {
+    padding: 20px 12px;
+    min-height: 100px;
+    border-radius: 12px;
+  }
+
   .kb-idle-state {
-    padding: 32px 14px;
-    border-radius: 14px;
+    padding: 12px 10px;
+    min-height: 0;
+    border-radius: 10px;
+    gap: 6px;
   }
 
   .kb-idle-state__icon {
-    width: 44px;
-    height: 44px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
   }
 
   /* Calendar widget */
   .widget--calendar {
-    padding: 10px 12px;
+    padding: 8px 10px;
+  }
+
+  .cal-month-label {
+    font-size: 11px;
+    min-width: 90px;
+  }
+
+  .cal-nav-btn {
+    width: 26px;
+    height: 26px;
+  }
+
+  .cal-day-num {
+    font-size: 11px;
+  }
+
+  .cal-day-header {
+    font-size: 11px;
+  }
+
+  .cal-legend {
+    font-size: 11px;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 6px;
   }
 
   /* Day panel items */
   .appt-items {
     max-height: 150px;
+  }
+
+  .appt-item {
+    padding: 8px 10px;
+    gap: 8px;
+    border-radius: 10px;
   }
 
   /* Slot viewer chips */
@@ -1361,16 +1523,138 @@
 
   /* Widget padding */
   .widget {
-    padding: 12px;
-    border-radius: 14px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .widget__header {
+    margin-bottom: 8px;
+  }
+
+  .widget__header-left {
+    font-size: 11px;
   }
 
   /* Doctor select widget */
   .widget--doctor-select {
+    padding: 10px 12px;
+  }
+
+  /* Day panel compact */
+  .widget--day-panel {
     padding: 12px 14px;
   }
 
-  .doctor-select-row {
-    flex-direction: column;
+  /* Results header */
+  .kb-results-header {
+    padding: 0 0 2px;
+  }
+
+  /* Mini stats */
+  .widget-mini-stat {
+    padding: 10px 8px;
+    border-radius: 10px;
+    gap: 4px;
+  }
+
+  .widget-mini-stat__num {
+    font-size: 16px;
+  }
+
+  .widget-mini-stat__label {
+    font-size: 11px;
+  }
+
+  .widget-mini-stat__icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+  }
+
+  /* Slot viewer */
+  .slot-viewer__inner {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .slot-legend {
+    font-size: 11px;
+  }
+}
+
+/* 360px: micro screens */
+@media (max-width: 360px) {
+
+  .kanban-home {
+    padding: 6px 6px 80px;
+    gap: 6px;
+  }
+
+  /* Banner even tighter */
+  .widget--banner {
+    padding: 8px 10px;
+    border-radius: 10px;
+  }
+
+  .widget-banner__num {
+    font-size: 14px;
+  }
+
+  .widget-banner__label {
+    font-size: 10px;
+  }
+
+  .widget-banner__cta {
+    padding: 5px 12px;
+    font-size: 11px;
+    border-radius: 8px;
+  }
+
+  /* Patient cards ultra-compact */
+  .kb-patient-card {
+    padding: 8px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+
+  .kb-patient-avatar {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  .kb-patient-card__name {
+    font-size: 12px;
+  }
+
+  .kb-action-btn {
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  /* Widget */
+  .widget {
+    padding: 8px;
+    border-radius: 10px;
+  }
+
+  /* Calendar */
+  .cal-day-num {
+    font-size: 10px;
+  }
+
+  .cal-day-header {
+    font-size: 10px;
+  }
+
+  .cal-month-label {
+    font-size: 10px;
+    min-width: 80px;
+  }
+
+  .cal-nav-btn {
+    width: 24px;
+    height: 24px;
   }
 }

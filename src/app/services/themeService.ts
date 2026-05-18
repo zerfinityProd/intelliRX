@@ -78,9 +78,8 @@ export class ThemeService {
             // No theme saved yet — persist current default to Firestore
             const currentTheme = this.isDarkTheme$.value ? 'dark' : 'light';
             await this.saveThemeToConfig(currentTheme);
-        } catch (error) {
-            console.warn('Failed to load theme from Firestore:', error);
-            // Keep the local/system default
+        } catch {
+            // Keep the local/system default — Firestore is unavailable
         }
     }
 
@@ -126,8 +125,8 @@ export class ThemeService {
      */
     private persistTheme(isDark: boolean): void {
         const theme = isDark ? 'dark' : 'light';
-        this.saveThemeToConfig(theme).catch(err => {
-            console.warn('Failed to save theme to Firestore:', err);
+        this.saveThemeToConfig(theme).catch(() => {
+            // Silently ignore — theme is already applied locally
         });
     }
 

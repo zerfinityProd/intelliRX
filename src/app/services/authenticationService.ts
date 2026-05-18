@@ -12,6 +12,7 @@ import {
     updateProfile,
     sendPasswordResetEmail
 } from '@angular/fire/auth';
+
 import { Router } from '@angular/router';
 import { AuthorizationService } from './authorizationService';
 import { ClinicContextService } from './clinicContextService';
@@ -205,7 +206,7 @@ export class AuthenticationService {
             return user;
         } catch (error: any) {
             if (error.message?.includes('Access denied')) throw error;
-            if (error.code === 'auth/popup-closed-by-user') return;
+            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
             console.error('Google login error:', error);
             throw this.handleAuthError(error);
         }
@@ -259,10 +260,6 @@ export class AuthenticationService {
             console.error('Apple login error:', error);
             throw this.handleAuthError(error);
         }
-    }
-
-    async handleGoogleRedirectResult(): Promise<User | null> {
-        return null;
     }
 
     async resetPassword(email: string): Promise<void> {

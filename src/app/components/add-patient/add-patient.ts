@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { PatientService } from '../../services/patient';
 import { ClinicContextService } from '../../services/clinicContextService';
+import { NotificationService } from '../../services/notificationService';
 import { todayLocalISO } from '../../utilities/local-date';
 
 // SweetAlert2 is NOT imported at the top level.
@@ -57,6 +58,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   private checkDebounceTimer: any = null;
   private readonly patientService = inject(PatientService);
   private readonly clinicContextService = inject(ClinicContextService);
+  private readonly notificationService = inject(NotificationService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -336,6 +338,15 @@ export class AddPatientComponent implements OnInit, OnDestroy {
 
       this.isSubmitting = false;
       this.patientAdded.emit(patientId);
+
+      // Fire browser notification
+      const patientName = [this.firstName.trim(), this.middleName.trim(), this.lastName.trim()].filter(p => p).join(' ');
+      this.notificationService.send(
+        '✅ Patient Added',
+        `${patientName} has been added successfully.`,
+        `patient-added-${patientId}`
+      );
+
       this.resetForm();  // Clear form so onClose() doesn't trigger "Discard changes?"
       this.onClose();
 

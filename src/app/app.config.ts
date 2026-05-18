@@ -18,17 +18,12 @@ export const appConfig: ApplicationConfig = {
     provideZoneChangeDetection({ eventCoalescing: true }),
     provideRouter(
       routes,
-      // Load lazy chunks only on demand — avoids unused JS penalised by Lighthouse
       withPreloading(NoPreloading),
-      // Restore scroll position on back navigation
       withInMemoryScrolling({ scrollPositionRestoration: 'enabled' }),
-      // Bind route params directly to component @Input()
       withComponentInputBinding()
     ),
     provideHttpClient(),
-    // Firebase Auth SDK — kept for login/OAuth flows
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAuth())
-    // provideFirestore removed — all Firestore access now goes through REST API
   ]
 };

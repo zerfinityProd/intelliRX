@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, NgZone, inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, NgZone, inject, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -10,6 +10,7 @@ import { NavbarComponent } from '../navbar/navbar';
 import { DentalWidgetComponent } from '../widgets/dental-widget/dental-widget';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { NotificationService } from '../../services/notificationService';
 
 
 interface Examination {
@@ -22,6 +23,15 @@ interface Medicine {
     dosage: string;
     frequency: string;
     durationDays: string;
+}
+
+interface FrequencyState {
+    morning: boolean;
+    morningBeforeFood: boolean;
+    afternoon: boolean;
+    afternoonBeforeFood: boolean;
+    night: boolean;
+    nightBeforeFood: boolean;
 }
 
 /**
@@ -37,6 +47,9 @@ interface Medicine {
     styleUrl: './add-visit-page.css'
 })
 export class AddVisitPageComponent implements OnInit {
+
+    private readonly SESSION_KEY = 'avp_formState';
+    private readonly SESSION_NAV_KEY = 'avp_navState';
 
     // ── Patient & Visit Data ──────────────────────────────────
     patient: Patient | null = null;
@@ -66,7 +79,7 @@ export class AddVisitPageComponent implements OnInit {
     medicines: Medicine[] = [];
     newMedicineName: string = '';
     newMedicineDosage: string = '';
-    newMedicineFrequency: string = '';
+    newMedicineFrequency: FrequencyState = this.getEmptyFrequency();
     newMedicineDuration: string = '';
 
     errorMessage: string = '';
@@ -79,6 +92,11 @@ export class AddVisitPageComponent implements OnInit {
 
     // ── Expanded visit tracking ───────────────────────────────
     expandedVisitIds: Set<number> = new Set();
+
+    // ── Floating panel state ──────────────────────────────────
+    isHistoryOpen: boolean = false;
+    isAiOpen: boolean = false;
+    isFreqDropdownOpen: boolean = false;
 
     // ── Navigation origin ─────────────────────────────────────
     private origin: 'home' | 'patient' | 'appointments' = 'home';
@@ -96,6 +114,7 @@ export class AddVisitPageComponent implements OnInit {
     private readonly authService = inject(AuthenticationService);
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly ngZone = inject(NgZone);
+    private readonly notificationService = inject(NotificationService);
 
     async ngOnInit(): Promise<void> {
         const state = history.state as { origin?: string; appointmentId?: string; editVisitId?: string; editVisitData?: any } | undefined;
@@ -107,6 +126,12 @@ export class AddVisitPageComponent implements OnInit {
             this.isEditMode = true;
             this.editVisitId = state.editVisitId;
         }
+
+        // ── Restore navigation state from sessionStorage (survives refresh) ──
+        this.restoreNavState();
+
+        // ── Persist nav state so it survives the next refresh ──
+        this.saveNavState();
 
         const patientId = this.route.snapshot.paramMap.get('id');
         if (!patientId) {
@@ -120,8 +145,129 @@ export class AddVisitPageComponent implements OnInit {
             this.populateEditFields(state.editVisitData);
         }
 
+        // ── Restore saved form data from sessionStorage ──
+        this.restoreFormFromSession(patientId);
+
         // Snapshot the form state after initialization for dirty-checking
         this.originalFormState = this.getFormStateSnapshot();
+
+        // Restore selected visit popup from sessionStorage (survives refresh)
+        this.restoreSelectedVisit();
+    }
+
+    // ── Form Persistence (sessionStorage) ──────────────────────
+    @HostListener('window:beforeunload')
+    onBeforeUnload(): void {
+        this.saveFormToSession();
+    }
+
+    private getSessionKey(): string {
+        const patientId = this.route.snapshot.paramMap.get('id') || '';
+        return `${this.SESSION_KEY}_${patientId}`;
+    }
+
+    private saveFormToSession(): void {
+        try {
+            const data = {
+                chiefComplaintsText: this.chiefComplaintsText,
+                clinicalFindingsText: this.clinicalFindingsText,
+                diagnosis: this.diagnosis,
+                treatmentPlan: this.treatmentPlan,
+                advice: this.advice,
+                selectedBloodGroup: this.selectedBloodGroup,
+                existingAllergies: this.existingAllergies,
+                existingAilments: this.existingAilments,
+                examinations: this.examinations,
+                medicines: this.medicines,
+                newMedicineName: this.newMedicineName,
+                newMedicineDosage: this.newMedicineDosage,
+                newMedicineFrequency: this.newMedicineFrequency,
+                newMedicineDuration: this.newMedicineDuration,
+                newExamTestName: this.newExamTestName,
+                newExamResult: this.newExamResult,
+                newExamStatus: this.newExamStatus,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem(this.getSessionKey(), JSON.stringify(data));
+        } catch { /* silent — quota exceeded etc. */ }
+    }
+
+    private restoreFormFromSession(patientId: string): void {
+        try {
+            const raw = sessionStorage.getItem(this.getSessionKey());
+            if (!raw) return;
+            const data = JSON.parse(raw);
+            // Only restore if saved within the last 2 hours
+            if (data.timestamp && (Date.now() - data.timestamp) > 2 * 60 * 60 * 1000) {
+                sessionStorage.removeItem(this.getSessionKey());
+                return;
+            }
+            this.chiefComplaintsText = data.chiefComplaintsText || '';
+            this.clinicalFindingsText = data.clinicalFindingsText || '';
+            this.diagnosis = data.diagnosis || '';
+            this.treatmentPlan = data.treatmentPlan || '';
+            this.advice = data.advice || '';
+            if (data.selectedBloodGroup) this.selectedBloodGroup = data.selectedBloodGroup;
+            if (Array.isArray(data.existingAllergies)) this.existingAllergies = data.existingAllergies;
+            if (Array.isArray(data.existingAilments)) this.existingAilments = data.existingAilments;
+            if (Array.isArray(data.examinations)) this.examinations = data.examinations;
+            if (Array.isArray(data.medicines)) this.medicines = data.medicines;
+            this.newMedicineName = data.newMedicineName || '';
+            this.newMedicineDosage = data.newMedicineDosage || '';
+            this.newMedicineFrequency = data.newMedicineFrequency || this.getEmptyFrequency();
+            this.newMedicineDuration = data.newMedicineDuration || '';
+            this.newExamTestName = data.newExamTestName || '';
+            this.newExamResult = data.newExamResult || '';
+            this.newExamStatus = data.newExamStatus || '';
+            this.cdr.detectChanges();
+        } catch { /* silent */ }
+    }
+
+    private clearFormSession(): void {
+        try {
+            sessionStorage.removeItem(this.getSessionKey());
+            sessionStorage.removeItem(this.SESSION_NAV_KEY);
+            sessionStorage.removeItem('avp_selectedVisit');
+            sessionStorage.removeItem('avp_selectedVisitNum');
+        } catch { /* silent */ }
+    }
+
+    private saveNavState(): void {
+        try {
+            sessionStorage.setItem(this.SESSION_NAV_KEY, JSON.stringify({
+                origin: this.origin,
+                routeAppointmentId: this.routeAppointmentId,
+                isEditMode: this.isEditMode,
+                editVisitId: this.editVisitId
+            }));
+        } catch { /* silent */ }
+    }
+
+    private restoreNavState(): void {
+        try {
+            const raw = sessionStorage.getItem(this.SESSION_NAV_KEY);
+            if (!raw) return;
+            const nav = JSON.parse(raw);
+            // Only overwrite defaults (from history.state) if history.state was empty (i.e. a refresh)
+            if (this.origin === 'home' && nav.origin) this.origin = nav.origin;
+            if (!this.routeAppointmentId && nav.routeAppointmentId) this.routeAppointmentId = nav.routeAppointmentId;
+            if (!this.isEditMode && nav.isEditMode) {
+                this.isEditMode = nav.isEditMode;
+                this.editVisitId = nav.editVisitId || '';
+            }
+        } catch { /* silent */ }
+    }
+
+    private restoreSelectedVisit(): void {
+        try {
+            const savedVisit = sessionStorage.getItem('avp_selectedVisit');
+            const savedNum = sessionStorage.getItem('avp_selectedVisitNum');
+            if (savedVisit) {
+                this.selectedVisit = JSON.parse(savedVisit) as Visit;
+                this.selectedVisitNum = savedNum ? parseInt(savedNum, 10) : 0;
+                this.cdr.detectChanges();
+            }
+        } catch { /* silent */ }
     }
 
     private populateEditFields(visit: any): void {
@@ -266,10 +412,11 @@ export class AddVisitPageComponent implements OnInit {
         this.medicines.push({
             name,
             dosage: this.newMedicineDosage.trim(),
-            frequency: this.newMedicineFrequency.trim(),
+            frequency: this.buildFrequencyString(this.newMedicineFrequency),
             durationDays: this.newMedicineDuration.trim()
         });
-        this.newMedicineName = ''; this.newMedicineDosage = ''; this.newMedicineFrequency = ''; this.newMedicineDuration = '';
+        this.newMedicineName = ''; this.newMedicineDosage = ''; this.newMedicineFrequency = this.getEmptyFrequency(); this.newMedicineDuration = '';
+        this.isFreqDropdownOpen = false;
     }
     onMedicineKeydown(event: KeyboardEvent): void {
         if (event.key === 'Enter') { event.preventDefault(); this.addMedicineChip(); }
@@ -280,9 +427,50 @@ export class AddVisitPageComponent implements OnInit {
         const med = this.medicines[index];
         this.newMedicineName = med.name;
         this.newMedicineDosage = med.dosage;
-        this.newMedicineFrequency = med.frequency;
+        this.newMedicineFrequency = this.parseFrequencyString(med.frequency);
         this.newMedicineDuration = med.durationDays;
         this.medicines.splice(index, 1);
+    }
+
+    // ── Frequency helpers ─────────────────────────────────────
+    getEmptyFrequency(): FrequencyState {
+        return { morning: false, morningBeforeFood: false, afternoon: false, afternoonBeforeFood: false, night: false, nightBeforeFood: false };
+    }
+
+    buildFrequencyString(freq: FrequencyState): string {
+        const parts: string[] = [];
+        if (freq.morning) parts.push(freq.morningBeforeFood ? 'Morning (BF)' : 'Morning (AF)');
+        if (freq.afternoon) parts.push(freq.afternoonBeforeFood ? 'Afternoon (BF)' : 'Afternoon (AF)');
+        if (freq.night) parts.push(freq.nightBeforeFood ? 'Night (BF)' : 'Night (AF)');
+        return parts.join(', ');
+    }
+
+    getFrequencyPreview(): string {
+        return this.buildFrequencyString(this.newMedicineFrequency);
+    }
+
+    @HostListener('document:click')
+    onDocumentClick(): void {
+        this.isFreqDropdownOpen = false;
+    }
+
+    parseFrequencyString(str: string): FrequencyState {
+        const freq = this.getEmptyFrequency();
+        if (!str) return freq;
+        const lower = str.toLowerCase();
+        if (lower.includes('morning')) {
+            freq.morning = true;
+            freq.morningBeforeFood = lower.includes('morning (bf)') || lower.includes('morning (before food)');
+        }
+        if (lower.includes('afternoon')) {
+            freq.afternoon = true;
+            freq.afternoonBeforeFood = lower.includes('afternoon (bf)') || lower.includes('afternoon (before food)');
+        }
+        if (lower.includes('night')) {
+            freq.night = true;
+            freq.nightBeforeFood = lower.includes('night (bf)') || lower.includes('night (before food)');
+        }
+        return freq;
     }
 
     // ── Examinations ──────────────────────────────────────────
@@ -312,9 +500,39 @@ export class AddVisitPageComponent implements OnInit {
     openVisitModal(visit: Visit, visitNum: number): void {
         this.selectedVisit = visit;
         this.selectedVisitNum = visitNum;
+        // Persist to sessionStorage so the popup survives refresh
+        try {
+            sessionStorage.setItem('avp_selectedVisit', JSON.stringify(visit));
+            sessionStorage.setItem('avp_selectedVisitNum', String(visitNum));
+        } catch { /* silent */ }
     }
     closeVisitModal(): void {
-        this.selectedVisit = null;
+        this.ngZone.run(() => {
+            this.selectedVisit = null;
+            this.selectedVisitNum = 0;
+            sessionStorage.removeItem('avp_selectedVisit');
+            sessionStorage.removeItem('avp_selectedVisitNum');
+            this.cdr.detectChanges();
+        });
+    }
+
+    toggleVisitExpand(index: number): void {
+        if (this.expandedVisitIds.has(index)) {
+            this.expandedVisitIds.delete(index);
+        } else {
+            this.expandedVisitIds.add(index);
+        }
+    }
+
+    // ── Floating panel toggles ────────────────────────────────
+    toggleHistoryPanel(): void {
+        this.isHistoryOpen = !this.isHistoryOpen;
+        if (this.isHistoryOpen) this.isAiOpen = false;
+    }
+
+    toggleAiPanel(): void {
+        this.isAiOpen = !this.isAiOpen;
+        if (this.isAiOpen) this.isHistoryOpen = false;
     }
 
     // ── Submit ────────────────────────────────────────────────
@@ -388,6 +606,15 @@ export class AddVisitPageComponent implements OnInit {
                     background: isDark ? '#1f1f1f' : '#ffffff',
                     color: isDark ? '#e0e0e0' : '#1e293b',
                 });
+
+                // Fire browser notification
+                this.notificationService.send(
+                    '✏️ Visit Updated',
+                    `Visit for ${this.patient?.name || 'patient'} has been updated.`,
+                    `visit-updated-${this.editVisitId}`
+                );
+
+                this.clearFormSession();
                 this.router.navigate(['/patient', patientId], { state: { activeTab: 'visits' } });
             } else {
                 // ── CREATE new visit ──
@@ -478,6 +705,15 @@ export class AddVisitPageComponent implements OnInit {
                     background: isDark ? '#1f1f1f' : '#ffffff',
                     color: isDark ? '#e0e0e0' : '#1e293b',
                 });
+
+                // Fire browser notification
+                this.notificationService.send(
+                    '✅ Visit Added',
+                    `Visit for ${this.patient?.name || 'patient'} has been recorded.`,
+                    `visit-added-${Date.now()}`
+                );
+
+                this.clearFormSession();
                 if (this.origin === 'appointments') {
                     this.router.navigate(['/appointments']);
                 } else {
@@ -491,7 +727,11 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     private navigateBack(): void {
-        if (this.origin === 'appointments') {
+        // Use browser history to return to the exact previous state
+        // (preserves search results, scroll position, etc.)
+        if (window.history.length > 1) {
+            window.history.back();
+        } else if (this.origin === 'appointments') {
             this.router.navigate(['/appointments']);
         } else if (this.origin === 'patient' && this.patient) {
             this.router.navigate(['/patient', this.patient.id]);
@@ -537,6 +777,7 @@ export class AddVisitPageComponent implements OnInit {
                 color: isDark ? '#e0e0e0' : '#1e293b',
             }).then(result => {
                 if (result.isConfirmed) {
+                    this.clearFormSession();
                     this.navigateBack();
                 }
             });

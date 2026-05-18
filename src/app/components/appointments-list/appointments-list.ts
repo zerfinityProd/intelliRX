@@ -110,23 +110,23 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   get filteredAppointments(): Appointment[] {
     let result = this.appointments;
 
-    // Always respect the date filter (defaults to today).
-    if (this.selectedDate) {
-      const [y, mo, day] = this.selectedDate.split('-').map(Number);
-      result = result.filter(a => {
-        const d = new Date(a.datetime);
-        return d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
-      });
-    }
-
     const termRaw = this.searchTerm.trim();
     const term = termRaw.toLowerCase();
+
     if (term) {
-      const digitsQuery = normalizePhoneDigits(termRaw);
+      // When searching, look across ALL present & future appointments
+      // (ignore the single-day date filter so user can find any upcoming appointment)
+      const todayStr = todayLocalISO();
       result = result.filter(a => {
+        // Only include today and future appointments
+        const d = new Date(a.datetime);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        if (dateStr < todayStr) return false;
+
         const name = (a.patientName ?? '').toLowerCase();
         const ailments = (a.ailments ?? '').toLowerCase();
         const phoneDigits = normalizePhoneDigits(a.patientPhone ?? '');
+        const digitsQuery = normalizePhoneDigits(termRaw);
 
         const matchesNameOrAilments = name.includes(term) || ailments.includes(term);
         const matchesPhoneDigits = digitsQuery ? phoneDigits.includes(digitsQuery) : false;
@@ -134,6 +134,18 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
 
         return matchesNameOrAilments || matchesPhoneDigits || matchesPhoneRaw;
       });
+
+      // Sort search results by date (nearest first)
+      result.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+    } else {
+      // No search — filter by the selected date (default: today)
+      if (this.selectedDate) {
+        const [y, mo, day] = this.selectedDate.split('-').map(Number);
+        result = result.filter(a => {
+          const d = new Date(a.datetime);
+          return d.getFullYear() === y && d.getMonth() === mo - 1 && d.getDate() === day;
+        });
+      }
     }
 
     return result;

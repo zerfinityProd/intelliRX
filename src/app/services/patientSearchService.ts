@@ -41,6 +41,14 @@ export class PatientSearchService {
     /**
      * Execute new search (resets pagination)
      */
+    /**
+     * Check if a search term looks like a valid patient document ID.
+     * Patient IDs are in the format YYYYMM##### (11 digits starting with 20).
+     */
+    private looksLikePatientId(term: string): boolean {
+        return /^20\d{9}$/.test(term);
+    }
+
     async search(searchTerm: string): Promise<void> {
         try {
             const trimmedTerm = searchTerm.trim();
@@ -55,17 +63,26 @@ export class PatientSearchService {
             let allResults: Patient[] = [];
             const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
 
-            // Always try a direct patient ID lookup in parallel
-            const idLookupPromise = this.firebaseService.getPatientById(trimmedTerm)
-                .catch(() => null);
+            // Only attempt direct patient ID lookup when the term matches YYYYMM##### format
+            // to avoid unnecessary 404 HTTP requests for arbitrary search terms
+            const idLookupPromise = this.looksLikePatientId(trimmedTerm)
+                ? this.firebaseService.getPatientById(trimmedTerm).catch(() => null)
+                : Promise.resolve(null);
+
+            // When a clinicId is set, the phone/name prefix queries require composite
+            // Firestore indexes (array-contains + range). Skip them and rely on the
+            // contains search (client-side filtering) to avoid 400 HTTP errors.
+            const emptyResult = { results: [] as Patient[], lastCursor: null, hasMore: false };
 
             if (this.currentIsNumeric) {
                 // Run phone prefix search AND contains search in parallel
                 const [phoneSettled, containsSettled, idResult] = await Promise.all([
-                    this.firebaseService.searchPatientByPhone(trimmedTerm, null, clinicId)
-                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
+                    clinicId
+                        ? Promise.resolve(emptyResult)
+                        : this.firebaseService.searchPatientByPhone(trimmedTerm, null, undefined)
+                            .catch(() => emptyResult),
                     this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
-                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
+                        .catch(() => emptyResult),
                     idLookupPromise
                 ]);
 
@@ -80,10 +97,12 @@ export class PatientSearchService {
             } else {
                 // Run name prefix search AND contains search in parallel
                 const [nameSettled, containsSettled, idResult] = await Promise.all([
-                    this.firebaseService.searchPatientByName(trimmedTerm, null, clinicId)
-                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
+                    clinicId
+                        ? Promise.resolve(emptyResult)
+                        : this.firebaseService.searchPatientByName(trimmedTerm, null, undefined)
+                            .catch(() => emptyResult),
                     this.firebaseService.searchPatientsContaining(trimmedTerm, clinicId)
-                        .catch(() => ({ results: [] as Patient[], lastCursor: null, hasMore: false })),
+                        .catch(() => emptyResult),
                     idLookupPromise
                 ]);
 

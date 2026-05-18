@@ -36,27 +36,18 @@ export class LoginComponent implements OnInit {
 
     constructor() {}
 
-    async ngOnInit(): Promise<void> {
-        try {
-            const user = await this.authService.handleGoogleRedirectResult();
-            if (user) {
-                await this.navigateByRole(user.email);
-                return;
-            }
-        } catch (error: any) {
-            if (error.message && !error.message.includes('popup was closed')) {
-                this.errorMessage = error.message;
-                this.cdr.detectChanges();
-                return;
-            }
-        }
-
+    ngOnInit(): void {
+        // If the user is already authenticated (e.g. revisiting the login
+        // page with an active session), navigate straight to home.
         this.authService.authReady$.pipe(
             filter(ready => ready),
             take(1)
-        ).subscribe(() => {
+        ).subscribe(async () => {
             if (this.authService.isLoggedIn()) {
-                this.authService.logout();
+                const email = this.authService.currentUserValue?.email || '';
+                if (email) {
+                    await this.navigateByRole(email);
+                }
             }
         });
     }
@@ -172,10 +163,10 @@ export class LoginComponent implements OnInit {
         this.isLoading = true;
         this.cdr.detectChanges();
         try {
-            // loginWithGoogle() internally navigates; we override with role-based nav
-            await this.authService.loginWithGoogle();
-            const email = this.authService.currentUserValue?.email || '';
-            if (email) await this.navigateByRole(email);
+            const user = await this.authService.loginWithGoogle();
+            if (user) {
+                await this.navigateByRole(user.email);
+            }
         } catch (error: any) {
             this.errorMessage = error.message || 'Google login failed.';
             this.cdr.detectChanges();

@@ -105,9 +105,12 @@ export class PatientDataService {
 
       console.log(`Phone search: ${results.length} result(s), hasMore=${hasMore}`);
       return { results, lastCursor: newCursor, hasMore };
-    } catch (error) {
-      console.error('Error searching patient by phone:', error);
-      throw error;
+    } catch (error: any) {
+      // Gracefully handle query failures (e.g. missing index, permission errors)
+      if (error?.status !== 400 && error?.status !== 404) {
+        console.warn('Phone search unavailable:', error?.message || error);
+      }
+      return { results: [], lastCursor: null, hasMore: false };
     }
   }
 
@@ -152,8 +155,8 @@ export class PatientDataService {
 
       console.log(`Name search: ${results.length} result(s), hasMore=${hasMore}`);
       return { results, lastCursor: newCursor, hasMore };
-    } catch (error: any) {
-      console.warn('Name search unavailable (index pending):', error?.message);
+    } catch {
+      // Index may be pending — silently fall back to contains search
       return { results: [], lastCursor: null, hasMore: false };
     }
   }
@@ -210,9 +213,11 @@ export class PatientDataService {
         return patient;
       }
       return null;
-    } catch (error) {
-      console.error('Error getting patient:', error);
-      throw error;
+    } catch (error: any) {
+      // 404 is expected when searching by term that isn't a valid document ID
+      if (error?.status === 404) return null;
+      console.warn('Error getting patient:', error?.message || error);
+      return null;
     }
   }
 
