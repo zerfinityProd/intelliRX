@@ -1,0 +1,61 @@
+<style>
+    .body-part {
+        fill: #e0e0e0;
+        stroke: #333;
+        stroke-width: 2px;
+        cursor: pointer;
+        transition: fill 0.3s ease;
+    }
+
+    .body-part:hover {
+        fill: #ffcc00;
+        /* Highlight on hover */
+    }
+
+    .active {
+        fill: #ff5722 !important;
+        /* Color when clicked */
+    }
+
+    #info-box {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        font-family: sans-serif;
+    }
+</style>
+<script>
+    const parts = document.querySelectorAll('.body-part');
+    const infoBox = document.getElementById('info-box');
+
+    parts.forEach(part => {
+        part.addEventListener('click', () => {
+            // Remove active class from others
+            parts.forEach(p => p.classList.remove('active'));
+
+            // Add active class to clicked part
+            part.classList.add('active');
+
+            // Update info text
+            const partName = part.id.replace('-', ' ');
+            infoBox.innerText = `You selected the ${partName}.`;
+        });
+    });
+
+</script>
+<div class="body-container">
+    <!-- Simplified SVG Map -->
+    <svg viewBox="0 0 200 500" width="300">
+        <!-- Head -->
+        <circle id="head" cx="100" cy="50" r="30" class="body-part" />
+        <!-- Torso -->
+        <rect id="torso" x="70" y="85" width="60" height="120" class="body-part" />
+        <!-- Arms and Legs (simplified as rectangles) -->
+        <rect id="left-arm" x="35" y="85" width="30" height="100" class="body-part" />
+        <rect id="right-arm" x="135" y="85" width="30" height="100" class="body-part" />
+        <rect id="left-leg" x="70" y="210" width="25" height="150" class="body-part" />
+        <rect id="right-leg" x="105" y="210" width="25" height="150" class="body-part" />
+    </svg>
+
+    <div id="info-box">Click a body part to see details.</div>
+</div>
