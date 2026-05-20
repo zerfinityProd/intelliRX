@@ -1,5 +1,5 @@
 export interface ClinicUserAvailability {
-  [day: string]: string[];  // e.g. { "mon": ["FH"], "tue": ["SH"] }
+  [day: string]: string[];  // e.g. { "M": ["FH"], "T": ["SH"], "W": ["FH", "SH"] }
 }
 
 export interface ClinicUser {

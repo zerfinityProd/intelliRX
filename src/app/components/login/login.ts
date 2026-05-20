@@ -7,7 +7,6 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { ThemeService } from '../../services/themeService';
 import { NotificationService } from '../../services/notificationService';
 import { ClinicContextService } from '../../services/clinicContextService';
-import { filter, take } from 'rxjs';
 
 @Component({
     selector: 'app-login',
@@ -37,19 +36,12 @@ export class LoginComponent implements OnInit {
     constructor() {}
 
     ngOnInit(): void {
-        // If the user is already authenticated (e.g. revisiting the login
-        // page with an active session), navigate straight to home.
-        this.authService.authReady$.pipe(
-            filter(ready => ready),
-            take(1)
-        ).subscribe(async () => {
-            if (this.authService.isLoggedIn()) {
-                const email = this.authService.currentUserValue?.email || '';
-                if (email) {
-                    await this.navigateByRole(email);
-                }
-            }
-        });
+        // If the user navigated to /login explicitly, sign them out so they
+        // can pick which account to use. This prevents the "auto-redirect
+        // to home" behaviour that skipped the login screen.
+        if (this.authService.isLoggedIn()) {
+            this.authService.logout();
+        }
     }
 
     /** Navigate to home based on role — both roles use /home now */
@@ -57,35 +49,89 @@ export class LoginComponent implements OnInit {
         // Prompt for notification permission (non-blocking, runs in background)
         this.promptNotificationPermission(email);
 
-        const role = await this.authorizationService.getUserRole(email);
-
-        // If this doctor belongs to multiple clinics, prompt which clinic to use.
-        if (role === 'doctor') {
-            await this.ensureDoctorClinicSelected(email);
-        }
+        // Resolve which subscription + clinic to use (may prompt user)
+        await this.ensureClinicSelected(email);
         this.router.navigate(['/home']);
     }
 
-    private async ensureDoctorClinicSelected(doctorEmail: string): Promise<void> {
-        const clinics = await this.authorizationService.getUserClinicIds(doctorEmail);
-        const subscriptionId = await this.authorizationService.getUserSubscriptionId(doctorEmail);
+    /**
+     * Two-tier selection: subscription → clinic.
+     * Works for both doctors and receptionists.
+     */
+    private async ensureClinicSelected(userEmail: string): Promise<void> {
+        const assignments = await this.authorizationService.getUserAssignments(userEmail);
 
-        if (!clinics.length) {
+        if (!assignments.length) {
+            // No assignments — keep whatever context is stored (or null)
+            const subId = await this.authorizationService.getUserSubscriptionId(userEmail);
             this.clinicContextService.setClinicContext(
                 this.clinicContextService.getSelectedClinicId(),
-                subscriptionId
+                subId
             );
             return;
         }
 
-        if (clinics.length === 1) {
-            this.clinicContextService.setClinicContext(clinics[0], subscriptionId);
+        // Single assignment — auto-select
+        if (assignments.length === 1) {
+            this.clinicContextService.setClinicContext(
+                assignments[0].clinicId,
+                assignments[0].subscriptionId
+            );
             return;
         }
 
+        // Multiple assignments — check how many subscriptions
+        const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
+
+        let chosenSubId: string;
+        if (subscriptionIds.length === 1) {
+            // Single subscription, multiple clinics
+            chosenSubId = subscriptionIds[0];
+        } else {
+            // Multiple subscriptions — prompt user to pick one
+            chosenSubId = await this.promptSubscriptionSelection(subscriptionIds);
+        }
+
+        // Now find clinics within the chosen subscription
+        const clinicsInSub = assignments
+            .filter(a => a.subscriptionId === chosenSubId)
+            .map(a => a.clinicId);
+
+        let chosenClinicId: string;
+        if (clinicsInSub.length === 1) {
+            chosenClinicId = clinicsInSub[0];
+        } else {
+            // Multiple clinics — prompt user to pick one
+            chosenClinicId = await this.promptClinicSelection(clinicsInSub);
+        }
+
+        this.clinicContextService.setClinicContext(chosenClinicId, chosenSubId);
+    }
+
+    private async promptSubscriptionSelection(subscriptionIds: string[]): Promise<string> {
         const { default: Swal } = await import('sweetalert2');
         const options: Record<string, string> = {};
-        for (const id of clinics) options[id] = id;
+        for (const id of subscriptionIds) options[id] = id;
+
+        const result = await Swal.fire({
+            title: 'Select Organisation',
+            text: 'You belong to multiple organisations. Which one do you want to use?',
+            input: 'select',
+            inputOptions: options,
+            inputPlaceholder: 'Select an organisation',
+            showCancelButton: false,
+            confirmButtonText: 'Continue',
+            allowOutsideClick: false,
+            confirmButtonColor: '#148D9E'
+        });
+
+        return String(result.value ?? subscriptionIds[0]);
+    }
+
+    private async promptClinicSelection(clinicIds: string[]): Promise<string> {
+        const { default: Swal } = await import('sweetalert2');
+        const options: Record<string, string> = {};
+        for (const id of clinicIds) options[id] = id;
 
         const result = await Swal.fire({
             title: 'Select Clinic',
@@ -95,11 +141,11 @@ export class LoginComponent implements OnInit {
             inputPlaceholder: 'Select a clinic',
             showCancelButton: false,
             confirmButtonText: 'Continue',
-            allowOutsideClick: false
+            allowOutsideClick: false,
+            confirmButtonColor: '#148D9E'
         });
 
-        const chosen = String(result.value ?? clinics[0]);
-        this.clinicContextService.setClinicContext(chosen, subscriptionId);
+        return String(result.value ?? clinicIds[0]);
     }
 
     toggleMode(): void {

@@ -65,15 +65,24 @@ export class AuthenticationService {
                         // Fetch role and set subscription/clinic context
                         const role = await this.authorizationService.getUserRole(email);
                         const dbName = await this.authorizationService.getUserName(email);
-                        const subscriptionId = await this.authorizationService.getUserSubscriptionId(email);
-                        const clinicIds = await this.authorizationService.getUserClinicIds(email);
+                        const assignments = await this.authorizationService.getUserAssignments(email);
                         // Set clinic context so all services can build subscription-scoped paths
-                        if (subscriptionId) {
+                        if (assignments.length > 0) {
                             const currentClinic = this.clinicContextService.getSelectedClinicId();
-                            const clinicId = currentClinic && clinicIds.includes(currentClinic)
-                                ? currentClinic
-                                : (clinicIds[0] || null);
-                            this.clinicContextService.setClinicContext(clinicId, subscriptionId);
+                            // Find the assignment matching the stored clinic (from localStorage)
+                            const matching = currentClinic
+                                ? assignments.find(a => a.clinicId === currentClinic)
+                                : null;
+                            if (matching) {
+                                // Stored clinic is valid — use its subscription
+                                this.clinicContextService.setClinicContext(matching.clinicId, matching.subscriptionId);
+                            } else {
+                                // Stored clinic doesn't match — use first assignment
+                                this.clinicContextService.setClinicContext(
+                                    assignments[0].clinicId,
+                                    assignments[0].subscriptionId
+                                );
+                            }
                         }
                         const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                         // Override display name with database name if available

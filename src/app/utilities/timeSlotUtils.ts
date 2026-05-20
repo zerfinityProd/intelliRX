@@ -60,12 +60,12 @@ export function generateTimeSlotsFromClinicTimings(
 }
 
 /**
- * Convert a Date to a lowercase weekday key matching Firestore availability fields.
- * Returns: "sun", "mon", "tue", "wed", "thu", "fri", "sat"
+ * Convert a Date to a short weekday key matching Firestore availability fields.
+ * Uses the same format as clinic schedule.weekdays: "Su", "M", "T", "W", "Th", "F", "Sa"
  */
 export function getWeekdayKey(date: Date): string {
-  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-  return days[date.getDay()];
+  const codes = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
+  return codes[date.getDay()];
 }
 
 /**

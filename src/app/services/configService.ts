@@ -62,7 +62,7 @@ export class ConfigService {
 
       const config = this.extractConfigData<SubscriptionConfig>(result.data);
       this.addToCache(this.subscriptionCache, subscriptionId, config);
-      console.log('⚙️  Subscription config loaded for:', subscriptionId);
+
       return config;
     } catch {
       // Config may not exist yet — return null silently
@@ -86,7 +86,6 @@ export class ConfigService {
       payload
     );
     this.subscriptionCache.delete(subscriptionId);
-    console.log('✓ Subscription config saved for:', subscriptionId);
   }
 
   // ─── Clinic Config ────────────────────────────────────────────────────────
@@ -110,7 +109,7 @@ export class ConfigService {
 
       const config = this.extractConfigData<ClinicConfig>(result.data);
       this.addToCache(this.clinicCache, clinicId, config);
-      console.log('⚙️  Clinic config loaded for:', clinicId);
+
       return config;
     } catch {
       // Config may not exist yet — return null silently
@@ -134,7 +133,6 @@ export class ConfigService {
       payload
     );
     this.clinicCache.delete(clinicId);
-    console.log('✓ Clinic config saved for:', clinicId);
   }
 
   // ─── Doctor Config ────────────────────────────────────────────────────────
@@ -158,7 +156,7 @@ export class ConfigService {
 
       const config = this.extractConfigData<DoctorConfig>(result.data);
       this.addToCache(this.doctorCache, userId, config);
-      console.log('⚙️  Doctor config loaded for:', userId);
+
       return config;
     } catch {
       // Config may not exist yet — return null silently
@@ -182,7 +180,6 @@ export class ConfigService {
       payload
     );
     this.doctorCache.delete(userId);
-    console.log('✓ Doctor config saved for:', userId);
   }
 
   // ─── Effective Settings (merged) ──────────────────────────────────────────

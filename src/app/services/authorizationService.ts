@@ -32,6 +32,12 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
 /** Known role names */
 const KNOWN_ROLES: string[] = ['doctor', 'receptionist'];
 
+/** A single subscription↔clinic link for a user */
+export interface ClinicAssignment {
+    subscriptionId: string;
+    clinicId: string;
+}
+
 /**
  * Cached result from the users + clinic_users lookup.
  */
@@ -41,8 +47,8 @@ interface UserLookupResult {
     userName: string;
     /** Doctor specialization (e.g. "Cardiologist", "General Physician") */
     specialization: string;
-    subscriptionId: string;
-    clinicIds: string[];
+    /** All subscription↔clinic assignments from clinic_users */
+    assignments: ClinicAssignment[];
     role: 'doctor' | 'receptionist';
     timestamp: number;
 }
@@ -227,20 +233,21 @@ export class AuthorizationService {
                     '(email:', normalized, '). The user needs a clinic_users record.');
             }
 
-            let subscriptionId = '';
-            const clinicIds: string[] = [];
+            const assignments: ClinicAssignment[] = [];
 
             for (const cuDoc of cuDocs) {
                 const cuData = cuDoc.data;
                 // Treat missing status as active; skip only explicitly inactive/disabled
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') continue;
-                if (cuData['subscription_id']) {
-                    subscriptionId = cuData['subscription_id'];
-                }
-                const cId = cuData['clinic_id'];
-                if (cId && !clinicIds.includes(cId)) {
-                    clinicIds.push(cId);
+                const subId = cuData['subscription_id'] || '';
+                const cId = cuData['clinic_id'] || '';
+                if (subId && cId) {
+                    // Avoid duplicate assignments
+                    const exists = assignments.some(a => a.subscriptionId === subId && a.clinicId === cId);
+                    if (!exists) {
+                        assignments.push({ subscriptionId: subId, clinicId: cId });
+                    }
                 }
                 // Override role from clinic_users if present (clinic_users role is authoritative)
                 if (cuData['roles'] && Array.isArray(cuData['roles'])) {
@@ -276,16 +283,13 @@ export class AuthorizationService {
                 userId,
                 userName,
                 specialization,
-                subscriptionId,
-                clinicIds,
+                assignments,
                 role,
                 timestamp: Date.now()
             };
 
             this.lookupCache.set(normalized, result);
-            console.log('Resolved user context for', normalized,
-                '→ name:', userName, 'sub:', subscriptionId, 'clinics:', clinicIds,
-                'role:', role);
+
             return result;
         } catch (error: any) {
             console.error('User lookup failed for:', normalized, error);
@@ -399,8 +403,7 @@ export class AuthorizationService {
             const permNames = await this.loadRoleDefaults(roleName);
 
             const permissions = this.mapPermissionNames(permNames);
-            console.log('Resolved permissions for', normalizeEmail(email),
-                '→ role:', roleName, permissions);
+
             return permissions;
         } catch (error) {
             console.warn('getUserPermissions failed for:', email, error);
@@ -422,12 +425,14 @@ export class AuthorizationService {
     }
 
     /**
-     * List of clinic IDs a user can access.
+     * List of clinic IDs a user can access (across all subscriptions).
      */
     async getUserClinicIds(email: string): Promise<string[]> {
         try {
             const result = await this.lookupUser(email);
-            return result?.clinicIds ?? [];
+            if (!result) return [];
+            const unique = new Set(result.assignments.map(a => a.clinicId));
+            return [...unique];
         } catch (error) {
             console.warn('getUserClinicIds failed for:', email, error);
             return [];
@@ -436,14 +441,61 @@ export class AuthorizationService {
 
     /**
      * Subscription ID for a user.
+     * Returns the first subscription found (backward-compatible).
      */
     async getUserSubscriptionId(email: string): Promise<string | null> {
         try {
             const result = await this.lookupUser(email);
-            return result?.subscriptionId ?? null;
+            if (!result || result.assignments.length === 0) return null;
+            return result.assignments[0].subscriptionId;
         } catch (error) {
             console.warn('getUserSubscriptionId failed for:', email, error);
             return null;
+        }
+    }
+
+    /**
+     * Full list of subscription↔clinic assignments for a user.
+     * Used by the login flow to show subscription/clinic pickers.
+     */
+    async getUserAssignments(email: string): Promise<ClinicAssignment[]> {
+        try {
+            const result = await this.lookupUser(email);
+            return result?.assignments ?? [];
+        } catch (error) {
+            console.warn('getUserAssignments failed for:', email, error);
+            return [];
+        }
+    }
+
+    /**
+     * List of unique subscription IDs a user belongs to.
+     */
+    async getSubscriptionIds(email: string): Promise<string[]> {
+        try {
+            const result = await this.lookupUser(email);
+            if (!result) return [];
+            const unique = new Set(result.assignments.map(a => a.subscriptionId));
+            return [...unique];
+        } catch (error) {
+            console.warn('getSubscriptionIds failed for:', email, error);
+            return [];
+        }
+    }
+
+    /**
+     * List of clinic IDs within a specific subscription for a user.
+     */
+    async getClinicIdsForSubscription(email: string, subscriptionId: string): Promise<string[]> {
+        try {
+            const result = await this.lookupUser(email);
+            if (!result) return [];
+            return result.assignments
+                .filter(a => a.subscriptionId === subscriptionId)
+                .map(a => a.clinicId);
+        } catch (error) {
+            console.warn('getClinicIdsForSubscription failed for:', email, error);
+            return [];
         }
     }
 
@@ -497,7 +549,7 @@ export class AuthorizationService {
     /**
      * Fetch a doctor's per-weekday availability for a specific clinic.
      *
-     * Returns the availability map (e.g. { mon: ["FH"], tue: ["FH","SH"] })
+     * Returns the availability map (e.g. { M: ["FH"], T: ["FH","SH"] })
      * or null if the doctor has no availability configured (meaning all blocks available).
      */
     async getDoctorAvailability(
@@ -656,10 +708,10 @@ export class AuthorizationService {
     }
 
     async allowEmail(email: string): Promise<void> {
-        console.log('allowEmail is a no-op in new model:', email);
+
     }
 
     async denyEmail(email: string): Promise<void> {
-        console.log('denyEmail is a no-op in new model:', email);
+
     }
 }

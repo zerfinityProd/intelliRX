@@ -276,10 +276,17 @@ export class HomeComponent implements OnInit {
     const email = this.authService.currentUserValue?.email;
     if (!email) return;
     try {
-      const clinicIds = await this.authorizationService.getUserClinicIds(email);
-      this.doctorClinics = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
-      this.selectedDoctorClinicId = this.clinicContextService.getSelectedClinicId() || clinicIds[0] || '';
-      console.log(`🏥 Doctor clinics loaded: ${clinicIds.length} clinic(s)`, clinicIds);
+      const assignments = await this.authorizationService.getUserAssignments(email);
+      // Show all clinics across all subscriptions
+      const seen = new Set<string>();
+      this.doctorClinics = [];
+      for (const a of assignments) {
+        if (!seen.has(a.clinicId)) {
+          seen.add(a.clinicId);
+          this.doctorClinics.push({ id: a.clinicId, label: `Clinic ${a.clinicId}` });
+        }
+      }
+      this.selectedDoctorClinicId = this.clinicContextService.getSelectedClinicId() || (assignments[0]?.clinicId ?? '');
     } catch {
       this.doctorClinics = [];
     }
@@ -290,9 +297,13 @@ export class HomeComponent implements OnInit {
   async onDoctorClinicChange(): Promise<void> {
     if (!this.selectedDoctorClinicId) return;
     const email = this.authService.currentUserValue?.email;
-    const subscriptionId = email
-      ? await this.authorizationService.getUserSubscriptionId(email).catch(() => null)
-      : null;
+    if (!email) return;
+
+    // Find the correct subscription for the chosen clinic from assignments
+    const assignments = await this.authorizationService.getUserAssignments(email).catch(() => []);
+    const match = assignments.find(a => a.clinicId === this.selectedDoctorClinicId);
+    const subscriptionId = match?.subscriptionId ?? null;
+
     this.clinicContextService.setClinicContext(this.selectedDoctorClinicId, subscriptionId);
     // Refresh time slots based on the new clinic's timings
     await this.refreshTimeSlotsForClinic(this.selectedDoctorClinicId);

@@ -55,13 +55,13 @@ export class NotificationService {
     // 2. Sync: if user changed browser settings externally, update Firestore
     if (Notification.permission === 'granted' && storedPref !== 'allowed') {
       await this.savePreference(userId, 'allowed');
-      console.log('[Notifications] Synced: browser granted → Firestore updated to allowed');
+
       return;
     }
     if (Notification.permission === 'denied') {
       if (storedPref !== 'not_allowed') {
         await this.savePreference(userId, 'not_allowed');
-        console.log('[Notifications] Synced: browser denied → Firestore updated to not_allowed');
+
       }
       return; // Can't prompt — browser has permanently blocked
     }
@@ -71,7 +71,7 @@ export class NotificationService {
     //    (storedPref is 'allowed' or 'not_allowed')
     //    If storedPref is null/empty → user dismissed last time → re-prompt
     if (storedPref === 'allowed' || storedPref === 'not_allowed') {
-      console.log('[Notifications] Preference already stored:', storedPref);
+
       return;
     }
 
@@ -80,14 +80,14 @@ export class NotificationService {
       const result = await Notification.requestPermission();
       if (result === 'granted') {
         await this.savePreference(userId, 'allowed');
-        console.log('[Notifications] User allowed notifications');
+
       } else if (result === 'denied') {
         await this.savePreference(userId, 'not_allowed');
-        console.log('[Notifications] User blocked notifications');
+
       } else {
         // result === 'default' → user dismissed the prompt
         // Don't save anything — will re-prompt on next login
-        console.log('[Notifications] User dismissed the prompt — will ask again next login');
+
       }
     } catch (err) {
       console.warn('[Notifications] Permission request failed:', err);
@@ -105,7 +105,7 @@ export class NotificationService {
    */
   send(title: string, body: string, tag?: string): void {
     if (!this.isGranted) {
-      console.log('[Notifications] Not granted — skipping notification:', title);
+
       return;
     }
 
@@ -126,7 +126,7 @@ export class NotificationService {
         notification.close();
       };
 
-      console.log('[Notifications] Sent:', title, '—', body);
+
     } catch (err) {
       console.warn('[Notifications] Failed to send notification:', err);
     }
@@ -138,7 +138,7 @@ export class NotificationService {
   private async savePreference(userId: string, preference: 'allowed' | 'not_allowed'): Promise<void> {
     try {
       await this.api.updateDocument('users', userId, { notification_permission: preference });
-      console.log('[Notifications] Saved preference for', userId, '→', preference);
+
     } catch (err) {
       console.error('[Notifications] Failed to save preference:', err);
     }
