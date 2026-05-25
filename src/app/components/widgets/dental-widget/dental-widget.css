@@ -1,13 +1,14 @@
 /* ── Dental Chart Widget ── */
 :host {
   display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   align-items: center;
   justify-content: center;
 }
 
-/* Target the SVG directly — it has inline width/height attributes */
+/* Target the SVG directly */
 :host svg,
 svg {
   width: 100%;
@@ -16,67 +17,55 @@ svg {
   background: transparent;
   display: block;
   margin: 0 auto;
+  cursor: default;
 }
 
-.tooth-group {
+/* ── All tooth groups ── */
+svg g[id] {
   cursor: pointer;
-  transition: transform 0.15s ease, filter 0.15s ease;
+  transition: filter 0.15s ease;
 }
 
-.tooth-group:hover {
-  filter: drop-shadow(0 0 4px rgba(20, 141, 158, 0.35));
+/* ── Hover on unselected tooth (filter glow only) ── */
+svg g[id]:not(.selected):hover {
+  filter: drop-shadow(0 0 3px rgba(20, 141, 158, 0.5));
 }
 
-.tooth-shape {
-  fill: #fff;
-  stroke: var(--clr-text, #0A2540);
-  stroke-width: 1.5;
-  transition: fill 0.15s ease, stroke 0.15s ease;
+/* ── Hover highlight via CSS class (replaces JS inline styles) ── */
+svg g[id].tooth-hover [class*="-parent"] {
+  fill: rgba(20, 141, 158, 0.12) !important;
+  stroke: #148D9E !important;
+  stroke-width: 1.5 !important;
 }
 
-.tooth-label {
-  font-size: 18px;
-  font-weight: 600;
-  text-anchor: middle;
-  fill: var(--clr-text-muted, #5A8A9C);
+/* ── Selected tooth visual ── */
+svg g[id].selected [class*="-parent"] {
+  fill: rgba(20, 141, 158, 0.22) !important;
+  stroke: #148D9E !important;
+  stroke-width: 2 !important;
 }
 
-.tooth-group.selected .tooth-shape {
-  fill: rgba(20, 141, 158, 0.12);
-  stroke: #148D9E;
-  stroke-width: 2;
+svg g[id].selected {
+  filter: drop-shadow(0 0 4px rgba(20, 141, 158, 0.5));
 }
 
-.tooth-group:hover .tooth-shape {
-  fill: rgba(20, 141, 158, 0.06);
-  stroke: #148D9E;
+/* Pulse animation when tooth is selected */
+@keyframes toothSelect {
+  0%   { filter: drop-shadow(0 0 0px #148D9E); }
+  50%  { filter: drop-shadow(0 0 7px #148D9E); }
+  100% { filter: drop-shadow(0 0 3px rgba(20,141,158,0.45)); }
 }
 
-/* ── Dark Mode ── */
-:host-context([data-theme="dark"]) .tooth-shape,
-[data-theme="dark"] .tooth-shape {
-  fill: var(--dk-bg3, #132640) !important;
-  stroke: var(--dk-text2, #5A8A9C) !important;
+svg g[id].selected {
+  animation: toothSelect 0.3s ease forwards;
 }
 
-:host-context([data-theme="dark"]) .tooth-label,
-[data-theme="dark"] .tooth-label {
-  fill: var(--dk-text2, #5A8A9C) !important;
+/* ── Hover on selected tooth → red glow hint to double-click ── */
+svg g[id].selected:hover {
+  filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.5));
 }
 
-:host-context([data-theme="dark"]) .tooth-group.selected .tooth-shape,
-[data-theme="dark"] .tooth-group.selected .tooth-shape {
-  fill: rgba(20, 141, 158, 0.2) !important;
-  stroke: #17A2B5 !important;
-}
-
-:host-context([data-theme="dark"]) .tooth-group:hover .tooth-shape,
-[data-theme="dark"] .tooth-group:hover .tooth-shape {
-  fill: rgba(20, 141, 158, 0.1) !important;
-  stroke: #17A2B5 !important;
-}
-
-/* Override hardcoded inline stroke:#0A2540 on SVG paths/elements in dark mode */
+/* ── Dark Mode base strokes ── */
 :host-context([data-theme="dark"]) svg path,
 :host-context([data-theme="dark"]) svg ellipse,
 :host-context([data-theme="dark"]) svg circle,
@@ -91,11 +80,26 @@ svg {
 [data-theme="dark"] svg polyline,
 [data-theme="dark"] svg polygon,
 [data-theme="dark"] svg rect {
-  stroke: #5A8A9C !important;
+  stroke: #3A6A7C;
 }
 
-/* Also override any inline fill on SVG elements that use the dark color */
 :host-context([data-theme="dark"]) svg text,
 [data-theme="dark"] svg text {
   fill: #8AB4C2 !important;
+}
+
+/* ── Dark Mode: hover highlight overrides base stroke ── */
+:host-context([data-theme="dark"]) svg g[id].tooth-hover [class*="-parent"],
+[data-theme="dark"] svg g[id].tooth-hover [class*="-parent"] {
+  fill: rgba(20, 141, 158, 0.18) !important;
+  stroke: #17A2B5 !important;
+  stroke-width: 1.5 !important;
+}
+
+/* ── Dark Mode: selected tooth ── */
+:host-context([data-theme="dark"]) svg g[id].selected [class*="-parent"],
+[data-theme="dark"] svg g[id].selected [class*="-parent"] {
+  fill: rgba(20, 141, 158, 0.3) !important;
+  stroke: #17A2B5 !important;
+  stroke-width: 2 !important;
 }

@@ -66,23 +66,21 @@ export class AuthenticationService {
                         const role = await this.authorizationService.getUserRole(email);
                         const dbName = await this.authorizationService.getUserName(email);
                         const assignments = await this.authorizationService.getUserAssignments(email);
-                        // Set clinic context so all services can build subscription-scoped paths
+                        // Restore clinic context from localStorage (for page refreshes only).
+                        // On a fresh login, the login component's ensureClinicSelected()
+                        // will prompt the user if they have multiple subscriptions/clinics.
                         if (assignments.length > 0) {
                             const currentClinic = this.clinicContextService.getSelectedClinicId();
-                            // Find the assignment matching the stored clinic (from localStorage)
+                            // Only restore if the stored clinic is still a valid assignment
                             const matching = currentClinic
                                 ? assignments.find(a => a.clinicId === currentClinic)
                                 : null;
                             if (matching) {
-                                // Stored clinic is valid — use its subscription
+                                // Stored clinic is still valid — restore its context (page refresh scenario)
                                 this.clinicContextService.setClinicContext(matching.clinicId, matching.subscriptionId);
-                            } else {
-                                // Stored clinic doesn't match — use first assignment
-                                this.clinicContextService.setClinicContext(
-                                    assignments[0].clinicId,
-                                    assignments[0].subscriptionId
-                                );
                             }
+                            // If no stored clinic (fresh login), leave context empty —
+                            // the login component will call ensureClinicSelected() and prompt the user.
                         }
                         const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                         // Override display name with database name if available
@@ -284,6 +282,13 @@ export class AuthenticationService {
         try {
             await signOut(this.auth);
             this.setCurrentUser(null);
+            // Clear the stored clinic so the next login always prompts
+            // when the user has multiple subscriptions/clinics.
+            this.clinicContextService.clear();
+            // Clear the authorization lookup cache so the next login fetches
+            // fresh assignments from Firestore (avoids stale-cache bug where
+            // only the cached subscription is returned, hiding others).
+            this.authorizationService.invalidateRolesCache();
         } catch (error) {
             console.error('Logout error:', error);
             throw error;

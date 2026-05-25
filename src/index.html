@@ -6,16 +6,16 @@
   <script>
     (function(){
       var oe=console.error,ow=console.warn;
-      // console.error=function(){
-      //   var s=Array.prototype.join.call(arguments,' ');
-      //   if(s.indexOf('Cross-Origin-Opener-Policy')!==-1||s.indexOf('window.closed')!==-1)return;
-      //   oe.apply(console,arguments);
-      // };
-      // console.warn=function(){
-      //   var s=Array.prototype.join.call(arguments,' ');
-      //   if(s.indexOf('Cross-Origin-Opener-Policy')!==-1||s.indexOf('window.closed')!==-1)return;
-      //   ow.apply(console,arguments);
-      // };
+      console.error=function(){
+        var s=Array.prototype.join.call(arguments,' ');
+        if(s.indexOf('Cross-Origin-Opener-Policy')!==-1||s.indexOf('window.closed')!==-1)return;
+        oe.apply(console,arguments);
+      };
+      console.warn=function(){
+        var s=Array.prototype.join.call(arguments,' ');
+        if(s.indexOf('Cross-Origin-Opener-Policy')!==-1||s.indexOf('window.closed')!==-1)return;
+        ow.apply(console,arguments);
+      };
     })();
   </script>
   <meta charset="utf-8">

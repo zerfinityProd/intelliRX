@@ -1,0 +1,815 @@
+<!-- src/app/components/admin-setup/admin-setup.html -->
+<div class="admin-wrapper">
+
+  <!-- ── Blocking overlay – only during saves/deletes ───────────────────── -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <span>Saving…</span>
+  </div>
+
+  <!-- ── Shared Navbar ──────────────────────────────────────────────────── -->
+  <app-navbar></app-navbar>
+
+  <!-- ── Wizard step bar (below navbar) ────────────────────────────────── -->
+  <div class="admin-step-bar">
+    <div class="step-bar-inner">
+      <div class="step-bar-brand">
+        <span class="brand-icon-sm">⚕</span>
+        <span class="brand-label">Admin Setup</span>
+      </div>
+
+      <div class="header-steps">
+        <div
+          *ngFor="let step of steps"
+          class="hs-step"
+          [class.hs-completed]="getStepStatus(step.num) === 'completed'"
+          [class.hs-current]="getStepStatus(step.num) === 'current'"
+          (click)="goToStep(step.num)"
+        >
+          <div class="hs-circle">
+            <span *ngIf="getStepStatus(step.num) === 'completed'">✓</span>
+            <span *ngIf="getStepStatus(step.num) !== 'completed'">{{ step.num }}</span>
+          </div>
+          <span class="hs-label">{{ step.label }}</span>
+          <div class="hs-line" *ngIf="step.num < steps.length"></div>
+        </div>
+      </div>
+
+      <button class="btn-ghost step-bar-exit" (click)="navigateToHome()">
+        ← Exit
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Initialising skeleton (auth + first data fetch) ────────────────── -->
+  <div class="init-skeleton" *ngIf="isInitializing">
+    <div class="skel-sidebar">
+      <div class="skel-item" *ngFor="let s of steps"></div>
+    </div>
+    <div class="skel-main">
+      <div class="skel-heading"></div>
+      <div class="skel-sub"></div>
+      <div class="skel-cards">
+        <div class="skel-card"></div>
+        <div class="skel-card"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Body ────────────────────────────────────────────────────────────── -->
+  <div class="admin-body" *ngIf="!isInitializing">
+
+    <!-- Sidebar -->
+    <aside class="admin-sidebar">
+      <div
+        *ngFor="let step of steps"
+        class="sidebar-item"
+        [class.active]="currentStep === step.num"
+        [class.done]="currentStep > step.num"
+        (click)="goToStep(step.num)"
+      >
+        <div class="si-icon">
+          <span *ngIf="currentStep > step.num">✓</span>
+          <span *ngIf="currentStep <= step.num">{{ step.icon }}</span>
+        </div>
+        <div class="si-text">
+          <div class="si-num">Step {{ step.num }}</div>
+          <div class="si-label">{{ step.label }}</div>
+        </div>
+      </div>
+
+      <div class="sidebar-sub" *ngIf="selectedSubscription">
+        <div class="sub-badge">
+          <span class="sub-dot"></span>
+          {{ selectedSubscription.entity_name }}
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="admin-main">
+
+      <!-- Inline fetch indicator removed — page renders instantly -->
+
+      <!-- Global messages -->
+      <div class="msg msg-error" *ngIf="errorMessage">
+        <span>⚠ {{ errorMessage }}</span>
+        <button class="msg-close" (click)="clearMessages()">✕</button>
+      </div>
+      <div class="msg msg-success" *ngIf="successMessage">
+        <span>{{ successMessage }}</span>
+        <button class="msg-close" (click)="clearMessages()">✕</button>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════════════
+           STEP 1 – SUBSCRIPTION
+           ════════════════════════════════════════════════════════════════ -->
+      <div class="step-panel" *ngIf="currentStep === 1">
+        <div class="panel-title">
+          <h1>Select Subscription</h1>
+          <p>Choose an existing subscription to configure, or create a new one.</p>
+        </div>
+
+
+        <!-- Fetching skeleton — shown while subscriptions load -->
+        <div class="cards-grid" *ngIf="isFetching && !isCreatingSubscription">
+          <div class="sub-card skel-pulse"></div>
+          <div class="sub-card skel-pulse"></div>
+        </div>
+
+        <!-- Existing subscriptions grid -->
+        <div class="cards-grid" *ngIf="subscriptions.length > 0 && !isCreatingSubscription && !isFetching">
+          <ng-container *ngFor="let sub of subscriptions">
+            <!-- Only render cards that have valid data -->
+            <div
+              *ngIf="subHasData(sub)"
+              class="sub-card"
+              [class.selected]="$any(selectedSubscription)?.id === sub.id"
+              (click)="selectSubscription(sub)"
+            >
+              <div class="sub-card-header">
+                <div class="sub-avatar">{{ subInitial(sub) }}</div>
+                <div class="sub-meta">
+                  <div class="sub-name">{{ sub.entity_name }}</div>
+                  <div class="sub-plan badge" [class.badge-premium]="sub.plan.name === 'premium'">
+                    {{ (sub.plan.name || 'basic') | uppercase }}
+                  </div>
+                </div>
+                <div class="sub-status badge" [class.badge-active]="sub.status === 'active'">
+                  {{ sub.status || 'active' }}
+                </div>
+              </div>
+              <div class="sub-card-body">
+                <div class="info-row"><span class="info-label">Owner</span><span>{{ sub.owner_email || '—' }}</span></div>
+                <div class="info-row">
+                  <span class="info-label">Limits</span>
+                  <span>
+                    {{ sub.plan.limits.max_clinics }} clinics
+                    · {{ sub.plan.limits.max_doctors }} doctors
+                  </span>
+                </div>
+              </div>
+              <div class="sub-card-footer" (click)="$event.stopPropagation()">
+                <button class="btn-danger-sm" (click)="deleteSubscription(sub)">Delete</button>
+                <button class="btn-primary-sm" (click)="selectSubscription(sub)">
+                  {{ $any(selectedSubscription)?.id === sub.id ? '✓ Selected' : 'Select' }}
+                </button>
+              </div>
+            </div>
+          </ng-container>
+
+          <!-- Create new card -->
+          <div class="sub-card add-card" (click)="startNewSubscription()">
+            <div class="add-icon">+</div>
+            <div class="add-label">New Subscription</div>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="empty-state" *ngIf="subscriptions.length === 0 && !isCreatingSubscription && !isFetching">
+          <div class="empty-icon">🏢</div>
+          <div class="empty-title">No subscriptions yet</div>
+          <div class="empty-sub">Create your first subscription to get started.</div>
+          <button class="btn-primary" (click)="startNewSubscription()">+ Create Subscription</button>
+        </div>
+
+        <!-- Create subscription form -->
+        <div class="form-card" *ngIf="isCreatingSubscription">
+          <div class="form-card-title">
+            <h2>New Subscription</h2>
+            <button class="btn-ghost-sm" (click)="isCreatingSubscription = false">✕ Cancel</button>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Entity / Organisation Name *</label>
+              <input type="text" [(ngModel)]="newSub.entity_name" placeholder="e.g. City Health Group" />
+            </div>
+            <div class="form-group">
+              <label>Owner Email *</label>
+              <input type="email" [(ngModel)]="newSub.owner_email" placeholder="admin@example.com" />
+            </div>
+            <div class="form-group">
+              <label>Billing Email</label>
+              <input type="email" [(ngModel)]="newSub.billing_email" placeholder="billing@example.com" />
+            </div>
+            <div class="form-group">
+              <label>Plan</label>
+              <select [(ngModel)]="newSub.plan_name">
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Max Clinics</label>
+              <input type="number" [(ngModel)]="newSub.max_clinics" min="1" />
+            </div>
+            <div class="form-group">
+              <label>Max Doctors</label>
+              <input type="number" [(ngModel)]="newSub.max_doctors" min="1" />
+            </div>
+            <div class="form-group">
+              <label>Max Appointments / Day</label>
+              <input type="number" [(ngModel)]="newSub.max_appointments_per_day" min="1" />
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select [(ngModel)]="newSub.status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-ghost" (click)="isCreatingSubscription = false">Cancel</button>
+            <button class="btn-primary" (click)="createSubscription()" [disabled]="isLoading">
+              Create Subscription
+            </button>
+          </div>
+        </div>
+
+        <!-- Selected subscription detail banner -->
+        <div class="selected-sub-banner" *ngIf="selectedSubscription && !isCreatingSubscription">
+          <div class="ssb-left">
+            <div class="ssb-avatar">{{ subInitial(selectedSubscription) }}</div>
+            <div class="ssb-info">
+              <div class="ssb-name">{{ selectedSubscription.entity_name }}</div>
+              <div class="ssb-meta">
+                <span class="badge" [class.badge-premium]="selectedSubscription.plan.name === 'premium'">
+                  {{ (selectedSubscription.plan.name || 'basic') | uppercase }}
+                </span>
+                <span class="badge" [class.badge-active]="selectedSubscription.status === 'active'">
+                  {{ selectedSubscription.status || 'active' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="ssb-limits">
+            <div class="ssb-limit-item">
+              <span class="ssb-limit-val">{{ selectedSubscription.plan.limits.max_clinics }}</span>
+              <span class="ssb-limit-label">Clinics</span>
+            </div>
+            <div class="ssb-limit-item">
+              <span class="ssb-limit-val">{{ selectedSubscription.plan.limits.max_doctors }}</span>
+              <span class="ssb-limit-label">Doctors</span>
+            </div>
+            <div class="ssb-limit-item">
+              <span class="ssb-limit-val">{{ selectedSubscription.plan.limits.max_appointments_per_day }}</span>
+              <span class="ssb-limit-label">Appts/Day</span>
+            </div>
+          </div>
+          <div class="ssb-check">✓ Selected</div>
+        </div>
+
+        <div class="step-nav">
+          <div></div>
+          <button class="btn-primary" (click)="nextStep()" [disabled]="!selectedSubscription">
+            Next: Manage Clinics →
+          </button>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════════════
+           STEP 2 – CLINICS
+           ════════════════════════════════════════════════════════════════ -->
+      <div class="step-panel" *ngIf="currentStep === 2">
+        <div class="panel-title">
+          <h1>Manage Clinics</h1>
+          <p>Add, edit, or remove clinics and configure their operating schedules.</p>
+        </div>
+
+        <!-- Clinic list -->
+        <div class="cards-grid" *ngIf="!showClinicForm">
+          <div class="clinic-card" *ngFor="let clinic of clinics">
+            <div class="clinic-card-header">
+              <div class="clinic-avatar">{{ clinic.name[0] | uppercase }}</div>
+              <div class="clinic-meta">
+                <div class="clinic-name">{{ clinic.name }}</div>
+                <div class="clinic-addr">{{ clinic.address || 'No address set' }}</div>
+              </div>
+            </div>
+            <div class="clinic-schedule-preview">
+              <div class="days-row">
+                <span
+                  *ngFor="let d of allWeekdays"
+                  class="day-chip"
+                  [class.active]="clinic.weekdays.includes(d)"
+                >{{ weekdayLabels[d] }}</span>
+              </div>
+              <div class="timing-chips">
+                <span class="timing-chip" *ngFor="let t of clinic.timings">
+                  {{ t.label }}: {{ t.start }}–{{ t.end }}
+                </span>
+              </div>
+            </div>
+            <div class="clinic-card-footer">
+              <span class="clinic-info">{{ clinic.phone || '—' }}</span>
+              <div class="clinic-actions">
+                <button class="btn-ghost-sm" (click)="editClinic(clinic)">✏ Edit</button>
+                <button class="btn-danger-sm" (click)="deleteClinic(clinic)">🗑 Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add clinic card -->
+          <div class="clinic-card add-card" (click)="openNewClinicForm()">
+            <div class="add-icon">+</div>
+            <div class="add-label">Add Clinic</div>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="clinics.length === 0 && !showClinicForm">
+          <div class="empty-icon">🏥</div>
+          <div class="empty-title">No clinics yet</div>
+          <div class="empty-sub">Add at least one clinic before continuing.</div>
+          <button class="btn-primary" (click)="openNewClinicForm()">+ Add Clinic</button>
+        </div>
+
+        <!-- Clinic form -->
+        <div class="form-card" *ngIf="showClinicForm">
+          <div class="form-card-title">
+            <h2>{{ editingClinic ? 'Edit Clinic' : 'New Clinic' }}</h2>
+            <button class="btn-ghost-sm" (click)="cancelClinicForm()">✕ Cancel</button>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group form-full">
+              <label>Clinic Name *</label>
+              <input type="text" [(ngModel)]="clinicForm.name" placeholder="e.g. Main Street Clinic" />
+            </div>
+            <div class="form-group form-full">
+              <label>Address</label>
+              <input type="text" [(ngModel)]="clinicForm.address" placeholder="Full address" />
+            </div>
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="tel" [(ngModel)]="clinicForm.phone" placeholder="+91 XXXXX XXXXX" />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" [(ngModel)]="clinicForm.email" placeholder="clinic@example.com" />
+            </div>
+          </div>
+
+          <!-- Weekday picker -->
+          <div class="form-section">
+            <div class="section-label">Operating Days</div>
+            <div class="weekday-picker">
+              <button
+                *ngFor="let day of allWeekdays"
+                type="button"
+                class="day-btn"
+                [class.selected]="isDaySelected(day)"
+                (click)="toggleWeekday(day)"
+              >{{ weekdayLabels[day] }}</button>
+            </div>
+          </div>
+
+          <!-- Timing blocks -->
+          <div class="form-section">
+            <div class="section-label-row">
+              <div class="section-label">Time Blocks (Shifts)</div>
+              <button class="btn-ghost-sm" (click)="addTimingBlock()">+ Add Block</button>
+            </div>
+            <div class="timing-list">
+              <div class="timing-row" *ngFor="let timing of clinicForm.timings; let i = index">
+                <div class="form-group">
+                  <label>Label</label>
+                  <input type="text" [(ngModel)]="timing.label" placeholder="FH / SH / Eve" maxlength="10" />
+                </div>
+                <div class="form-group">
+                  <label>Start Time</label>
+                  <input type="time" [(ngModel)]="timing.start" />
+                </div>
+                <div class="form-group">
+                  <label>End Time</label>
+                  <input type="time" [(ngModel)]="timing.end" />
+                </div>
+                <button class="btn-danger-sm" (click)="removeTimingBlock(i)" [disabled]="clinicForm.timings.length <= 1">🗑</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-ghost" (click)="cancelClinicForm()">Cancel</button>
+            <button class="btn-primary" (click)="saveClinic()" [disabled]="isLoading">
+              {{ editingClinic ? 'Update Clinic' : 'Create Clinic' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="step-nav" *ngIf="!showClinicForm">
+          <button class="btn-ghost" (click)="prevStep()">← Back</button>
+          <button class="btn-primary" (click)="nextStep()">Next: Permissions →</button>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════════════
+           STEP 3 – ROLES & PERMISSIONS
+           ════════════════════════════════════════════════════════════════ -->
+      <div class="step-panel" *ngIf="currentStep === 3">
+        <div class="panel-title">
+          <h1>Roles &amp; Permissions</h1>
+          <p>Define what each role can do across all clinics. Changes apply globally.</p>
+        </div>
+
+        <div class="roles-grid">
+          <!-- Doctor -->
+          <div class="role-card">
+            <div class="role-header doctor">
+              <div class="role-icon">🩺</div>
+              <div>
+                <div class="role-name">Doctor</div>
+                <div class="role-count">{{ countActivePerms(doctorPermissions) }} / {{ permissionDefs.length }} permissions</div>
+              </div>
+            </div>
+            <div class="perm-list">
+              <label class="perm-row" *ngFor="let perm of permissionDefs">
+                <div class="perm-toggle">
+                  <input
+                    type="checkbox"
+                    [id]="'doc-' + perm.key"
+                    [(ngModel)]="doctorPermissions[perm.key]"
+                  />
+                  <span class="toggle-slider"></span>
+                </div>
+                <div class="perm-text">
+                  <span class="perm-label">{{ perm.label }}</span>
+                  <span class="perm-desc">{{ perm.desc }}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Receptionist -->
+          <div class="role-card">
+            <div class="role-header receptionist">
+              <div class="role-icon">🗂</div>
+              <div>
+                <div class="role-name">Receptionist</div>
+                <div class="role-count">{{ countActivePerms(receptionistPermissions) }} / {{ permissionDefs.length }} permissions</div>
+              </div>
+            </div>
+            <div class="perm-list">
+              <label class="perm-row" *ngFor="let perm of permissionDefs">
+                <div class="perm-toggle">
+                  <input
+                    type="checkbox"
+                    [id]="'rec-' + perm.key"
+                    [(ngModel)]="receptionistPermissions[perm.key]"
+                  />
+                  <span class="toggle-slider"></span>
+                </div>
+                <div class="perm-text">
+                  <span class="perm-label">{{ perm.label }}</span>
+                  <span class="perm-desc">{{ perm.desc }}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-nav">
+          <button class="btn-ghost" (click)="prevStep()">← Back</button>
+          <div class="nav-right">
+            <button class="btn-secondary" (click)="saveRolePermissions()" [disabled]="isLoading">
+              💾 Save Permissions
+            </button>
+            <button class="btn-primary" (click)="nextStep()">Next: Users →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════════════
+           STEP 4 – USERS & ASSIGNMENTS
+           ════════════════════════════════════════════════════════════════ -->
+      <div class="step-panel" *ngIf="currentStep === 4">
+        <div class="panel-title">
+          <h1>Users &amp; Clinic Assignments</h1>
+          <p>Add staff, assign them to clinics, and configure doctor availability schedules.</p>
+        </div>
+
+        <!-- User list -->
+        <div class="user-list" *ngIf="!showUserForm">
+          <div class="user-row" *ngFor="let user of users">
+            <div class="user-avatar">{{ user.name[0] | uppercase }}</div>
+            <div class="user-info">
+              <div class="user-name">{{ user.name }}</div>
+              <div class="user-email">{{ user.email }}</div>
+              <div class="user-tags">
+                <span class="tag" *ngFor="let r of user.global_roles">{{ r }}</span>
+                <span class="tag tag-clinic" *ngFor="let a of user.assignments">
+                  {{ a.clinicName }} ({{ a.role }})
+                </span>
+              </div>
+            </div>
+            <div class="user-status badge" [class.badge-active]="user.status === 'active'">
+              {{ user.status }}
+            </div>
+            <div class="user-actions">
+              <button class="btn-ghost-sm" (click)="editUser(user)">✏ Edit</button>
+              <button class="btn-danger-sm" (click)="deleteUser(user)">🗑</button>
+            </div>
+          </div>
+
+          <div class="empty-state-sm" *ngIf="users.length === 0">
+            <div>No users yet in this subscription.</div>
+          </div>
+
+          <button class="btn-add-user" (click)="openNewUserForm()">
+            + Add User
+          </button>
+        </div>
+
+        <!-- User form -->
+        <div class="form-card" *ngIf="showUserForm">
+          <div class="form-card-title">
+            <h2>{{ editingUser ? 'Edit User' : 'New User' }}</h2>
+            <button class="btn-ghost-sm" (click)="cancelUserForm()">✕ Cancel</button>
+          </div>
+
+          <!-- Basic info -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Email *</label>
+              <input type="email" [(ngModel)]="userForm.email" placeholder="user@example.com"
+                     [disabled]="!!editingUser" />
+            </div>
+            <div class="form-group">
+              <label>Full Name *</label>
+              <input type="text" [(ngModel)]="userForm.name" placeholder="Dr. Priya Sharma" />
+            </div>
+            <div class="form-group">
+              <label>Specialization</label>
+              <input type="text" [(ngModel)]="userForm.specialization" placeholder="e.g. Cardiologist" />
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select [(ngModel)]="userForm.status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Global roles -->
+          <div class="form-section">
+            <div class="section-label">Global Roles</div>
+            <div class="role-toggles">
+              <label class="role-toggle-item">
+                <input type="checkbox" [checked]="hasGlobalRole('admin')" (change)="toggleGlobalRole('admin')" />
+                <span class="role-chip admin">Admin</span>
+              </label>
+              <label class="role-toggle-item">
+                <input type="checkbox" [checked]="hasGlobalRole('doctor')" (change)="toggleGlobalRole('doctor')" />
+                <span class="role-chip doctor">Doctor</span>
+              </label>
+              <label class="role-toggle-item">
+                <input type="checkbox" [checked]="hasGlobalRole('receptionist')" (change)="toggleGlobalRole('receptionist')" />
+                <span class="role-chip receptionist">Receptionist</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Clinic assignments -->
+          <div class="form-section">
+            <div class="section-label-row">
+              <div class="section-label">Clinic Assignments</div>
+              <button class="btn-ghost-sm" (click)="addClinicAssignment()">+ Assign to Clinic</button>
+            </div>
+
+            <div class="assignment-cards">
+              <div class="assignment-card" *ngFor="let assignment of userForm.assignments; let ai = index">
+                <div class="assignment-header">
+                  <div class="form-group assignment-clinic">
+                    <label>Clinic</label>
+                    <select [ngModel]="assignment.clinicId" (ngModelChange)="onAssignmentClinicChange(assignment, $event)">
+                      <option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</option>
+                    </select>
+                  </div>
+                  <div class="form-group assignment-role">
+                    <label>Role at this Clinic</label>
+                    <select [(ngModel)]="assignment.role" (ngModelChange)="onAssignmentRoleChange(assignment)">
+                      <option value="doctor">Doctor</option>
+                      <option value="receptionist">Receptionist</option>
+                    </select>
+                  </div>
+                  <button class="btn-danger-sm mt-auto" (click)="removeClinicAssignment(ai)">🗑</button>
+                </div>
+
+                <!-- Doctor availability grid -->
+                <div class="availability-section" *ngIf="assignment.role === 'doctor'">
+                  <div class="avail-title">
+                    Availability Schedule
+                    <span class="avail-hint">Check the time blocks when this doctor is available at this clinic</span>
+                  </div>
+                  <div class="avail-grid" *ngIf="getClinicForAssignment(assignment.clinicId) as clinic">
+                    <!-- Header row -->
+                    <div class="avail-header-row">
+                      <div class="avail-corner">Day</div>
+                      <div class="avail-block-head" *ngFor="let timing of clinic.timings">
+                        <div class="block-label">{{ timing.label }}</div>
+                        <div class="block-time">{{ timing.start }}–{{ timing.end }}</div>
+                      </div>
+                    </div>
+                    <!-- Day rows -->
+                    <div class="avail-day-row" *ngFor="let day of clinic.weekdays">
+                      <div class="avail-day-label">{{ weekdayLabels[day] || day }}</div>
+                      <div class="avail-cell" *ngFor="let timing of clinic.timings">
+                        <label class="avail-checkbox">
+                          <input
+                            type="checkbox"
+                            [checked]="isBlockSelected(assignment, day, timing.label)"
+                            (change)="toggleAvailability(assignment, day, timing.label)"
+                          />
+                          <span class="avail-check-visual"></span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="avail-no-clinic" *ngIf="!getClinicForAssignment(assignment.clinicId)">
+                    Select a clinic to configure availability.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="assignment-empty" *ngIf="userForm.assignments.length === 0">
+              No clinic assignments yet. Click "+ Assign to Clinic" to add one.
+            </div>
+          </div>
+
+          <!-- Scheduling conflict errors — HARD BLOCK (cannot save until resolved) -->
+          <div class="conflict-error-box" *ngIf="conflictErrors.length > 0">
+            <div class="conflict-error-header">
+              <span class="conflict-error-icon">🚫</span>
+              <div>
+                <div class="conflict-error-title">Cannot Save — Scheduling Conflict</div>
+                <div class="conflict-error-sub">
+                  A doctor cannot be physically present at two clinics at the same time.
+                  Remove the overlapping time blocks before saving.
+                </div>
+              </div>
+            </div>
+            <ul class="conflict-error-list">
+              <li *ngFor="let e of conflictErrors">{{ e }}</li>
+            </ul>
+          </div>
+
+          <div class="form-actions">
+            <button class="btn-ghost" (click)="cancelUserForm()">Cancel</button>
+            <button class="btn-primary" (click)="saveUser()"
+                    [disabled]="isLoading || hasConflictErrors"
+                    [title]="hasConflictErrors ? 'Resolve scheduling conflicts before saving' : ''">
+              {{ editingUser ? 'Update User' : 'Create User' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="step-nav" *ngIf="!showUserForm">
+          <button class="btn-ghost" (click)="prevStep()">← Back</button>
+          <button class="btn-primary" (click)="nextStep()">Next: Review →</button>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════════════════════
+           STEP 5 – REVIEW
+           ════════════════════════════════════════════════════════════════ -->
+      <div class="step-panel" *ngIf="currentStep === 5">
+        <div class="panel-title">
+          <h1>Review Setup</h1>
+          <p>Verify all settings before finalising. You can edit any section directly.</p>
+        </div>
+
+        <!-- Subscription summary -->
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-title">🏢 Subscription</div>
+            <button class="btn-ghost-sm" (click)="goToStep(1)">Edit</button>
+          </div>
+          <div class="review-table" *ngIf="selectedSubscription">
+            <div class="review-row">
+              <span class="review-key">Organisation</span>
+              <span class="review-val">{{ selectedSubscription.entity_name }}</span>
+            </div>
+            <div class="review-row">
+              <span class="review-key">Owner</span>
+              <span class="review-val">{{ selectedSubscription.owner_email }}</span>
+            </div>
+            <div class="review-row">
+              <span class="review-key">Plan</span>
+              <span class="review-val">{{ selectedSubscription.plan.name | uppercase }}</span>
+            </div>
+            <div class="review-row">
+              <span class="review-key">Limits</span>
+              <span class="review-val">
+                {{ selectedSubscription.plan.limits.max_clinics }} clinics ·
+                {{ selectedSubscription.plan.limits.max_doctors }} doctors ·
+                {{ selectedSubscription.plan.limits.max_appointments_per_day }} appts/day
+              </span>
+            </div>
+            <div class="review-row">
+              <span class="review-key">Status</span>
+              <span class="review-val">
+                <span class="badge" [class.badge-active]="selectedSubscription.status === 'active'">
+                  {{ selectedSubscription.status }}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clinics summary -->
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-title">🏥 Clinics ({{ clinics.length }})</div>
+            <button class="btn-ghost-sm" (click)="goToStep(2)">Edit</button>
+          </div>
+          <div class="review-clinics">
+            <div class="review-clinic-card" *ngFor="let clinic of clinics">
+              <div class="rc-name">{{ clinic.name }}</div>
+              <div class="rc-detail">📍 {{ clinic.address || 'No address' }}</div>
+              <div class="rc-detail">📅 {{ getClinicScheduleSummary(clinic) }}</div>
+            </div>
+            <div class="empty-review" *ngIf="clinics.length === 0">No clinics configured.</div>
+          </div>
+        </div>
+
+        <!-- Role permissions summary -->
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-title">🔑 Role Permissions</div>
+            <button class="btn-ghost-sm" (click)="goToStep(3)">Edit</button>
+          </div>
+          <div class="review-roles">
+            <div class="review-role">
+              <div class="rr-title doctor-color">🩺 Doctor</div>
+              <div class="rr-perms">{{ getPermissionSummary(doctorPermissions) }}</div>
+            </div>
+            <div class="review-role">
+              <div class="rr-title recept-color">🗂 Receptionist</div>
+              <div class="rr-perms">{{ getPermissionSummary(receptionistPermissions) }}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Users summary -->
+        <div class="review-section">
+          <div class="review-section-header">
+            <div class="review-section-title">👥 Users ({{ users.length }})</div>
+            <button class="btn-ghost-sm" (click)="goToStep(4)">Edit</button>
+          </div>
+          <div class="review-users">
+            <div class="review-user-row" *ngFor="let user of users">
+              <div class="ru-avatar">{{ user.name[0] | uppercase }}</div>
+              <div class="ru-info">
+                <div class="ru-name">{{ user.name }}</div>
+                <div class="ru-email">{{ user.email }}</div>
+                <div class="ru-assigns">
+                  <div *ngFor="let a of user.assignments" class="ru-assign">
+                    <span class="tag">{{ a.clinicName }}</span>
+                    <span class="tag tag-role">{{ a.role }}</span>
+                    <span class="avail-summary" *ngIf="a.role === 'doctor'">
+                      {{ getAvailabilitySummary(a.availability) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <span class="badge" [class.badge-active]="user.status === 'active'">{{ user.status }}</span>
+            </div>
+            <div class="empty-review" *ngIf="users.length === 0">No users configured.</div>
+          </div>
+        </div>
+
+        <!-- Final actions -->
+        <div class="final-actions">
+          <div class="final-note" *ngIf="!saveComplete">
+            Clicking <strong>Save &amp; Finish</strong> will persist the role permissions to the database.
+            Individual users and clinics were already saved as you went through each step.
+          </div>
+
+          <div class="save-complete-msg" *ngIf="saveComplete">
+            🎉 Setup is complete! Your IntelliRX instance is configured and ready.
+          </div>
+
+          <div class="final-btn-row">
+            <button class="btn-ghost" (click)="prevStep()">← Back</button>
+            <div class="nav-right">
+              <button class="btn-ghost" (click)="navigateToHome()">Go to Dashboard</button>
+              <button
+                class="btn-primary btn-finish"
+                (click)="finalSavePermissions()"
+                [disabled]="isSaving || saveComplete"
+              >
+                {{ isSaving ? 'Saving…' : saveComplete ? '✓ Done' : 'Save & Finish' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>

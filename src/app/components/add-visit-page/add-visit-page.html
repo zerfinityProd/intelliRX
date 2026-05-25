@@ -296,12 +296,12 @@
               [disabled]="isSubmitting" aria-label="Cancel visit">
               Cancel
             </button>
-            <button type="button" class="btn btn-outline-secondary fw-semibold px-4" disabled aria-label="Print visit"
-              title="Coming soon">
+            <button type="button" class="btn btn-outline-secondary fw-semibold px-4"
+              (click)="onPrint()" [disabled]="isSubmitting" aria-label="Print visit">
               Print
             </button>
-            <button type="button" class="btn btn-outline-secondary fw-semibold px-4" disabled
-              aria-label="Save and print visit" title="Coming soon">
+            <button type="button" class="btn btn-outline-secondary fw-semibold px-4"
+              (click)="onSaveAndPrint()" [disabled]="isSubmitting" aria-label="Save and print visit">
               Save &amp; Print
             </button>
             <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting"
@@ -321,7 +321,15 @@
     <!-- ════════════════════ RIGHT AREA — Dental Chart + Slide Panels ════════════════════ -->
     <div class="avp-right-area">
       <div class="avp-dental-panel">
-        <app-dental-widget></app-dental-widget>
+        <!-- Teeth hint -->
+        <p class="avp-teeth-hint">Click to select · Double-click to deselect</p>
+        <app-dental-widget
+          [initialSelected]="selectedTeethIds"
+          (selectionChange)="onTeethSelectionChange($event)">
+        </app-dental-widget>
+        <p *ngIf="selectedTeethIds.length > 0" class="avp-teeth-summary">
+          Selected: <strong>{{ selectedTeethIds.join(', ') }}</strong>
+        </p>
       </div>
 
       <!-- ── Visit History Slide Panel ── -->

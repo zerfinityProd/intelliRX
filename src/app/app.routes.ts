@@ -1,6 +1,7 @@
 // src/app/app.routes.ts
 import { Routes } from '@angular/router';
 import { authGuard, doctorGuard } from './guards/auth-guard';
+import { adminGuard } from './guards/admin-guard';
 
 export const routes: Routes = [
     {
@@ -53,6 +54,13 @@ export const routes: Routes = [
                 m => m.AppointmentsListComponent
             ),
         canActivate: [authGuard]
+    },
+    // ── Admin ────────────────────────────────────────────────────────────────
+    {
+        path: 'admin-setup',
+        loadComponent: () =>
+            import('./components/admin-setup/admin-setup').then(m => m.AdminSetupComponent),
+        canActivate: [adminGuard]
     },
     // ── Fallback ─────────────────────────────────────────────────────────────
     {

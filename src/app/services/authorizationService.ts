@@ -228,6 +228,17 @@ export class AuthorizationService {
                 ],
             });
 
+            console.log(`[AuthZ] clinic_users query for user_id="${userId}" returned ${cuDocs.length} docs`);
+            cuDocs.forEach((d, i) => {
+                const cd = d.data;
+                console.log(`[AuthZ]   clinic_users[${i}] id=${d.id}`,
+                    `subscription_id="${cd['subscription_id']}"`,
+                    `clinic_id="${cd['clinic_id']}"`,
+                    `status="${cd['status'] ?? '(missing→active)'}"`,
+                    `user_id="${cd['user_id']}"`
+                );
+            });
+
             if (cuDocs.length === 0) {
                 console.warn('[AuthZ] No clinic_users entries found for user_id:', userId,
                     '(email:', normalized, '). The user needs a clinic_users record.');
@@ -239,7 +250,10 @@ export class AuthorizationService {
                 const cuData = cuDoc.data;
                 // Treat missing status as active; skip only explicitly inactive/disabled
                 const status = cuData['status'] || 'active';
-                if (status !== 'active') continue;
+                if (status !== 'active') {
+                    console.log(`[AuthZ]   → SKIPPED (status="${status}")`, cuDoc.id);
+                    continue;
+                }
                 const subId = cuData['subscription_id'] || '';
                 const cId = cuData['clinic_id'] || '';
                 if (subId && cId) {
@@ -248,6 +262,8 @@ export class AuthorizationService {
                     if (!exists) {
                         assignments.push({ subscriptionId: subId, clinicId: cId });
                     }
+                } else {
+                    console.warn(`[AuthZ]   → SKIPPED (missing subId or clinicId)`, cuDoc.id, { subId, cId });
                 }
                 // Override role from clinic_users if present (clinic_users role is authoritative)
                 if (cuData['roles'] && Array.isArray(cuData['roles'])) {

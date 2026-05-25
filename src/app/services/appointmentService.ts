@@ -16,9 +16,11 @@ export class AppointmentService {
   private clinicContextService = inject(ClinicContextService);
 
   // In-memory cache — cleared when a new appointment is booked or status updated
-  private cache: Appointment[] | null = null;
+  private doctorCache: Appointment[] | null = null;       // cache for doctor role
+  private doctorCacheClinicId: string | null = null;
+  private receptionistCache: Appointment[] | null = null; // cache for receptionist role
+  private receptionistCacheClinicId: string | null = null;
   private allCache: Appointment[] | null = null;
-  private cacheClinicId: string | null = null;
 
   /**
    * Top-level appointments collection.
@@ -51,9 +53,11 @@ export class AppointmentService {
 
   /** Invalidate cache — call after any write operation */
   invalidateCache(): void {
-    this.cache = null;
+    this.doctorCache = null;
+    this.doctorCacheClinicId = null;
+    this.receptionistCache = null;
+    this.receptionistCacheClinicId = null;
     this.allCache = null;
-    this.cacheClinicId = null;
   }
 
   /**
@@ -142,6 +146,8 @@ export class AppointmentService {
    * Fetch appointments for the current user.
    * - Doctors: see only appointments where doctor_id matches their email.
    * - Receptionists: see all appointments for the currently selected clinic.
+   *
+   * Each role uses a separate cache to prevent cross-role data leakage.
    */
   async getAppointments(): Promise<Appointment[]> {
     try {
@@ -150,20 +156,24 @@ export class AppointmentService {
       const clinicId = this.clinicContextService.getSelectedClinicId();
 
       if (role === 'receptionist') {
-        if (this.cache !== null && this.cacheClinicId === clinicId) return this.cache;
+        // Use the receptionist-specific cache
+        if (this.receptionistCache !== null && this.receptionistCacheClinicId === clinicId) {
+          return this.receptionistCache;
+        }
         const all = await this.getAllAppointments();
         // Filter by the current clinic so receptionists see only their clinic's appointments
         const filtered = clinicId
           ? all.filter(a => a.clinic_id === clinicId)
           : all;
-        this.cache = filtered;
-        this.cacheClinicId = clinicId;
-        return this.cache;
+        this.receptionistCache = filtered;
+        this.receptionistCacheClinicId = clinicId;
+        return this.receptionistCache;
       }
 
-      // Doctors see only their own appointments (matched by email = doctor_id)
-      if (this.cache !== null && this.cacheClinicId === clinicId) {
-        return this.cache;
+      // Doctors: use the doctor-specific cache (keyed by email + clinicId)
+      // This prevents a stale receptionist cache from being returned to a doctor.
+      if (this.doctorCache !== null && this.doctorCacheClinicId === clinicId) {
+        return this.doctorCache;
       }
 
       const subId = this.getSubscriptionId();
@@ -182,12 +192,12 @@ export class AppointmentService {
         ? appointments.filter(a => (a.clinic_id ? a.clinic_id === clinicId : true))
         : appointments;
 
-      this.cacheClinicId = clinicId;
-      this.cache = filtered.sort((a, b) =>
+      this.doctorCacheClinicId = clinicId;
+      this.doctorCache = filtered.sort((a, b) =>
         new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
       );
 
-      return this.cache;
+      return this.doctorCache;
 
     } catch (error) {
       console.error('✗ Error fetching appointments:', error);

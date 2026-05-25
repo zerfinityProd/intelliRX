@@ -734,6 +734,10 @@ export class HomeComponent implements OnInit {
   closeFab(): void { this.uiStateService.closeFab(); }
 
   openAddVisitForm(patient: Patient): void {
+    // Persist the current search term so it's restored when the user returns to home
+    if (this.searchTerm.trim()) {
+      sessionStorage.setItem('home_searchTerm', this.searchTerm.trim());
+    }
     this.router.navigate(['/patient', patient.id, 'add-visit'], { state: { origin: 'home' } });
   }
 

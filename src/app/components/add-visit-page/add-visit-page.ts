@@ -85,10 +85,17 @@ export class AddVisitPageComponent implements OnInit {
     errorMessage: string = '';
     successMessage: string = '';
     isSubmitting: boolean = false;
+    isPrinting: boolean = false;
+
+    // ── Dental chart selection ────────────────────────────────
+    selectedTeethIds: number[] = [];
 
     // ── Edit mode ─────────────────────────────────────────────
     isEditMode: boolean = false;
     editVisitId: string = '';
+
+    // flag: open print window after saving (used by Save & Print)
+    private printAfterSave: boolean = false;
 
     // ── Expanded visit tracking ───────────────────────────────
     expandedVisitIds: Set<number> = new Set();
@@ -186,6 +193,7 @@ export class AddVisitPageComponent implements OnInit {
                 newExamTestName: this.newExamTestName,
                 newExamResult: this.newExamResult,
                 newExamStatus: this.newExamStatus,
+                selectedTeethIds: this.selectedTeethIds,
                 timestamp: Date.now()
             };
             sessionStorage.setItem(this.getSessionKey(), JSON.stringify(data));
@@ -219,6 +227,7 @@ export class AddVisitPageComponent implements OnInit {
             this.newExamTestName = data.newExamTestName || '';
             this.newExamResult = data.newExamResult || '';
             this.newExamStatus = data.newExamStatus || '';
+            if (Array.isArray(data.selectedTeethIds)) this.selectedTeethIds = data.selectedTeethIds;
             this.cdr.detectChanges();
         } catch { /* silent */ }
     }
@@ -270,12 +279,22 @@ export class AddVisitPageComponent implements OnInit {
         } catch { /* silent */ }
     }
 
+    // ── Dental chart ──────────────────────────────────────────
+    onTeethSelectionChange(ids: number[]): void {
+        this.selectedTeethIds = ids;
+    }
+
     private populateEditFields(visit: any): void {
         this.chiefComplaintsText = visit.chiefComplaints || '';
         this.clinicalFindingsText = visit.presentIllness || '';
         this.diagnosis = visit.diagnosis || '';
         this.treatmentPlan = visit.treatmentPlan || '';
         this.advice = visit.advice || '';
+
+        // Restore selected teeth
+        if (Array.isArray(visit.selectedTeeth)) {
+            this.selectedTeethIds = visit.selectedTeeth;
+        }
 
         // Examinations — stored as string[] (e.g. ["test [status]: result", ...])
         if (visit.examination) {
@@ -582,6 +601,7 @@ export class AddVisitPageComponent implements OnInit {
                 treatmentPlan: this.treatmentPlan.trim(),
                 advice: this.advice.trim(),
                 doctor_id: currentEmail,
+                selectedTeeth: this.selectedTeethIds,
             };
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;
@@ -613,6 +633,12 @@ export class AddVisitPageComponent implements OnInit {
                     `Visit for ${this.patient?.name || 'patient'} has been updated.`,
                     `visit-updated-${this.editVisitId}`
                 );
+
+                // Open print window before navigating if requested
+                if (this.printAfterSave) {
+                    this.printAfterSave = false;
+                    this.openPrintWindow(true);
+                }
 
                 this.clearFormSession();
                 this.router.navigate(['/patient', patientId], { state: { activeTab: 'visits' } });
@@ -713,9 +739,17 @@ export class AddVisitPageComponent implements OnInit {
                     `visit-added-${Date.now()}`
                 );
 
+                // Open print window before navigating if requested
+                if (this.printAfterSave) {
+                    this.printAfterSave = false;
+                    this.openPrintWindow(true);
+                }
+
                 this.clearFormSession();
                 if (this.origin === 'appointments') {
                     this.router.navigate(['/appointments']);
+                } else if (this.origin === 'home') {
+                    this.router.navigate(['/home']);
                 } else {
                     this.router.navigate(['/patient', patientId], { state: { activeTab: 'visits' } });
                 }
@@ -752,6 +786,7 @@ export class AddVisitPageComponent implements OnInit {
             treatmentPlan: this.treatmentPlan.trim(),
             examinations: this.examinations.map(e => `${e.testName}|${e.status}|${e.result}`),
             medicines: this.medicines.map(m => `${m.name}|${m.dosage}|${m.frequency}|${m.durationDays}`),
+            selectedTeeth: [...this.selectedTeethIds].sort(),
         });
     }
 
@@ -783,6 +818,117 @@ export class AddVisitPageComponent implements OnInit {
             });
         } else {
             this.navigateBack();
+        }
+    }
+
+    // ── Print ─────────────────────────────────────────────────
+    /** Print the current form without saving. */
+    onPrint(): void {
+        this.openPrintWindow(false);
+    }
+
+    /** Save the visit first, then print.
+     *  Sets printAfterSave flag so onSubmit() opens the print window
+     *  before navigating away. */
+    async onSaveAndPrint(): Promise<void> {
+        this.printAfterSave = true;
+        await this.onSubmit();
+        // If validation failed reset the flag so it doesn't fire on the next plain save
+        if (this.errorMessage) {
+            this.printAfterSave = false;
+        }
+    }
+
+    private openPrintWindow(saved: boolean): void {
+        const patientName = this.patient?.name || 'Patient';
+        const patientAge = this.getPatientAge();
+        const now = new Date().toLocaleString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+
+        const teethStr = this.selectedTeethIds.length > 0
+            ? this.selectedTeethIds.join(', ')
+            : 'None';
+
+        const examRows = this.examinations.map(e =>
+            `<tr><td>${e.testName}</td><td>${e.status || '-'}</td><td>${e.result || '-'}</td></tr>`
+        ).join('');
+
+        const medRows = this.medicines.map(m =>
+            `<tr><td>${m.name}</td><td>${m.dosage || '-'}</td><td>${m.frequency || '-'}</td><td>${m.durationDays ? m.durationDays + ' days' : '-'}</td></tr>`
+        ).join('');
+
+        const field = (label: string, value: string) =>
+            value ? `<div class="field"><span class="label">${label}</span><span class="value">${value}</span></div>` : '';
+
+        const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Visit – ${patientName}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1e293b;padding:28px 36px;}
+    h1{font-size:20px;font-weight:700;color:#148D9E;margin-bottom:2px;}
+    .subtitle{font-size:12px;color:#64748b;margin-bottom:18px;}
+    .section{margin-bottom:16px;}
+    .section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#148D9E;border-bottom:1.5px solid #e2e8f0;padding-bottom:3px;margin-bottom:8px;}
+    .field{display:flex;gap:8px;margin-bottom:5px;}
+    .label{font-weight:600;min-width:130px;color:#475569;}
+    .value{flex:1;color:#1e293b;}
+    table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px;}
+    th{background:#f1f5f9;font-weight:600;padding:5px 8px;text-align:left;border:1px solid #e2e8f0;}
+    td{padding:4px 8px;border:1px solid #e2e8f0;}
+    .footer{margin-top:28px;font-size:11px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;}
+    @media print{body{padding:12px 18px;}}
+  </style>
+</head>
+<body>
+  <h1>IntelliRx – Patient Visit Record</h1>
+  <div class="subtitle">Printed on ${now}${saved ? ' &nbsp;·&nbsp; Saved' : ' &nbsp;·&nbsp; Draft (not saved)'}</div>
+
+  <div class="section">
+    <div class="section-title">Patient</div>
+    ${field('Name', patientName)}
+    ${patientAge !== null ? field('Age', patientAge + ' years') : ''}
+    ${field('Blood Group', this.selectedBloodGroup)}
+    ${field('Allergies', this.existingAllergies.join(', '))}
+    ${field('Ailments', this.existingAilments.join(', '))}
+  </div>
+
+  <div class="section">
+    <div class="section-title">Visit Details</div>
+    ${field('Chief Complaints', this.chiefComplaintsText)}
+    ${field('Clinical Findings', this.clinicalFindingsText)}
+    ${field('Diagnosis', this.diagnosis)}
+    ${field('Treatment Plan', this.treatmentPlan)}
+    ${field('Advice', this.advice)}
+    ${field('Teeth Affected', teethStr)}
+  </div>
+
+  ${this.examinations.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Examinations</div>
+    <table><thead><tr><th>Test</th><th>Status</th><th>Result</th></tr></thead><tbody>${examRows}</tbody></table>
+  </div>` : ''}
+
+  ${this.medicines.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Medicines</div>
+    <table><thead><tr><th>Name</th><th>Dosage</th><th>Frequency</th><th>Duration</th></tr></thead><tbody>${medRows}</tbody></table>
+  </div>` : ''}
+
+  <div class="footer">IntelliRx &nbsp;·&nbsp; This document is for medical reference only.</div>
+  <script>window.onload=function(){window.print();window.onafterprint=function(){window.close();};};<\/script>
+</body>
+</html>`;
+
+        const win = window.open('', '_blank', 'width=800,height=650');
+        if (win) {
+            win.document.write(html);
+            win.document.close();
         }
     }
 

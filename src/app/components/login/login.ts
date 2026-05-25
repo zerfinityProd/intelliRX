@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
+import { FirestoreApiService } from '../../services/firestore-api.service';
 import { ThemeService } from '../../services/themeService';
 import { NotificationService } from '../../services/notificationService';
 import { ClinicContextService } from '../../services/clinicContextService';
@@ -27,6 +28,7 @@ export class LoginComponent implements OnInit {
 
     private readonly authService = inject(AuthenticationService);
     private readonly authorizationService = inject(AuthorizationService);
+    private readonly firestoreApi = inject(FirestoreApiService);
     private readonly router = inject(Router);
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
@@ -44,14 +46,36 @@ export class LoginComponent implements OnInit {
         }
     }
 
-    /** Navigate to home based on role — both roles use /home now */
+    /** Navigate to the correct page based on role. Admins go to /admin-setup. */
     private async navigateByRole(email: string): Promise<void> {
         // Prompt for notification permission (non-blocking, runs in background)
         this.promptNotificationPermission(email);
 
+        // Check if this user is a global admin → redirect to admin setup
+        const isAdmin = await this.checkIsAdmin(email);
+        if (isAdmin) {
+            this.router.navigate(['/admin-setup']);
+            return;
+        }
+
         // Resolve which subscription + clinic to use (may prompt user)
         await this.ensureClinicSelected(email);
         this.router.navigate(['/home']);
+    }
+
+    /** Returns true if the user's Firestore doc has global_roles containing 'admin'. */
+    private async checkIsAdmin(email: string): Promise<boolean> {
+        try {
+            const docs = await this.firestoreApi.runQuery('', {
+                collectionId: 'users',
+                filters: [{ field: 'email', op: '==', value: email.toLowerCase().trim() }],
+            });
+            if (!docs.length) return false;
+            const globalRoles: string[] = docs[0].data['global_roles'] || [];
+            return globalRoles.includes('admin');
+        } catch {
+            return false;
+        }
     }
 
     /**
@@ -60,6 +84,11 @@ export class LoginComponent implements OnInit {
      */
     private async ensureClinicSelected(userEmail: string): Promise<void> {
         const assignments = await this.authorizationService.getUserAssignments(userEmail);
+
+        console.log('[Login] ensureClinicSelected — total assignments:', assignments.length);
+        assignments.forEach((a, i) =>
+            console.log(`[Login]   assignment[${i}]: subscriptionId="${a.subscriptionId}"  clinicId="${a.clinicId}"`)
+        );
 
         if (!assignments.length) {
             // No assignments — keep whatever context is stored (or null)
@@ -82,13 +111,16 @@ export class LoginComponent implements OnInit {
 
         // Multiple assignments — check how many subscriptions
         const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
+        console.log('[Login] unique subscriptionIds:', subscriptionIds);
 
         let chosenSubId: string;
         if (subscriptionIds.length === 1) {
             // Single subscription, multiple clinics
+            console.log('[Login] → single subscription, skipping subscription prompt');
             chosenSubId = subscriptionIds[0];
         } else {
             // Multiple subscriptions — prompt user to pick one
+            console.log('[Login] → multiple subscriptions, showing subscription prompt');
             chosenSubId = await this.promptSubscriptionSelection(subscriptionIds);
         }
 
@@ -96,6 +128,7 @@ export class LoginComponent implements OnInit {
         const clinicsInSub = assignments
             .filter(a => a.subscriptionId === chosenSubId)
             .map(a => a.clinicId);
+        console.log('[Login] clinics in chosen subscription:', clinicsInSub);
 
         let chosenClinicId: string;
         if (clinicsInSub.length === 1) {

@@ -66,11 +66,37 @@
   height: 100%;
   background: var(--clr-surface, #fff);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 12px 8px;
+  gap: 6px;
+}
+
+.avp-teeth-hint {
+  font-size: 11px;
+  color: var(--clr-text-muted, #5A8A9C);
+  text-align: center;
+  margin: 0;
+  letter-spacing: 0.2px;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.avp-teeth-summary {
+  font-size: 12px;
+  color: var(--clr-text, #0A2540);
+  text-align: center;
+  margin: 0;
+  padding: 4px 10px;
+  background: rgba(20, 141, 158, 0.08);
+  border-radius: 8px;
+  border: 1px solid rgba(20, 141, 158, 0.2);
+  flex-shrink: 0;
+  max-width: 100%;
+  word-break: break-word;
 }
 
 /* Patient header */
@@ -217,6 +243,49 @@
   display: flex;
   gap: 8px;
   margin-left: auto;
+}
+
+/* ── Action button hover states (light mode) ── */
+.avp-action-btns .btn-outline-secondary:hover {
+  background: rgba(20, 141, 158, 0.08);
+  border-color: #148D9E;
+  color: #148D9E;
+}
+
+/* ── Action button hover states (dark mode) ── */
+:host-context([data-theme="dark"]) .avp-action-btns .btn-outline-secondary,
+[data-theme="dark"] .avp-action-btns .btn-outline-secondary {
+  color: #D8E8ED;
+  border-color: #1A3352;
+  background: transparent;
+}
+
+:host-context([data-theme="dark"]) .avp-action-btns .btn-outline-secondary:hover,
+[data-theme="dark"] .avp-action-btns .btn-outline-secondary:hover {
+  background: rgba(20, 141, 158, 0.15) !important;
+  border-color: #148D9E !important;
+  color: #ffffff !important;
+}
+
+:host-context([data-theme="dark"]) .avp-action-btns .btn-outline-secondary:active,
+[data-theme="dark"] .avp-action-btns .btn-outline-secondary:active {
+  background: rgba(20, 141, 158, 0.25) !important;
+  border-color: #148D9E !important;
+  color: #ffffff !important;
+}
+
+:host-context([data-theme="dark"]) .avp-action-btns .btn-primary,
+[data-theme="dark"] .avp-action-btns .btn-primary {
+  background: linear-gradient(135deg, #148D9E, #0E6877);
+  border-color: #148D9E;
+  color: #ffffff;
+}
+
+:host-context([data-theme="dark"]) .avp-action-btns .btn-primary:hover,
+[data-theme="dark"] .avp-action-btns .btn-primary:hover {
+  background: linear-gradient(135deg, #17A2B5, #148D9E) !important;
+  border-color: #17A2B5 !important;
+  color: #ffffff !important;
 }
 
 /* ══════════════════════════════════════════════════════════════
