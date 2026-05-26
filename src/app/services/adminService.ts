@@ -1,6 +1,6 @@
 // src/app/services/adminService.ts
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService } from './firestore-api.service';
+import { FirestoreApiService, QueryFilter } from './firestore-api.service';
 import { Subscription } from '../models/subscription.model';
 import { Clinic, ClinicSchedule } from '../models/clinic.model';
 import { ClinicUser, ClinicUserAvailability } from '../models/clinic-user.model';
@@ -12,6 +12,8 @@ export interface AdminUser {
   specialization?: string;
   global_roles: string[];
   status: 'active' | 'inactive';
+  /** The subscription this user belongs to (used for tenant isolation). */
+  subscription_id?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -184,11 +186,22 @@ export class AdminService {
     return doc ? ({ ...doc.data, id: doc.id } as AdminUser) : null;
   }
 
-  async getUserByEmail(email: string): Promise<AdminUser | null> {
+  /**
+   * Look up a user by email address.
+   * When `subscriptionId` is supplied, the query is scoped to that subscription
+   * so users from other subscriptions are never returned (tenant isolation).
+   */
+  async getUserByEmail(email: string, subscriptionId?: string): Promise<AdminUser | null> {
     const normalized = email.toLowerCase().trim();
+    const filters: QueryFilter[] = [
+      { field: 'email', op: '==', value: normalized },
+    ];
+    if (subscriptionId) {
+      filters.push({ field: 'subscription_id', op: '==', value: subscriptionId });
+    }
     const docs = await this.api.runQuery('', {
       collectionId: 'users',
-      filters: [{ field: 'email', op: '==', value: normalized }],
+      filters,
     });
     return docs.length > 0 ? ({ ...docs[0].data, id: docs[0].id } as AdminUser) : null;
   }

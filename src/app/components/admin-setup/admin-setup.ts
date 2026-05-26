@@ -2,7 +2,7 @@
 import { Component, OnInit, inject, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { firstValueFrom, filter } from 'rxjs';
 import { AdminService, AdminUser } from '../../services/adminService';
 import { AuthenticationService } from '../../services/authenticationService';
@@ -74,6 +74,7 @@ export class AdminSetupComponent implements OnInit {
   private adminService = inject(AdminService);
   private authService = inject(AuthenticationService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
   private ngZone = inject(NgZone);
 
@@ -97,6 +98,8 @@ export class AdminSetupComponent implements OnInit {
   // ── Step management ──────────────────────────────────────────────────────
 
   currentStep = 1;
+  /** True when navigated from dashboard via ?step=N — hides sidebar and step bar */
+  focusedMode = false;
   readonly steps = [
     { num: 1, label: 'Subscription', icon: '🏢' },
     { num: 2, label: 'Clinics', icon: '🏥' },
@@ -186,19 +189,24 @@ export class AdminSetupComponent implements OnInit {
   // ─────────────────────────────────────────────────────────────────────────
 
   async ngOnInit() {
-    // On a hard refresh Firebase auth state resolves asynchronously.
-    // Wait until authReady$ emits true so currentUserValue is populated
-    // before we try to filter subscriptions by the user's email.
     await firstValueFrom(this.authService.authReady$.pipe(filter(ready => ready)));
 
-    // Only load subscriptions — always start on Step 1 so the user
-    // can see and confirm their subscription before proceeding.
-    // Clinics (and all subsequent steps) load lazily via onStepEnter.
     await this.loadSubscriptions();
+
+    // Read optional ?step=N query param from the dashboard action cards.
+    const stepParam = this.route.snapshot.queryParamMap.get('step');
+    if (stepParam) {
+      // Focused mode: hide sidebar + step bar, jump straight to the requested step
+      this.focusedMode = true;
+      const requestedStep = parseInt(stepParam, 10);
+      if (!isNaN(requestedStep) && requestedStep >= 1 && requestedStep <= 5
+          && this.selectedSubscription) {
+        this.currentStep = requestedStep;
+        await this.onStepEnter(requestedStep, 1);
+      }
+    }
+
     this.isInitializing = false;
-    // Firebase auth callbacks run outside Angular's NgZone, so change detection
-    // doesn't automatically trigger after the async init. Force it here so the
-    // page renders immediately on refresh without requiring a user interaction.
     this.cdr.detectChanges();
   }
 
@@ -256,6 +264,10 @@ export class AdminSetupComponent implements OnInit {
 
   navigateToHome() {
     this.router.navigate(['/home']);
+  }
+
+  navigateToDashboard() {
+    this.router.navigate(['/admin-dashboard']);
   }
 
   // ─────────────────────────────────────────────────────────────────────────

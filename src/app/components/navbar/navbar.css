@@ -1,0 +1,87 @@
+/* ── Navbar Back Button ─────────────────────────────────────────────────── */
+.navbar-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  background: transparent;
+  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  color: #444;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+  outline: none;
+  font-family: inherit;
+}
+
+.navbar-back-btn:hover {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+}
+
+.navbar-back-btn:active {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.navbar-back-btn svg {
+  flex-shrink: 0;
+  color: #444;
+}
+
+
+/* ── Vertical Divider ───────────────────────────────────────────────────── */
+.navbar-back-divider {
+  display: inline-block;
+  width: 1.5px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.13);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Page Title (breadcrumb beside brand) ───────────────────────────────── */
+.navbar-page-sep {
+  font-size: 17px;
+  color: rgba(0, 0, 0, 0.25);
+  font-weight: 300;
+  line-height: 1;
+  user-select: none;
+}
+
+.navbar-page-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a2333;
+  letter-spacing: -0.01em;
+}
+
+/* ── Dark Mode ──────────────────────────────────────────────────────────── */
+[data-theme="dark"] .navbar-back-btn {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #cdd8e0;
+}
+
+[data-theme="dark"] .navbar-back-btn svg {
+  color: #cdd8e0;
+}
+
+[data-theme="dark"] .navbar-back-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+[data-theme="dark"] .navbar-back-divider {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="dark"] .navbar-page-sep {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .navbar-page-title {
+  color: #d8e8ed;
+}

@@ -1,0 +1,775 @@
+<!-- src/app/components/admin-dashboard/admin-dashboard.html -->
+<div class="dashboard-wrapper">
+  <app-navbar></app-navbar>
+
+  <!-- ── Loading skeleton ─────────────────────────────────────────────────── -->
+  <div class="skeleton-wrapper" *ngIf="isLoading">
+    <div class="skel-hero"></div>
+    <div class="skel-cards">
+      <div class="skel-card"></div>
+      <div class="skel-card"></div>
+      <div class="skel-card"></div>
+    </div>
+  </div>
+
+  <!-- ── Main dashboard ───────────────────────────────────────────────────── -->
+  <div class="dashboard-body" *ngIf="!isLoading">
+
+    <!-- Error -->
+    <div class="error-banner" *ngIf="errorMessage && !showWizard">
+      <span class="error-icon">⚠</span><span>{{ errorMessage }}</span>
+    </div>
+
+    <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+    <section class="hero-section">
+      <div class="hero-glow"></div>
+      <div class="hero-content">
+        <div class="hero-left">
+          <div class="hero-badge">
+            <span class="badge-dot"></span>Admin Console
+          </div>
+          <h1 class="hero-greeting">{{ greeting }}, {{ adminName }}</h1>
+          <p class="hero-sub">Manage your clinic network from one place — configure clinics, set permissions, and onboard staff.</p>
+          <div class="hero-email">
+            <span class="hero-email-icon">✉</span>{{ adminEmail }}
+          </div>
+        </div>
+        <div class="hero-right">
+          <div class="hero-avatar"><span>{{ adminName[0]?.toUpperCase() }}</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Subscription Banner ───────────────────────────────────────────── -->
+    <section class="sub-banner" *ngIf="subscription && subscription.entity_name">
+      <div class="sub-banner-left">
+        <div class="sub-icon"><span>{{ subscription.entity_name[0].toUpperCase() }}</span></div>
+        <div class="sub-info">
+          <div class="sub-name">{{ subscription.entity_name }}</div>
+          <div class="sub-id">ID: {{ subscription.id }}</div>
+          <div class="sub-tags">
+            <span class="plan-badge" [class.plan-premium]="subscription.plan.name === 'premium'">{{ subscriptionPlanLabel }}</span>
+            <span class="status-badge" [ngClass]="subscriptionStatusClass">{{ subscription.status }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="sub-limits">
+        <div class="limit-item">
+          <div class="limit-val">{{ subscription.plan.limits.max_clinics }}</div>
+          <div class="limit-label">Max Clinics</div>
+        </div>
+        <div class="limit-divider"></div>
+        <div class="limit-item">
+          <div class="limit-val">{{ subscription.plan.limits.max_doctors }}</div>
+          <div class="limit-label">Max Doctors</div>
+        </div>
+        <div class="limit-divider"></div>
+        <div class="limit-item">
+          <div class="limit-val">{{ subscription.plan.limits.max_appointments_per_day }}</div>
+          <div class="limit-label">Appts / Day</div>
+        </div>
+      </div>
+      <button class="btn-edit-setup" (click)="openWizard()" id="btn-edit-setup">
+        ⚙ Edit Setup
+      </button>
+    </section>
+
+    <!-- No subscription yet ─ prompt wizard -->
+    <section class="no-sub-prompt" *ngIf="!subscription || !subscription.entity_name">
+      <div class="no-sub-icon">🏢</div>
+      <div class="no-sub-content">
+        <div class="no-sub-title">No subscription configured yet</div>
+        <div class="no-sub-desc">Complete a quick setup wizard to configure your clinics, permissions, and staff.</div>
+      </div>
+      <button class="btn-start-wizard" (click)="openWizard()" id="btn-start-wizard">
+        ✨ Start Setup Wizard
+      </button>
+    </section>
+
+    <!-- ── Quick Stats ───────────────────────────────────────────────────── -->
+    <section class="stats-row" *ngIf="subscription && subscription.entity_name">
+      <div class="stat-chip">
+        <span class="stat-chip-icon">🏥</span>
+        <div><div class="stat-chip-val">{{ stats.clinics }}</div><div class="stat-chip-label">Clinics</div></div>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-icon">🩺</span>
+        <div><div class="stat-chip-val">{{ stats.doctors }}</div><div class="stat-chip-label">Doctors</div></div>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-icon">🗂</span>
+        <div><div class="stat-chip-val">{{ stats.receptionists }}</div><div class="stat-chip-label">Receptionists</div></div>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-icon">👥</span>
+        <div><div class="stat-chip-val">{{ stats.users }}</div><div class="stat-chip-label">Total Staff</div></div>
+      </div>
+      <div class="stat-chip">
+        <span class="stat-chip-icon">🔑</span>
+        <div><div class="stat-chip-val">{{ stats.doctorPermissions + stats.receptionistPermissions }}</div><div class="stat-chip-label">Permissions Set</div></div>
+      </div>
+    </section>
+
+    <!-- ── Section Label ─────────────────────────────────────────────────── -->
+    <div class="section-label" *ngIf="subscription && subscription.entity_name">
+      <span class="section-line"></span>
+      <span class="section-text">Configuration Options</span>
+      <span class="section-line"></span>
+    </div>
+
+    <!-- ── Action Cards ──────────────────────────────────────────────────── -->
+    <section class="action-cards" *ngIf="subscription && subscription.entity_name">
+      <div class="action-card card-clinics" (click)="navigateToSetup(2)" id="card-clinics">
+        <div class="card-glow"></div>
+        <div class="card-top">
+          <div class="card-icon-wrap"><span class="card-icon">🏥</span></div>
+          <div class="card-arrow">→</div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">Manage Clinics</h2>
+          <p class="card-desc">Add, edit, and configure clinic locations, operating hours, and shift schedules.</p>
+        </div>
+        <div class="card-footer">
+          <div class="card-stat">
+            <span class="card-stat-val">{{ stats.clinics }}</span>
+            <span class="card-stat-label">clinics configured</span>
+          </div>
+          <div class="card-features">
+            <span class="feature-chip">Hours</span>
+            <span class="feature-chip">Schedules</span>
+            <span class="feature-chip">Locations</span>
+          </div>
+        </div>
+        <div class="card-cta"><span>Open Clinics Manager</span><span class="cta-arrow">↗</span></div>
+      </div>
+
+      <div class="action-card card-permissions" (click)="navigateToSetup(3)" id="card-permissions">
+        <div class="card-glow"></div>
+        <div class="card-top">
+          <div class="card-icon-wrap"><span class="card-icon">🔑</span></div>
+          <div class="card-arrow">→</div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">Permissions</h2>
+          <p class="card-desc">Define what doctors and receptionists can do across all clinics.</p>
+        </div>
+        <div class="card-footer">
+          <div class="card-stat">
+            <span class="card-stat-val">{{ stats.doctorPermissions + stats.receptionistPermissions }}</span>
+            <span class="card-stat-label">permissions active</span>
+          </div>
+          <div class="card-roles-preview">
+            <div class="role-preview doctor"><span class="role-dot"></span>Doctor · {{ stats.doctorPermissions }} perms</div>
+            <div class="role-preview recept"><span class="role-dot"></span>Receptionist · {{ stats.receptionistPermissions }} perms</div>
+          </div>
+        </div>
+        <div class="card-cta"><span>Configure Permissions</span><span class="cta-arrow">↗</span></div>
+      </div>
+
+      <div class="action-card card-users" (click)="navigateToSetup(4)" id="card-users">
+        <div class="card-glow"></div>
+        <div class="card-top">
+          <div class="card-icon-wrap"><span class="card-icon">👥</span></div>
+          <div class="card-arrow">→</div>
+        </div>
+        <div class="card-body">
+          <h2 class="card-title">Users &amp; Staff</h2>
+          <p class="card-desc">Onboard staff members, assign them to clinics, and configure doctor availability.</p>
+        </div>
+        <div class="card-footer">
+          <div class="card-stat">
+            <span class="card-stat-val">{{ stats.users }}</span>
+            <span class="card-stat-label">staff members</span>
+          </div>
+          <div class="card-staff-breakdown">
+            <div class="staff-chip doctor-chip">🩺 {{ stats.doctors }} Doctors</div>
+            <div class="staff-chip recept-chip">🗂 {{ stats.receptionists }} Receptionists</div>
+          </div>
+        </div>
+        <div class="card-cta"><span>Manage Staff</span><span class="cta-arrow">↗</span></div>
+      </div>
+    </section>
+
+    <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+    <footer class="dashboard-footer">
+      <span>IntelliRX Admin Console</span>
+    </footer>
+
+  </div><!-- /dashboard-body -->
+</div><!-- /dashboard-wrapper -->
+
+<!-- ════════════════════════════════════════════════════════════════════════════
+     SETUP WIZARD MODAL
+     ════════════════════════════════════════════════════════════════════════════ -->
+<div class="wiz-backdrop" *ngIf="showWizard" (click)="$event.stopPropagation()">
+  <div class="wiz-modal" (click)="$event.stopPropagation()">
+
+    <!-- Loading overlay inside wizard -->
+    <div class="wiz-loading-overlay" *ngIf="wizardIsLoading">
+      <div class="wiz-spinner"></div>
+      <span>Saving…</span>
+    </div>
+
+    <!-- ── Wizard header / step bar ────────────────────────────────────── -->
+    <div class="wiz-header">
+      <div class="wiz-brand">
+        <span class="wiz-brand-icon">⚕</span>
+        <span class="wiz-brand-label">IntelliRX Setup</span>
+      </div>
+      <div class="wiz-steps">
+        <div
+          *ngFor="let step of wizardSteps"
+          class="wiz-step"
+          [class.wiz-completed]="getWizardStepStatus(step.num) === 'completed'"
+          [class.wiz-current]="getWizardStepStatus(step.num) === 'current'"
+        >
+          <div class="wiz-step-circle">
+            <span *ngIf="getWizardStepStatus(step.num) === 'completed'">✓</span>
+            <span *ngIf="getWizardStepStatus(step.num) !== 'completed'">{{ step.num }}</span>
+          </div>
+          <span class="wiz-step-label">{{ step.label }}</span>
+          <div class="wiz-step-line" *ngIf="step.num < wizardSteps.length"></div>
+        </div>
+      </div>
+      <button class="wiz-close-btn" (click)="closeWizard()" *ngIf="subscription" title="Close">✕</button>
+    </div>
+
+    <!-- ── Wizard messages ────────────────────────────────────────────── -->
+    <div class="wiz-msg wiz-msg-error" *ngIf="wizardError">
+      <span>⚠ {{ wizardError }}</span>
+      <button class="wiz-msg-close" (click)="clearWizardMessages()">✕</button>
+    </div>
+    <div class="wiz-msg wiz-msg-success" *ngIf="wizardSuccess">
+      <span>{{ wizardSuccess }}</span>
+      <button class="wiz-msg-close" (click)="clearWizardMessages()">✕</button>
+    </div>
+
+    <!-- ── Wizard body ────────────────────────────────────────────────── -->
+    <div class="wiz-body">
+
+      <!-- ══════════════════ STEP 1 – SUBSCRIPTION ══════════════════ -->
+      <div class="wiz-panel" *ngIf="wizardStep === 1">
+        <div class="wiz-panel-title">
+          <h2 *ngIf="wizardSubscriptions.length === 0 && !wizardIsFetching">Create Your First Subscription</h2>
+          <h2 *ngIf="wizardSubscriptions.length === 1 && !wizardIsFetching">Confirm Your Subscription</h2>
+          <h2 *ngIf="wizardSubscriptions.length > 1 && !wizardIsFetching">Select a Subscription</h2>
+          <h2 *ngIf="wizardIsFetching">Loading Subscriptions…</h2>
+          <p *ngIf="wizardSubscriptions.length === 0 && !wizardIsFetching">You don't have a subscription yet. Create one to get started.</p>
+          <p *ngIf="wizardSubscriptions.length === 1 && !wizardIsFetching">We found a subscription linked to your account. Confirm it to continue.</p>
+          <p *ngIf="wizardSubscriptions.length > 1 && !wizardIsFetching">
+            We found <strong>{{ wizardSubscriptions.length }} subscriptions</strong> linked to your account. Click on one to select it, then tap <strong>Next</strong> to continue.
+          </p>
+          <p *ngIf="wizardIsFetching">Fetching subscriptions linked to your email&hellip;</p>
+        </div>
+
+        <!-- Fetching skeleton -->
+        <div class="wiz-cards-grid" *ngIf="wizardIsFetching && !isCreatingSubscription">
+          <div class="wiz-sub-card skel-pulse"></div>
+          <div class="wiz-sub-card skel-pulse"></div>
+        </div>
+
+        <!-- Subscription cards -->
+        <div class="wiz-cards-grid" *ngIf="!wizardIsFetching && !isCreatingSubscription">
+          <div
+            *ngFor="let sub of wizardSubscriptions"
+            class="wiz-sub-card"
+            [class.wiz-selected]="wizardSelectedSub?.id === sub.id"
+            (click)="selectWizardSub(sub)"
+          >
+            <div class="wiz-sub-header">
+              <div class="wiz-sub-avatar">{{ subInitial(sub) }}</div>
+              <div class="wiz-sub-meta">
+                <div class="wiz-sub-name">{{ sub.entity_name }}</div>
+                <span class="wiz-badge" [class.wiz-badge-premium]="sub.plan.name === 'premium'">
+                  {{ (sub.plan.name || 'basic') | uppercase }}
+                </span>
+              </div>
+              <span class="wiz-badge" [class.wiz-badge-active]="sub.status === 'active'">{{ sub.status }}</span>
+            </div>
+            <div class="wiz-sub-body">
+              <div class="wiz-sub-row"><span class="wiz-sub-label">Owner</span><span>{{ sub.owner_email || '—' }}</span></div>
+              <div class="wiz-sub-row">
+                <span class="wiz-sub-label">Limits</span>
+                <span>{{ sub.plan.limits.max_clinics }} clinics · {{ sub.plan.limits.max_doctors }} doctors</span>
+              </div>
+            </div>
+            <div class="wiz-sub-foot" (click)="$event.stopPropagation()">
+              <button class="wiz-btn-danger-sm" (click)="deleteWizardSubscription(sub)">Delete</button>
+              <button class="wiz-btn-primary-sm" (click)="selectWizardSub(sub)">
+                {{ wizardSelectedSub?.id === sub.id ? '✓ Selected' : 'Select' }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Add new subscription card — hidden when an ID is already assigned -->
+          <div class="wiz-sub-card wiz-add-card" (click)="startNewSubscription()" *ngIf="!assignedSubscriptionId">
+            <div class="wiz-add-icon">+</div>
+            <div class="wiz-add-label">New Subscription</div>
+          </div>
+        </div>
+
+        <!-- Empty state -->
+        <div class="wiz-empty" *ngIf="!wizardIsFetching && wizardSubscriptions.length === 0 && !isCreatingSubscription">
+          <div class="wiz-empty-icon">🏢</div>
+          <ng-container *ngIf="assignedSubscriptionId; else noAssignedId">
+            <div class="wiz-empty-title">Subscription <strong>{{ assignedSubscriptionId }}</strong> not set up yet</div>
+            <div class="wiz-empty-sub">Fill in the details below to complete your subscription setup.</div>
+            <button class="wiz-btn-primary" (click)="startNewSubscription()">Fill in Details</button>
+          </ng-container>
+          <ng-template #noAssignedId>
+            <div class="wiz-empty-title">No subscriptions yet</div>
+            <div class="wiz-empty-sub">Create your first subscription to get started.</div>
+            <button class="wiz-btn-primary" (click)="startNewSubscription()">+ Create Subscription</button>
+          </ng-template>
+        </div>
+
+        <!-- Create subscription form -->
+        <div class="wiz-form-card" *ngIf="isCreatingSubscription">
+          <div class="wiz-form-card-title">
+            <h3>{{ assignedSubscriptionId ? 'Set Up Subscription' : 'New Subscription' }}</h3>
+            <button class="wiz-btn-ghost-sm" (click)="isCreatingSubscription = false"
+              *ngIf="!assignedSubscriptionId || wizardSubscriptions.length > 0">✕ Cancel</button>
+          </div>
+          <!-- Locked subscription ID info -->
+          <div class="wiz-assigned-id-banner" *ngIf="assignedSubscriptionId">
+            <span class="wiz-assigned-id-label">Subscription ID</span>
+            <span class="wiz-assigned-id-value">{{ assignedSubscriptionId }}</span>
+            <span class="wiz-assigned-id-hint">This ID is assigned to your account and cannot be changed.</span>
+          </div>
+          <div class="wiz-form-grid">
+            <div class="wiz-form-group wiz-form-full">
+              <label>Organisation / Entity Name *</label>
+              <input type="text" [(ngModel)]="newSub.entity_name" placeholder="e.g. City Health Group" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Owner Email *</label>
+              <input type="email" [(ngModel)]="newSub.owner_email" placeholder="admin@example.com" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Billing Email</label>
+              <input type="email" [(ngModel)]="newSub.billing_email" placeholder="billing@example.com" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Plan</label>
+              <select [(ngModel)]="newSub.plan_name">
+                <option value="basic">Basic</option>
+                <option value="premium">Premium</option>
+              </select>
+            </div>
+            <div class="wiz-form-group">
+              <label>Max Clinics</label>
+              <input type="number" [(ngModel)]="newSub.max_clinics" min="1" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Max Doctors</label>
+              <input type="number" [(ngModel)]="newSub.max_doctors" min="1" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Max Appointments / Day</label>
+              <input type="number" [(ngModel)]="newSub.max_appointments_per_day" min="1" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Status</label>
+              <select [(ngModel)]="newSub.status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+          <div class="wiz-form-actions">
+            <button class="wiz-btn-ghost" (click)="isCreatingSubscription = false">Cancel</button>
+            <button class="wiz-btn-primary" (click)="createSubscription()" [disabled]="wizardIsLoading">
+              Create Subscription
+            </button>
+          </div>
+        </div>
+
+        <!-- Selected subscription summary -->
+        <div class="wiz-selected-banner" *ngIf="wizardSelectedSub && !isCreatingSubscription">
+          <div class="wsb-avatar">{{ subInitial(wizardSelectedSub) }}</div>
+          <div class="wsb-info">
+            <div class="wsb-name">{{ wizardSelectedSub.entity_name }}</div>
+            <div class="wsb-meta">
+              <span class="wiz-badge" [class.wiz-badge-premium]="wizardSelectedSub.plan.name === 'premium'">
+                {{ (wizardSelectedSub.plan.name || 'basic') | uppercase }}
+              </span>
+              <span class="wiz-badge" [class.wiz-badge-active]="wizardSelectedSub.status === 'active'">
+                {{ wizardSelectedSub.status }}
+              </span>
+            </div>
+          </div>
+          <div class="wsb-limits">
+            <div class="wsb-limit"><span class="wsb-lval">{{ wizardSelectedSub.plan.limits.max_clinics }}</span><span class="wsb-llab">Clinics</span></div>
+            <div class="wsb-limit"><span class="wsb-lval">{{ wizardSelectedSub.plan.limits.max_doctors }}</span><span class="wsb-llab">Doctors</span></div>
+            <div class="wsb-limit"><span class="wsb-lval">{{ wizardSelectedSub.plan.limits.max_appointments_per_day }}</span><span class="wsb-llab">Appts/Day</span></div>
+          </div>
+          <div class="wsb-check">✓ Selected</div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ STEP 2 – CLINICS ══════════════════ -->
+      <div class="wiz-panel" *ngIf="wizardStep === 2">
+        <div class="wiz-panel-title">
+          <h2>Manage Clinics</h2>
+          <p>Add and configure clinic locations and their operating schedules.</p>
+        </div>
+
+        <!-- Fetching indicator -->
+        <div class="wiz-fetching" *ngIf="wizardIsFetching"><div class="wiz-spinner-sm"></div> Loading clinics…</div>
+
+        <!-- Clinic list (when not in form mode) -->
+        <div *ngIf="!wizardShowClinicForm && !wizardIsFetching">
+          <div class="wiz-clinic-list">
+            <div class="wiz-clinic-row" *ngFor="let clinic of wizardClinics">
+              <div class="wiz-clinic-avatar">{{ clinic.name[0] | uppercase }}</div>
+              <div class="wiz-clinic-info">
+                <div class="wiz-clinic-name">{{ clinic.name }}</div>
+                <div class="wiz-clinic-meta">{{ clinic.address || 'No address' }}</div>
+                <div class="wiz-clinic-sched">{{ getClinicScheduleSummary(clinic) }}</div>
+              </div>
+              <div class="wiz-clinic-actions">
+                <button class="wiz-btn-ghost-sm" (click)="editWizardClinic(clinic)">✏ Edit</button>
+                <button class="wiz-btn-danger-sm" (click)="deleteWizardClinic(clinic)">🗑</button>
+              </div>
+            </div>
+
+            <div class="wiz-empty-sm" *ngIf="wizardClinics.length === 0">No clinics added yet. Add at least one clinic.</div>
+          </div>
+
+          <button class="wiz-btn-add-row" (click)="openNewClinicForm()">+ Add Clinic</button>
+        </div>
+
+        <!-- Clinic form -->
+        <div class="wiz-form-card" *ngIf="wizardShowClinicForm">
+          <div class="wiz-form-card-title">
+            <h3>{{ wizardEditingClinic ? 'Edit Clinic' : 'New Clinic' }}</h3>
+            <button class="wiz-btn-ghost-sm" (click)="cancelClinicForm()">✕ Cancel</button>
+          </div>
+          <div class="wiz-form-grid">
+            <div class="wiz-form-group wiz-form-full">
+              <label>Clinic Name *</label>
+              <input type="text" [(ngModel)]="wizardClinicForm.name" placeholder="e.g. Main Street Clinic" />
+            </div>
+            <div class="wiz-form-group wiz-form-full">
+              <label>Address</label>
+              <input type="text" [(ngModel)]="wizardClinicForm.address" placeholder="Full address" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Phone</label>
+              <input type="tel" [(ngModel)]="wizardClinicForm.phone" placeholder="+91 XXXXX XXXXX" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Email</label>
+              <input type="email" [(ngModel)]="wizardClinicForm.email" placeholder="clinic@example.com" />
+            </div>
+          </div>
+
+          <!-- Weekday picker -->
+          <div class="wiz-form-section">
+            <div class="wiz-section-label">Operating Days</div>
+            <div class="wiz-day-picker">
+              <button *ngFor="let day of allWeekdays" type="button" class="wiz-day-btn"
+                [class.wiz-day-selected]="isWizardDaySelected(day)" (click)="toggleWizardWeekday(day)">
+                {{ weekdayLabels[day] }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Timing blocks -->
+          <div class="wiz-form-section">
+            <div class="wiz-section-label-row">
+              <div class="wiz-section-label">Time Blocks (Shifts)</div>
+              <button class="wiz-btn-ghost-sm" (click)="addWizardTimingBlock()">+ Add Block</button>
+            </div>
+            <div class="wiz-timing-list">
+              <div class="wiz-timing-row" *ngFor="let t of wizardClinicForm.timings; let i = index">
+                <div class="wiz-form-group">
+                  <label>Label</label>
+                  <input type="text" [(ngModel)]="t.label" placeholder="FH / SH" maxlength="10" />
+                </div>
+                <div class="wiz-form-group">
+                  <label>Start</label>
+                  <input type="time" [(ngModel)]="t.start" />
+                </div>
+                <div class="wiz-form-group">
+                  <label>End</label>
+                  <input type="time" [(ngModel)]="t.end" />
+                </div>
+                <button class="wiz-btn-danger-sm wiz-timing-del" (click)="removeWizardTimingBlock(i)"
+                  [disabled]="wizardClinicForm.timings.length <= 1">🗑</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="wiz-form-actions">
+            <button class="wiz-btn-ghost" (click)="cancelClinicForm()">Cancel</button>
+            <button class="wiz-btn-primary" (click)="saveWizardClinic()" [disabled]="wizardIsLoading">
+              {{ wizardEditingClinic ? 'Update Clinic' : 'Create Clinic' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ STEP 3 – PERMISSIONS ══════════════════ -->
+      <div class="wiz-panel" *ngIf="wizardStep === 3">
+        <div class="wiz-panel-title">
+          <h2>Roles &amp; Permissions</h2>
+          <p>Define what each role can do across all clinics. These apply globally.</p>
+        </div>
+
+        <div class="wiz-roles-grid">
+          <!-- Doctor -->
+          <div class="wiz-role-card">
+            <div class="wiz-role-header wiz-role-doctor">
+              <div class="wiz-role-icon">🩺</div>
+              <div>
+                <div class="wiz-role-name">Doctor</div>
+                <div class="wiz-role-count">{{ countActivePerms(doctorPermissions) }} / {{ permissionDefs.length }} active</div>
+              </div>
+            </div>
+            <div class="wiz-perm-list">
+              <label class="wiz-perm-row" *ngFor="let perm of permissionDefs">
+                <div class="wiz-toggle-wrap">
+                  <input type="checkbox" [id]="'wiz-doc-' + perm.key" [(ngModel)]="doctorPermissions[perm.key]" />
+                  <span class="wiz-toggle-slider"></span>
+                </div>
+                <div class="wiz-perm-text">
+                  <span class="wiz-perm-label">{{ perm.label }}</span>
+                  <span class="wiz-perm-desc">{{ perm.desc }}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Receptionist -->
+          <div class="wiz-role-card">
+            <div class="wiz-role-header wiz-role-recept">
+              <div class="wiz-role-icon">🗂</div>
+              <div>
+                <div class="wiz-role-name">Receptionist</div>
+                <div class="wiz-role-count">{{ countActivePerms(receptionistPermissions) }} / {{ permissionDefs.length }} active</div>
+              </div>
+            </div>
+            <div class="wiz-perm-list">
+              <label class="wiz-perm-row" *ngFor="let perm of permissionDefs">
+                <div class="wiz-toggle-wrap">
+                  <input type="checkbox" [id]="'wiz-rec-' + perm.key" [(ngModel)]="receptionistPermissions[perm.key]" />
+                  <span class="wiz-toggle-slider"></span>
+                </div>
+                <div class="wiz-perm-text">
+                  <span class="wiz-perm-label">{{ perm.label }}</span>
+                  <span class="wiz-perm-desc">{{ perm.desc }}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ STEP 4 – USERS ══════════════════ -->
+      <div class="wiz-panel" *ngIf="wizardStep === 4">
+        <div class="wiz-panel-title">
+          <h2>Users &amp; Clinic Assignments</h2>
+          <p>Add staff, assign them to clinics, and configure doctor availability.</p>
+        </div>
+
+        <div class="wiz-fetching" *ngIf="wizardIsFetching"><div class="wiz-spinner-sm"></div> Loading users…</div>
+
+        <!-- User list (when not in user form) -->
+        <div *ngIf="!wizardShowUserForm && !wizardIsFetching">
+          <div class="wiz-user-list">
+            <div class="wiz-user-row" *ngFor="let user of wizardUsers">
+              <div class="wiz-user-avatar">{{ user.name[0] | uppercase }}</div>
+              <div class="wiz-user-info">
+                <div class="wiz-user-name">{{ user.name }}</div>
+                <div class="wiz-user-email">{{ user.email }}</div>
+                <div class="wiz-user-tags">
+                  <span class="wiz-tag" *ngFor="let r of user.global_roles">{{ r }}</span>
+                  <span class="wiz-tag wiz-tag-clinic" *ngFor="let a of user.assignments">
+                    {{ a.clinicName }} ({{ a.role }})
+                  </span>
+                </div>
+              </div>
+              <span class="wiz-badge" [class.wiz-badge-active]="user.status === 'active'">{{ user.status }}</span>
+              <div class="wiz-user-actions">
+                <button class="wiz-btn-ghost-sm" (click)="editWizardUser(user)">✏ Edit</button>
+                <button class="wiz-btn-danger-sm" (click)="deleteWizardUser(user)">🗑</button>
+              </div>
+            </div>
+            <div class="wiz-empty-sm" *ngIf="wizardUsers.length === 0">No users yet. Add your first staff member.</div>
+          </div>
+          <button class="wiz-btn-add-row" (click)="openNewUserForm()">+ Add User</button>
+        </div>
+
+        <!-- User form -->
+        <div class="wiz-form-card" *ngIf="wizardShowUserForm">
+          <div class="wiz-form-card-title">
+            <h3>{{ wizardEditingUser ? 'Edit User' : 'New User' }}</h3>
+            <button class="wiz-btn-ghost-sm" (click)="cancelUserForm()">✕ Cancel</button>
+          </div>
+
+          <div class="wiz-form-grid">
+            <div class="wiz-form-group">
+              <label>Email *</label>
+              <input type="email" [(ngModel)]="wizardUserForm.email" placeholder="user@example.com" [disabled]="!!wizardEditingUser" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Full Name *</label>
+              <input type="text" [(ngModel)]="wizardUserForm.name" placeholder="Dr. Priya Sharma" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Specialization</label>
+              <input type="text" [(ngModel)]="wizardUserForm.specialization" placeholder="e.g. Cardiologist" />
+            </div>
+            <div class="wiz-form-group">
+              <label>Status</label>
+              <select [(ngModel)]="wizardUserForm.status">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Global roles -->
+          <div class="wiz-form-section">
+            <div class="wiz-section-label">Global Roles</div>
+            <div class="wiz-role-toggles">
+              <label class="wiz-role-toggle-item">
+                <input type="checkbox" [checked]="hasWizardGlobalRole('admin')" (change)="toggleWizardGlobalRole('admin')" />
+                <span class="wiz-role-chip wiz-role-chip-admin">Admin</span>
+              </label>
+              <label class="wiz-role-toggle-item">
+                <input type="checkbox" [checked]="hasWizardGlobalRole('doctor')" (change)="toggleWizardGlobalRole('doctor')" />
+                <span class="wiz-role-chip wiz-role-chip-doctor">Doctor</span>
+              </label>
+              <label class="wiz-role-toggle-item">
+                <input type="checkbox" [checked]="hasWizardGlobalRole('receptionist')" (change)="toggleWizardGlobalRole('receptionist')" />
+                <span class="wiz-role-chip wiz-role-chip-recept">Receptionist</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Clinic assignments -->
+          <div class="wiz-form-section">
+            <div class="wiz-section-label-row">
+              <div class="wiz-section-label">Clinic Assignments</div>
+              <button class="wiz-btn-ghost-sm" (click)="addClinicAssignment()">+ Assign to Clinic</button>
+            </div>
+            <div class="wiz-assignment-list">
+              <div class="wiz-assignment-card" *ngFor="let a of wizardUserForm.assignments; let ai = index">
+                <div class="wiz-assignment-row">
+                  <div class="wiz-form-group">
+                    <label>Clinic</label>
+                    <select [ngModel]="a.clinicId" (ngModelChange)="onAssignmentClinicChange(a, $event)">
+                      <option *ngFor="let c of wizardClinics" [value]="c.id">{{ c.name }}</option>
+                    </select>
+                  </div>
+                  <div class="wiz-form-group">
+                    <label>Role</label>
+                    <select [(ngModel)]="a.role" (ngModelChange)="onAssignmentRoleChange(a)">
+                      <option value="doctor">Doctor</option>
+                      <option value="receptionist">Receptionist</option>
+                    </select>
+                  </div>
+                  <button class="wiz-btn-danger-sm wiz-mt-auto" (click)="removeClinicAssignment(ai)">🗑</button>
+                </div>
+
+                <!-- Doctor availability grid -->
+                <div class="wiz-avail-section" *ngIf="a.role === 'doctor'">
+                  <div class="wiz-avail-title">
+                    Availability Schedule
+                    <span class="wiz-avail-hint">Select when this doctor is available</span>
+                  </div>
+                  <div class="wiz-avail-grid" *ngIf="getClinicForAssignment(a.clinicId) as clinic">
+                    <div class="wiz-avail-header">
+                      <div class="wiz-avail-corner">Day</div>
+                      <div class="wiz-avail-block-head" *ngFor="let t of clinic.timings">
+                        <div class="wiz-block-label">{{ t.label }}</div>
+                        <div class="wiz-block-time">{{ t.start }}–{{ t.end }}</div>
+                      </div>
+                    </div>
+                    <div class="wiz-avail-day-row" *ngFor="let day of clinic.weekdays">
+                      <div class="wiz-avail-day-label">{{ weekdayLabels[day] || day }}</div>
+                      <div class="wiz-avail-cell" *ngFor="let t of clinic.timings">
+                        <label class="wiz-avail-cb">
+                          <input type="checkbox"
+                            [checked]="isBlockSelected(a, day, t.label)"
+                            (change)="toggleAvailability(a, day, t.label)" />
+                          <span class="wiz-avail-visual"></span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="wiz-avail-no-clinic" *ngIf="!getClinicForAssignment(a.clinicId)">
+                    Select a clinic to configure availability.
+                  </div>
+                </div>
+              </div>
+
+              <div class="wiz-empty-sm" *ngIf="wizardUserForm.assignments.length === 0">
+                No clinic assignments yet. Click "+ Assign to Clinic" to add one.
+              </div>
+            </div>
+          </div>
+
+          <div class="wiz-form-actions">
+            <button class="wiz-btn-ghost" (click)="cancelUserForm()">Cancel</button>
+            <button class="wiz-btn-primary" (click)="saveWizardUser()" [disabled]="wizardIsLoading">
+              {{ wizardEditingUser ? 'Update User' : 'Create User' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════ STEP 5 – DONE ══════════════════ -->
+      <div class="wiz-panel wiz-done-panel" *ngIf="wizardStep === 5">
+        <div class="wiz-done-graphic">🎉</div>
+        <h2 class="wiz-done-title">Setup Complete!</h2>
+        <p class="wiz-done-sub">
+          Your IntelliRX workspace is configured and ready. You can always edit your setup
+          using the <strong>Edit Setup</strong> button on the dashboard.
+        </p>
+        <div class="wiz-done-summary">
+          <div class="wiz-done-chip">🏢 {{ wizardSelectedSub?.entity_name }}</div>
+          <div class="wiz-done-chip">🏥 {{ wizardClinics.length }} Clinic{{ wizardClinics.length !== 1 ? 's' : '' }}</div>
+          <div class="wiz-done-chip">👥 {{ wizardUsers.length }} User{{ wizardUsers.length !== 1 ? 's' : '' }}</div>
+        </div>
+      </div>
+
+    </div><!-- /wiz-body -->
+
+    <!-- ── Wizard footer / navigation ─────────────────────────────────── -->
+    <div class="wiz-footer">
+      <button class="wiz-btn-ghost" (click)="wizardBack()"
+        *ngIf="wizardStep > 1 && wizardStep < 5 && !wizardShowClinicForm && !wizardShowUserForm">
+        ← Back
+      </button>
+      <div class="wiz-footer-right">
+        <button class="wiz-btn-primary wiz-next-btn" (click)="wizardNext()"
+          *ngIf="!wizardShowClinicForm && !wizardShowUserForm"
+          [disabled]="wizardIsLoading || (wizardStep === 1 && !wizardSelectedSub && !isCreatingSubscription)">
+          <span *ngIf="wizardStep === 1">Next: Clinics →</span>
+          <span *ngIf="wizardStep === 2">Next: Permissions →</span>
+          <span *ngIf="wizardStep === 3">Save &amp; Next: Users →</span>
+          <span *ngIf="wizardStep === 4">Finish Setup ✓</span>
+          <span *ngIf="wizardStep === 5">Go to Dashboard →</span>
+        </button>
+      </div>
+    </div>
+
+  </div><!-- /wiz-modal -->
+</div><!-- /wiz-backdrop -->
+
+<!-- ── Custom confirm dialog ────────────────────────────────────────────────── -->
+<div class="confirm-backdrop" *ngIf="confirmVisible">
+  <div class="confirm-dialog">
+    <div class="confirm-icon">⚠️</div>
+    <div class="confirm-title">{{ confirmTitle }}</div>
+    <div class="confirm-message">{{ confirmMessage }}</div>
+    <div class="confirm-actions">
+      <button class="wiz-btn-ghost" (click)="onConfirmNo()">Cancel</button>
+      <button class="wiz-btn-danger" (click)="onConfirmYes()">Yes, Delete</button>
+    </div>
+  </div>
+</div>

@@ -182,6 +182,16 @@
   height: calc(100vh - 60px - 52px); /* viewport - navbar - step-bar */
 }
 
+/* Focused mode: sidebar + step-bar hidden — main takes full width */
+.admin-body.focused-mode {
+  height: calc(100vh - 60px); /* only navbar, no step-bar */
+}
+.admin-body.focused-mode .admin-main {
+  max-width: 900px;
+  margin: 0 auto;
+  width: 100%;
+}
+
 /* ── Sidebar ────────────────────────────────────────────────────────────── */
 .admin-sidebar {
   width: 210px;

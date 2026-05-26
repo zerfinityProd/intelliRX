@@ -51,10 +51,10 @@ export class LoginComponent implements OnInit {
         // Prompt for notification permission (non-blocking, runs in background)
         this.promptNotificationPermission(email);
 
-        // Check if this user is a global admin → redirect to admin setup
+        // Check if this user is a global admin → redirect to admin dashboard
         const isAdmin = await this.checkIsAdmin(email);
         if (isAdmin) {
-            this.router.navigate(['/admin-setup']);
+            this.router.navigate(['/admin-dashboard']);
             return;
         }
 

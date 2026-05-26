@@ -8,10 +8,13 @@
   </div>
 
   <!-- ── Shared Navbar ──────────────────────────────────────────────────── -->
-  <app-navbar></app-navbar>
+  <app-navbar
+    [showBack]="true"
+    (backClick)="navigateToDashboard()"
+  ></app-navbar>
 
-  <!-- ── Wizard step bar (below navbar) ────────────────────────────────── -->
-  <div class="admin-step-bar">
+  <!-- ── Wizard step bar (below navbar) ── hidden in focused mode ─────────── -->
+  <div class="admin-step-bar" *ngIf="!focusedMode">
     <div class="step-bar-inner">
       <div class="step-bar-brand">
         <span class="brand-icon-sm">⚕</span>
@@ -35,8 +38,8 @@
         </div>
       </div>
 
-      <button class="btn-ghost step-bar-exit" (click)="navigateToHome()">
-        ← Exit
+      <button class="btn-ghost step-bar-exit" (click)="navigateToDashboard()">
+        ← Dashboard
       </button>
     </div>
   </div>
@@ -57,10 +60,10 @@
   </div>
 
   <!-- ── Body ────────────────────────────────────────────────────────────── -->
-  <div class="admin-body" *ngIf="!isInitializing">
+  <div class="admin-body" *ngIf="!isInitializing" [class.focused-mode]="focusedMode">
 
-    <!-- Sidebar -->
-    <aside class="admin-sidebar">
+    <!-- Sidebar — hidden in focused mode -->
+    <aside class="admin-sidebar" *ngIf="!focusedMode">
       <div
         *ngFor="let step of steps"
         class="sidebar-item"
@@ -401,7 +404,8 @@
         </div>
 
         <div class="step-nav" *ngIf="!showClinicForm">
-          <button class="btn-ghost" (click)="prevStep()">← Back</button>
+          <button class="btn-ghost" (click)="prevStep()" *ngIf="!focusedMode">← Back</button>
+          <div *ngIf="focusedMode"></div>
           <button class="btn-primary" (click)="nextStep()">Next: Permissions →</button>
         </div>
       </div>
@@ -472,7 +476,8 @@
         </div>
 
         <div class="step-nav">
-          <button class="btn-ghost" (click)="prevStep()">← Back</button>
+          <button class="btn-ghost" (click)="prevStep()" *ngIf="!focusedMode">← Back</button>
+          <div *ngIf="focusedMode"></div>
           <div class="nav-right">
             <button class="btn-secondary" (click)="saveRolePermissions()" [disabled]="isLoading">
               💾 Save Permissions
@@ -669,7 +674,8 @@
         </div>
 
         <div class="step-nav" *ngIf="!showUserForm">
-          <button class="btn-ghost" (click)="prevStep()">← Back</button>
+          <button class="btn-ghost" (click)="prevStep()" *ngIf="!focusedMode">← Back</button>
+          <div *ngIf="focusedMode"></div>
           <button class="btn-primary" (click)="nextStep()">Next: Review →</button>
         </div>
       </div>
@@ -797,7 +803,7 @@
           <div class="final-btn-row">
             <button class="btn-ghost" (click)="prevStep()">← Back</button>
             <div class="nav-right">
-              <button class="btn-ghost" (click)="navigateToHome()">Go to Dashboard</button>
+              <button class="btn-ghost" (click)="navigateToDashboard()">← Back to Dashboard</button>
               <button
                 class="btn-primary btn-finish"
                 (click)="finalSavePermissions()"

@@ -2121,6 +2121,71 @@ main {
   color: var(--clr-text);
 }
 
+/* ── Navbar back button (shown in focused / detail pages) ─────────────────── */
+.navbar-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px 6px 10px;
+  background: transparent;
+  border: 1.5px solid var(--clr-border);
+  border-radius: 20px;
+  color: var(--clr-text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.navbar-back-btn:hover {
+  background: var(--clr-primary-light);
+  border-color: var(--clr-primary);
+  color: var(--clr-primary);
+  box-shadow: 0 0 0 3px rgba(20, 141, 158, 0.1);
+}
+.navbar-back-btn svg { flex-shrink: 0; }
+.navbar-back-label { letter-spacing: 0.01em; }
+
+/* Vertical divider between back button and brand */
+.navbar-back-divider {
+  display: inline-block;
+  width: 1.5px;
+  height: 22px;
+  background: var(--clr-border);
+  border-radius: 1px;
+  flex-shrink: 0;
+}
+
+/* Page title breadcrumb next to brand */
+.navbar-page-sep {
+  font-size: 16px;
+  color: var(--clr-text-light);
+  font-weight: 300;
+  line-height: 1;
+}
+.navbar-page-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--clr-text);
+  letter-spacing: -0.01em;
+}
+
+/* Dark mode */
+[data-theme="dark"] .navbar-back-btn {
+  border-color: var(--dk-border, #1A3352);
+  color: var(--dk-text2, #8AADBB);
+}
+[data-theme="dark"] .navbar-back-btn:hover {
+  background: rgba(20, 141, 158, 0.12);
+  border-color: var(--clr-primary);
+  color: var(--clr-primary);
+}
+[data-theme="dark"] .navbar-back-divider { background: var(--dk-border, #1A3352); }
+[data-theme="dark"] .navbar-page-sep { color: var(--dk-text3, #3D6678); }
+[data-theme="dark"] .navbar-page-title { color: var(--dk-text1, #D8E8ED); }
+
 .user-avatar {
   width: 38px;
   height: 38px;
