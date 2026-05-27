@@ -7,6 +7,19 @@
     <span>Saving…</span>
   </div>
 
+  <!-- ── Confirmation dialog ──────────────────────────────────────────────── -->
+  <div class="modal-overlay confirm-overlay" *ngIf="confirmVisible">
+    <div class="confirm-dialog" (click)="$event.stopPropagation()">
+      <div class="confirm-icon">⚠️</div>
+      <div class="confirm-title">{{ confirmTitle }}</div>
+      <div class="confirm-message">{{ confirmMessage }}</div>
+      <div class="confirm-actions">
+        <button class="btn-ghost" (click)="onConfirmNo()">Cancel</button>
+        <button class="confirm-yes-btn" (click)="onConfirmYes()">Yes, Proceed</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Shared Navbar ──────────────────────────────────────────────────── -->
   <app-navbar
     [showBack]="true"
@@ -330,8 +343,9 @@
           <button class="btn-primary" (click)="openNewClinicForm()">+ Add Clinic</button>
         </div>
 
-        <!-- Clinic form -->
-        <div class="form-card" *ngIf="showClinicForm">
+        <!-- Clinic form modal — clicking the backdrop does NOT close it -->
+        <div class="modal-overlay" *ngIf="showClinicForm">
+          <div class="form-card modal-panel" (click)="$event.stopPropagation()">
           <div class="form-card-title">
             <h2>{{ editingClinic ? 'Edit Clinic' : 'New Clinic' }}</h2>
             <button class="btn-ghost-sm" (click)="cancelClinicForm()">✕ Cancel</button>
@@ -378,19 +392,40 @@
             </div>
             <div class="timing-list">
               <div class="timing-row" *ngFor="let timing of clinicForm.timings; let i = index">
-                <div class="form-group">
-                  <label>Label</label>
-                  <input type="text" [(ngModel)]="timing.label" placeholder="FH / SH / Eve" maxlength="10" />
+                <div class="timing-top-row">
+                  <div class="form-group timing-label-group">
+                    <label>Label</label>
+                    <input type="text" [(ngModel)]="timing.label" placeholder="FH / SH / Eve" maxlength="10" />
+                  </div>
+                  <div class="timing-time-display">
+                    <span class="time-badge">{{ timing.start }}</span>
+                    <span class="time-sep">→</span>
+                    <span class="time-badge">{{ timing.end }}</span>
+                  </div>
+                  <button class="btn-danger-sm timing-del" (click)="removeTimingBlock(i)" [disabled]="clinicForm.timings.length <= 1">🗑</button>
                 </div>
-                <div class="form-group">
-                  <label>Start Time</label>
-                  <input type="time" [(ngModel)]="timing.start" />
+                <div class="timing-slider-row">
+                  <span class="slider-bound">00:00</span>
+                  <div class="range-slider-wrap">
+                    <div class="range-track">
+                      <div class="range-fill"
+                        [style.left.%]="timeToPercent(timing.start)"
+                        [style.width.%]="timeToPercent(timing.end) - timeToPercent(timing.start)">
+                      </div>
+                    </div>
+                    <input type="range" class="range-input range-start"
+                      min="0" max="1440" step="15"
+                      [value]="timeToMinutes(timing.start)"
+                      (input)="onStartChange(timing, $event, i)"
+                    />
+                    <input type="range" class="range-input range-end"
+                      min="0" max="1440" step="15"
+                      [value]="timeToMinutes(timing.end)"
+                      (input)="onEndChange(timing, $event, i)"
+                    />
+                  </div>
+                  <span class="slider-bound">24:00</span>
                 </div>
-                <div class="form-group">
-                  <label>End Time</label>
-                  <input type="time" [(ngModel)]="timing.end" />
-                </div>
-                <button class="btn-danger-sm" (click)="removeTimingBlock(i)" [disabled]="clinicForm.timings.length <= 1">🗑</button>
               </div>
             </div>
           </div>
@@ -401,7 +436,8 @@
               {{ editingClinic ? 'Update Clinic' : 'Create Clinic' }}
             </button>
           </div>
-        </div>
+          </div><!-- /.modal-panel -->
+        </div><!-- /.modal-overlay -->
 
         <div class="step-nav" *ngIf="!showClinicForm">
           <button class="btn-ghost" (click)="prevStep()" *ngIf="!focusedMode">← Back</button>
@@ -528,8 +564,9 @@
           </button>
         </div>
 
-        <!-- User form -->
-        <div class="form-card" *ngIf="showUserForm">
+        <!-- User form modal — clicking the backdrop does NOT close it -->
+        <div class="modal-overlay" *ngIf="showUserForm">
+          <div class="form-card modal-panel" (click)="$event.stopPropagation()">
           <div class="form-card-title">
             <h2>{{ editingUser ? 'Edit User' : 'New User' }}</h2>
             <button class="btn-ghost-sm" (click)="cancelUserForm()">✕ Cancel</button>
@@ -671,7 +708,8 @@
               {{ editingUser ? 'Update User' : 'Create User' }}
             </button>
           </div>
-        </div>
+          </div><!-- /.modal-panel -->
+        </div><!-- /.modal-overlay -->
 
         <div class="step-nav" *ngIf="!showUserForm">
           <button class="btn-ghost" (click)="prevStep()" *ngIf="!focusedMode">← Back</button>

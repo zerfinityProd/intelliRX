@@ -193,14 +193,26 @@ export class AdminSetupComponent implements OnInit {
 
     await this.loadSubscriptions();
 
-    // Read optional ?step=N query param from the dashboard action cards.
+    // ── Restore selected subscription from sessionStorage (survives refresh) ──
+    const savedSubId = sessionStorage.getItem('adminSetup_selectedSubId');
+    if (savedSubId) {
+      const found = this.subscriptions.find(s => s.id === savedSubId);
+      if (found) this.selectedSubscription = found;
+    }
+
+    // ── Focused mode: only when the dashboard passes ?focused=1 explicitly.
+    //    On a plain page refresh ?step=N exists but ?focused is absent,
+    //    so the sidebar and step-bar remain visible as expected.
+    const focusedParam = this.route.snapshot.queryParamMap.get('focused');
+    if (focusedParam === '1') {
+      this.focusedMode = true;
+    }
+
+    // ── Restore current step from URL (?step=N), written by syncStepToUrl ──
     const stepParam = this.route.snapshot.queryParamMap.get('step');
     if (stepParam) {
-      // Focused mode: hide sidebar + step bar, jump straight to the requested step
-      this.focusedMode = true;
       const requestedStep = parseInt(stepParam, 10);
-      if (!isNaN(requestedStep) && requestedStep >= 1 && requestedStep <= 5
-          && this.selectedSubscription) {
+      if (!isNaN(requestedStep) && requestedStep >= 1 && requestedStep <= 5) {
         this.currentStep = requestedStep;
         await this.onStepEnter(requestedStep, 1);
       }
@@ -225,6 +237,7 @@ export class AdminSetupComponent implements OnInit {
     if (step > this.currentStep && !this.validateCurrentStep()) return;
     const prev = this.currentStep;
     this.currentStep = step;
+    this.syncStepToUrl();
     await this.onStepEnter(step, prev);
   }
 
@@ -233,11 +246,30 @@ export class AdminSetupComponent implements OnInit {
     const next = this.currentStep + 1;
     if (next > 5) return;
     this.currentStep = next;
+    this.syncStepToUrl();
     await this.onStepEnter(next, next - 1);
   }
 
   prevStep() {
-    if (this.currentStep > 1) this.currentStep--;
+    if (this.currentStep > 1) {
+      this.currentStep--;
+      this.syncStepToUrl();
+    }
+  }
+
+  /**
+   * Writes the current step into the URL query-param so that a page refresh
+   * restores exactly the same step (instead of falling back to step 1).
+   * queryParamsHandling:'merge' also preserves any ?focused=1 param that
+   * was set by the dashboard when entering focused mode.
+   */
+  private syncStepToUrl(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { step: this.currentStep },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private async onStepEnter(step: number, fromStep: number) {
@@ -267,6 +299,8 @@ export class AdminSetupComponent implements OnInit {
   }
 
   navigateToDashboard() {
+    // Clear persisted admin-setup session state so the next entry starts fresh.
+    sessionStorage.removeItem('adminSetup_selectedSubId');
     this.router.navigate(['/admin-dashboard']);
   }
 
@@ -307,6 +341,8 @@ export class AdminSetupComponent implements OnInit {
     this.selectedSubscription = sub;
     this.isCreatingSubscription = false;
     this.clearMessages();
+    // Persist so a page refresh restores this selection automatically.
+    sessionStorage.setItem('adminSetup_selectedSubId', sub.id);
     this.cdr.detectChanges(); // ensure card highlights instantly
   }
 
@@ -560,6 +596,43 @@ export class AdminSetupComponent implements OnInit {
       return;
     }
     this.clinicForm.timings.splice(index, 1);
+  }
+
+  // ── Time slider helpers ──────────────────────────────────────────────────
+  timeToMinutes(time: string): number {
+    if (!time) return 0;
+    const [h, m] = time.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  minutesToTime(minutes: number): string {
+    const h = Math.floor(minutes / 60) % 25;
+    const m = minutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  timeToPercent(time: string): number {
+    return (this.timeToMinutes(time) / 1440) * 100;
+  }
+
+  onStartChange(t: { label: string; start: string; end: string }, event: Event, index: number): void {
+    const val = parseInt((event.target as HTMLInputElement).value, 10);
+    const timings = this.clinicForm.timings;
+    const maxVal = this.timeToMinutes(t.end) - 15;
+    const prevEndMinutes = index > 0 ? this.timeToMinutes(timings[index - 1].end) + 15 : 0;
+    t.start = this.minutesToTime(Math.max(prevEndMinutes, Math.min(val, maxVal)));
+    this.cdr.detectChanges();
+  }
+
+  onEndChange(t: { label: string; start: string; end: string }, event: Event, index: number): void {
+    const val = parseInt((event.target as HTMLInputElement).value, 10);
+    const timings = this.clinicForm.timings;
+    const minVal = this.timeToMinutes(t.start) + 15;
+    const nextStartMinutes = index < timings.length - 1
+      ? this.timeToMinutes(timings[index + 1].start) - 15
+      : 1440;
+    t.end = this.minutesToTime(Math.min(nextStartMinutes, Math.max(val, minVal)));
+    this.cdr.detectChanges();
   }
 
   getClinicScheduleSummary(clinic: AdminClinicState): string {

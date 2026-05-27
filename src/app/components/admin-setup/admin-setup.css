@@ -296,6 +296,86 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* ── Modal overlay ───────────────────────────────────────────────────────── */
+/* NOTE: No (click) on this element – clicking the backdrop does nothing.    */
+/* Only the explicit ✕ / Cancel buttons inside the panel can close the form. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+
+/* Higher z-index for confirm so it layers above form modals */
+.confirm-overlay { z-index: 600; }
+
+/* Scrollable centred content box */
+.modal-panel {
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: var(--ad-radius);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Confirmation dialog ─────────────────────────────────────────────────── */
+.confirm-dialog {
+  background: var(--ad-surface);
+  border: 1px solid var(--ad-border);
+  border-radius: var(--ad-radius);
+  padding: 36px 32px 28px;
+  max-width: 440px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: fadeIn 0.2s ease;
+}
+
+.confirm-icon  { font-size: 38px; line-height: 1; }
+
+.confirm-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ad-text);
+}
+
+.confirm-message {
+  font-size: 14px;
+  color: var(--ad-muted);
+  line-height: 1.6;
+  max-width: 340px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.confirm-yes-btn {
+  padding: 8px 20px;
+  background: var(--ad-danger);
+  color: #fff;
+  border: none;
+  border-radius: var(--ad-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.confirm-yes-btn:hover { opacity: 0.85; }
+
 /* Fetch bar */
 .fetch-bar {
   height: 3px;
@@ -648,18 +728,65 @@
 }
 
 /* Timing blocks */
-.timing-list { display: flex; flex-direction: column; gap: 10px; }
+.timing-list { display: flex; flex-direction: column; gap: 12px; }
 
 .timing-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
-  gap: 10px;
-  align-items: end;
+  display: flex; flex-direction: column; gap: 12px;
   background: var(--ad-bg);
   border: 1px solid var(--ad-border);
   border-radius: var(--ad-radius-sm);
-  padding: 12px 14px;
+  padding: 14px 16px;
 }
+
+.timing-top-row {
+  display: flex; align-items: flex-end; gap: 10px;
+}
+
+.timing-label-group { flex: 0 0 110px; }
+
+.timing-time-display {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+.time-badge {
+  padding: 5px 12px; border-radius: 6px;
+  background: rgba(20,141,158,0.10); border: 1px solid rgba(20,141,158,0.25);
+  color: var(--ad-primary); font-size: 14px; font-weight: 700;
+  font-family: 'Courier New', monospace; letter-spacing: 0.02em;
+}
+
+.time-sep { color: var(--ad-dim); font-size: 14px; font-weight: 600; }
+.timing-del { flex-shrink: 0; }
+
+.timing-slider-row {
+  display: flex; align-items: center; gap: 10px; padding: 4px 0;
+}
+
+.slider-bound { font-size: 11px; color: var(--ad-dim); white-space: nowrap; flex-shrink: 0; }
+
+.range-slider-wrap {
+  position: relative; flex: 1; height: 36px;
+  display: flex; align-items: center;
+}
+
+.range-track {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  height: 6px; background: var(--ad-border); border-radius: 3px; pointer-events: none;
+}
+
+.range-fill {
+  position: absolute; top: 0; height: 100%;
+  background: linear-gradient(90deg, var(--ad-primary), #0ea5e9);
+  border-radius: 3px; pointer-events: none;
+}
+
+.range-input {
+  position: absolute; left: 0; right: 0; width: 100%;
+  -webkit-appearance: none; appearance: none;
+  background: transparent; pointer-events: none; height: 36px; margin: 0;
+}
+.range-start { z-index: 3; }
+.range-end   { z-index: 4; }
 
 /* Form actions */
 .form-actions {

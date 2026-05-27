@@ -6750,3 +6750,63 @@ main {
 [data-theme="dark"] .swal2-container .swal2-backdrop-show {
     background: rgba(0, 0, 0, 0.45) !important;
 }
+
+/* ── Admin-Setup / Admin-Dashboard: Dual-range time slider (global scope for pseudo-elements) ── */
+.range-input::-webkit-slider-thumb,
+.wiz-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2.5px solid #148D9E;
+  box-shadow: 0 2px 8px rgba(20, 141, 158, 0.3);
+  cursor: pointer;
+  pointer-events: all;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.range-input::-webkit-slider-thumb:hover,
+.wiz-range-input::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 6px rgba(20, 141, 158, 0.15), 0 2px 8px rgba(20, 141, 158, 0.3);
+}
+
+.range-input::-moz-range-thumb,
+.wiz-range-input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2.5px solid #148D9E;
+  box-shadow: 0 2px 8px rgba(20, 141, 158, 0.3);
+  cursor: pointer;
+  pointer-events: all;
+  transition: transform 0.15s;
+}
+
+.range-input::-moz-range-thumb:hover,
+.wiz-range-input::-moz-range-thumb:hover {
+  transform: scale(1.15);
+}
+
+.range-input::-webkit-slider-runnable-track,
+.wiz-range-input::-webkit-slider-runnable-track {
+  background: transparent;
+}
+
+.range-input::-moz-range-track,
+.wiz-range-input::-moz-range-track {
+  background: transparent;
+}
+
+[data-theme="dark"] .range-input::-webkit-slider-thumb,
+[data-theme="dark"] .wiz-range-input::-webkit-slider-thumb {
+  background: #0C1A2E;
+}
+
+[data-theme="dark"] .range-input::-moz-range-thumb,
+[data-theme="dark"] .wiz-range-input::-moz-range-thumb {
+  background: #0C1A2E;
+}

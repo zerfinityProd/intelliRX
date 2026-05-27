@@ -231,7 +231,12 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   // ── Dashboard navigation ───────────────────────────────────────────────────
-  navigateToSetup(step: number): void { this.router.navigate(['/admin-setup'], { queryParams: { step } }); }
+  // Pass focused=1 so admin-setup knows this is a directed jump from the dashboard
+  // (shows focused mode — no sidebar/step-bar). A plain page refresh won't carry
+  // this param, so the sidebar will remain visible as expected.
+  navigateToSetup(step: number): void {
+    this.router.navigate(['/admin-setup'], { queryParams: { step, focused: '1' } });
+  }
   navigateToHome(): void { this.router.navigate(['/home']); }
 
   openWizard(): void {
@@ -786,6 +791,55 @@ export class AdminDashboardComponent implements OnInit {
       this.wizardSuccess = '✓ User deleted.';
     } catch (e: any) { this.wizardError = 'Failed to delete user: ' + e.message; }
     finally { this.wizardIsLoading = false; this.cdr.detectChanges(); }
+  }
+
+  // ── Time slider helpers ────────────────────────────────────────────────────
+  timeToMinutes(time: string): number {
+    if (!time) return 0;
+    const [h, m] = time.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  }
+
+  minutesToTime(minutes: number): string {
+    const h = Math.floor(minutes / 60) % 25;
+    const m = minutes % 60;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+  }
+
+  timeToPercent(time: string): number {
+    return (this.timeToMinutes(time) / 1440) * 100;
+  }
+
+  onStartSliderChange(
+    t: { label: string; start: string; end: string },
+    event: Event,
+    index: number
+  ): void {
+    const val = parseInt((event.target as HTMLInputElement).value, 10);
+    const timings = this.wizardClinicForm.timings;
+    // Must stay at least 15 min before this block's own end
+    const maxVal = this.timeToMinutes(t.end) - 15;
+    // Must stay at least 15 min after the previous block's end
+    const prevEndMinutes = index > 0 ? this.timeToMinutes(timings[index - 1].end) + 15 : 0;
+    t.start = this.minutesToTime(Math.max(prevEndMinutes, Math.min(val, maxVal)));
+    this.cdr.detectChanges();
+  }
+
+  onEndSliderChange(
+    t: { label: string; start: string; end: string },
+    event: Event,
+    index: number
+  ): void {
+    const val = parseInt((event.target as HTMLInputElement).value, 10);
+    const timings = this.wizardClinicForm.timings;
+    // Must stay at least 15 min after this block's own start
+    const minVal = this.timeToMinutes(t.start) + 15;
+    // Must stay at least 15 min before the next block's start
+    const nextStartMinutes = index < timings.length - 1
+      ? this.timeToMinutes(timings[index + 1].start) - 15
+      : 1440;
+    t.end = this.minutesToTime(Math.min(nextStartMinutes, Math.max(val, minVal)));
+    this.cdr.detectChanges();
   }
 
   // ── Utilities ──────────────────────────────────────────────────────────────

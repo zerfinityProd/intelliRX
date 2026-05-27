@@ -20,25 +20,7 @@
       <span class="error-icon">⚠</span><span>{{ errorMessage }}</span>
     </div>
 
-    <!-- ── Hero ─────────────────────────────────────────────────────────── -->
-    <section class="hero-section">
-      <div class="hero-glow"></div>
-      <div class="hero-content">
-        <div class="hero-left">
-          <div class="hero-badge">
-            <span class="badge-dot"></span>Admin Console
-          </div>
-          <h1 class="hero-greeting">{{ greeting }}, {{ adminName }}</h1>
-          <p class="hero-sub">Manage your clinic network from one place — configure clinics, set permissions, and onboard staff.</p>
-          <div class="hero-email">
-            <span class="hero-email-icon">✉</span>{{ adminEmail }}
-          </div>
-        </div>
-        <div class="hero-right">
-          <div class="hero-avatar"><span>{{ adminName[0]?.toUpperCase() }}</span></div>
-        </div>
-      </div>
-    </section>
+
 
     <!-- ── Subscription Banner ───────────────────────────────────────────── -->
     <section class="sub-banner" *ngIf="subscription && subscription.entity_name">
@@ -121,79 +103,33 @@
     <section class="action-cards" *ngIf="subscription && subscription.entity_name">
       <div class="action-card card-clinics" (click)="navigateToSetup(2)" id="card-clinics">
         <div class="card-glow"></div>
-        <div class="card-top">
+        <div class="card-compact">
           <div class="card-icon-wrap"><span class="card-icon">🏥</span></div>
-          <div class="card-arrow">→</div>
+          <h2 class="card-title">Clinics</h2>
+          <span class="card-stat-pill">{{ stats.clinics }}</span>
         </div>
-        <div class="card-body">
-          <h2 class="card-title">Manage Clinics</h2>
-          <p class="card-desc">Add, edit, and configure clinic locations, operating hours, and shift schedules.</p>
-        </div>
-        <div class="card-footer">
-          <div class="card-stat">
-            <span class="card-stat-val">{{ stats.clinics }}</span>
-            <span class="card-stat-label">clinics configured</span>
-          </div>
-          <div class="card-features">
-            <span class="feature-chip">Hours</span>
-            <span class="feature-chip">Schedules</span>
-            <span class="feature-chip">Locations</span>
-          </div>
-        </div>
-        <div class="card-cta"><span>Open Clinics Manager</span><span class="cta-arrow">↗</span></div>
       </div>
 
       <div class="action-card card-permissions" (click)="navigateToSetup(3)" id="card-permissions">
         <div class="card-glow"></div>
-        <div class="card-top">
+        <div class="card-compact">
           <div class="card-icon-wrap"><span class="card-icon">🔑</span></div>
-          <div class="card-arrow">→</div>
-        </div>
-        <div class="card-body">
           <h2 class="card-title">Permissions</h2>
-          <p class="card-desc">Define what doctors and receptionists can do across all clinics.</p>
+          <span class="card-stat-pill">{{ stats.doctorPermissions + stats.receptionistPermissions }}</span>
         </div>
-        <div class="card-footer">
-          <div class="card-stat">
-            <span class="card-stat-val">{{ stats.doctorPermissions + stats.receptionistPermissions }}</span>
-            <span class="card-stat-label">permissions active</span>
-          </div>
-          <div class="card-roles-preview">
-            <div class="role-preview doctor"><span class="role-dot"></span>Doctor · {{ stats.doctorPermissions }} perms</div>
-            <div class="role-preview recept"><span class="role-dot"></span>Receptionist · {{ stats.receptionistPermissions }} perms</div>
-          </div>
-        </div>
-        <div class="card-cta"><span>Configure Permissions</span><span class="cta-arrow">↗</span></div>
       </div>
 
       <div class="action-card card-users" (click)="navigateToSetup(4)" id="card-users">
         <div class="card-glow"></div>
-        <div class="card-top">
+        <div class="card-compact">
           <div class="card-icon-wrap"><span class="card-icon">👥</span></div>
-          <div class="card-arrow">→</div>
-        </div>
-        <div class="card-body">
           <h2 class="card-title">Users &amp; Staff</h2>
-          <p class="card-desc">Onboard staff members, assign them to clinics, and configure doctor availability.</p>
+          <span class="card-stat-pill">{{ stats.users }}</span>
         </div>
-        <div class="card-footer">
-          <div class="card-stat">
-            <span class="card-stat-val">{{ stats.users }}</span>
-            <span class="card-stat-label">staff members</span>
-          </div>
-          <div class="card-staff-breakdown">
-            <div class="staff-chip doctor-chip">🩺 {{ stats.doctors }} Doctors</div>
-            <div class="staff-chip recept-chip">🗂 {{ stats.receptionists }} Receptionists</div>
-          </div>
-        </div>
-        <div class="card-cta"><span>Manage Staff</span><span class="cta-arrow">↗</span></div>
       </div>
     </section>
 
-    <!-- ── Footer ─────────────────────────────────────────────────────────── -->
-    <footer class="dashboard-footer">
-      <span>IntelliRX Admin Console</span>
-    </footer>
+
 
   </div><!-- /dashboard-body -->
 </div><!-- /dashboard-wrapper -->
@@ -213,7 +149,6 @@
     <!-- ── Wizard header / step bar ────────────────────────────────────── -->
     <div class="wiz-header">
       <div class="wiz-brand">
-        <span class="wiz-brand-icon">⚕</span>
         <span class="wiz-brand-label">IntelliRX Setup</span>
       </div>
       <div class="wiz-steps">
@@ -484,20 +419,41 @@
             </div>
             <div class="wiz-timing-list">
               <div class="wiz-timing-row" *ngFor="let t of wizardClinicForm.timings; let i = index">
-                <div class="wiz-form-group">
-                  <label>Label</label>
-                  <input type="text" [(ngModel)]="t.label" placeholder="FH / SH" maxlength="10" />
+                <div class="wiz-timing-top-row">
+                  <div class="wiz-form-group wiz-timing-label-group">
+                    <label>Label</label>
+                    <input type="text" [(ngModel)]="t.label" placeholder="FH / SH" maxlength="10" />
+                  </div>
+                  <div class="wiz-timing-time-display">
+                    <span class="wiz-time-badge">{{ t.start }}</span>
+                    <span class="wiz-time-sep">→</span>
+                    <span class="wiz-time-badge">{{ t.end }}</span>
+                  </div>
+                  <button class="wiz-btn-danger-sm wiz-timing-del" (click)="removeWizardTimingBlock(i)"
+                    [disabled]="wizardClinicForm.timings.length <= 1">🗑</button>
                 </div>
-                <div class="wiz-form-group">
-                  <label>Start</label>
-                  <input type="time" [(ngModel)]="t.start" />
+                <div class="wiz-timing-slider-row">
+                  <span class="wiz-slider-bound">00:00</span>
+                  <div class="wiz-range-slider-wrap">
+                    <div class="wiz-range-track">
+                      <div class="wiz-range-fill"
+                        [style.left.%]="timeToPercent(t.start)"
+                        [style.width.%]="timeToPercent(t.end) - timeToPercent(t.start)">
+                      </div>
+                    </div>
+                    <input type="range" class="wiz-range-input wiz-range-start"
+                      min="0" max="1440" step="15"
+                      [value]="timeToMinutes(t.start)"
+                      (input)="onStartSliderChange(t, $event, i)"
+                    />
+                    <input type="range" class="wiz-range-input wiz-range-end"
+                      min="0" max="1440" step="15"
+                      [value]="timeToMinutes(t.end)"
+                      (input)="onEndSliderChange(t, $event, i)"
+                    />
+                  </div>
+                  <span class="wiz-slider-bound">24:00</span>
                 </div>
-                <div class="wiz-form-group">
-                  <label>End</label>
-                  <input type="time" [(ngModel)]="t.end" />
-                </div>
-                <button class="wiz-btn-danger-sm wiz-timing-del" (click)="removeWizardTimingBlock(i)"
-                  [disabled]="wizardClinicForm.timings.length <= 1">🗑</button>
               </div>
             </div>
           </div>
