@@ -55,7 +55,7 @@ export class HomeComponent implements OnInit {
   totalPatients: number = 0;
 
   // Doctor / clinic selection (receptionist flow)
-  userRole: 'doctor' | 'receptionist' = 'doctor';
+  userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
   dashboardDoctors: Doctor[] = [];
   selectedDashboardDoctorId: string = '';
   dashboardClinics: Array<{ id: string; label: string }> = [];

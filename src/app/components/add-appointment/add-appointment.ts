@@ -76,7 +76,7 @@ export class AddAppointmentComponent implements OnInit {
   minDate: string = todayLocalISO();
   maxDate: string = this.computeMaxDate();
 
-  userRole: 'doctor' | 'receptionist' = 'doctor';
+  userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
   canChooseDoctor: boolean = true;
   doctorContextReady: boolean = false;
 
@@ -382,7 +382,7 @@ export class AddAppointmentComponent implements OnInit {
     const endM = m === 30 ? '00' : '30';
     const endPeriod = endH >= 12 ? 'PM' : 'AM';
     const endH12 = endH % 12 || 12;
-    return `${h12}:${m.toString().padStart(2,'0')} ${period} – ${endH12}:${endM} ${endPeriod}`;
+    return `${h12}:${m.toString().padStart(2, '0')} ${period} – ${endH12}:${endM} ${endPeriod}`;
   }
 
   /** True when the slot is in the past for today's date */
@@ -582,7 +582,7 @@ export class AddAppointmentComponent implements OnInit {
 
       const toTimeSlot = (a: any): string => {
         const dt = new Date(a.datetime);
-        return `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        return `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
       };
 
       // Separate: slots booked by this patient vs. slots booked by others
@@ -634,7 +634,7 @@ export class AddAppointmentComponent implements OnInit {
     // dropdowns have actually loaded (doctorContextReady). Before that the
     // UI doesn't show the dropdowns, so blocking silently is confusing.
     if (this.canChooseDoctor && this.doctorContextReady &&
-        (!this.selectedClinicId || !this.selectedDoctorId)) {
+      (!this.selectedClinicId || !this.selectedDoctorId)) {
       return false;
     }
     if (this.phoneLookupStatus !== 'done') {
@@ -786,7 +786,7 @@ export class AddAppointmentComponent implements OnInit {
   async proceedFromNewPatient(): Promise<void> {
     // Guard: receptionist must have clinic + doctor selected
     if (this.canChooseDoctor && this.doctorContextReady &&
-        (!this.selectedClinicId || !this.selectedDoctorId)) {
+      (!this.selectedClinicId || !this.selectedDoctorId)) {
       this.errorMessage = !this.selectedClinicId
         ? 'Please select a clinic before continuing.'
         : 'Please select a doctor before continuing.';
@@ -958,7 +958,7 @@ export class AddAppointmentComponent implements OnInit {
         denyButtonText: 'Go Home',
         denyButtonColor: '#94a3b8',
         background: isDark ? '#1f1f1f' : '#ffffff',
-        color:      isDark ? '#e0e0e0' : '#1e293b',
+        color: isDark ? '#e0e0e0' : '#1e293b',
       });
 
       // Fire browser notification
@@ -1147,9 +1147,9 @@ export class AddAppointmentComponent implements OnInit {
     // We compare the parsed date's components back to the input.
     const parsed = new Date(y, mo - 1, day);
     if (isNaN(parsed.getTime()) ||
-        parsed.getFullYear() !== y ||
-        parsed.getMonth() !== mo - 1 ||
-        parsed.getDate() !== day) {
+      parsed.getFullYear() !== y ||
+      parsed.getMonth() !== mo - 1 ||
+      parsed.getDate() !== day) {
       return `Invalid date: ${dateStr} does not exist on the calendar.`;
     }
 

@@ -19,7 +19,7 @@ export class DayViewModalComponent implements OnChanges {
   @Input() bookedSlots: string[] = [];
   @Input() isLoading = false;
   @Input() isPastDate = false;
-  @Input() userRole: 'doctor' | 'receptionist' = 'doctor';
+  @Input() userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
   @Input() doctorName = '';
 
   @Output() closeModal = new EventEmitter<void>();
@@ -82,7 +82,7 @@ export class DayViewModalComponent implements OnChanges {
     for (const appt of this.appointments) {
       if (appt.datetime) {
         const dt = new Date(appt.datetime);
-        const timeStr = `${String(dt.getHours()).padStart(2,'0')}:${String(dt.getMinutes()).padStart(2,'0')}`;
+        const timeStr = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
         // For multiple appointments at same time, first one wins (scheduled > others)
         const existing = apptMap.get(timeStr);
         if (!existing || (appt.status === 'scheduled' && existing.status !== 'scheduled')) {

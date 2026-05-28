@@ -295,6 +295,35 @@ export class AuthenticationService {
         }
     }
 
+    /**
+     * Handles the redirect result from Google OAuth popup.
+     * Called after user is redirected back to the app from Google.
+     */
+    async handleGoogleRedirectResult(): Promise<User | void> {
+        try {
+            const result = this.auth.currentUser;
+            if (!result) return;
+
+            const email = result.email || '';
+            const allowed = await this.authorizationService.isEmailAllowed(email);
+            if (!allowed) {
+                await signOut(this.auth);
+                throw new Error('Access denied. You are not authorized to log in.');
+            }
+
+            const role = await this.authorizationService.getUserRole(email);
+            const dbName = await this.authorizationService.getUserName(email);
+            const user: User = { ...this.transformFirebaseUser(result), role };
+            if (dbName) user.name = dbName;
+            this.setCurrentUser(user);
+            return user;
+        } catch (error: any) {
+            if (error.message?.includes('Access denied')) throw error;
+            console.error('Google redirect result error:', error);
+            return;
+        }
+    }
+
     isLoggedIn(): boolean {
         return this.currentUserValue !== null && this.auth.currentUser !== null;
     }

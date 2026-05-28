@@ -297,11 +297,18 @@ export class AuthorizationService {
                 }
             }
 
+            // Extract subscriptionId and clinicIds from assignments
+            const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
+            const clinicIds = [...new Set(assignments.map(a => a.clinicId))];
+            const subscriptionId = subscriptionIds.length > 0 ? subscriptionIds[0] : '';
+
             const result: UserLookupResult = {
                 userId,
                 userName,
                 specialization,
                 assignments,
+                subscriptionId,
+                clinicIds,
                 role,
                 timestamp: Date.now()
             };

@@ -20,7 +20,7 @@ export class WidgetsPanelComponent {
   @Input() selectedDashboardDoctor: Doctor | null = null;
 
   // Doctor/Clinic context
-  @Input() userRole: 'doctor' | 'receptionist' = 'doctor';
+  @Input() userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
   @Input() doctorContextReady: boolean = false;
 
   // Doctor clinic switcher (doctor with multiple clinics)
