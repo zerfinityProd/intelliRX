@@ -42,7 +42,7 @@ export class LoginComponent implements OnInit {
     private readonly clinicContextService = inject(ClinicContextService);
     private readonly notificationService = inject(NotificationService);
 
-    constructor() {}
+    constructor() { }
 
     async ngOnInit(): Promise<void> {
         // Detect which login portal we are on from route data
