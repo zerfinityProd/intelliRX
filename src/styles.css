@@ -2108,8 +2108,9 @@ main {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1.5px solid var(--clr-border);
   box-shadow: none;
-  position: relative;
-  z-index: 100;
+  position: sticky;
+  top: 0;
+  z-index: 200;
 }
 
 .app-navbar .navbar-brand {

@@ -46,35 +46,42 @@ export class LoginComponent implements OnInit {
         }
     }
 
-    /** Navigate to the correct page based on role. Admins go to /admin-setup. */
+    /** Navigate to the correct page based on role. */
     private async navigateByRole(email: string): Promise<void> {
         // Prompt for notification permission (non-blocking, runs in background)
         this.promptNotificationPermission(email);
 
-        // Check if this user is a global admin → redirect to admin dashboard
-        const isAdmin = await this.checkIsAdmin(email);
-        if (isAdmin) {
+        // Fetch user's global_roles once for routing decisions
+        const globalRoles = await this.getGlobalRoles(email);
+
+        // Super Admin → dedicated super-admin dashboard
+        if (globalRoles.includes('super_admin')) {
+            this.router.navigate(['/super-admin-dashboard']);
+            return;
+        }
+
+        // Admin → admin dashboard (clinics + users only)
+        if (globalRoles.includes('admin')) {
             this.router.navigate(['/admin-dashboard']);
             return;
         }
 
-        // Resolve which subscription + clinic to use (may prompt user)
+        // Doctor / Receptionist → resolve subscription + clinic, go to /home
         await this.ensureClinicSelected(email);
         this.router.navigate(['/home']);
     }
 
-    /** Returns true if the user's Firestore doc has global_roles containing 'admin'. */
-    private async checkIsAdmin(email: string): Promise<boolean> {
+    /** Returns the global_roles array for the given email from Firestore. */
+    private async getGlobalRoles(email: string): Promise<string[]> {
         try {
             const docs = await this.firestoreApi.runQuery('', {
                 collectionId: 'users',
                 filters: [{ field: 'email', op: '==', value: email.toLowerCase().trim() }],
             });
-            if (!docs.length) return false;
-            const globalRoles: string[] = docs[0].data['global_roles'] || [];
-            return globalRoles.includes('admin');
+            if (!docs.length) return [];
+            return docs[0].data['global_roles'] || [];
         } catch {
-            return false;
+            return [];
         }
     }
 

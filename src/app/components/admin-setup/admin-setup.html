@@ -575,7 +575,7 @@
           <!-- Basic info -->
           <div class="form-grid">
             <div class="form-group">
-              <label>Email *</label>
+              <label>Email * <span class="label-hint">(same email can be used for multiple clinics)</span></label>
               <input type="email" [(ngModel)]="userForm.email" placeholder="user@example.com"
                      [disabled]="!!editingUser" />
             </div>
@@ -596,56 +596,39 @@
             </div>
           </div>
 
-          <!-- Global roles -->
-          <div class="form-section">
-            <div class="section-label">Global Roles</div>
-            <div class="role-toggles">
-              <label class="role-toggle-item">
-                <input type="checkbox" [checked]="hasGlobalRole('admin')" (change)="toggleGlobalRole('admin')" />
-                <span class="role-chip admin">Admin</span>
-              </label>
-              <label class="role-toggle-item">
-                <input type="checkbox" [checked]="hasGlobalRole('doctor')" (change)="toggleGlobalRole('doctor')" />
-                <span class="role-chip doctor">Doctor</span>
-              </label>
-              <label class="role-toggle-item">
-                <input type="checkbox" [checked]="hasGlobalRole('receptionist')" (change)="toggleGlobalRole('receptionist')" />
-                <span class="role-chip receptionist">Receptionist</span>
-              </label>
-            </div>
-          </div>
-
           <!-- Clinic assignments -->
           <div class="form-section">
             <div class="section-label-row">
               <div class="section-label">Clinic Assignments</div>
-              <button class="btn-ghost-sm" (click)="addClinicAssignment()">+ Assign to Clinic</button>
+              <button class="btn-ghost-sm" (click)="addClinicAssignment()">+ Add Another Clinic</button>
             </div>
+            <div class="section-hint">Assign this staff member to one or more clinics with different roles. One staff member cannot work at two clinics at the same time.</div>
 
             <div class="assignment-cards">
               <div class="assignment-card" *ngFor="let assignment of userForm.assignments; let ai = index">
                 <div class="assignment-header">
                   <div class="form-group assignment-clinic">
-                    <label>Clinic</label>
+                    <label>Clinic *</label>
                     <select [ngModel]="assignment.clinicId" (ngModelChange)="onAssignmentClinicChange(assignment, $event)">
+                      <option value="">-- Select Clinic --</option>
                       <option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</option>
                     </select>
                   </div>
                   <div class="form-group assignment-role">
-                    <label>Role at this Clinic</label>
+                    <label>Role at this Clinic *</label>
                     <select [(ngModel)]="assignment.role" (ngModelChange)="onAssignmentRoleChange(assignment)">
-                      <option value="doctor">Doctor</option>
                       <option value="receptionist">Receptionist</option>
+                      <option value="doctor">Doctor</option>
                     </select>
                   </div>
-                  <button class="btn-danger-sm mt-auto" (click)="removeClinicAssignment(ai)">🗑</button>
+                  <button class="btn-danger-sm mt-auto" (click)="removeClinicAssignment(ai)" *ngIf="userForm.assignments.length > 1">🗑</button>
                 </div>
 
                 <!-- Doctor availability grid -->
                 <div class="availability-section" *ngIf="assignment.role === 'doctor'">
                   <div class="avail-title">
                     Availability Schedule
-                    <span class="avail-hint">Check the time blocks when this doctor is available at this clinic</span>
+                    <span class="avail-hint">Check when this doctor is available at {{ assignment.clinicName }}</span>
                   </div>
                   <div class="avail-grid" *ngIf="getClinicForAssignment(assignment.clinicId) as clinic">
                     <!-- Header row -->
@@ -665,6 +648,7 @@
                             type="checkbox"
                             [checked]="isBlockSelected(assignment, day, timing.label)"
                             (change)="toggleAvailability(assignment, day, timing.label)"
+                            [disabled]="isBlockBookedElsewhere(assignment, day, timing.label)"
                           />
                           <span class="avail-check-visual"></span>
                         </label>
@@ -679,7 +663,7 @@
             </div>
 
             <div class="assignment-empty" *ngIf="userForm.assignments.length === 0">
-              No clinic assignments yet. Click "+ Assign to Clinic" to add one.
+              At least one clinic assignment is required. Click "+ Add Another Clinic" to add one.
             </div>
           </div>
 

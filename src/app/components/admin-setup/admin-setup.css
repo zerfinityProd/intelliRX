@@ -698,6 +698,22 @@
   letter-spacing: 0.07em;
 }
 
+.section-hint {
+  font-size: 13px;
+  color: var(--ad-muted);
+  font-weight: 400;
+  margin-top: 4px;
+}
+
+.label-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--ad-muted);
+  font-weight: 400;
+  text-transform: none;
+  margin-top: 2px;
+}
+
 .section-label-row {
   display: flex;
   align-items: center;
@@ -1200,6 +1216,12 @@
   font-weight: 700;
   color: #fff;
   line-height: 1;
+}
+.avail-checkbox input:disabled + .avail-check-visual {
+  background: var(--ad-border);
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .avail-no-clinic {

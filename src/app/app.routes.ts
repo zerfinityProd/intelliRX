@@ -2,6 +2,7 @@
 import { Routes } from '@angular/router';
 import { authGuard, doctorGuard } from './guards/auth-guard';
 import { adminGuard } from './guards/admin-guard';
+import { superAdminGuard } from './guards/super-admin-guard';
 
 export const routes: Routes = [
     {
@@ -62,11 +63,12 @@ export const routes: Routes = [
             import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),
         canActivate: [adminGuard]
     },
+    // ── Super Admin ──────────────────────────────────────────────────────────
     {
-        path: 'admin-setup',
+        path: 'super-admin-dashboard',
         loadComponent: () =>
-            import('./components/admin-setup/admin-setup').then(m => m.AdminSetupComponent),
-        canActivate: [adminGuard]
+            import('./components/super-admin-dashboard/super-admin-dashboard').then(m => m.SuperAdminDashboardComponent),
+        canActivate: [superAdminGuard]
     },
     // ── Fallback ─────────────────────────────────────────────────────────────
     {

@@ -741,6 +741,15 @@ export class AdminSetupComponent implements OnInit {
     this.conflictErrors = [];
     this.showUserForm = true;
     this.clearMessages();
+    // Pre-add one clinic assignment for new users (better UX)
+    if (this.clinics.length > 0) {
+      this.userForm.assignments = [{
+        clinicId: this.clinics[0].id,
+        clinicName: this.clinics[0].name,
+        role: 'receptionist',
+        availability: {},
+      }];
+    }
   }
 
   editUser(user: AdminUserState) {
@@ -757,6 +766,12 @@ export class AdminSetupComponent implements OnInit {
     this.conflictErrors = [];
     this.showUserForm = true;
     this.clearMessages();
+    
+    // Use setTimeout to ensure Angular has finished rendering before checking conflicts
+    setTimeout(() => {
+      this.checkConflictsSync();
+      this.cdr.detectChanges();
+    }, 0);
   }
 
   cancelUserForm() {
@@ -783,6 +798,7 @@ export class AdminSetupComponent implements OnInit {
   removeClinicAssignment(index: number) {
     this.userForm.assignments.splice(index, 1);
     this.checkConflictsSync();
+    this.cdr.detectChanges();
   }
 
   onAssignmentClinicChange(assignment: UserClinicAssignment, clinicId: string) {
@@ -791,11 +807,13 @@ export class AdminSetupComponent implements OnInit {
     assignment.clinicName = clinic?.name || clinicId;
     assignment.availability = {};
     this.checkConflictsSync();
+    this.cdr.detectChanges();
   }
 
   onAssignmentRoleChange(assignment: UserClinicAssignment) {
     if (assignment.role !== 'doctor') assignment.availability = {};
     this.checkConflictsSync();
+    this.cdr.detectChanges();
   }
 
   getClinicForAssignment(clinicId: string): AdminClinicState | undefined {
@@ -808,10 +826,20 @@ export class AdminSetupComponent implements OnInit {
     if (idx >= 0) assignment.availability[day].splice(idx, 1);
     else assignment.availability[day].push(block);
     this.checkConflictsSync();
+    this.cdr.detectChanges();
   }
 
   isBlockSelected(assignment: UserClinicAssignment, day: string, block: string): boolean {
     return (assignment.availability[day] || []).includes(block);
+  }
+
+  isBlockBookedElsewhere(currentAssignment: UserClinicAssignment, day: string, block: string): boolean {
+    if (currentAssignment.role !== 'doctor') return false;
+    return this.userForm.assignments.some(a =>
+      a !== currentAssignment &&
+      a.role === 'doctor' &&
+      (a.availability || {})[day]?.includes(block)
+    );
   }
 
   /** Synchronous conflict check across assignments within the form.
@@ -830,11 +858,21 @@ export class AdminSetupComponent implements OnInit {
         const c1 = this.getClinicForAssignment(a1.clinicId);
         const c2 = this.getClinicForAssignment(a2.clinicId);
 
-        for (const day of Object.keys(a1.availability)) {
-          const blocks1 = a1.availability[day] || [];
-          const blocks2 = (a2.availability || {})[day] || [];
+        // Safely get availability data, handling different data structures
+        const avail1 = a1.availability || {};
+        const avail2 = a2.availability || {};
+        
+        // Check all days from either assignment
+        const allDays = new Set([...Object.keys(avail1), ...Object.keys(avail2)]);
+        
+        for (const day of allDays) {
+          const blocks1 = (avail1[day] || []) as string[];
+          const blocks2 = (avail2[day] || []) as string[];
+          
+          // Find overlapping blocks
           const overlap = blocks1.filter(b => blocks2.includes(b));
-          if (overlap.length) {
+          
+          if (overlap.length > 0) {
             this.conflictErrors.push(
               `${this.weekdayLabels[day] || day}: "${c1?.name || a1.clinicId}" and "${c2?.name || a2.clinicId}" overlap on [${overlap.join(', ')}] — a doctor cannot be at two clinics simultaneously.`
             );
@@ -855,6 +893,11 @@ export class AdminSetupComponent implements OnInit {
       return;
     }
 
+    if (this.userForm.assignments.length === 0) {
+      this.errorMessage = 'At least one clinic assignment is required.';
+      return;
+    }
+
     // Hard block: intra-form schedule conflicts must be resolved before saving.
     if (this.conflictErrors.length) {
       this.errorMessage = 'Cannot save: resolve all scheduling conflicts first. A doctor cannot be scheduled at two clinics at the same time.';
@@ -863,9 +906,21 @@ export class AdminSetupComponent implements OnInit {
 
     this.isLoading = true;
     try {
+      const normalizedEmail = this.userForm.email.trim().toLowerCase();
+      
       let userId = this.userForm.userId;
+
+      // If editing an existing user, keep their ID
+      if (!userId) {
+        // Check if a user with this email already exists in the subscription
+        const existing = await this.adminService.getUserByEmail(normalizedEmail);
+        if (existing) {
+          userId = existing.id!;
+        }
+      }
+
       const userPayload: Omit<AdminUser, 'id' | 'created_at' | 'updated_at'> = {
-        email: this.userForm.email.trim().toLowerCase(),
+        email: normalizedEmail,
         name: this.userForm.name.trim(),
         specialization: this.userForm.specialization?.trim() || '',
         global_roles: this.userForm.global_roles,
@@ -875,13 +930,7 @@ export class AdminSetupComponent implements OnInit {
       if (userId) {
         await this.adminService.updateUser(userId, userPayload);
       } else {
-        const existing = await this.adminService.getUserByEmail(userPayload.email);
-        if (existing) {
-          userId = existing.id!;
-          await this.adminService.updateUser(userId, userPayload);
-        } else {
-          userId = await this.adminService.createUser(userPayload);
-        }
+        userId = await this.adminService.createUser(userPayload);
       }
 
       // ── Cross-subscription conflict check ──────────────────────────────────
@@ -933,12 +982,14 @@ export class AdminSetupComponent implements OnInit {
       // ── Sync clinic assignments ────────────────────────────────────────────
       const existingCUs = await this.adminService.getClinicUsers(this.selectedSubscription!.id);
       const userCUs = existingCUs.filter(cu => cu.user_id === userId);
-      const newClinicIds = new Set(this.userForm.assignments.map(a => a.clinicId));
-
-      // Delete removed assignments
-      for (const cu of userCUs) {
-        if (!newClinicIds.has(cu.clinic_id)) {
-          await this.adminService.deleteClinicUser(cu.id!);
+      
+      // If editing, remove assignments not in the new list
+      if (this.editingUser) {
+        const newClinicIds = new Set(this.userForm.assignments.map(a => a.clinicId));
+        for (const cu of userCUs) {
+          if (!newClinicIds.has(cu.clinic_id)) {
+            await this.adminService.deleteClinicUser(cu.id!);
+          }
         }
       }
 
