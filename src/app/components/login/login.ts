@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { FirestoreApiService } from '../../services/firestore-api.service';
@@ -26,10 +26,17 @@ export class LoginComponent implements OnInit {
     isLoading: boolean = false;
     showForgotPassword: boolean = false;
 
+    /**
+     * 'website' = Owner/SuperAdmin portal (/login)
+     * 'app'     = Clinical app portal (/app/login)
+     */
+    loginMode: 'website' | 'app' = 'website';
+
     private readonly authService = inject(AuthenticationService);
     private readonly authorizationService = inject(AuthorizationService);
     private readonly firestoreApi = inject(FirestoreApiService);
     private readonly router = inject(Router);
+    private readonly route = inject(ActivatedRoute);
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
     private readonly clinicContextService = inject(ClinicContextService);
@@ -37,51 +44,97 @@ export class LoginComponent implements OnInit {
 
     constructor() {}
 
-    ngOnInit(): void {
+    async ngOnInit(): Promise<void> {
+        // Detect which login portal we are on from route data
+        this.loginMode = this.route.snapshot.data['loginMode'] || 'website';
+
         // If the user navigated to /login explicitly, sign them out so they
-        // can pick which account to use. This prevents the "auto-redirect
-        // to home" behaviour that skipped the login screen.
+        // can pick which account to use.
         if (this.authService.isLoggedIn()) {
             this.authService.logout();
         }
+
+        try {
+            const user = await this.authService.handleGoogleRedirectResult();
+            if (user) {
+                await this.navigateByRole(user.email);
+                return;
+            }
+        } catch (error: any) {
+            if (error.message && !error.message.includes('popup was closed')) {
+                this.errorMessage = error.message;
+                this.cdr.detectChanges();
+                return;
+            }
+        }
     }
 
-    /** Navigate to the correct page based on role. */
+    /** Get the portal title for UI display */
+    get portalTitle(): string {
+        return this.loginMode === 'website'
+            ? 'Subscription Management'
+            : 'IntelliRX Application';
+    }
+
+    get portalSubtitle(): string {
+        return this.loginMode === 'website'
+            ? 'Owner & Admin Portal'
+            : 'Doctor & Staff Portal';
+    }
+
+    /** Navigate based on role, enforcing portal-specific rules */
     private async navigateByRole(email: string): Promise<void> {
-        // Prompt for notification permission (non-blocking, runs in background)
         this.promptNotificationPermission(email);
 
-        // Fetch user's global_roles once for routing decisions
-        const globalRoles = await this.getGlobalRoles(email);
-
-        // Super Admin → dedicated super-admin dashboard
-        if (globalRoles.includes('super_admin')) {
-            this.router.navigate(['/super-admin-dashboard']);
+        // Fetch user's role once for routing decisions
+        const role = await this.authorizationService.getUserRole(email);
+        if (!role) {
+            this.errorMessage = 'Could not determine user role. Please try again.';
+            this.isLoading = false;
+            this.cdr.detectChanges();
             return;
         }
 
-        // Admin → admin dashboard (clinics + users only)
-        if (globalRoles.includes('admin')) {
-            this.router.navigate(['/admin-dashboard']);
+        if (this.loginMode === 'website') {
+            // Website login: Only super_admin and subscription_owner allowed
+            if (role === 'super_admin') {
+                this.router.navigate(['/admin']);
+                return;
+            }
+            if (role === 'subscription_owner') {
+                this.router.navigate(['/owner']);
+                return;
+            }
+            // Doctors/receptionists cannot use the website login
+            this.errorMessage = 'This portal is for subscription owners only. Please use the App Login to access the clinical application.';
+            await this.authService.logout();
+            this.isLoading = false;
+            this.cdr.detectChanges();
             return;
         }
 
-        // Doctor / Receptionist → resolve subscription + clinic, go to /home
-        await this.ensureClinicSelected(email);
-        this.router.navigate(['/home']);
-    }
+        if (this.loginMode === 'app') {
+            // App login: Doctors, receptionists, and owners (as clinical staff) allowed
+            if (role === 'super_admin') {
+                this.errorMessage = 'Super Admins must use the Website Login to access the admin panel.';
+                await this.authService.logout();
+                this.isLoading = false;
+                this.cdr.detectChanges();
+                return;
+            }
 
-    /** Returns the global_roles array for the given email from Firestore. */
-    private async getGlobalRoles(email: string): Promise<string[]> {
-        try {
-            const docs = await this.firestoreApi.runQuery('', {
-                collectionId: 'users',
-                filters: [{ field: 'email', op: '==', value: email.toLowerCase().trim() }],
-            });
-            if (!docs.length) return [];
-            return docs[0].data['global_roles'] || [];
-        } catch {
-            return [];
+            // Owner/Doctor/Receptionist logging into the app
+            if (role === 'subscription_owner' || role === 'doctor' || role === 'receptionist') {
+                await this.ensureClinicSelected(email);
+                this.router.navigate(['/home']);
+                return;
+            }
+
+            this.errorMessage = 'No valid account found. Please contact your administrator.';
+            await this.authService.logout();
+            this.isLoading = false;
+            this.cdr.detectChanges();
+            return;
         }
     }
 
@@ -325,6 +378,15 @@ export class LoginComponent implements OnInit {
         } finally {
             this.isLoading = false;
             this.cdr.detectChanges();
+        }
+    }
+
+    /** Navigate to the other login portal */
+    goToOtherPortal(): void {
+        if (this.loginMode === 'website') {
+            this.router.navigate(['/app/login']);
+        } else {
+            this.router.navigate(['/login']);
         }
     }
 

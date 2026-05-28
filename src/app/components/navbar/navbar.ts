@@ -38,6 +38,11 @@ export class NavbarComponent {
     this.themeService.toggleTheme();
   }
 
+  goToLeaves(): void {
+    this.uiStateService.toggleUserMenu(); // close menu
+    this.router.navigate(['/my-leaves']);
+  }
+
   toggleUserMenu(): void {
     this.uiStateService.toggleUserMenu();
   }

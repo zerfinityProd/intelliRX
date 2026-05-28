@@ -74,6 +74,7 @@ export class ClinicService {
       email: data['email'],
       schedule,
       doctor_ids: data['doctor_ids'] || [],
+      status: data['status'] || 'active',
       created_at: data['created_at'],
       updated_at: data['updated_at']
     };

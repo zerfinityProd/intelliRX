@@ -1,0 +1,222 @@
+<div class="landing-page">
+  <!-- Navigation Header (simplified for landing page if needed, or rely on PublicLayout) -->
+
+  <!-- Hero Section -->
+  <section class="hero glass-section">
+    <div class="container hero-content">
+      <div class="hero-text">
+        <div class="badge glow-badge">v2.0 is live!</div>
+        <h1>The modern operating system for your clinic.</h1>
+        <p>Manage patients, appointments, and doctors effortlessly with a sleek, cloud-native platform designed for speed and simplicity.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary btn-lg pulse-btn" (click)="goToRegister()">Register a New Subscription</button>
+          <button class="btn btn-outline btn-lg glass-btn" (click)="goToPricing()">View Pricing</button>
+        </div>
+      </div>
+      <div class="hero-image">
+        <!-- Abstract representation of the app UI -->
+        <div class="mockup-window glass-mockup">
+          <div class="mockup-header">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="mockup-body">
+            <div class="mockup-sidebar"></div>
+            <div class="mockup-content">
+              <div class="mockup-card"></div>
+              <div class="mockup-card"></div>
+              <div class="mockup-card"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features">
+    <div class="container">
+      <div class="section-header text-center">
+        <h2>Features Designed for Modern Practices</h2>
+        <p>Built for doctors and receptionists to collaborate in real-time.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">📅</div>
+          <h3>Smart Scheduling</h3>
+          <p>Drag-and-drop calendar with automatic conflict resolution, smart availability detection, and leave management.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🏥</div>
+          <h3>Multi-Clinic Support</h3>
+          <p>Manage multiple locations from a single dashboard. Switch contexts instantly without refreshing the page.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Lightning Fast</h3>
+          <p>Built on Angular 18 with modern web technologies, ensuring your staff never waits for a page to load.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔐</div>
+          <h3>Enterprise Security</h3>
+          <p>Role-based access control (RBAC) ensuring Receptionists, Doctors, and Owners only see what they are authorized to.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💳</div>
+          <h3>SaaS Billing Built-In</h3>
+          <p>Easily manage your subscription plan, staff limits, and clinic limits straight from your Owner Dashboard.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Patient History</h3>
+          <p>Instant access to past visits, prescriptions, and medical history with powerful search capabilities.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Demo Videos Section -->
+  <section class="demos glass-section bg-alt">
+    <div class="container">
+      <div class="section-header text-center">
+        <h2>See IntelliRX in Action</h2>
+        <p>Watch these short workflow demonstrations to see how easy clinic management can be.</p>
+      </div>
+      <div class="demo-grid">
+        <!-- Demo 1 -->
+        <div class="demo-card">
+          <div class="video-placeholder">
+            <div class="play-btn">▶</div>
+            <span class="video-label">Create Appointments</span>
+          </div>
+          <h3>Effortless Scheduling</h3>
+          <p>See how receptionists can book slots in seconds.</p>
+        </div>
+        <!-- Demo 2 -->
+        <div class="demo-card">
+          <div class="video-placeholder">
+            <div class="play-btn">▶</div>
+            <span class="video-label">Add Patient</span>
+          </div>
+          <h3>Quick Onboarding</h3>
+          <p>Add new patients on the fly directly from the calendar.</p>
+        </div>
+        <!-- Demo 3 -->
+        <div class="demo-card">
+          <div class="video-placeholder">
+            <div class="play-btn">▶</div>
+            <span class="video-label">Global Search</span>
+          </div>
+          <h3>Find Anyone Instantly</h3>
+          <p>Use the global search panel to pull up patient records.</p>
+        </div>
+        <!-- Demo 4 -->
+        <div class="demo-card">
+          <div class="video-placeholder">
+            <div class="play-btn">▶</div>
+            <span class="video-label">Add Visit & Prescription</span>
+          </div>
+          <h3>Doctor's Workflow</h3>
+          <p>How doctors record clinical data and prescriptions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Details Section -->
+  <section class="pricing-summary">
+    <div class="container">
+      <div class="section-header text-center">
+        <h2>Simple, Transparent Pricing</h2>
+        <p>Choose the plan that best fits your clinic chain.</p>
+      </div>
+      <div class="pricing-cards">
+        <div class="pricing-card">
+          <h3>Starter</h3>
+          <div class="price"><span>$</span>29<span>/mo</span></div>
+          <ul>
+            <li>1 Clinic Location</li>
+            <li>Up to 2 Doctors</li>
+            <li>Basic Support</li>
+          </ul>
+        </div>
+        <div class="pricing-card featured">
+          <div class="badge">Most Popular</div>
+          <h3>Pro</h3>
+          <div class="price"><span>$</span>79<span>/mo</span></div>
+          <ul>
+            <li>Up to 3 Clinic Locations</li>
+            <li>Up to 10 Doctors</li>
+            <li>Priority Support</li>
+            <li>Leave Management</li>
+          </ul>
+        </div>
+        <div class="pricing-card">
+          <h3>Enterprise</h3>
+          <div class="price"><span>$</span>199<span>/mo</span></div>
+          <ul>
+            <li>Unlimited Clinics</li>
+            <li>Unlimited Doctors</li>
+            <li>24/7 Dedicated Support</li>
+            <li>Custom Data Export</li>
+          </ul>
+        </div>
+      </div>
+      <div class="text-center mt-4">
+        <button class="btn btn-primary btn-lg pulse-btn" (click)="goToRegister()">Start your free trial today</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- About Us & About Zerfinity -->
+  <section class="about-sections bg-alt">
+    <div class="container">
+      <div class="about-grid">
+        <div class="about-card">
+          <h2>About Us</h2>
+          <p>
+            IntelliRX was born out of a simple observation: modern healthcare professionals are held back by legacy software. 
+            We are a team of technologists and healthcare consultants dedicated to building the most intuitive, fast, and secure 
+            practice management software in the world. Our mission is to let doctors focus on patients, while we handle the pixels.
+          </p>
+        </div>
+        <div class="about-card zerfinity-card">
+          <h2>About Zerfinity</h2>
+          <p>
+            IntelliRX is a proud product of <strong>Zerfinity</strong>, a leading software engineering firm specializing in cutting-edge 
+            SaaS products and enterprise digital transformation.
+          </p>
+          <a href="https://www.zerfinity.com" target="_blank" class="zerfinity-link">
+            Visit www.zerfinity.com <span>→</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQs -->
+  <section class="faqs">
+    <div class="container">
+      <div class="section-header text-center">
+        <h2>Frequently Asked Questions</h2>
+      </div>
+      <div class="faq-list">
+        <div class="faq-item">
+          <h4>How do I change my subscription plan?</h4>
+          <p>As a subscription owner, you can easily change your plan by logging in and navigating to the "Billing" tab in your Owner Dashboard.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Can doctors work at multiple clinics?</h4>
+          <p>Yes! Our platform natively supports doctors operating across multiple clinics. They simply select their active clinic upon login.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Is my patient data secure?</h4>
+          <p>Absolutely. We utilize enterprise-grade security on Google Cloud Platform (Firebase) with strict Role-Based Access Control rules.</p>
+        </div>
+        <div class="faq-item">
+          <h4>Can I manage staff leaves?</h4>
+          <p>Yes, the Pro and Enterprise plans include a comprehensive Leave Management module that automatically blocks out unavailable slots.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,152 @@
+<div class="owner-layout">
+  <nav class="owner-sidebar">
+    <div class="sidebar-brand">✨ IntelliRX Owner</div>
+    <ul class="nav-links">
+      <li [class.active]="activeTab === 'clinics'" (click)="activeTab = 'clinics'">🏥 Clinics</li>
+      <li [class.active]="activeTab === 'staff'" (click)="activeTab = 'staff'">👥 Staff</li>
+      <li [class.active]="activeTab === 'billing'" (click)="activeTab = 'billing'">💳 Billing</li>
+    </ul>
+    <div class="nav-bottom">
+      <button class="btn btn-outline" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="owner-main">
+    <header class="main-header">
+      <h2>{{ activeTab | titlecase }} Management</h2>
+      <button class="btn btn-primary" *ngIf="activeTab === 'clinics'">+ Add Clinic</button>
+      <button class="btn btn-primary" *ngIf="activeTab === 'staff'" (click)="showInviteModal = true">+ Invite Staff</button>
+    </header>
+
+    <!-- Clinics Tab -->
+    <div class="content-panel" *ngIf="activeTab === 'clinics'">
+      <div class="data-grid">
+        <div class="card" *ngFor="let clinic of clinics">
+          <h3>{{ clinic.name }}</h3>
+          <p>{{ clinic.address }}</p>
+          <div class="card-actions mt-3">
+            <button class="btn btn-outline btn-sm" (click)="editClinic(clinic)">Edit Schedule</button>
+            <button class="btn btn-outline btn-sm" style="color:red; border-color:red;" (click)="deleteClinic(clinic)">Delete</button>
+            <button class="btn btn-primary btn-sm" (click)="openClinic(clinic.id)">Launch App</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Staff Tab -->
+    <div class="content-panel" *ngIf="activeTab === 'staff'">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Role</th>
+            <th>Clinics</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of staff">
+            <td>{{ user.name }}</td>
+            <td><span class="role-badge">{{ user.role }}</span></td>
+            <td>{{ user.clinics.length }} Clinic(s)</td>
+            <td><span class="status-badge" [class.inactive]="user.status !== 'active'">{{ user.status }}</span></td>
+            <td>
+              <button class="btn btn-outline btn-sm" (click)="editStaff(user)">Configure</button>
+              <button class="btn btn-outline btn-sm" style="color:red; border-color:red; margin-left:8px;" (click)="deleteStaff(user)">Remove</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Billing Tab -->
+    <div class="content-panel" *ngIf="activeTab === 'billing' && subscription">
+      <div class="billing-card">
+        <h3>Current Plan: {{ subscription.plan | titlecase }}</h3>
+        <p *ngIf="subscription.plan === 'Starter'">$29/mo, 1 Clinic Location, Up to 2 Doctors</p>
+        <p *ngIf="subscription.plan === 'Pro'">$79/mo, Up to 3 Clinic Locations, Up to 10 Doctors</p>
+        <p *ngIf="subscription.plan === 'Enterprise'">$199/mo, Unlimited Clinics, Unlimited Doctors</p>
+        <button class="btn btn-outline mt-3" (click)="showPlanModal = true">Change Plan</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Invite Staff Modal -->
+<div class="modal-overlay" *ngIf="showInviteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Invite Staff Member</h3>
+      <button class="close-btn" (click)="showInviteModal = false">×</button>
+    </div>
+    <div class="modal-body">
+      <form (submit)="inviteStaff($event)">
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" [(ngModel)]="inviteForm.email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label>Name</label>
+          <input type="text" [(ngModel)]="inviteForm.name" name="name" required>
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select [(ngModel)]="inviteForm.role" name="role" class="form-select">
+            <option value="doctor">Doctor</option>
+            <option value="receptionist">Receptionist</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Assign to Clinic</label>
+          <select [(ngModel)]="inviteForm.clinicId" name="clinicId" class="form-select" required>
+            <option *ngFor="let clinic of clinics" [value]="clinic.id">{{ clinic.name }}</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" [disabled]="isInviting" style="width: 100%;">
+          {{ isInviting ? 'Sending Invite...' : 'Send Invite' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Change Plan Modal -->
+<div class="modal-overlay" *ngIf="showPlanModal">
+  <div class="modal-content" style="background: var(--bg-primary); border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); padding: 1.5rem;">
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+      <h3 style="margin: 0;">Change Subscription Plan</h3>
+      <button class="close-btn" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;" (click)="showPlanModal = false">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group" style="margin-bottom: 1.5rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">Select New Plan</label>
+        <select [(ngModel)]="selectedPlan" class="form-control" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-secondary);">
+          <option value="Starter">Starter ($29/mo)</option>
+          <option value="Pro">Pro ($79/mo)</option>
+          <option value="Enterprise">Enterprise ($199/mo)</option>
+        </select>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 1rem;">
+        <button class="btn btn-secondary" style="padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; background: var(--bg-secondary);" (click)="showPlanModal = false">Cancel</button>
+        <button class="btn btn-primary" style="padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; background: var(--accent-primary); color: white;" (click)="changePlan()" [disabled]="isChangingPlan">
+          {{ isChangingPlan ? 'Updating...' : 'Confirm Change' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<app-clinic-config-modal 
+  [show]="showClinicConfigModal" 
+  [clinic]="selectedClinicForConfig"
+  (closeEvent)="showClinicConfigModal = false"
+  (savedEvent)="onClinicConfigSaved()">
+</app-clinic-config-modal>
+
+<app-staff-config-modal
+  [show]="showStaffConfigModal"
+  [staff]="selectedStaffForConfig"
+  (closeEvent)="showStaffConfigModal = false"
+  (savedEvent)="onStaffConfigSaved()">
+</app-staff-config-modal>

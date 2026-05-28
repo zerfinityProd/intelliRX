@@ -1,0 +1,67 @@
+<div class="pricing-page">
+  <div class="container pricing-header">
+    <h1>Simple, transparent pricing</h1>
+    <p>Choose the plan that best fits your clinic's needs.</p>
+  </div>
+
+  <div class="container">
+    <div class="pricing-grid">
+      <!-- Basic Plan -->
+      <div class="pricing-card">
+        <h3>Basic</h3>
+        <div class="price">
+          <span class="currency">$</span>
+          <span class="amount">29</span>
+          <span class="period">/mo</span>
+        </div>
+        <p class="plan-desc">Perfect for independent practitioners.</p>
+        <ul class="features-list">
+          <li>1 Clinic Location</li>
+          <li>Up to 2 Doctors</li>
+          <li>50 Appointments / day</li>
+          <li>Basic Analytics</li>
+        </ul>
+        <button class="btn btn-outline btn-full" (click)="selectPlan('basic')">Get Started</button>
+      </div>
+
+      <!-- Pro Plan -->
+      <div class="pricing-card popular">
+        <div class="popular-badge">Most Popular</div>
+        <h3>Pro</h3>
+        <div class="price">
+          <span class="currency">$</span>
+          <span class="amount">79</span>
+          <span class="period">/mo</span>
+        </div>
+        <p class="plan-desc">Ideal for growing polyclinics.</p>
+        <ul class="features-list">
+          <li>3 Clinic Locations</li>
+          <li>Up to 10 Doctors</li>
+          <li>Unlimited Appointments</li>
+          <li>Advanced Analytics</li>
+          <li>Priority Support</li>
+        </ul>
+        <button class="btn btn-primary btn-full" (click)="selectPlan('pro')">Get Started</button>
+      </div>
+
+      <!-- Enterprise Plan -->
+      <div class="pricing-card">
+        <h3>Enterprise</h3>
+        <div class="price">
+          <span class="currency">$</span>
+          <span class="amount">199</span>
+          <span class="period">/mo</span>
+        </div>
+        <p class="plan-desc">For large healthcare networks.</p>
+        <ul class="features-list">
+          <li>Unlimited Locations</li>
+          <li>Unlimited Doctors</li>
+          <li>Unlimited Appointments</li>
+          <li>Custom Integrations</li>
+          <li>Dedicated Account Manager</li>
+        </ul>
+        <button class="btn btn-outline btn-full" (click)="selectPlan('enterprise')">Contact Sales</button>
+      </div>
+    </div>
+  </div>
+</div>

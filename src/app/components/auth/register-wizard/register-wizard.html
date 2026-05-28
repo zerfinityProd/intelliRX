@@ -1,0 +1,75 @@
+<div class="register-page">
+  <div class="container">
+    <div class="wizard-card">
+      <div class="wizard-header">
+        <div class="logo">✨ IntelliRX</div>
+        <h2>Create your workspace</h2>
+        <div class="steps-indicator">
+          <div class="step" [class.active]="currentStep >= 1">1. Account</div>
+          <div class="step" [class.active]="currentStep >= 2">2. Payment</div>
+          <div class="step" [class.active]="currentStep >= 3">3. Setup</div>
+        </div>
+      </div>
+
+      <!-- Step 1: Account -->
+      <div class="wizard-body" *ngIf="currentStep === 1">
+        <form (submit)="nextStep($event)">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" [(ngModel)]="account.name" name="name" required placeholder="Dr. John Doe">
+          </div>
+          <div class="form-group">
+            <label>Work Email</label>
+            <input type="email" [(ngModel)]="account.email" name="email" required placeholder="john@clinic.com">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" [(ngModel)]="account.password" name="password" required minlength="6" placeholder="••••••••">
+          </div>
+          <div class="form-group">
+            <label>Clinic / Network Name</label>
+            <input type="text" [(ngModel)]="account.clinicName" name="clinicName" required placeholder="City Health Clinic">
+          </div>
+          <button type="submit" class="btn btn-primary btn-full">Continue to Payment</button>
+        </form>
+      </div>
+
+      <!-- Step 2: Payment (Mock) -->
+      <div class="wizard-body" *ngIf="currentStep === 2">
+        <div class="plan-summary">
+          <h3>{{ selectedPlan | titlecase }} Plan</h3>
+          <p>You'll be billed monthly.</p>
+        </div>
+        <form (submit)="processPayment($event)">
+          <div class="form-group">
+            <label>Card Number</label>
+            <input type="text" placeholder="0000 0000 0000 0000" required>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Expiry Date</label>
+              <input type="text" placeholder="MM/YY" required>
+            </div>
+            <div class="form-group">
+              <label>CVC</label>
+              <input type="text" placeholder="123" required>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" [disabled]="isProcessing">
+            {{ isProcessing ? 'Processing...' : 'Subscribe & Finish' }}
+          </button>
+          <button type="button" class="btn btn-outline btn-full mt-2" (click)="currentStep = 1" [disabled]="isProcessing">Back</button>
+        </form>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div class="wizard-body success-state" *ngIf="currentStep === 3">
+        <div class="success-icon">🎉</div>
+        <h3>Workspace created!</h3>
+        <p>Redirecting you to setup your clinics and staff...</p>
+      </div>
+
+      <div class="error-msg" *ngIf="errorMessage">{{ errorMessage }}</div>
+    </div>
+  </div>
+</div>

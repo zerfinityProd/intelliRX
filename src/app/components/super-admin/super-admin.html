@@ -1,0 +1,54 @@
+<div class="admin-layout">
+  <nav class="admin-sidebar">
+    <div class="sidebar-brand">IntelliRX Admin</div>
+    <ul class="nav-links">
+      <li class="active">🏢 Subscriptions</li>
+      <li>⚙️ Global Configs</li>
+    </ul>
+    <div class="nav-bottom">
+      <button class="btn btn-outline" (click)="logout()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="admin-main">
+    <header class="main-header">
+      <h2>All Subscriptions</h2>
+    </header>
+
+    <div class="content-panel">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-title">Total Subscriptions</div>
+          <div class="stat-value">{{ subscriptions.length }}</div>
+        </div>
+      </div>
+      
+      <table class="data-table mt-4">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Plan</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let sub of subscriptions">
+            <td class="id-col">{{ sub.id.substring(0,8) }}...</td>
+            <td>{{ sub.name }}</td>
+            <td><span class="plan-badge">{{ sub.plan }}</span></td>
+            <td><span class="status-badge" [class.inactive]="sub.status !== 'active'">{{ sub.status }}</span></td>
+            <td>{{ sub.created_at | date }}</td>
+            <td>
+              <button class="btn btn-outline btn-sm" *ngIf="sub.status === 'active'" (click)="updateSubscriptionStatus(sub.id, 'inactive')">Deactivate</button>
+              <button class="btn btn-outline btn-sm" *ngIf="sub.status === 'inactive'" (click)="updateSubscriptionStatus(sub.id, 'active')">Activate</button>
+              <button class="btn btn-outline btn-sm text-danger" style="margin-left: 8px;" *ngIf="sub.status !== 'cancelled'" (click)="updateSubscriptionStatus(sub.id, 'cancelled')">Cancel Plan</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>

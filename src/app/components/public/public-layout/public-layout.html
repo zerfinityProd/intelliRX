@@ -1,0 +1,53 @@
+<div class="public-layout">
+  <nav class="public-nav">
+    <div class="container nav-content">
+      <div class="logo">
+        <span class="logo-icon">✨</span>
+        <span class="logo-text">IntelliRX</span>
+      </div>
+      <div class="nav-links">
+        <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Home</a>
+        <a routerLink="/pricing" routerLinkActive="active">Pricing</a>
+      </div>
+      <div class="nav-actions">
+        <button class="btn btn-login" (click)="goToOwnerLogin()">Owner Login</button>
+        <button class="btn btn-app-login" (click)="goToAppLogin()">App Login</button>
+        <button class="btn btn-primary" (click)="goToRegister()">Get Started</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="public-main">
+    <router-outlet></router-outlet>
+  </main>
+
+  <footer class="public-footer">
+    <div class="container footer-content">
+      <div class="footer-brand">
+        <span class="logo-icon">✨</span>
+        <span class="logo-text">IntelliRX</span>
+        <p>Next-gen clinic management for modern healthcare.</p>
+      </div>
+      <div class="footer-links">
+        <div class="link-group">
+          <h4>Product</h4>
+          <a routerLink="/">Features</a>
+          <a routerLink="/pricing">Pricing</a>
+        </div>
+        <div class="link-group">
+          <h4>Company</h4>
+          <a href="https://www.zerfinity.com" target="_blank">Zerfinity</a>
+          <a href="#">Contact</a>
+        </div>
+        <div class="link-group">
+          <h4>Legal</h4>
+          <a href="#">Privacy</a>
+          <a href="#">Terms</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom container">
+      &copy; 2026 IntelliRX by Zerfinity. All rights reserved.
+    </div>
+  </footer>
+</div>

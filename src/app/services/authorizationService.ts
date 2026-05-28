@@ -30,7 +30,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
 };
 
 /** Known role names */
-const KNOWN_ROLES: string[] = ['doctor', 'receptionist'];
+const KNOWN_ROLES: string[] = ['doctor', 'receptionist', 'subscription_owner', 'super_admin'];
 
 /** A single subscription↔clinic link for a user */
 export interface ClinicAssignment {
@@ -49,7 +49,9 @@ interface UserLookupResult {
     specialization: string;
     /** All subscription↔clinic assignments from clinic_users */
     assignments: ClinicAssignment[];
-    role: 'doctor' | 'receptionist';
+    subscriptionId: string;
+    clinicIds: string[];
+    role: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
     timestamp: number;
 }
 
@@ -194,7 +196,7 @@ export class AuthorizationService {
             };
 
             // Extract role from global_roles array
-            let role: 'doctor' | 'receptionist' = 'doctor';
+            let role: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
             const globalRoles = getField(userData, 'global_roles');
             if (globalRoles && Array.isArray(globalRoles)) {
                 for (const r of globalRoles) {
@@ -203,7 +205,7 @@ export class AuthorizationService {
                         break;
                     }
                     if (KNOWN_ROLES.includes(r)) {
-                        role = r as 'doctor' | 'receptionist';
+                        role = r as 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
                         break;
                     }
                 }
@@ -277,7 +279,7 @@ export class AuthorizationService {
                             break;
                         }
                         if (KNOWN_ROLES.includes(r)) {
-                            role = r as 'doctor' | 'receptionist';
+                            role = r as 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
                             break;
                         }
                     }
@@ -391,7 +393,7 @@ export class AuthorizationService {
     /**
      * Returns the role for a given email.
      */
-    async getUserRole(email: string): Promise<'doctor' | 'receptionist'> {
+    async getUserRole(email: string): Promise<'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin'> {
         try {
             const result = await this.lookupUser(email);
             return result?.role ?? 'doctor';

@@ -7,7 +7,10 @@
         <path d="M18 25 L23 30 L33 20" stroke="#148D9E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <h1 class="h3 fw-bold mb-1 login-brand-title">IntelliRx</h1>
-      <p class="text-muted mb-0 fw-medium" style="font-size:13px">Patient Management System</p>
+      <p class="text-muted mb-0 fw-medium" style="font-size:13px">{{ portalTitle }}</p>
+      <p class="portal-badge" [class.portal-badge--app]="loginMode === 'app'">
+        {{ portalSubtitle }}
+      </p>
     </div>
 
     <!-- ── Forgot Password View ── -->
@@ -134,8 +137,8 @@
         </button>
       </form>
 
-      <!-- Register Form -->
-      <form *ngIf="!isLoginMode" (ngSubmit)="onRegister()" #registerForm="ngForm">
+      <!-- Register Form (only shown on website portal — registration creates a subscription) -->
+      <form *ngIf="!isLoginMode && loginMode === 'website'" (ngSubmit)="onRegister()" #registerForm="ngForm">
         <div class="mb-3">
           <label for="register-name" class="form-label fw-semibold" style="font-size:13px">Full Name</label>
           <input
@@ -190,8 +193,8 @@
         </button>
       </form>
 
-      <!-- Toggle sign-in / sign-up -->
-      <div class="text-center mt-3">
+      <!-- Toggle sign-in / sign-up (only on website portal) -->
+      <div class="text-center mt-3" *ngIf="loginMode === 'website'">
         <p *ngIf="isLoginMode" class="text-muted mb-0" style="font-size:13px">
           Don't have an account?
           <a href="javascript:void(0)" (click)="toggleMode()" class="fw-semibold">Sign up</a>
@@ -199,6 +202,18 @@
         <p *ngIf="!isLoginMode" class="text-muted mb-0" style="font-size:13px">
           Already have an account?
           <a href="javascript:void(0)" (click)="toggleMode()" class="fw-semibold">Sign in</a>
+        </p>
+      </div>
+
+      <!-- Portal Switcher -->
+      <div class="portal-switcher text-center mt-3">
+        <p class="text-muted mb-0" style="font-size:13px" *ngIf="loginMode === 'website'">
+          Looking for the clinical app?
+          <a href="javascript:void(0)" (click)="goToOtherPortal()" class="fw-semibold">App Login →</a>
+        </p>
+        <p class="text-muted mb-0" style="font-size:13px" *ngIf="loginMode === 'app'">
+          Are you a subscription owner?
+          <a href="javascript:void(0)" (click)="goToOtherPortal()" class="fw-semibold">← Owner Login</a>
         </p>
       </div>
     </div>

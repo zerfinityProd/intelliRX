@@ -6,7 +6,7 @@ import { filter, take, switchMap, from, of, map } from 'rxjs';
 
 /**
  * Base auth guard — only checks if user is logged in.
- * Redirects to /login if not authenticated.
+ * Redirects to /app/login if not authenticated (since protected routes are app routes).
  * Used for routes accessible by ALL roles (e.g. /add-appointment, /appointments).
  */
 export const authGuard: CanActivateFn = () => {
@@ -18,7 +18,7 @@ export const authGuard: CanActivateFn = () => {
         take(1),
         map(() => {
             if (authService.isLoggedIn()) return true;
-            router.navigate(['/login']);
+            router.navigate(['/app/login']);
             return false;
         })
     );
@@ -27,7 +27,7 @@ export const authGuard: CanActivateFn = () => {
 /**
  * Doctor guard — allows only users with role === 'doctor'.
  * Redirects receptionists to /home.
- * Redirects unauthenticated users to /login.
+ * Redirects unauthenticated users to /app/login.
  */
 export const doctorGuard: CanActivateFn = () => {
     const authService = inject(AuthenticationService);
@@ -39,7 +39,7 @@ export const doctorGuard: CanActivateFn = () => {
         take(1),
         switchMap(() => {
             if (!authService.isLoggedIn()) {
-                router.navigate(['/login']);
+                router.navigate(['/app/login']);
                 return of(false);
             }
             const email = authService.currentUserValue?.email || '';
@@ -59,7 +59,7 @@ export const doctorGuard: CanActivateFn = () => {
 /**
  * Receptionist guard — allows only users with role === 'receptionist'.
  * Redirects doctors to /home.
- * Redirects unauthenticated users to /login.
+ * Redirects unauthenticated users to /app/login.
  */
 export const receptionGuard: CanActivateFn = () => {
     const authService = inject(AuthenticationService);
@@ -71,7 +71,7 @@ export const receptionGuard: CanActivateFn = () => {
         take(1),
         switchMap(() => {
             if (!authService.isLoggedIn()) {
-                router.navigate(['/login']);
+                router.navigate(['/app/login']);
                 return of(false);
             }
             const email = authService.currentUserValue?.email || '';

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { ClinicService } from './clinicService';
 import { AuthorizationService } from './authorizationService';
 import { ClinicContextService } from './clinicContextService';
+import { LeaveService } from './leave';
 import { DEFAULT_SYSTEM_SETTINGS } from '../config/systemSettings';
 import {
     generateTimeSlotsFromConfig,
@@ -26,6 +27,7 @@ export class TimeSlotService {
     private clinicService = inject(ClinicService);
     private authorizationService = inject(AuthorizationService);
     private clinicContextService = inject(ClinicContextService);
+    private leaveService = inject(LeaveService);
 
     /**
      * Generate the list of available time slots for a clinic on a given date,
@@ -84,6 +86,28 @@ export class TimeSlotService {
                     const dayKey = getWeekdayKey(effectiveDate);
                     const dayLabels = availability[dayKey];
                     timings = filterTimingsByAvailability(timings, dayLabels, true);
+                }
+
+                // Check for leaves
+                const doctorId = await this.authorizationService.getUserId(doctorEmail);
+                if (doctorId) {
+                    // format date to YYYY-MM-DD
+                    const y = effectiveDate.getFullYear();
+                    const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(effectiveDate.getDate()).padStart(2, '0');
+                    const isoDate = `${y}-${m}-${d}`;
+                    
+                    const leaves = await this.leaveService.getDoctorLeaves(doctorId, id, isoDate);
+                    const approvedLeaves = leaves.filter(l => l.status === 'approved');
+                    
+                    for (const leave of approvedLeaves) {
+                        if (leave.timing === 'All Day') {
+                            return []; // No slots
+                        } else {
+                            // Filter out the specific timing (FH or SH)
+                            timings = timings.filter(t => t.label !== leave.timing);
+                        }
+                    }
                 }
             }
 
