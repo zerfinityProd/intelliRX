@@ -114,7 +114,7 @@ export class LoginComponent implements OnInit {
         }
 
         if (this.loginMode === 'app') {
-            // App login: Doctors, receptionists, and owners (as clinical staff) allowed
+            // App login: Only doctors and receptionists allowed
             if (role === 'super_admin') {
                 this.errorMessage = 'Super Admins must use the Website Login to access the admin panel.';
                 await this.authService.logout();
@@ -123,8 +123,17 @@ export class LoginComponent implements OnInit {
                 return;
             }
 
-            // Owner/Doctor/Receptionist logging into the app
-            if (role === 'subscription_owner' || role === 'doctor' || role === 'receptionist') {
+            // Block admins/owners from the clinical app portal
+            if (role === 'subscription_owner') {
+                this.errorMessage = 'Admins must use the Owner Login to access the admin panel.';
+                await this.authService.logout();
+                this.isLoading = false;
+                this.cdr.detectChanges();
+                return;
+            }
+
+            // Doctor/Receptionist logging into the app
+            if (role === 'doctor' || role === 'receptionist') {
                 await this.ensureClinicSelected(email);
                 this.router.navigate(['/home']);
                 return;

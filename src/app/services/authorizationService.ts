@@ -30,7 +30,7 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
 };
 
 /** Known role names */
-const KNOWN_ROLES: string[] = ['doctor', 'receptionist', 'subscription_owner', 'super_admin'];
+const KNOWN_ROLES: string[] = ['doctor', 'receptionist', 'subscription_owner', 'super_admin', 'admin'];
 
 /** A single subscription↔clinic link for a user */
 export interface ClinicAssignment {
@@ -204,6 +204,11 @@ export class AuthorizationService {
                         role = 'receptionist';
                         break;
                     }
+                    // Treat 'admin' as 'subscription_owner' — they share the same portal access
+                    if (r === 'admin') {
+                        role = 'subscription_owner';
+                        break;
+                    }
                     if (KNOWN_ROLES.includes(r)) {
                         role = r as 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
                         break;
@@ -276,6 +281,11 @@ export class AuthorizationService {
                         }
                         if (r === 'doctor') {
                             role = 'doctor';
+                            break;
+                        }
+                        // Treat 'admin' as 'subscription_owner'
+                        if (r === 'admin') {
+                            role = 'subscription_owner';
                             break;
                         }
                         if (KNOWN_ROLES.includes(r)) {
