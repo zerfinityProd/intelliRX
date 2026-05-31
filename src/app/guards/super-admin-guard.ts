@@ -6,8 +6,8 @@ import { FirestoreApiService } from '../services/firestore-api.service';
 import { filter, take, switchMap, from, of } from 'rxjs';
 
 /**
- * Super Admin guard — allows only users whose `users` document contains
- * `global_roles` array that includes 'super_admin'.
+ * Z-Admin guard — allows only users whose `users` document contains
+ * `global_roles` array that includes 'z_admin'.
  *
  * Redirects unauthenticated users to /login.
  * Redirects non-super-admins to /admin-dashboard (if admin) or /home.
@@ -38,7 +38,7 @@ export const superAdminGuard: CanActivateFn = () => {
                         return false;
                     }
                     const globalRoles: string[] = docs[0].data['global_roles'] || [];
-                    if (!globalRoles.includes('super_admin')) {
+                    if (!globalRoles.includes('z_admin')) {
                         // If they are a regular admin, send to admin dashboard
                         if (globalRoles.includes('admin')) {
                             router.navigate(['/admin-dashboard']);

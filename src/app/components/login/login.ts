@@ -72,14 +72,14 @@ export class LoginComponent implements OnInit {
     /** Get the portal title for UI display */
     get portalTitle(): string {
         return this.loginMode === 'website'
-            ? 'Subscription Management'
+            ? 'Z-Admin Portal'
             : 'IntelliRX Application';
     }
 
     get portalSubtitle(): string {
         return this.loginMode === 'website'
-            ? 'Owner & Admin Portal'
-            : 'Doctor & Staff Portal';
+            ? 'Z-Admin Access Only'
+            : 'Admin, Doctor & Staff Portal';
     }
 
     /** Navigate based on role, enforcing portal-specific rules */
@@ -96,17 +96,13 @@ export class LoginComponent implements OnInit {
         }
 
         if (this.loginMode === 'website') {
-            // Website login: Only super_admin and subscription_owner allowed
-            if (role === 'super_admin') {
+            // Website login: Only z_admin allowed
+            if (role === 'z_admin') {
                 this.router.navigate(['/admin']);
                 return;
             }
-            if (role === 'subscription_owner') {
-                this.router.navigate(['/owner']);
-                return;
-            }
-            // Doctors/receptionists cannot use the website login
-            this.errorMessage = 'This portal is for subscription owners only. Please use the App Login to access the clinical application.';
+            // Everyone else must use App Login
+            this.errorMessage = 'This portal is for Z-Admin only. Please use the App Login.';
             await this.authService.logout();
             this.isLoading = false;
             this.cdr.detectChanges();
@@ -114,21 +110,19 @@ export class LoginComponent implements OnInit {
         }
 
         if (this.loginMode === 'app') {
-            // App login: Only doctors and receptionists allowed
-            if (role === 'super_admin') {
-                this.errorMessage = 'Super Admins must use the Website Login to access the admin panel.';
+            // App login: admin, doctors and receptionists allowed
+            if (role === 'z_admin') {
+                this.errorMessage = 'Z-Admin must use the Z-Admin Login portal.';
                 await this.authService.logout();
                 this.isLoading = false;
                 this.cdr.detectChanges();
                 return;
             }
 
-            // Block admins/owners from the clinical app portal
+            // Admin (subscription_owner) logging into the app → admin dashboard
             if (role === 'subscription_owner') {
-                this.errorMessage = 'Admins must use the Owner Login to access the admin panel.';
-                await this.authService.logout();
-                this.isLoading = false;
-                this.cdr.detectChanges();
+                await this.ensureClinicSelected(email);
+                this.router.navigate(['/admin-dashboard']);
                 return;
             }
 

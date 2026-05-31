@@ -26,7 +26,7 @@ export interface User {
     name: string;
     email: string;
     photoURL?: string;
-    role?: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
+    role?: string;
     preferences?: UserPreferences;
 }
 

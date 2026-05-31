@@ -11,9 +11,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 export class PublicLayoutComponent {
   constructor(private router: Router) {}
 
-  goToOwnerLogin() {
-    this.router.navigate(['/login']);
-  }
+
 
   goToAppLogin() {
     this.router.navigate(['/app/login']);

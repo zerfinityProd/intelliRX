@@ -702,6 +702,11 @@ export class AdminSetupComponent implements OnInit {
         const userDoc = await this.adminService.getUserById(userId);
         if (!userDoc) continue;
 
+        // Derive role from user doc's global_roles
+        const globalRoles = userDoc.global_roles || [];
+        let userRole: 'doctor' | 'receptionist' = 'receptionist';
+        if (globalRoles.includes('doctor')) userRole = 'doctor';
+
         const assignments: UserClinicAssignment[] = allCU
           .filter(cu => cu.user_id === userId)
           .map(cu => {
@@ -710,7 +715,7 @@ export class AdminSetupComponent implements OnInit {
               clinicUserId: cu.id,
               clinicId: cu.clinic_id,
               clinicName: clinic?.name || cu.clinic_id,
-              role: ((cu.roles || ['receptionist'])[0]) as 'doctor' | 'receptionist',
+              role: userRole,
               availability: (cu as any).availability || {},
             };
           });
@@ -947,8 +952,7 @@ export class AdminSetupComponent implements OnInit {
         // Exclude clinics that are part of this current save (they'll be overwritten)
         const savingClinicIds = new Set(doctorAssignments.map(a => a.clinicId));
         const externalCuDocs = allUserCUs.filter(
-          cu => !savingClinicIds.has(cu.clinic_id) &&
-                (cu.roles || []).includes('doctor')
+          cu => !savingClinicIds.has(cu.clinic_id)
         );
 
         for (const newAssignment of doctorAssignments) {
@@ -997,12 +1001,9 @@ export class AdminSetupComponent implements OnInit {
       for (const assignment of this.userForm.assignments) {
         const existingCU = userCUs.find(cu => cu.clinic_id === assignment.clinicId);
         const cuPayload: any = {
-          subscription_id: this.selectedSubscription!.id,
           clinic_id: assignment.clinicId,
           user_id: userId,
-          roles: [assignment.role],
           status: 'active',
-          display_name: this.userForm.name.trim(),
         };
         if (assignment.role === 'doctor' && Object.keys(assignment.availability).length > 0) {
           cuPayload.availability = assignment.availability;

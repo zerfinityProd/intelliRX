@@ -15,14 +15,14 @@ export const routes: Routes = [
         ]
     },
 
-    // ── Website Login (Owner / Super Admin only) ──
+    // ── Website Login (Z-Admin only) ──
     {
         path: 'login',
         loadComponent: () => import('./components/login/login').then(m => m.LoginComponent),
         data: { loginMode: 'website' }
     },
 
-    // ── App Login (Doctors / Receptionists / Owners as clinical staff) ──
+    // ── App Login (Admin / Doctors / Receptionists) ──
     {
         path: 'app/login',
         loadComponent: () => import('./components/login/login').then(m => m.LoginComponent),
@@ -40,11 +40,17 @@ export const routes: Routes = [
         canActivate: [authGuard]
     },
 
-    // ── Admin Routes (Website-side) ──
+    // ── Z-Admin Route (Website-side) ──
     {
         path: 'admin',
         loadComponent: () => import('./components/super-admin/super-admin').then(m => m.SuperAdminComponent),
         //canActivate: [superAdminGuard]
+    },
+    // ── Admin Dashboard (subscription_owner logged via App Login) ──
+    {
+        path: 'admin-dashboard',
+        loadComponent: () => import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),
+        canActivate: [authGuard]
     },
     {
         path: 'owner',

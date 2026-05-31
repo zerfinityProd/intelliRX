@@ -410,7 +410,7 @@
         <div class="sa-page-header">
           <div>
             <h1 class="sa-page-title">Role Permissions</h1>
-            <p class="sa-page-sub">Configure global permissions for doctors and receptionists</p>
+            <p class="sa-page-sub">Configure global permissions for admins, doctors and receptionists</p>
           </div>
           <button class="sa-btn-primary" (click)="savePermissions()" [disabled]="isSaving" id="btn-save-perms">
             <span *ngIf="isSaving" class="sa-spinner-sm"></span>
@@ -424,6 +424,39 @@
           These permissions apply globally. Only super admins can modify these settings.
         </div>
 
+        <!-- Admin Permissions -->
+        <div class="sa-section-title mb-3">Admin Permissions</div>
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="sa-perm-card">
+              <div class="sa-perm-header sa-perm-header--doctor">
+                <span class="sa-perm-emoji">🛡️</span>
+                <div>
+                  <div class="sa-perm-role">Admin</div>
+                  <div class="sa-perm-count">{{ countActivePerms(adminPermissions) }} / {{ adminPermissionDefs.length }} permissions</div>
+                </div>
+              </div>
+              <div class="sa-perm-list">
+                <label class="sa-perm-row" *ngFor="let perm of adminPermissionDefs" [for]="'adm-' + perm.key">
+                  <div class="d-flex align-items-center gap-2 flex-grow-1">
+                    <span class="sa-perm-icon">{{ perm.icon }}</span>
+                    <div>
+                      <div class="sa-perm-name">{{ perm.label }}</div>
+                      <div class="sa-perm-desc">{{ perm.desc }}</div>
+                    </div>
+                  </div>
+                  <div class="sa-toggle">
+                    <input type="checkbox" [id]="'adm-' + perm.key" [(ngModel)]="adminPermissions[perm.key]" />
+                    <span class="sa-toggle-track"><span class="sa-toggle-thumb"></span></span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Staff Permissions -->
+        <div class="sa-section-title mb-3">Staff Permissions</div>
         <div class="row g-4">
           <!-- Doctor -->
           <div class="col-md-6">

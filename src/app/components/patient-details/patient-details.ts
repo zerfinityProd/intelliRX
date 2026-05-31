@@ -41,7 +41,7 @@ export class PatientDetailsComponent implements OnInit {
   permissions: UserPermissions = {
     canDelete: false, canEdit: false, canAddPatient: false,
     canAddVisit: false, canAppointment: false, canCancel: false,
-    canEditVisit: false,
+    canEditVisit: false, add_clinic: false, add_staff: false,
   };
 
   /** Convenience getter for template backward compatibility */

@@ -20,7 +20,7 @@ export const superAdminGuard: CanActivateFn = () => {
             const email = authService.currentUserValue?.email || '';
             return from(authorizationService.getUserRole(email)).pipe(
                 map(role => {
-                    if (role === 'super_admin') return true;
+                    if (role === 'z_admin') return true;
                     router.navigate(['/login']);
                     return false;
                 })

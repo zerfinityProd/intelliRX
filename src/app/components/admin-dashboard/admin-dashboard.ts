@@ -132,6 +132,16 @@ export class AdminDashboardComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  // Known plan defaults — used when plan.limits is not embedded in the
+  // subscription doc AND the plans collection can't be read (security rules).
+  private readonly PLAN_DEFAULTS: Record<string, { max_clinics: number; max_doctors: number }> = {
+    starter: { max_clinics: 3, max_doctors: 3 },
+    basic:   { max_clinics: 5, max_doctors: 5 },
+    demo:    { max_clinics: 2, max_doctors: 2 },
+    pro:     { max_clinics: 5, max_doctors: 5 },
+    premium: { max_clinics: 10, max_doctors: 20 },
+  };
+
   private async loadSubscription(): Promise<void> {
     try {
       const email = this.adminEmail.toLowerCase().trim();
@@ -146,7 +156,50 @@ export class AdminDashboardComponent implements OnInit {
       this.assignedSubscriptionId = subscriptionId;
       if (subscriptionId) {
         const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
-        if (subDoc) this.subscription = { ...(subDoc.data as Subscription), id: subDoc.id };
+        if (subDoc) {
+          this.subscription = { ...(subDoc.data as Subscription), id: subDoc.id };
+
+          // Check if plan.limits is already embedded in the subscription doc
+          const hasLimits = this.subscription.plan?.limits
+            && (this.subscription.plan.limits.max_clinics > 0 || this.subscription.plan.limits.max_doctors > 0);
+
+          if (!hasLimits) {
+            const planName = (this.subscription.plan?.name || '').toLowerCase();
+
+            // Try fetching from the 'plans' collection first
+            let resolved = false;
+            if (planName) {
+              try {
+                const planDoc = await this.api.getDocument('plans', planName);
+                if (planDoc?.data && (planDoc.data['max_clinics'] || planDoc.data['max_doctors'])) {
+                  this.subscription.plan.limits = {
+                    max_clinics: planDoc.data['max_clinics'] ?? 0,
+                    max_doctors: planDoc.data['max_doctors'] ?? 0,
+                    max_appointments_per_day: 0,
+                  };
+                  resolved = true;
+                }
+              } catch (planErr) {
+                console.warn('[AdminDashboard] Could not read plans collection, using defaults:', planErr);
+              }
+            }
+
+            // Fall back to known defaults if plans collection was unreachable
+            if (!resolved && planName && this.PLAN_DEFAULTS[planName]) {
+              const defaults = this.PLAN_DEFAULTS[planName];
+              this.subscription.plan.limits = {
+                max_clinics: defaults.max_clinics,
+                max_doctors: defaults.max_doctors,
+                max_appointments_per_day: 0,
+              };
+            }
+          }
+
+          // Ensure limits object always exists
+          if (!this.subscription.plan?.limits) {
+            this.subscription.plan.limits = { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 };
+          }
+        }
       }
     } catch (e: any) { this.showToast('Failed to load subscription', 'error'); }
   }
@@ -181,11 +234,15 @@ export class AdminDashboardComponent implements OnInit {
       for (const userId of userIds) {
         const userDoc = await this.adminService.getUserById(userId);
         if (!userDoc) continue;
+        // Derive role from user doc's global_roles
+        const globalRoles = userDoc.global_roles || [];
+        let userRole: 'doctor' | 'receptionist' = 'receptionist';
+        if (globalRoles.includes('doctor')) userRole = 'doctor';
         const assignments: UserClinicAssignment[] = allCU.filter(cu => cu.user_id === userId).map(cu => {
           const clinic = this.clinics.find(c => c.id === cu.clinic_id);
           return {
             clinicUserId: cu.id, clinicId: cu.clinic_id, clinicName: clinic?.name || cu.clinic_id,
-            role: ((cu.roles || ['receptionist'])[0]) as 'doctor' | 'receptionist',
+            role: userRole,
             availability: (cu as any).availability || {},
           };
         });
@@ -454,7 +511,7 @@ export class AdminDashboardComponent implements OnInit {
         const allUserCUs = await this.adminService.getAllClinicUsersForUser(userId);
         const savingClinicIds = new Set(doctorAssignments.map(a => a.clinicId));
         const externalCuDocs = allUserCUs.filter(
-          cu => !savingClinicIds.has(cu.clinic_id) && (cu.roles || []).includes('doctor')
+          cu => !savingClinicIds.has(cu.clinic_id)
         );
         for (const newAssignment of doctorAssignments) {
           for (const extCu of externalCuDocs) {
@@ -489,8 +546,8 @@ export class AdminDashboardComponent implements OnInit {
       for (const assignment of this.userForm.assignments) {
         const existingCU = userCUs.find(cu => cu.clinic_id === assignment.clinicId);
         const cuPayload: any = {
-          subscription_id: this.subscription!.id, clinic_id: assignment.clinicId,
-          user_id: userId, roles: [assignment.role], status: 'active', display_name: this.userForm.name.trim(),
+          clinic_id: assignment.clinicId,
+          user_id: userId, status: 'active',
         };
         if (assignment.role === 'doctor' && Object.keys(assignment.availability).length > 0)
           cuPayload.availability = assignment.availability;

@@ -55,7 +55,7 @@ export class HomeComponent implements OnInit {
   totalPatients: number = 0;
 
   // Doctor / clinic selection (receptionist flow)
-  userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
+  userRole: string = 'doctor';
   dashboardDoctors: Doctor[] = [];
   selectedDashboardDoctorId: string = '';
   dashboardClinics: Array<{ id: string; label: string }> = [];
@@ -94,7 +94,7 @@ export class HomeComponent implements OnInit {
   permissions: UserPermissions = {
     canDelete: false, canEdit: false, canAddPatient: false,
     canAddVisit: false, canAppointment: false, canCancel: false,
-    canEditVisit: false,
+    canEditVisit: false, add_clinic: false, add_staff: false,
   };
 
   constructor(

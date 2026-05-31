@@ -76,7 +76,7 @@ export class AddAppointmentComponent implements OnInit {
   minDate: string = todayLocalISO();
   maxDate: string = this.computeMaxDate();
 
-  userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
+  userRole: string = 'doctor';
   canChooseDoctor: boolean = true;
   doctorContextReady: boolean = false;
 

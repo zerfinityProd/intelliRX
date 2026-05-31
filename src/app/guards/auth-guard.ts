@@ -49,9 +49,14 @@ export const doctorGuard: CanActivateFn = () => {
                         router.navigate(['/home']);
                         return false;
                     }
-                    // Block admin/owner roles from clinical app routes
-                    if (role === 'subscription_owner' || role === 'super_admin') {
+                    // Block z_admin from clinical app routes
+                    if (role === 'z_admin') {
                         router.navigate(['/login']);
+                        return false;
+                    }
+                    // Redirect admin to their dashboard
+                    if (role === 'subscription_owner') {
+                        router.navigate(['/admin-dashboard']);
                         return false;
                     }
                     return true;

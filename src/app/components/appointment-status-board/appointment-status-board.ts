@@ -28,7 +28,7 @@ export class AppointmentStatusBoardComponent {
   @Input() isLoading: boolean = false;
   @Input() errorMessage: string = '';
   @Input() updatingId: string | null = null;
-  @Input() userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
+  @Input() userRole: string = 'doctor';
   @Input() canCancel: boolean = false;
 
   // Drag state

@@ -104,7 +104,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     permissions: UserPermissions = {
         canDelete: false, canEdit: false, canAddPatient: false,
         canAddVisit: false, canAppointment: false, canCancel: false,
-        canEditVisit: false,
+        canEditVisit: false, add_clinic: false, add_staff: false,
     };
 
     readonly columns = [

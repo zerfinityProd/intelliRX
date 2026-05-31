@@ -34,19 +34,18 @@ export class PatientDataService {
       const now = new Date().toISOString();
       const id = await this.generatePatientId();
 
-      const patient: Patient = {
+      const patient: Omit<Patient, 'id'> & { nameLower: string; last_updated: string } = {
         ...patientData,
-        id,
         subscription_id: patientData.subscription_id || this.getSubscriptionId(),
         clinic_ids: patientData.clinic_ids ?? [],
         created_at: patientData.created_at || now,
-        last_updated: now
+        last_updated: now,
+        nameLower: patientData.name.toLowerCase()
       };
 
-      const patientWithSearch = { ...patient, nameLower: patient.name.toLowerCase() };
-      const cleanedPatient = this.removeUndefinedFields(patientWithSearch);
+      const cleanedPatient = this.removeUndefinedFields(patient);
       await this.api.setDocument('patients', id, cleanedPatient);
-      this.addToCache(id, patient);
+      this.addToCache(id, { ...patientData, id } as Patient);
       return id;
     } catch (error) {
       console.error('Error adding patient:', error);
@@ -96,7 +95,7 @@ export class PatientDataService {
 
       const hasMore = docs.length > this.PAGE_SIZE;
       const resultDocs = hasMore ? docs.slice(0, this.PAGE_SIZE) : docs;
-      const results = resultDocs.map(d => d.data as Patient);
+      const results = resultDocs.map(d => ({ ...d.data, id: d.id } as Patient));
       results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
 
       const newCursor = resultDocs.length > 0
@@ -146,7 +145,7 @@ export class PatientDataService {
 
       const hasMore = docs.length > this.PAGE_SIZE;
       const resultDocs = hasMore ? docs.slice(0, this.PAGE_SIZE) : docs;
-      const results = resultDocs.map(d => d.data as Patient);
+      const results = resultDocs.map(d => ({ ...d.data, id: d.id } as Patient));
       results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
 
       const newCursor = resultDocs.length > 0
@@ -184,7 +183,7 @@ export class PatientDataService {
         limit: 500,
       });
 
-      const allPatients = docs.map(d => d.data as Patient);
+      const allPatients = docs.map(d => ({ ...d.data, id: d.id } as Patient));
       const results = allPatients.filter((p: Patient) => {
         const nameMatch = p.name && p.name.toLowerCase().includes(lowerTerm);
         const phoneMatch = p.phone && p.phone.toString().includes(lowerTerm);
@@ -208,7 +207,7 @@ export class PatientDataService {
 
       const result = await this.api.getDocument('patients', patientId);
       if (result) {
-        const patient = result.data as Patient;
+        const patient = { ...result.data, id: patientId } as Patient;
         this.addToCache(patientId, patient);
         return patient;
       }
@@ -331,14 +330,13 @@ export class PatientDataService {
     return this.api.runCount('', { collectionId: 'patients', filters });
   }
 
-  // ── Sequential Patient ID Generation ──────────────────────
-
   /**
    * Generate a sequential patient ID in the format YYYYMM#####
    * e.g. 20260500001, 20260500002, ...
    *
-   * Uses a Firestore counter document at `counters/patient_seq` to track
-   * the next sequence number per year-month prefix.
+   * Queries existing patient documents to find the highest sequence number
+   * for the current year-month prefix, then increments from there.
+   * No external counter collection needed.
    */
   private async generatePatientId(maxRetries = 3): Promise<string> {
     const now = new Date();
@@ -348,42 +346,37 @@ export class PatientDataService {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        // Read the current counter document
-        const counterDoc = await this.api.getDocument('counters', 'patient_seq');
-        let nextSeq = 1;
+        // List patient documents and find the highest ID matching the prefix.
+        // We can still query by the 'id' field on legacy docs, but also check
+        // document IDs directly for new docs that no longer store 'id' in data.
+        const docs = await this.api.listDocuments('patients', 300);
 
-        if (counterDoc) {
-          const storedPrefix = counterDoc.data.current_prefix || '';
-          if (storedPrefix === currentPrefix) {
-            // Same month — use the stored sequence
-            nextSeq = (counterDoc.data.next_seq || 1);
+        let maxSeq = 0;
+        for (const doc of docs) {
+          const docId = doc.id;
+          if (docId.startsWith(currentPrefix)) {
+            const seqPart = docId.substring(currentPrefix.length);
+            const seq = parseInt(seqPart, 10);
+            if (!isNaN(seq) && seq > maxSeq) {
+              maxSeq = seq;
+            }
           }
-          // else: new month — reset to 1
         }
 
+        const nextSeq = maxSeq + 1;
         const patientId = `${currentPrefix}${String(nextSeq).padStart(5, '0')}`;
 
-        // Check if a patient with this ID already exists (race condition guard)
+        // Verify no collision (race condition guard)
         const existing = await this.api.getDocument('patients', patientId);
         if (existing) {
-          // Someone else already used this sequence — bump and retry
-          await this.api.setDocument('counters', 'patient_seq', {
-            current_prefix: currentPrefix,
-            next_seq: nextSeq + 1
-          });
+          // Someone else used this ID concurrently — retry
+          await new Promise(r => setTimeout(r, 100 + attempt * 150));
           continue;
         }
-
-        // Reserve the next number by incrementing the counter
-        await this.api.setDocument('counters', 'patient_seq', {
-          current_prefix: currentPrefix,
-          next_seq: nextSeq + 1
-        });
 
         return patientId;
       } catch (error) {
         if (attempt === maxRetries - 1) throw error;
-        // Brief pause before retry
         await new Promise(r => setTimeout(r, 200));
       }
     }

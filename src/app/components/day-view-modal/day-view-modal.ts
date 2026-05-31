@@ -19,7 +19,7 @@ export class DayViewModalComponent implements OnChanges {
   @Input() bookedSlots: string[] = [];
   @Input() isLoading = false;
   @Input() isPastDate = false;
-  @Input() userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
+  @Input() userRole: string = 'doctor';
   @Input() doctorName = '';
 
   @Output() closeModal = new EventEmitter<void>();

@@ -7,7 +7,7 @@ import { filter, take, switchMap, from, of } from 'rxjs';
 
 /**
  * Admin guard — allows users whose `users` document contains
- * `global_roles` with 'admin' or 'super_admin'.
+ * `global_roles` with 'admin' or 'z_admin'.
  *
  * Redirects unauthenticated users to /login.
  * Redirects non-admins to /home.
@@ -38,8 +38,8 @@ export const adminGuard: CanActivateFn = () => {
                         return false;
                     }
                     const globalRoles: string[] = docs[0].data['global_roles'] || [];
-                    // Allow both admin and super_admin to reach the admin dashboard
-                    if (!globalRoles.includes('admin') && !globalRoles.includes('super_admin')) {
+                    // Allow both admin and z_admin to reach the admin dashboard
+                    if (!globalRoles.includes('admin') && !globalRoles.includes('z_admin')) {
                         router.navigate(['/home']);
                         return false;
                     }

@@ -14,6 +14,11 @@ export interface PermissionSet {
   canAddVisit: boolean; canEditVisit: boolean; canAppointment: boolean; canCancel: boolean;
 }
 
+export interface AdminPermissionSet {
+  add_clinic: boolean;
+  add_staff: boolean;
+}
+
 type ActiveTab = 'overview' | 'subscriptions' | 'admins' | 'permissions';
 
 @Component({
@@ -70,6 +75,10 @@ export class SuperAdminDashboardComponent implements OnInit {
     { key: 'canAppointment', label: 'Book Appointment',   icon: '📅', desc: 'Schedule appointments' },
     { key: 'canCancel',      label: 'Cancel Appointment', icon: '❌', desc: 'Cancel existing appointments' },
   ];
+  readonly adminPermissionDefs: { key: keyof AdminPermissionSet; label: string; icon: string; desc: string }[] = [
+    { key: 'add_clinic', label: 'Add Clinic',  icon: '🏥', desc: 'Create and manage clinic locations' },
+    { key: 'add_staff',  label: 'Add Staff',   icon: '👥', desc: 'Add and manage doctors & receptionists' },
+  ];
   doctorPermissions: PermissionSet = {
     canAddPatient: true, canEdit: true, canDelete: false,
     canAddVisit: true, canEditVisit: true, canAppointment: true, canCancel: true,
@@ -77,6 +86,9 @@ export class SuperAdminDashboardComponent implements OnInit {
   receptionistPermissions: PermissionSet = {
     canAddPatient: true, canEdit: false, canDelete: false,
     canAddVisit: false, canEditVisit: false, canAppointment: true, canCancel: true,
+  };
+  adminPermissions: AdminPermissionSet = {
+    add_clinic: true, add_staff: true,
   };
   permSaveSuccess = false;
 
@@ -129,11 +141,17 @@ export class SuperAdminDashboardComponent implements OnInit {
 
   async loadPermissions(): Promise<void> {
     try {
-      const dp = await this.superAdminService.getRolePermissions('doctor');
-      const rp = await this.superAdminService.getRolePermissions('receptionist');
+      const [dp, rp, ap] = await Promise.all([
+        this.superAdminService.getRolePermissions('doctor'),
+        this.superAdminService.getRolePermissions('receptionist'),
+        this.superAdminService.getRolePermissions('admin'),
+      ]);
       this.permissionDefs.forEach(p => {
         (this.doctorPermissions as any)[p.key] = dp.includes(p.key);
         (this.receptionistPermissions as any)[p.key] = rp.includes(p.key);
+      });
+      this.adminPermissionDefs.forEach(p => {
+        (this.adminPermissions as any)[p.key] = ap.includes(p.key);
       });
     } catch (e: any) { this.showToast('Failed to load permissions', 'error'); }
   }
@@ -180,7 +198,7 @@ export class SuperAdminDashboardComponent implements OnInit {
     return sub?.entity_name || admin.subscription_id;
   }
 
-  countActivePerms(perms: PermissionSet): number {
+  countActivePerms(perms: PermissionSet | AdminPermissionSet): number {
     return Object.values(perms).filter(Boolean).length;
   }
 
@@ -384,9 +402,11 @@ export class SuperAdminDashboardComponent implements OnInit {
     try {
       const dp = this.permissionDefs.filter(p => this.doctorPermissions[p.key]).map(p => p.key as string);
       const rp = this.permissionDefs.filter(p => this.receptionistPermissions[p.key]).map(p => p.key as string);
+      const ap = this.adminPermissionDefs.filter(p => this.adminPermissions[p.key]).map(p => p.key as string);
       await Promise.all([
         this.superAdminService.setRolePermissions('doctor', dp),
         this.superAdminService.setRolePermissions('receptionist', rp),
+        this.superAdminService.setRolePermissions('admin', ap),
       ]);
       this.showToast('Role permissions saved successfully');
     } catch (e: any) { this.showToast('Failed to save permissions: ' + e.message, 'error'); }

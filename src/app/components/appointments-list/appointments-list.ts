@@ -56,7 +56,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   // Permission flags
   canAppointment = false;
   canCancel = false;
-  userRole: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
+  userRole: string = 'doctor';
 
   // Doctor name cache for display
   private doctorNameCache = new Map<string, string>();

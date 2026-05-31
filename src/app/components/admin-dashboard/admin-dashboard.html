@@ -37,9 +37,8 @@
             </div>
           </div>
           <div class="ad-sub-limits">
-            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ subscription.plan.limits.max_clinics }}</span>Clinics</div>
-            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ subscription.plan.limits.max_doctors }}</span>Doctors</div>
-            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ subscription.plan.limits.max_appointments_per_day }}</span>Appts/Day</div>
+            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.clinics }}/{{ subscription.plan.limits.max_clinics }}</span>Clinics</div>
+            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.doctors }}/{{ subscription.plan.limits.max_doctors }}</span>Doctors</div>
           </div>
         </div>
 
@@ -296,23 +295,6 @@
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
-              </div>
-            </div>
-
-            <!-- Global Roles -->
-            <div class="ad-form-section">
-              <div class="ad-section-lbl">Role</div>
-              <div class="ad-role-chips">
-                <label class="ad-role-chip-label">
-                  <input type="checkbox" [checked]="userForm.global_roles.includes('doctor')"
-                    (change)="userForm.global_roles.includes('doctor') ? userForm.global_roles.splice(userForm.global_roles.indexOf('doctor'),1) : userForm.global_roles.push('doctor')" />
-                  <span class="ad-role-chip ad-chip-doctor">🩺 Doctor</span>
-                </label>
-                <label class="ad-role-chip-label">
-                  <input type="checkbox" [checked]="userForm.global_roles.includes('receptionist')"
-                    (change)="userForm.global_roles.includes('receptionist') ? userForm.global_roles.splice(userForm.global_roles.indexOf('receptionist'),1) : userForm.global_roles.push('receptionist')" />
-                  <span class="ad-role-chip ad-chip-recept">🗂 Receptionist</span>
-                </label>
               </div>
             </div>
 

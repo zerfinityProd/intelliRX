@@ -94,8 +94,6 @@ export class RegisterWizardComponent implements OnInit {
       const cuId = this.api.generateDocId();
       await this.api.setDocument('clinic_users', cuId, {
         user_id: userDocId,
-        subscription_id: subscriptionId,
-        roles: ['subscription_owner'],
         status: 'active'
       });
 

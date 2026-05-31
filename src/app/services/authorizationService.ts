@@ -17,6 +17,8 @@ export interface UserPermissions {
     canAppointment: boolean;
     canCancel: boolean;
     canEditVisit: boolean;
+    add_clinic: boolean;
+    add_staff: boolean;
 }
 
 const DEFAULT_PERMISSIONS: UserPermissions = {
@@ -27,10 +29,12 @@ const DEFAULT_PERMISSIONS: UserPermissions = {
     canAppointment: false,
     canCancel: false,
     canEditVisit: false,
+    add_clinic: false,
+    add_staff: false,
 };
 
 /** Known role names */
-const KNOWN_ROLES: string[] = ['doctor', 'receptionist', 'subscription_owner', 'super_admin', 'admin'];
+const KNOWN_ROLES: string[] = ['doctor', 'receptionist', 'subscription_owner', 'z_admin', 'admin'];
 
 /** A single subscription↔clinic link for a user */
 export interface ClinicAssignment {
@@ -51,7 +55,7 @@ interface UserLookupResult {
     assignments: ClinicAssignment[];
     subscriptionId: string;
     clinicIds: string[];
-    role: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
+    role: string;
     timestamp: number;
 }
 
@@ -78,7 +82,8 @@ export class AuthorizationService {
      * then find associated clinic_users entries.
      *
      * users/{user_id}: { email, name, global_roles, status }
-     * clinic_users/{cu_id}: { subscription_id, clinic_id, user_id, roles, availability, status }
+     * clinic_users/{cu_id}: { clinic_id, user_id, availability, status }
+     * clinics/{clinic_id}: { subscription_id, ... }
      */
     private async lookupUser(email: string): Promise<UserLookupResult | null> {
         const normalized = normalizeEmail(email);
@@ -196,7 +201,7 @@ export class AuthorizationService {
             };
 
             // Extract role from global_roles array
-            let role: 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin' = 'doctor';
+            let role: string = 'doctor';
             const globalRoles = getField(userData, 'global_roles');
             if (globalRoles && Array.isArray(globalRoles)) {
                 for (const r of globalRoles) {
@@ -210,7 +215,7 @@ export class AuthorizationService {
                         break;
                     }
                     if (KNOWN_ROLES.includes(r)) {
-                        role = r as 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
+                        role = r;
                         break;
                     }
                 }
@@ -239,7 +244,6 @@ export class AuthorizationService {
             cuDocs.forEach((d, i) => {
                 const cd = d.data;
                 console.log(`[AuthZ]   clinic_users[${i}] id=${d.id}`,
-                    `subscription_id="${cd['subscription_id']}"`,
                     `clinic_id="${cd['clinic_id']}"`,
                     `status="${cd['status'] ?? '(missing→active)'}"`,
                     `user_id="${cd['user_id']}"`
@@ -253,18 +257,42 @@ export class AuthorizationService {
 
             const assignments: ClinicAssignment[] = [];
 
+            // Collect unique clinic IDs from active clinic_users docs
+            const activeClinicIds: string[] = [];
             for (const cuDoc of cuDocs) {
                 const cuData = cuDoc.data;
-                // Treat missing status as active; skip only explicitly inactive/disabled
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') {
                     console.log(`[AuthZ]   → SKIPPED (status="${status}")`, cuDoc.id);
                     continue;
                 }
-                const subId = cuData['subscription_id'] || '';
                 const cId = cuData['clinic_id'] || '';
+                if (cId && !activeClinicIds.includes(cId)) {
+                    activeClinicIds.push(cId);
+                }
+            }
+
+            // Resolve subscription_id for each clinic by fetching clinic docs
+            const clinicSubMap = new Map<string, string>();
+            for (const cId of activeClinicIds) {
+                try {
+                    const clinicDoc = await this.api.getDocument('clinics', cId);
+                    if (clinicDoc) {
+                        clinicSubMap.set(cId, clinicDoc.data['subscription_id'] || '');
+                    }
+                } catch {
+                    console.warn(`[AuthZ] Could not fetch clinic doc for clinic_id=${cId}`);
+                }
+            }
+
+            // Build assignments from clinic_users + clinic docs
+            for (const cuDoc of cuDocs) {
+                const cuData = cuDoc.data;
+                const status = cuData['status'] || 'active';
+                if (status !== 'active') continue;
+                const cId = cuData['clinic_id'] || '';
+                const subId = clinicSubMap.get(cId) || '';
                 if (subId && cId) {
-                    // Avoid duplicate assignments
                     const exists = assignments.some(a => a.subscriptionId === subId && a.clinicId === cId);
                     if (!exists) {
                         assignments.push({ subscriptionId: subId, clinicId: cId });
@@ -272,31 +300,9 @@ export class AuthorizationService {
                 } else {
                     console.warn(`[AuthZ]   → SKIPPED (missing subId or clinicId)`, cuDoc.id, { subId, cId });
                 }
-                // Override role from clinic_users if present (clinic_users role is authoritative)
-                if (cuData['roles'] && Array.isArray(cuData['roles'])) {
-                    for (const r of cuData['roles']) {
-                        if (r === 'recep' || r === 'receptionist') {
-                            role = 'receptionist';
-                            break;
-                        }
-                        if (r === 'doctor') {
-                            role = 'doctor';
-                            break;
-                        }
-                        // Treat 'admin' as 'subscription_owner'
-                        if (r === 'admin') {
-                            role = 'subscription_owner';
-                            break;
-                        }
-                        if (KNOWN_ROLES.includes(r)) {
-                            role = r as 'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin';
-                            break;
-                        }
-                    }
-                }
-                // Note: permissions on clinic_users docs are ignored;
-                // permissions are resolved solely from the roles collection.
             }
+            // Role is resolved solely from the users collection global_roles.
+            // Permissions are resolved solely from the roles collection.
 
             // If specialization not found on user doc, check clinic_users docs
             if (!specialization) {
@@ -410,7 +416,7 @@ export class AuthorizationService {
     /**
      * Returns the role for a given email.
      */
-    async getUserRole(email: string): Promise<'doctor' | 'receptionist' | 'subscription_owner' | 'super_admin'> {
+    async getUserRole(email: string): Promise<string> {
         try {
             const result = await this.lookupUser(email);
             return result?.role ?? 'doctor';
@@ -644,24 +650,25 @@ export class AuthorizationService {
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') continue;
 
-                // Check if this clinic_user has 'doctor' role
-                const roles: string[] = cuData['roles'] || [];
-                const isDoctor = roles.some(r => r === 'doctor');
-                if (!isDoctor) continue;
-
                 const userId = cuData['user_id'];
                 if (!userId || seenUserIds.has(userId)) continue;
                 seenUserIds.add(userId);
 
-                // Fetch user document for name/email
+                // Fetch user document for name/email/role
                 try {
                     const userResult = await this.api.getDocument('users', userId);
                     if (!userResult) continue;
 
                     const userData = userResult.data;
+
+                    // Check if user has 'doctor' role in global_roles
+                    const globalRoles: string[] = userData['global_roles'] || [];
+                    const isDoctor = globalRoles.some((r: string) => r === 'doctor');
+                    if (!isDoctor) continue;
+
                     const email = (userData['email'] || '').trim().toLowerCase();
                     const name = userData['name'] || email.split('@')[0] || 'Doctor';
-                    const specialty = cuData['specialization'] || cuData['specialty'] || userData['specialization'] || userData['specialty'] || '';
+                    const specialty = userData['specialization'] || userData['specialty'] || '';
                     const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
 
                     doctors.push({
@@ -686,52 +693,68 @@ export class AuthorizationService {
     /**
      * Fetch all doctors across all clinics for a given subscription.
      * Used as a fallback when no specific clinic is selected.
+     * Resolves clinic IDs from the clinics collection, then queries clinic_users by clinic_id.
      */
     async getDoctorsForSubscription(subscriptionId: string): Promise<Array<{ id: string; name: string; specialty: string; avatar: string; email: string }>> {
         if (!subscriptionId) return [];
         try {
-            const cuDocs = await this.api.runQuery('', {
-                collectionId: 'clinic_users',
+            // First, fetch all clinics for this subscription
+            const clinicDocs = await this.api.runQuery('', {
+                collectionId: 'clinics',
                 filters: [
                     { field: 'subscription_id', op: '==', value: subscriptionId }
                 ],
             });
+            const clinicIds = clinicDocs.map(d => d.id);
+            if (clinicIds.length === 0) return [];
 
+            // Fetch clinic_users for each clinic
             const doctors: Array<{ id: string; name: string; specialty: string; avatar: string; email: string }> = [];
             const seenUserIds = new Set<string>();
 
-            for (const cuDoc of cuDocs) {
-                const cuData = cuDoc.data;
-                const status = cuData['status'] || 'active';
-                if (status !== 'active') continue;
+            for (const clinicId of clinicIds) {
+                const cuDocs = await this.api.runQuery('', {
+                    collectionId: 'clinic_users',
+                    filters: [
+                        { field: 'clinic_id', op: '==', value: clinicId }
+                    ],
+                });
 
-                const roles: string[] = cuData['roles'] || [];
-                const isDoctor = roles.some(r => r === 'doctor');
-                if (!isDoctor) continue;
+                for (const cuDoc of cuDocs) {
+                    const cuData = cuDoc.data;
+                    const status = cuData['status'] || 'active';
+                    if (status !== 'active') continue;
 
-                const userId = cuData['user_id'];
-                if (!userId || seenUserIds.has(userId)) continue;
-                seenUserIds.add(userId);
+                    const userId = cuData['user_id'];
+                    if (!userId || seenUserIds.has(userId)) continue;
+                    seenUserIds.add(userId);
 
-                try {
-                    const userResult = await this.api.getDocument('users', userId);
-                    if (!userResult) continue;
+                    try {
+                        const userResult = await this.api.getDocument('users', userId);
+                        if (!userResult) continue;
 
-                    const userData = userResult.data;
-                    const email = (userData['email'] || '').trim().toLowerCase();
-                    const name = userData['name'] || email.split('@')[0] || 'Doctor';
-                    const specialty = cuData['specialization'] || cuData['specialty'] || userData['specialization'] || userData['specialty'] || '';
-                    const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+                        const userData = userResult.data;
 
-                    doctors.push({
-                        id: `dr_${userId}`,
-                        name,
-                        specialty,
-                        avatar: initials,
-                        email
-                    });
-                } catch {
-                    // Skip
+                        // Check if user has 'doctor' role in global_roles
+                        const globalRoles: string[] = userData['global_roles'] || [];
+                        const isDoctor = globalRoles.some((r: string) => r === 'doctor');
+                        if (!isDoctor) continue;
+
+                        const email = (userData['email'] || '').trim().toLowerCase();
+                        const name = userData['name'] || email.split('@')[0] || 'Doctor';
+                        const specialty = userData['specialization'] || userData['specialty'] || '';
+                        const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
+
+                        doctors.push({
+                            id: `dr_${userId}`,
+                            name,
+                            specialty,
+                            avatar: initials,
+                            email
+                        });
+                    } catch {
+                        // Skip
+                    }
                 }
             }
 

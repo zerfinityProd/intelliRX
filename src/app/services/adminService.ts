@@ -232,12 +232,35 @@ export class AdminService {
 
   // ── Clinic Users ───────────────────────────────────────────────────────────
 
+  /**
+   * Fetch all clinic_users for a subscription by first resolving clinic IDs
+   * from the clinics collection, then querying clinic_users by clinic_id.
+   */
   async getClinicUsers(subscriptionId: string): Promise<(ClinicUser & { id: string })[]> {
-    const docs = await this.api.runQuery('', {
-      collectionId: 'clinic_users',
+    // Step 1: Get all clinic IDs for this subscription
+    const clinicDocs = await this.api.runQuery('', {
+      collectionId: 'clinics',
       filters: [{ field: 'subscription_id', op: '==', value: subscriptionId }],
     });
-    return docs.map(d => ({ ...(d.data as ClinicUser), id: d.id }));
+    const clinicIds = clinicDocs.map(d => d.id);
+    if (clinicIds.length === 0) return [];
+
+    // Step 2: Fetch clinic_users for each clinic
+    const allResults: (ClinicUser & { id: string })[] = [];
+    const seenIds = new Set<string>();
+    for (const clinicId of clinicIds) {
+      const docs = await this.api.runQuery('', {
+        collectionId: 'clinic_users',
+        filters: [{ field: 'clinic_id', op: '==', value: clinicId }],
+      });
+      for (const d of docs) {
+        if (!seenIds.has(d.id)) {
+          seenIds.add(d.id);
+          allResults.push({ ...(d.data as ClinicUser), id: d.id });
+        }
+      }
+    }
+    return allResults;
   }
 
   async getClinicUsersForClinic(clinicId: string): Promise<(ClinicUser & { id: string })[]> {
@@ -299,7 +322,6 @@ export class AdminService {
     userId: string,
     clinicId: string,
     newAvailability: ClinicUserAvailability,
-    subscriptionId: string
   ): Promise<string[]> {
     const conflicts: string[] = [];
 
@@ -307,7 +329,6 @@ export class AdminService {
       collectionId: 'clinic_users',
       filters: [
         { field: 'user_id', op: '==', value: userId },
-        { field: 'subscription_id', op: '==', value: subscriptionId },
       ],
     });
 
