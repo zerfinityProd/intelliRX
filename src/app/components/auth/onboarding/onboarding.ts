@@ -74,8 +74,8 @@ export class OnboardingComponent {
         }
       }
 
-      // 4. Navigate to owner dashboard
-      this.router.navigate(['/owner']);
+      // 4. Navigate to admin dashboard
+      this.router.navigate(['/admin-dashboard']);
     } catch (error: any) {
       this.errorMessage = error.message || 'Failed to create clinic.';
     } finally {

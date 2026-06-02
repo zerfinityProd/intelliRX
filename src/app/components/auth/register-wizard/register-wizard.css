@@ -13,7 +13,7 @@
 .wizard-card {
   background: #1e293b;
   width: 100%;
-  max-width: 480px;
+  max-width: 520px;
   margin: 0 auto;
   border-radius: 16px;
   box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
@@ -37,36 +37,7 @@
 .wizard-header h2 {
   font-size: 1.5rem;
   font-weight: 600;
-  margin-bottom: 1.5rem;
-}
-
-.steps-indicator {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-}
-
-.step {
-  font-size: 0.875rem;
-  color: #64748b;
-  position: relative;
-  padding-bottom: 0.5rem;
-}
-
-.step.active {
-  color: #38bdf8;
-  font-weight: 600;
-}
-
-.step.active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: #38bdf8;
-  border-radius: 2px;
+  margin-bottom: 0;
 }
 
 .wizard-body {
@@ -75,12 +46,6 @@
 
 .form-group {
   margin-bottom: 1.5rem;
-}
-
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
 }
 
 label {
@@ -107,6 +72,116 @@ input:focus {
   border-color: #38bdf8;
   box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
 }
+
+/* ── Plan Selection Cards ───────────────────────────── */
+
+.plan-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.plan-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+}
+
+.plan-card:hover {
+  border-color: rgba(56, 189, 248, 0.3);
+  background: rgba(15, 23, 42, 0.7);
+}
+
+.plan-card.selected {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.15), 0 4px 12px rgba(56, 189, 248, 0.1);
+}
+
+.plan-card-radio {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.plan-card.selected .plan-card-radio {
+  border-color: #38bdf8;
+}
+
+.radio-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.radio-dot.active {
+  background: #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+.plan-card-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-card-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #f1f5f9;
+  margin-bottom: 0.2rem;
+}
+
+.plan-card-details {
+  font-size: 0.8rem;
+  color: #64748b;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dot-sep {
+  color: #475569;
+  margin: 0 0.15rem;
+}
+
+.plan-card-badge {
+  position: absolute;
+  top: -1px;
+  right: 12px;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.6rem 0.25rem;
+  border-radius: 0 0 6px 6px;
+}
+
+.plans-loading {
+  text-align: center;
+  padding: 1.5rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+/* ── Buttons ───────────────────────────────────────── */
 
 .btn {
   padding: 0.75rem 1.5rem;
@@ -139,37 +214,7 @@ input:focus {
   cursor: not-allowed;
 }
 
-.btn-outline {
-  background: transparent;
-  color: #f8fafc;
-  border: 1px solid rgba(255,255,255,0.2);
-}
-
-.btn-outline:hover:not(:disabled) {
-  background: rgba(255,255,255,0.05);
-}
-
-.mt-2 { margin-top: 0.5rem; }
-
-.plan-summary {
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  border-radius: 8px;
-  padding: 1rem;
-  margin-bottom: 2rem;
-  text-align: center;
-}
-
-.plan-summary h3 {
-  color: #38bdf8;
-  margin: 0 0 0.25rem 0;
-}
-
-.plan-summary p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #94a3b8;
-}
+/* ── Success State ─────────────────────────────────── */
 
 .success-state {
   text-align: center;
@@ -179,6 +224,14 @@ input:focus {
 .success-icon {
   font-size: 4rem;
   margin-bottom: 1rem;
+  animation: bounceIn 0.6s ease;
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .success-state h3 {
@@ -189,6 +242,8 @@ input:focus {
 .success-state p {
   color: #94a3b8;
 }
+
+/* ── Error Message ─────────────────────────────────── */
 
 .error-msg {
   background: rgba(239, 68, 68, 0.1);

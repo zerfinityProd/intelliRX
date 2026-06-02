@@ -42,6 +42,10 @@ export class AuthenticationService {
     private authReadySubject = new BehaviorSubject<boolean>(false);
     public authReady$ = this.authReadySubject.asObservable();
 
+    /** Set during registration to prevent onAuthStateChanged from signing out
+     *  before the user document exists in Firestore. */
+    private _registering = false;
+
     private auth = inject(Auth);
     private authorizationService = inject(AuthorizationService);
     private clinicContextService = inject(ClinicContextService);
@@ -57,7 +61,9 @@ export class AuthenticationService {
             runInInjectionContext(this.injector, async () => {
                 if (firebaseUser) {
                     const email = firebaseUser.email || '';
-                    const allowed = await this.authorizationService.isEmailAllowed(email);
+                    // Skip the email-allowed check while registration is in progress;
+                    // the user doc hasn't been written to Firestore yet.
+                    const allowed = this._registering || await this.authorizationService.isEmailAllowed(email);
                     if (!allowed) {
                         await signOut(this.auth);
                         this.setCurrentUser(null);
@@ -152,21 +158,27 @@ export class AuthenticationService {
     }
 
     async register(email: string, password: string, displayName: string): Promise<User> {
+        this._registering = true;
         try {
             const userCredential = await createUserWithEmailAndPassword(this.auth, email, password);
             if (userCredential.user) {
                 await updateProfile(userCredential.user, { displayName });
             }
-            const role = await this.authorizationService.getUserRole(email);
+            // During registration the user doc doesn't exist yet, so
+            // getUserRole will return the default 'doctor'. The caller
+            // (register-wizard) will set the proper role in the Firestore
+            // user document after this method returns.
             const user: User = {
                 ...this.createUser(userCredential.user.uid, userCredential.user.email || email, displayName),
-                role
+                role: 'subscription_owner'
             };
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
             console.error('Registration error:', error);
             throw this.handleAuthError(error);
+        } finally {
+            this._registering = false;
         }
     }
 

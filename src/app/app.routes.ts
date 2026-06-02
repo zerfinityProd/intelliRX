@@ -52,11 +52,6 @@ export const routes: Routes = [
         loadComponent: () => import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),
         canActivate: [authGuard]
     },
-    {
-        path: 'owner',
-        loadComponent: () => import('./components/owner-dashboard/owner-dashboard').then(m => m.OwnerDashboardComponent),
-        //canActivate: [ownerGuard]
-    },
 
     // ── App Shell (Doctor/Receptionist/Owner acting as clinical staff) ──
     {

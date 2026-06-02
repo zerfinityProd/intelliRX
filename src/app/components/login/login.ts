@@ -51,7 +51,7 @@ export class LoginComponent implements OnInit {
         // If the user navigated to /login explicitly, sign them out so they
         // can pick which account to use.
         if (this.authService.isLoggedIn()) {
-            this.authService.logout();
+            await this.authService.logout();
         }
 
         try {

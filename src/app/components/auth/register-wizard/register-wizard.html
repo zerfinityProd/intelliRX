@@ -4,16 +4,11 @@
       <div class="wizard-header">
         <div class="logo">✨ IntelliRX</div>
         <h2>Create your workspace</h2>
-        <div class="steps-indicator">
-          <div class="step" [class.active]="currentStep >= 1">1. Account</div>
-          <div class="step" [class.active]="currentStep >= 2">2. Payment</div>
-          <div class="step" [class.active]="currentStep >= 3">3. Setup</div>
-        </div>
       </div>
 
-      <!-- Step 1: Account -->
-      <div class="wizard-body" *ngIf="currentStep === 1">
-        <form (submit)="nextStep($event)">
+      <!-- Registration Form -->
+      <div class="wizard-body" *ngIf="!isSuccess">
+        <form (submit)="completeSetup($event)">
           <div class="form-group">
             <label>Full Name</label>
             <input type="text" [(ngModel)]="account.name" name="name" required placeholder="Dr. John Doe">
@@ -23,50 +18,60 @@
             <input type="email" [(ngModel)]="account.email" name="email" required placeholder="john@clinic.com">
           </div>
           <div class="form-group">
-            <label>Password</label>
-            <input type="password" [(ngModel)]="account.password" name="password" required minlength="6" placeholder="••••••••">
-          </div>
-          <div class="form-group">
             <label>Clinic / Network Name</label>
             <input type="text" [(ngModel)]="account.clinicName" name="clinicName" required placeholder="City Health Clinic">
           </div>
-          <button type="submit" class="btn btn-primary btn-full">Continue to Payment</button>
-        </form>
-      </div>
 
-      <!-- Step 2: Payment (Mock) -->
-      <div class="wizard-body" *ngIf="currentStep === 2">
-        <div class="plan-summary">
-          <h3>{{ selectedPlan | titlecase }} Plan</h3>
-          <p>You'll be billed monthly.</p>
-        </div>
-        <form (submit)="processPayment($event)">
+          <!-- Plan Selection -->
           <div class="form-group">
-            <label>Card Number</label>
-            <input type="text" placeholder="0000 0000 0000 0000" required>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Expiry Date</label>
-              <input type="text" placeholder="MM/YY" required>
+            <label>Select a Plan</label>
+            <div class="plan-cards" *ngIf="plans.length > 0; else loadingPlans">
+              <div
+                class="plan-card"
+                *ngFor="let plan of plans"
+                [class.selected]="selectedPlan === plan.id"
+                (click)="selectedPlan = plan.id"
+              >
+                <div class="plan-card-radio">
+                  <span class="radio-dot" [class.active]="selectedPlan === plan.id"></span>
+                </div>
+                <div class="plan-card-info">
+                  <div class="plan-card-name">{{ plan.id | titlecase }}</div>
+                  <div class="plan-card-details">
+                    <span>{{ plan.data.max_clinics }} clinic{{ plan.data.max_clinics > 1 ? 's' : '' }}</span>
+                    <span class="dot-sep">·</span>
+                    <span>{{ plan.data.max_doctors }} doctor{{ plan.data.max_doctors > 1 ? 's' : '' }}</span>
+                    <span class="dot-sep">·</span>
+                    <span>{{ plan.data.max_patients }} patients</span>
+                  </div>
+                </div>
+                <div class="plan-card-badge" *ngIf="plan.id === 'pro'">Popular</div>
+              </div>
             </div>
-            <div class="form-group">
-              <label>CVC</label>
-              <input type="text" placeholder="123" required>
-            </div>
+            <ng-template #loadingPlans>
+              <div class="plan-cards">
+                <div class="plan-card skeleton" *ngFor="let i of [1,2,3]">
+                  <div class="plan-card-radio"><span class="radio-dot"></span></div>
+                  <div class="plan-card-info">
+                    <div class="skeleton-line skeleton-name"></div>
+                    <div class="skeleton-line skeleton-details"></div>
+                  </div>
+                </div>
+              </div>
+            </ng-template>
           </div>
-          <button type="submit" class="btn btn-primary btn-full" [disabled]="isProcessing">
-            {{ isProcessing ? 'Processing...' : 'Subscribe & Finish' }}
+
+          <button type="submit" class="btn btn-primary btn-full" [disabled]="isProcessing || !selectedPlan">
+            {{ isProcessing ? 'Setting up...' : 'Complete Setup' }}
           </button>
-          <button type="button" class="btn btn-outline btn-full mt-2" (click)="currentStep = 1" [disabled]="isProcessing">Back</button>
         </form>
       </div>
 
-      <!-- Step 3: Success -->
-      <div class="wizard-body success-state" *ngIf="currentStep === 3">
+      <!-- Success -->
+      <div class="wizard-body success-state" *ngIf="isSuccess">
         <div class="success-icon">🎉</div>
         <h3>Workspace created!</h3>
-        <p>Redirecting you to setup your clinics and staff...</p>
+        <p>Redirecting you to your dashboard...</p>
       </div>
 
       <div class="error-msg" *ngIf="errorMessage">{{ errorMessage }}</div>

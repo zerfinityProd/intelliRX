@@ -152,14 +152,48 @@ export class AdminDashboardComponent implements OnInit {
       if (!userDocs.length) return;
       const userDoc = userDocs[0];
       this.userDocId = userDoc.id;
-      const subscriptionId: string = userDoc.data['subscription_id'] || '';
+      let subscriptionId: string = userDoc.data['subscription_id'] || '';
+
+      // Fallback: if the user doc doesn't have subscription_id,
+      // search the subscriptions collection for this owner's email
+      if (!subscriptionId) {
+        try {
+          const subDocs = await this.api.runQuery('', {
+            collectionId: 'subscriptions',
+            filters: [{ field: 'owner_email', op: '==', value: email }],
+          });
+          if (subDocs.length > 0) {
+            subscriptionId = subDocs[0].id;
+            // Also update the user doc so this lookup isn't needed next time
+            await this.api.updateDocument('users', this.userDocId, { subscription_id: subscriptionId });
+          }
+        } catch (fallbackErr) {
+          console.warn('[AdminDashboard] Fallback subscription lookup failed:', fallbackErr);
+        }
+      }
+
       this.assignedSubscriptionId = subscriptionId;
       if (subscriptionId) {
         const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
         if (subDoc) {
           this.subscription = { ...(subDoc.data as Subscription), id: subDoc.id };
 
-          // Check if plan.limits is already embedded in the subscription doc
+          // Normalize plan: Firestore may store it as a plain string (e.g. "starter")
+          // but the model expects { name: string, limits: PlanLimits }
+          const rawPlan = this.subscription.plan as any;
+          if (typeof rawPlan === 'string') {
+            this.subscription.plan = {
+              name: rawPlan,
+              limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
+            };
+          } else if (!rawPlan) {
+            this.subscription.plan = {
+              name: 'basic',
+              limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
+            };
+          }
+
+          // Check if plan.limits is already populated with real values
           const hasLimits = this.subscription.plan?.limits
             && (this.subscription.plan.limits.max_clinics > 0 || this.subscription.plan.limits.max_doctors > 0);
 
@@ -273,7 +307,7 @@ export class AdminDashboardComponent implements OnInit {
 
   async logout(): Promise<void> {
     await this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/app/login']);
   }
 
   // ── Clinic CRUD ───────────────────────────────────────────────────────────
