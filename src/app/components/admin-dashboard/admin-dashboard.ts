@@ -104,6 +104,18 @@ export class AdminDashboardComponent implements OnInit {
     return (this.subscription?.plan?.name || 'basic').toUpperCase();
   }
 
+  /** True when the clinic count has reached or exceeded the plan limit */
+  get clinicLimitReached(): boolean {
+    const max = this.subscription?.plan?.limits?.max_clinics ?? 0;
+    return max > 0 && this.stats.clinics >= max;
+  }
+
+  /** True when the doctor count has reached or exceeded the plan limit */
+  get doctorLimitReached(): boolean {
+    const max = this.subscription?.plan?.limits?.max_doctors ?? 0;
+    return max > 0 && this.stats.doctors >= max;
+  }
+
   get filteredClinics(): AdminClinicState[] {
     if (!this.clinicSearch.trim()) return this.clinics;
     const q = this.clinicSearch.toLowerCase();
@@ -120,13 +132,23 @@ export class AdminDashboardComponent implements OnInit {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {
+    console.log('[AdminDashboard] ngOnInit — waiting for authReady$');
     await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
     this.adminName = this.authService.currentUserValue?.name || 'Admin';
     this.adminEmail = this.authService.currentUserValue?.email || '';
+    console.log('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
 
-    await this.loadSubscription();
-    if (this.subscription) {
-      await Promise.all([this.loadClinics(), this.loadUsers()]);
+    try {
+      await this.loadSubscription();
+      console.log('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
+      if (this.subscription) {
+        await Promise.all([this.loadClinics(), this.loadUsers()]);
+        console.log('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
+      } else {
+        console.warn('[AdminDashboard] No subscription found — dashboard will show "No Subscription" state');
+      }
+    } catch (initErr) {
+      console.error('[AdminDashboard] Unexpected error during init:', initErr);
     }
     this.isLoading = false;
     this.cdr.detectChanges();
@@ -145,18 +167,43 @@ export class AdminDashboardComponent implements OnInit {
   private async loadSubscription(): Promise<void> {
     try {
       const email = this.adminEmail.toLowerCase().trim();
+      console.log('[AdminDashboard] loadSubscription — querying users by email:', email);
       const userDocs = await this.api.runQuery('', {
         collectionId: 'users',
         filters: [{ field: 'email', op: '==', value: email }],
       });
-      if (!userDocs.length) return;
-      const userDoc = userDocs[0];
+      console.log('[AdminDashboard] User query returned', userDocs.length, 'docs');
+
+      // If direct query fails, try client-side fallback (handles invisible chars in email field)
+      let matchedDoc = userDocs.length > 0 ? userDocs[0] : null;
+      if (!matchedDoc) {
+        console.warn('[AdminDashboard] Direct email query returned 0 — trying client-side fallback');
+        const allUsers = await this.api.listDocuments('users', 300);
+        matchedDoc = allUsers.find(d => {
+          for (const key of Object.keys(d.data)) {
+            if (typeof d.data[key] !== 'string') continue;
+            const cleanVal = d.data[key].replace(/[^\x20-\x7E]/g, '').trim().toLowerCase();
+            if (cleanVal === email) return true;
+          }
+          return false;
+        }) || null;
+        if (matchedDoc) {
+          console.log('[AdminDashboard] Found user via fallback:', matchedDoc.id);
+        } else {
+          console.warn('[AdminDashboard] User not found even with fallback — no subscription to load');
+          return;
+        }
+      }
+
+      const userDoc = matchedDoc;
       this.userDocId = userDoc.id;
       let subscriptionId: string = userDoc.data['subscription_id'] || '';
+      console.log('[AdminDashboard] userDocId=', this.userDocId, 'subscription_id=', subscriptionId);
 
       // Fallback: if the user doc doesn't have subscription_id,
       // search the subscriptions collection for this owner's email
       if (!subscriptionId) {
+        console.log('[AdminDashboard] No subscription_id on user doc — trying subscriptions query by owner_email');
         try {
           const subDocs = await this.api.runQuery('', {
             collectionId: 'subscriptions',
@@ -164,8 +211,11 @@ export class AdminDashboardComponent implements OnInit {
           });
           if (subDocs.length > 0) {
             subscriptionId = subDocs[0].id;
+            console.log('[AdminDashboard] Found subscription via owner_email:', subscriptionId);
             // Also update the user doc so this lookup isn't needed next time
             await this.api.updateDocument('users', this.userDocId, { subscription_id: subscriptionId });
+          } else {
+            console.warn('[AdminDashboard] No subscriptions found for owner_email:', email);
           }
         } catch (fallbackErr) {
           console.warn('[AdminDashboard] Fallback subscription lookup failed:', fallbackErr);
@@ -173,75 +223,122 @@ export class AdminDashboardComponent implements OnInit {
       }
 
       this.assignedSubscriptionId = subscriptionId;
-      if (subscriptionId) {
-        const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
-        if (subDoc) {
-          this.subscription = { ...(subDoc.data as Subscription), id: subDoc.id };
+      if (!subscriptionId) {
+        console.warn('[AdminDashboard] No subscription_id resolved — nothing to load');
+        return;
+      }
 
-          // Normalize plan: Firestore may store it as a plain string (e.g. "starter")
-          // but the model expects { name: string, limits: PlanLimits }
-          const rawPlan = this.subscription.plan as any;
-          if (typeof rawPlan === 'string') {
-            this.subscription.plan = {
-              name: rawPlan,
-              limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
-            };
-          } else if (!rawPlan) {
-            this.subscription.plan = {
-              name: 'basic',
-              limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
-            };
-          }
+      console.log('[AdminDashboard] Fetching subscription document:', subscriptionId);
+      const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
+      if (!subDoc) {
+        console.warn('[AdminDashboard] Subscription document not found:', subscriptionId);
+        return;
+      }
 
-          // Check if plan.limits is already populated with real values
-          const hasLimits = this.subscription.plan?.limits
-            && (this.subscription.plan.limits.max_clinics > 0 || this.subscription.plan.limits.max_doctors > 0);
+      console.log('[AdminDashboard] Subscription doc loaded:', subDoc.id, subDoc.data);
+      this.subscription = { ...(subDoc.data as Subscription), id: subDoc.id };
 
-          if (!hasLimits) {
-            const planName = (this.subscription.plan?.name || '').toLowerCase();
+      // Normalize plan: Firestore may store it as a plain string (e.g. "starter")
+      // but the model expects { name: string, limits: PlanLimits }
+      const rawPlan = this.subscription.plan as any;
+      if (typeof rawPlan === 'string') {
+        this.subscription.plan = {
+          name: rawPlan,
+          limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
+        };
+      } else if (!rawPlan) {
+        this.subscription.plan = {
+          name: 'basic',
+          limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
+        };
+      }
 
-            // Try fetching from the 'plans' collection first
-            let resolved = false;
-            if (planName) {
-              try {
-                const planDoc = await this.api.getDocument('plans', planName);
-                if (planDoc?.data && (planDoc.data['max_clinics'] || planDoc.data['max_doctors'])) {
-                  this.subscription.plan.limits = {
-                    max_clinics: planDoc.data['max_clinics'] ?? 0,
-                    max_doctors: planDoc.data['max_doctors'] ?? 0,
-                    max_appointments_per_day: 0,
-                  };
-                  resolved = true;
-                }
-              } catch (planErr) {
-                console.warn('[AdminDashboard] Could not read plans collection, using defaults:', planErr);
+      // Check if plan.limits is already populated with real values
+      const hasLimits = this.subscription.plan?.limits
+        && (this.subscription.plan.limits.max_clinics > 0 || this.subscription.plan.limits.max_doctors > 0);
+
+      if (!hasLimits) {
+        const planName = (this.subscription.plan?.name || '').toLowerCase();
+
+        // Try fetching from the 'plans' collection first
+        let resolved = false;
+        if (planName) {
+          try {
+            const planDoc = await this.api.getDocument('plans', planName);
+            console.log('[AdminDashboard] Plan doc data:', planDoc?.data);
+            if (planDoc?.data) {
+              // Handle potential field name variations/typos
+              const maxClinics = planDoc.data['max_clinics'] ?? planDoc.data['max_clinincs'] ?? 0;
+              const maxDoctors = planDoc.data['max_doctors'] ?? 0;
+              if (maxClinics || maxDoctors) {
+                this.subscription.plan.limits = {
+                  max_clinics: maxClinics,
+                  max_doctors: maxDoctors,
+                  max_appointments_per_day: 0,
+                };
               }
+              resolved = true;
             }
-
-            // Fall back to known defaults if plans collection was unreachable
-            if (!resolved && planName && this.PLAN_DEFAULTS[planName]) {
-              const defaults = this.PLAN_DEFAULTS[planName];
-              this.subscription.plan.limits = {
-                max_clinics: defaults.max_clinics,
-                max_doctors: defaults.max_doctors,
-                max_appointments_per_day: 0,
-              };
-            }
-          }
-
-          // Ensure limits object always exists
-          if (!this.subscription.plan?.limits) {
-            this.subscription.plan.limits = { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 };
+          } catch (planErr) {
+            console.warn('[AdminDashboard] Could not read plans collection, using defaults:', planErr);
           }
         }
+
+        // Fall back to known defaults if plans collection was unreachable
+        if (!resolved && planName && this.PLAN_DEFAULTS[planName]) {
+          const defaults = this.PLAN_DEFAULTS[planName];
+          this.subscription.plan.limits = {
+            max_clinics: defaults.max_clinics,
+            max_doctors: defaults.max_doctors,
+            max_appointments_per_day: 0,
+          };
+        }
       }
-    } catch (e: any) { this.showToast('Failed to load subscription', 'error'); }
+
+      // Ensure limits object always exists
+      if (!this.subscription.plan?.limits) {
+        this.subscription.plan.limits = { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 };
+      }
+    } catch (e: any) {
+      console.error('[AdminDashboard] loadSubscription error:', e);
+      this.showToast('Failed to load subscription', 'error');
+    }
   }
 
   private async loadClinics(): Promise<void> {
     if (!this.subscription) return;
     try {
-      const raw = await this.adminService.getClinicsForSubscription(this.subscription.id);
+      console.log('[AdminDashboard] loadClinics for subscription:', this.subscription.id);
+      let raw = await this.adminService.getClinicsForSubscription(this.subscription.id);
+      console.log('[AdminDashboard] Clinics query returned:', raw.length);
+
+      // Diagnostic: if no clinics found, list ALL clinics to see what subscription_ids exist
+      if (raw.length === 0) {
+        console.warn('[AdminDashboard] No clinics found for subscription_id:', this.subscription.id);
+        try {
+          const allClinics = await this.api.listDocuments('clinics', 100);
+          console.log('[AdminDashboard] Total clinics in collection:', allClinics.length);
+          allClinics.forEach(c => {
+            console.log('[AdminDashboard]   clinic', c.id, '→ subscription_id:', c.data['subscription_id'], 'name:', c.data['name']);
+          });
+
+          // Fallback: if there are clinics but with mismatched subscription_id, use them
+          // (this handles cases where subscription_id was set differently)
+          if (allClinics.length > 0) {
+            // Try matching by the assigned subscription id (from user doc)
+            const matchByAssigned = allClinics.filter(c =>
+              c.data['subscription_id'] === this.assignedSubscriptionId
+            );
+            if (matchByAssigned.length > 0 && this.assignedSubscriptionId !== this.subscription.id) {
+              console.log('[AdminDashboard] Found', matchByAssigned.length, 'clinics matching assignedSubscriptionId:', this.assignedSubscriptionId);
+              raw = matchByAssigned.map(d => ({ ...(d.data as any), id: d.id }));
+            }
+          }
+        } catch (diagErr) {
+          console.warn('[AdminDashboard] Diagnostic clinic listing failed:', diagErr);
+        }
+      }
+
       this.clinics = await Promise.all(raw.map(async c => {
         let schedule = (c as any).schedule;
         if (!schedule?.timings?.length) {
@@ -256,18 +353,39 @@ export class AdminDashboardComponent implements OnInit {
         } as AdminClinicState;
       }));
       this.stats.clinics = this.clinics.length;
-    } catch (e: any) { this.showToast('Failed to load clinics', 'error'); }
+      console.log('[AdminDashboard] Final clinics loaded:', this.clinics.length);
+    } catch (e: any) {
+      console.error('[AdminDashboard] loadClinics error:', e);
+      this.showToast('Failed to load clinics', 'error');
+    }
   }
 
   private async loadUsers(): Promise<void> {
     if (!this.subscription) return;
     try {
+      console.log('[AdminDashboard] loadUsers for subscription:', this.subscription.id);
       const allCU = await this.adminService.getClinicUsers(this.subscription.id);
+      console.log('[AdminDashboard] clinic_users returned:', allCU.length);
+
+      // Diagnostic: if no clinic_users found, list ALL clinic_users
+      if (allCU.length === 0) {
+        try {
+          const allDocs = await this.api.listDocuments('clinic_users', 100);
+          console.log('[AdminDashboard] Total clinic_users in collection:', allDocs.length);
+          allDocs.forEach(d => {
+            console.log('[AdminDashboard]   clinic_user', d.id, '→ clinic_id:', d.data['clinic_id'], 'user_id:', d.data['user_id'], 'status:', d.data['status']);
+          });
+        } catch (diagErr) {
+          console.warn('[AdminDashboard] Diagnostic clinic_users listing failed:', diagErr);
+        }
+      }
+
       const userIds = [...new Set(allCU.map(cu => cu.user_id).filter(Boolean))];
+      console.log('[AdminDashboard] Unique user IDs to load:', userIds);
       this.users = [];
       for (const userId of userIds) {
         const userDoc = await this.adminService.getUserById(userId);
-        if (!userDoc) continue;
+        if (!userDoc) { console.warn('[AdminDashboard] User not found:', userId); continue; }
         // Derive role from user doc's global_roles
         const globalRoles = userDoc.global_roles || [];
         let userRole: 'doctor' | 'receptionist' = 'receptionist';
@@ -288,7 +406,11 @@ export class AdminDashboardComponent implements OnInit {
       this.stats.totalUsers = this.users.length;
       this.stats.doctors = this.users.filter(u => u.assignments.some(a => a.role === 'doctor')).length;
       this.stats.receptionists = this.users.filter(u => u.assignments.some(a => a.role === 'receptionist')).length;
-    } catch (e: any) { this.showToast('Failed to load users', 'error'); }
+      console.log('[AdminDashboard] Final users loaded:', this.users.length, 'doctors:', this.stats.doctors, 'receptionists:', this.stats.receptionists);
+    } catch (e: any) {
+      console.error('[AdminDashboard] loadUsers error:', e);
+      this.showToast('Failed to load users', 'error');
+    }
   }
 
   setSection(s: ActiveSection): void {
@@ -312,6 +434,11 @@ export class AdminDashboardComponent implements OnInit {
 
   // ── Clinic CRUD ───────────────────────────────────────────────────────────
   openNewClinicForm(): void {
+    if (this.clinicLimitReached) {
+      const max = this.subscription?.plan?.limits?.max_clinics ?? 0;
+      this.showToast(`Clinic limit reached (${this.stats.clinics}/${max}). Upgrade your plan to add more.`, 'error');
+      return;
+    }
     this.clinicForm = this.emptyClinicForm();
     this.editingClinic = null;
     this.showClinicForm = true;
@@ -333,6 +460,12 @@ export class AdminDashboardComponent implements OnInit {
 
   async saveClinic(): Promise<void> {
     if (!this.clinicForm.name.trim()) { this.showToast('Clinic name is required', 'error'); return; }
+    // Block creating a new clinic if the limit is reached (edits are always allowed)
+    if (!this.editingClinic && this.clinicLimitReached) {
+      const max = this.subscription?.plan?.limits?.max_clinics ?? 0;
+      this.showToast(`Clinic limit reached (${this.stats.clinics}/${max}). Upgrade your plan to add more.`, 'error');
+      return;
+    }
     this.isSaving = true;
     try {
       const schedule = { weekdays: [...this.clinicForm.weekdays], timings: this.clinicForm.timings.map(t => ({ ...t })) };
@@ -493,6 +626,14 @@ export class AdminDashboardComponent implements OnInit {
   async saveUser(): Promise<void> {
     if (!this.userForm.email.trim() || !this.userForm.name.trim()) {
       this.showToast('Email and name are required', 'error'); return;
+    }
+
+    // Doctor limit check — only block when adding a NEW doctor (edits are always allowed)
+    const hasDocRole = this.userForm.assignments.some(a => a.role === 'doctor');
+    if (!this.editingUser && hasDocRole && this.doctorLimitReached) {
+      const max = this.subscription?.plan?.limits?.max_doctors ?? 0;
+      this.showToast(`Doctor limit reached (${this.stats.doctors}/${max}). Upgrade your plan to add more.`, 'error');
+      return;
     }
 
     // Intra-form conflict check

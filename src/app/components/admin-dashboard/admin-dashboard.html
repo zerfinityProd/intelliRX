@@ -119,10 +119,13 @@
               <h1 class="ad-page-title">Clinic Management</h1>
               <p class="ad-page-sub">Configure your clinic locations and operating schedules</p>
             </div>
-            <button class="ad-btn-primary" (click)="openNewClinicForm()" *ngIf="!showClinicForm" id="btn-add-clinic">
+            <button class="ad-btn-primary" (click)="openNewClinicForm()" *ngIf="!showClinicForm" [disabled]="clinicLimitReached" id="btn-add-clinic">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Clinic
             </button>
+          </div>
+          <div class="ad-limit-msg" *ngIf="clinicLimitReached && !showClinicForm">
+            ⚠ Clinic limit reached ({{ stats.clinics }}/{{ subscription!.plan.limits.max_clinics }}). Upgrade your plan to add more.
           </div>
 
           <!-- Clinic Form -->
@@ -262,10 +265,13 @@
               <h1 class="ad-page-title">Staff Management</h1>
               <p class="ad-page-sub">Add and manage doctors and receptionists</p>
             </div>
-            <button class="ad-btn-primary" (click)="openNewUserForm()" *ngIf="!showUserForm" id="btn-add-user">
+            <button class="ad-btn-primary" (click)="openNewUserForm()" *ngIf="!showUserForm" [disabled]="doctorLimitReached" id="btn-add-user">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Staff
             </button>
+          </div>
+          <div class="ad-limit-msg" *ngIf="doctorLimitReached && !showUserForm">
+            ⚠ Doctor limit reached ({{ stats.doctors }}/{{ subscription!.plan.limits.max_doctors }}). Upgrade your plan to add more doctors.
           </div>
 
           <!-- User Form -->
