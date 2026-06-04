@@ -46,6 +46,10 @@ export class AuthenticationService {
      *  before the user document exists in Firestore. */
     private _registering = false;
 
+    /** Set during login to prevent onAuthStateChanged from racing against
+     *  the login method's own isEmailAllowed check. */
+    private _loggingIn = false;
+
     private auth = inject(Auth);
     private authorizationService = inject(AuthorizationService);
     private clinicContextService = inject(ClinicContextService);
@@ -63,11 +67,26 @@ export class AuthenticationService {
                     const email = firebaseUser.email || '';
                     // Skip the email-allowed check while registration is in progress;
                     // the user doc hasn't been written to Firestore yet.
-                    const allowed = this._registering || await this.authorizationService.isEmailAllowed(email);
+                    const allowed = this._registering || this._loggingIn || await this.authorizationService.isEmailAllowed(email);
                     if (!allowed) {
-                        await signOut(this.auth);
-                        this.setCurrentUser(null);
-                    } else {
+                        // Auto-provision: user exists in Firebase Auth but not Firestore
+                        // (This handles page refresh for orphaned auth users)
+                        if (!this._registering && !this._loggingIn) {
+                            console.log('[Auth] onAuthStateChanged: auto-provisioning user:', email);
+                            try {
+                                await this.authorizationService.autoProvisionUser(
+                                    email,
+                                    firebaseUser.displayName || ''
+                                );
+                            } catch (provisionErr) {
+                                console.error('[Auth] Auto-provision failed in onAuthStateChanged:', provisionErr);
+                                await signOut(this.auth);
+                                this.setCurrentUser(null);
+                                return;
+                            }
+                        }
+                    }
+                    {
                         // Fetch role and set subscription/clinic context
                         const role = await this.authorizationService.getUserRole(email);
                         const dbName = await this.authorizationService.getUserName(email);
@@ -183,13 +202,18 @@ export class AuthenticationService {
     }
 
     async login(email: string, password: string): Promise<User> {
+        this._loggingIn = true;
         try {
             const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
             const userEmail = userCredential.user.email || email;
             const allowed = await this.authorizationService.isEmailAllowed(userEmail);
             if (!allowed) {
-                await signOut(this.auth);
-                throw new Error('Access denied. You are not authorized to log in.');
+                // Auto-provision: user exists in Firebase Auth but not Firestore
+                console.log('[Auth] Auto-provisioning user during login:', userEmail);
+                await this.authorizationService.autoProvisionUser(
+                    userEmail,
+                    userCredential.user.displayName || ''
+                );
             }
             const role = await this.authorizationService.getUserRole(userEmail);
             const dbName = await this.authorizationService.getUserName(userEmail);
@@ -198,9 +222,10 @@ export class AuthenticationService {
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            if (error.message?.includes('Access denied')) throw error;
             console.error('Login error:', error);
             throw this.handleAuthError(error);
+        } finally {
+            this._loggingIn = false;
         }
     }
 
@@ -209,13 +234,18 @@ export class AuthenticationService {
      * Returns void (undefined) if popup was closed by user.
      */
     async loginWithGoogle(): Promise<User | void> {
+        this._loggingIn = true;
         try {
             const result = await signInWithPopup(this.auth, this.googleProvider);
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                await signOut(this.auth);
-                throw new Error('Access denied. You are not authorized to log in.');
+                // Auto-provision: user exists in Firebase Auth but not Firestore
+                console.log('[Auth] Auto-provisioning user during Google login:', email);
+                await this.authorizationService.autoProvisionUser(
+                    email,
+                    result.user.displayName || ''
+                );
             }
             const role = await this.authorizationService.getUserRole(email);
             const dbName = await this.authorizationService.getUserName(email);
@@ -224,14 +254,16 @@ export class AuthenticationService {
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            if (error.message?.includes('Access denied')) throw error;
             if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
             console.error('Google login error:', error);
             throw this.handleAuthError(error);
+        } finally {
+            this._loggingIn = false;
         }
     }
 
     async loginWithMicrosoft(): Promise<User | void> {
+        this._loggingIn = true;
         try {
             const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('microsoft.com');
@@ -239,8 +271,12 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                await signOut(this.auth);
-                throw new Error('Access denied. You are not authorized to log in.');
+                // Auto-provision: user exists in Firebase Auth but not Firestore
+                console.log('[Auth] Auto-provisioning user during Microsoft login:', email);
+                await this.authorizationService.autoProvisionUser(
+                    email,
+                    result.user.displayName || ''
+                );
             }
             const role = await this.authorizationService.getUserRole(email);
             const dbName = await this.authorizationService.getUserName(email);
@@ -249,14 +285,16 @@ export class AuthenticationService {
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            if (error.message?.includes('Access denied')) throw error;
             if (error.code === 'auth/popup-closed-by-user') return;
             console.error('Microsoft login error:', error);
             throw this.handleAuthError(error);
+        } finally {
+            this._loggingIn = false;
         }
     }
 
     async loginWithApple(): Promise<User | void> {
+        this._loggingIn = true;
         try {
             const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('apple.com');
@@ -264,8 +302,12 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                await signOut(this.auth);
-                throw new Error('Access denied. You are not authorized to log in.');
+                // Auto-provision: user exists in Firebase Auth but not Firestore
+                console.log('[Auth] Auto-provisioning user during Apple login:', email);
+                await this.authorizationService.autoProvisionUser(
+                    email,
+                    result.user.displayName || ''
+                );
             }
             const role = await this.authorizationService.getUserRole(email);
             const dbName = await this.authorizationService.getUserName(email);
@@ -274,10 +316,11 @@ export class AuthenticationService {
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            if (error.message?.includes('Access denied')) throw error;
             if (error.code === 'auth/popup-closed-by-user') return;
             console.error('Apple login error:', error);
             throw this.handleAuthError(error);
+        } finally {
+            this._loggingIn = false;
         }
     }
 
@@ -319,8 +362,12 @@ export class AuthenticationService {
             const email = result.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                await signOut(this.auth);
-                throw new Error('Access denied. You are not authorized to log in.');
+                // Auto-provision: user exists in Firebase Auth but not Firestore
+                console.log('[Auth] Auto-provisioning user during Google redirect:', email);
+                await this.authorizationService.autoProvisionUser(
+                    email,
+                    result.displayName || ''
+                );
             }
 
             const role = await this.authorizationService.getUserRole(email);
@@ -330,7 +377,6 @@ export class AuthenticationService {
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            if (error.message?.includes('Access denied')) throw error;
             console.error('Google redirect result error:', error);
             return;
         }

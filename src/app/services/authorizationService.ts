@@ -414,6 +414,43 @@ export class AuthorizationService {
     }
 
     /**
+     * Auto-provision a minimal Firestore user document for a user who
+     * authenticated via Firebase Auth but has no corresponding Firestore doc.
+     * This handles "orphaned" auth users from incomplete registrations.
+     *
+     * Returns the role of the newly created (or existing) user.
+     */
+    async autoProvisionUser(email: string, displayName: string): Promise<string> {
+        const normalized = normalizeEmail(email);
+
+        // Double-check the user really doesn't exist
+        const existing = await this.lookupUser(normalized);
+        if (existing) {
+            return existing.role;
+        }
+
+        console.log('[AuthZ] Auto-provisioning Firestore user doc for:', normalized);
+
+        const userDocId = this.api.generateDocId();
+        const defaultRole = 'doctor';
+
+        await this.api.setDocument('users', userDocId, {
+            name: displayName || normalized.split('@')[0] || 'User',
+            email: normalized,
+            global_roles: [defaultRole],
+            status: 'active',
+            created_at: new Date().toISOString(),
+            auto_provisioned: true
+        });
+
+        // Invalidate cache so subsequent lookups find the new doc
+        this.lookupCache.delete(normalized);
+
+        console.log('[AuthZ] Auto-provisioned user doc:', userDocId, 'for:', normalized);
+        return defaultRole;
+    }
+
+    /**
      * Returns the role for a given email.
      */
     async getUserRole(email: string): Promise<string> {

@@ -88,20 +88,21 @@ export class RegisterWizardComponent implements OnInit {
         await this.authService.register(this.account.email, tempPassword, this.account.name);
       } catch (authErr: any) {
         // If email was already registered (e.g. from a previous failed attempt),
-        // try signing in instead — the previous auth user might exist without
-        // Firestore documents.
+        // the Firebase Auth user exists but Firestore docs might be missing.
         if (authErr.message?.includes('already registered') ||
             authErr.message?.includes('email-already-in-use')) {
-          console.log('[Register] Email already in auth, trying sign-in...');
+          console.log('[Register] Email already in auth — sending password reset email');
+          // Send a password reset email so the user can set a known password
           try {
-            await this.authService.login(this.account.email, tempPassword);
-          } catch (loginErr: any) {
-            // Sign-in failed too (wrong password / no Firestore user doc).
-            // Tell the user clearly.
-            throw new Error(
-              'This email is already registered. Please go to the login page, or use "Forgot Password" to reset your password.'
-            );
+            await this.authService.resetPassword(this.account.email.trim());
+          } catch (resetErr) {
+            console.warn('[Register] Password reset email failed:', resetErr);
           }
+          throw new Error(
+            'An account with this email already exists but setup was not completed. ' +
+            'We have sent a password reset email. Please check your inbox, ' +
+            'reset your password, and then log in from the Login page.'
+          );
         } else {
           throw authErr;
         }
