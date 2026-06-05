@@ -1,0 +1,520 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.skeleton-widget-container {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+  height: 100%;
+  position: relative;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+:host-context([data-theme="dark"]) .skeleton-widget-container {
+  background: var(--surface-card, #1e293b);
+  border-color: var(--border-color, #334155);
+}
+
+.skeleton-widget-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border-color, #e2e8f0);
+  background: rgba(0, 0, 0, 0.015);
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+:host-context([data-theme="dark"]) .skeleton-widget-header {
+  background: rgba(255, 255, 255, 0.015);
+  border-color: #334155;
+}
+
+.header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 240px;
+}
+
+.header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.skeleton-widget-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+:host-context([data-theme="dark"]) .skeleton-widget-title {
+  color: #f8fafc;
+}
+
+.view-pill {
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+}
+
+:host-context([data-theme="dark"]) .view-pill {
+  background: rgba(14, 165, 233, 0.15);
+  color: #38bdf8;
+}
+
+.header-subtitle-row {
+  display: flex;
+  align-items: center;
+}
+
+.skeleton-widget-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+}
+
+:host-context([data-theme="dark"]) .skeleton-widget-hint {
+  color: #94a3b8;
+}
+
+.back-navigation {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hint-separator {
+  color: #94a3b8;
+  font-weight: bold;
+}
+
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--primary-color, #148D9E);
+  cursor: pointer;
+  font-weight: 600;
+  padding: 0;
+  font-size: 0.82rem;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.back-btn:hover {
+  color: #0f6c7a;
+  text-decoration: underline;
+}
+
+.btn-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.selection-counter {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #64748b);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.03);
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+:host-context([data-theme="dark"]) .selection-counter {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.counter-label {
+  font-weight: 500;
+}
+
+.badge {
+  background: var(--primary-color, #148D9E);
+  color: white;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: 1px solid var(--border-color, #cbd5e1);
+  color: #ef4444;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-btn:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+:host-context([data-theme="dark"]) .clear-btn {
+  border-color: #475569;
+  color: #f87171;
+}
+
+:host-context([data-theme="dark"]) .clear-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+/* ── VIEWPORT ── */
+.skeleton-viewport {
+  flex: 1;
+  position: relative;
+  min-height: 580px;
+  background: #f8fafc;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+:host-context([data-theme="dark"]) .skeleton-viewport {
+  background: #0f172a;
+}
+
+.svg-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.anatomy-svg {
+  width: 100%;
+  height: 100%;
+  max-height: 95%;
+  padding: 1rem;
+}
+.detail-svg {
+  max-width: 450px;
+}
+
+/* ── SVG STYLING ── */
+.tech-grid .grid-line {
+  stroke: var(--primary-color, #148D9E);
+  stroke-width: 1;
+  stroke-dasharray: 4 8;
+  opacity: 0.2;
+}
+.tech-grid .grid-circle {
+  fill: none;
+  stroke: var(--primary-color, #148D9E);
+  stroke-width: 1;
+  stroke-dasharray: 4 8;
+  opacity: 0.1;
+}
+
+.bone-path {
+  fill: #cbd5e1;
+  stroke: #475569;
+  stroke-width: 1.5;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.bone-stroke {
+  fill: none;
+  stroke: #94a3b8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+
+:host-context([data-theme="dark"]) .bone-path {
+  fill: #334155;
+  stroke: #475569;
+}
+:host-context([data-theme="dark"]) .bone-stroke {
+  stroke: #475569;
+}
+
+/* Hovers */
+.bone-path:hover {
+  fill: #bae6fd;
+  stroke: #0ea5e9;
+}
+.bone-path:hover, .bone-stroke.selected {
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.5));
+}
+:host-context([data-theme="dark"]) .bone-path:hover {
+  fill: rgba(14, 165, 233, 0.4);
+  stroke: #38bdf8;
+}
+
+/* Selected State */
+.bone-path.selected {
+  fill: var(--primary-color, #148D9E);
+  stroke: #0f6c7a;
+  filter: drop-shadow(0 0 6px rgba(20, 141, 158, 0.5));
+}
+.bone-stroke.selected {
+  stroke: var(--primary-color, #148D9E);
+  filter: drop-shadow(0 0 6px rgba(20, 141, 158, 0.6));
+}
+:host-context([data-theme="dark"]) .bone-path.selected {
+  fill: var(--primary-color, #148D9E);
+  stroke: #22d3ee;
+}
+:host-context([data-theme="dark"]) .bone-stroke.selected {
+  stroke: var(--primary-color, #148D9E);
+}
+
+/* Thin Bones Click target scaling */
+.bone-hit-target {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16px;
+  stroke-linecap: round;
+  cursor: pointer;
+  pointer-events: stroke;
+}
+.bone-hit-target:hover + .bone-stroke {
+  stroke: #38bdf8;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.5));
+}
+
+/* Pelvic / Anatomical visual holes */
+.hole-bg-light {
+  fill: #f8fafc;
+  stroke: #475569;
+  stroke-width: 1.2;
+}
+:host-context([data-theme="dark"]) .hole-bg-light {
+  fill: #0f172a;
+  stroke: #475569;
+}
+
+/* Teeth styling inside Maxilla and Mandible groups */
+.tooth-path {
+  fill: #ffffff;
+  stroke: #475569;
+  stroke-width: 1px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+:host-context([data-theme="dark"]) .tooth-path {
+  fill: #cbd5e1;
+  stroke: #475569;
+}
+
+.bone-group {
+  cursor: pointer;
+}
+
+/* Hover and selection on group affects teeth and bone body */
+.bone-group:hover .bone-path {
+  fill: #bae6fd;
+  stroke: #0ea5e9;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.5));
+}
+
+.bone-group.selected .bone-path {
+  fill: var(--primary-color, #148D9E);
+  stroke: #0f6c7a;
+  filter: drop-shadow(0 0 6px rgba(20, 141, 158, 0.5));
+}
+
+.bone-group:hover .tooth-path {
+  fill: #e0f2fe;
+  stroke: #0ea5e9;
+}
+
+.bone-group.selected .tooth-path {
+  fill: #e2f8ff;
+  stroke: #0f6c7a;
+}
+
+:host-context([data-theme="dark"]) .bone-group:hover .bone-path {
+  fill: rgba(14, 165, 233, 0.4);
+  stroke: #38bdf8;
+}
+
+:host-context([data-theme="dark"]) .bone-group.selected .bone-path {
+  fill: var(--primary-color, #148D9E);
+  stroke: #22d3ee;
+}
+
+:host-context([data-theme="dark"]) .bone-group:hover .tooth-path {
+  fill: rgba(56, 189, 248, 0.2);
+  stroke: #38bdf8;
+}
+
+:host-context([data-theme="dark"]) .bone-group.selected .tooth-path {
+  fill: var(--primary-color, #148D9E);
+  stroke: #22d3ee;
+}
+
+
+/* ── SPINE COLOR CODING (Medical-grade chart) ── */
+.spine-cervical {
+  fill: #f0fdfa;
+  stroke: #0d9488;
+}
+:host-context([data-theme="dark"]) .spine-cervical {
+  fill: rgba(13, 148, 136, 0.15);
+  stroke: #2dd4bf;
+}
+
+.spine-thoracic {
+  fill: #eef2ff;
+  stroke: #4f46e5;
+}
+:host-context([data-theme="dark"]) .spine-thoracic {
+  fill: rgba(79, 70, 229, 0.15);
+  stroke: #818cf8;
+}
+
+.spine-lumbar {
+  fill: #f0fdf4;
+  stroke: #16a34a;
+}
+:host-context([data-theme="dark"]) .spine-lumbar {
+  fill: rgba(22, 163, 74, 0.15);
+  stroke: #4ade80;
+}
+
+.spine-sacral {
+  fill: #fafaf9;
+  stroke: #78716c;
+}
+:host-context([data-theme="dark"]) .spine-sacral {
+  fill: rgba(120, 113, 108, 0.15);
+  stroke: #a8a29e;
+}
+
+/* Hotspots */
+.hotspot-group {
+  cursor: zoom-in;
+}
+.hotspot-area {
+  fill: rgba(20, 141, 158, 0.04);
+  stroke: var(--primary-color, #148D9E);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+  opacity: 0.35; /* Make hotspot boundaries subtly visible upfront */
+  transition: all 0.2s ease;
+}
+.hotspot-box {
+  fill: transparent;
+  stroke: none;
+}
+.hotspot-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  fill: var(--primary-color, #148D9E);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  transform: translateY(5px);
+}
+:host-context([data-theme="dark"]) .hotspot-area {
+  fill: rgba(34, 211, 238, 0.03);
+  stroke: #22d3ee;
+}
+:host-context([data-theme="dark"]) .hotspot-label {
+  fill: #22d3ee;
+}
+
+.hotspot-group:hover .hotspot-area {
+  opacity: 1;
+  fill: rgba(20, 141, 158, 0.08);
+}
+.hotspot-group:hover .hotspot-label {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── TOOLTIP (Glassmorphism design) ── */
+.bone-tooltip {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-primary, #0a2540);
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  pointer-events: none;
+  box-shadow: 0 8px 32px 0 rgba(10, 37, 64, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 100;
+  white-space: nowrap;
+  animation: tooltipFadeIn 0.15s ease-out forwards;
+}
+
+:host-context([data-theme="dark"]) .bone-tooltip {
+  background: rgba(12, 26, 46, 0.85);
+  color: #d8e8ed;
+  border-color: rgba(26, 51, 82, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+@keyframes tooltipFadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}

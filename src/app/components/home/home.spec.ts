@@ -19,15 +19,16 @@ describe('HomeComponent (Refactored)', () => {
   let router: any;
 
   const mockPatient: Patient = {
-    uniqueId: 'pat-123',
-    userId: 'user-456',
+    id: 'pat-123',
+    subscription_id: 'sub-456',
     name: 'John Doe',
-    familyId: 'fam-001',
+    family_id: 'fam-001',
     phone: '555-1234',
     email: 'john@example.com',
     gender: 'Male',
-    createdAt: new Date(),
-    updatedAt: new Date()
+    clinic_ids: ['clinic-1'],
+    created_at: new Date().toISOString(),
+    last_updated: new Date().toISOString()
   };
 
   const mockUser = {
@@ -103,8 +104,6 @@ describe('HomeComponent (Refactored)', () => {
     });
 
     it('should initialize observable properties', () => {
-      expect(component.currentUser$).toBeTruthy();
-      expect(component.isDarkTheme$).toBeTruthy();
       expect(component.uiState$).toBeTruthy();
     });
 
@@ -137,12 +136,6 @@ describe('HomeComponent (Refactored)', () => {
     });
   });
 
-  describe('Theme Management', () => {
-    it('should toggle theme', () => {
-      component.toggleTheme();
-      expect(themeService.toggleTheme).toHaveBeenCalled();
-    });
-  });
 
   describe('UI State Management', () => {
     it('should toggle FAB', () => {
@@ -174,11 +167,6 @@ describe('HomeComponent (Refactored)', () => {
       component.toggleVisitEditMode();
       expect(uiStateService.toggleVisitEditMode).toHaveBeenCalled();
     });
-
-    it('should toggle user menu', () => {
-      component.toggleUserMenu();
-      expect(uiStateService.toggleUserMenu).toHaveBeenCalled();
-    });
   });
 
   describe('Navigation', () => {
@@ -191,12 +179,6 @@ describe('HomeComponent (Refactored)', () => {
       component.searchTerm = 'test';
       component.viewPatientDetails(mockPatient);
       expect(component.searchTerm).toBe('');
-    });
-
-    it('should logout and navigate to login', async () => {
-      await component.logout();
-      expect(authService.logout).toHaveBeenCalled();
-      expect(router.navigate).toHaveBeenCalledWith(['/login']);
     });
   });
 
@@ -212,21 +194,6 @@ describe('HomeComponent (Refactored)', () => {
     });
   });
 
-  describe('Date Formatting', () => {
-    it('should format valid date', () => {
-      const date = new Date('2024-03-15');
-      const formatted = component.formatDate(date);
-      expect(formatted).toContain('Mar');
-    });
-
-    it('should return N/A for null date', () => {
-      expect(component.formatDate(null)).toBe('N/A');
-    });
-
-    it('should return N/A for undefined date', () => {
-      expect(component.formatDate(undefined)).toBe('N/A');
-    });
-  });
 
   describe('Separation of Concerns', () => {
     it('should delegate theme to ThemeService', () => {

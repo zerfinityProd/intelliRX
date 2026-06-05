@@ -8,6 +8,8 @@ import { AuthenticationService } from '../../services/authenticationService';
 import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import { DentalWidgetComponent } from '../widgets/dental-widget/dental-widget';
+import { FullbodyWidgetComponent } from '../widgets/fullbody-widget/fullbody-widget';
+import { AuthorizationService } from '../../services/authorizationService';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { NotificationService } from '../../services/notificationService';
@@ -42,7 +44,7 @@ interface FrequencyState {
 @Component({
     selector: 'app-add-visit-page',
     standalone: true,
-    imports: [CommonModule, FormsModule, NavbarComponent, DentalWidgetComponent],
+    imports: [CommonModule, FormsModule, NavbarComponent, DentalWidgetComponent, FullbodyWidgetComponent],
     templateUrl: './add-visit-page.html',
     styleUrl: './add-visit-page.css'
 })
@@ -90,6 +92,13 @@ export class AddVisitPageComponent implements OnInit {
     // ── Dental chart selection ────────────────────────────────
     selectedTeethIds: number[] = [];
 
+    // ── Skeletal chart selection ──────────────────────────────
+    selectedBoneIds: string[] = [];
+
+    // ── Widget toggle state & specialty ───────────────────────
+    activeChartTab: 'dental' | 'skeletal' = 'skeletal';
+    doctorSpecialty: string = '';
+
     // ── Edit mode ─────────────────────────────────────────────
     isEditMode: boolean = false;
     editVisitId: string = '';
@@ -122,11 +131,29 @@ export class AddVisitPageComponent implements OnInit {
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly ngZone = inject(NgZone);
     private readonly notificationService = inject(NotificationService);
+    private readonly authorizationService = inject(AuthorizationService);
 
     async ngOnInit(): Promise<void> {
         const state = history.state as { origin?: string; appointmentId?: string; editVisitId?: string; editVisitData?: any } | undefined;
         this.origin = (state?.origin === 'patient') ? 'patient' : (state?.origin === 'appointments') ? 'appointments' : 'home';
         this.routeAppointmentId = (state?.appointmentId || '').trim();
+
+        // ── Fetch doctor specialty ──
+        const currentUser = this.authService.currentUserValue;
+        if (currentUser?.email) {
+            try {
+                this.doctorSpecialty = await this.authorizationService.getUserSpecialization(currentUser.email);
+                const specLower = (this.doctorSpecialty || '').toLowerCase();
+                if (specLower.includes('dent')) {
+                    this.activeChartTab = 'dental';
+                } else {
+                    this.activeChartTab = 'skeletal';
+                }
+            } catch (err) {
+                console.warn('Failed to load doctor specialty, defaulting to skeletal:', err);
+                this.activeChartTab = 'skeletal';
+            }
+        }
 
         // ── Edit mode detection ──
         if (state?.editVisitId) {
@@ -194,6 +221,8 @@ export class AddVisitPageComponent implements OnInit {
                 newExamResult: this.newExamResult,
                 newExamStatus: this.newExamStatus,
                 selectedTeethIds: this.selectedTeethIds,
+                selectedBoneIds: this.selectedBoneIds,
+                activeChartTab: this.activeChartTab,
                 timestamp: Date.now()
             };
             sessionStorage.setItem(this.getSessionKey(), JSON.stringify(data));
@@ -228,6 +257,8 @@ export class AddVisitPageComponent implements OnInit {
             this.newExamResult = data.newExamResult || '';
             this.newExamStatus = data.newExamStatus || '';
             if (Array.isArray(data.selectedTeethIds)) this.selectedTeethIds = data.selectedTeethIds;
+            if (Array.isArray(data.selectedBoneIds)) this.selectedBoneIds = data.selectedBoneIds;
+            if (data.activeChartTab) this.activeChartTab = data.activeChartTab;
             this.cdr.detectChanges();
         } catch { /* silent */ }
     }
@@ -284,6 +315,10 @@ export class AddVisitPageComponent implements OnInit {
         this.selectedTeethIds = ids;
     }
 
+    onBonesSelectionChange(ids: string[]): void {
+        this.selectedBoneIds = ids;
+    }
+
     private populateEditFields(visit: any): void {
         this.chiefComplaintsText = visit.chiefComplaints || '';
         this.clinicalFindingsText = visit.presentIllness || '';
@@ -294,6 +329,18 @@ export class AddVisitPageComponent implements OnInit {
         // Restore selected teeth
         if (Array.isArray(visit.selectedTeeth)) {
             this.selectedTeethIds = visit.selectedTeeth;
+        }
+
+        // Restore selected bones
+        if (Array.isArray(visit.selectedBones)) {
+            this.selectedBoneIds = visit.selectedBones;
+        }
+
+        // Auto-select tab based on data saved
+        if (Array.isArray(visit.selectedBones) && visit.selectedBones.length > 0) {
+            this.activeChartTab = 'skeletal';
+        } else if (Array.isArray(visit.selectedTeeth) && visit.selectedTeeth.length > 0) {
+            this.activeChartTab = 'dental';
         }
 
         // Examinations — stored as string[] (e.g. ["test [status]: result", ...])
@@ -602,6 +649,7 @@ export class AddVisitPageComponent implements OnInit {
                 advice: this.advice.trim(),
                 doctor_id: currentEmail,
                 selectedTeeth: this.selectedTeethIds,
+                selectedBones: this.selectedBoneIds,
             };
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;
@@ -787,6 +835,7 @@ export class AddVisitPageComponent implements OnInit {
             examinations: this.examinations.map(e => `${e.testName}|${e.status}|${e.result}`),
             medicines: this.medicines.map(m => `${m.name}|${m.dosage}|${m.frequency}|${m.durationDays}`),
             selectedTeeth: [...this.selectedTeethIds].sort(),
+            selectedBones: [...this.selectedBoneIds].sort(),
         });
     }
 
@@ -850,6 +899,9 @@ export class AddVisitPageComponent implements OnInit {
         const teethStr = this.selectedTeethIds.length > 0
             ? this.selectedTeethIds.join(', ')
             : 'None';
+        const bonesStr = this.selectedBoneIds.length > 0
+            ? this.selectedBoneIds.join(', ')
+            : 'None';
 
         const examRows = this.examinations.map(e =>
             `<tr><td>${e.testName}</td><td>${e.status || '-'}</td><td>${e.result || '-'}</td></tr>`
@@ -905,7 +957,8 @@ export class AddVisitPageComponent implements OnInit {
     ${field('Diagnosis', this.diagnosis)}
     ${field('Treatment Plan', this.treatmentPlan)}
     ${field('Advice', this.advice)}
-    ${field('Teeth Affected', teethStr)}
+    ${this.selectedTeethIds.length > 0 ? field('Teeth Affected', teethStr) : ''}
+    ${this.selectedBoneIds.length > 0 ? field('Bones Affected', bonesStr) : ''}
   </div>
 
   ${this.examinations.length > 0 ? `

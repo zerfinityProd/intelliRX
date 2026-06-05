@@ -79,6 +79,8 @@ export interface Visit {
   treatmentPlan?: string;
   advice?: string;
   visitType?: string;               // e.g. "walk-in", "scheduled"
+  selectedTeeth?: number[];
+  selectedBones?: string[];
 
   // ── Structured fields (for future use) ──
   clinical_data?: ClinicalData;

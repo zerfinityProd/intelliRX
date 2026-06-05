@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { ClinicConfigModal } from './clinic-config-modal';
+import { ClinicConfigModalComponent } from './clinic-config-modal';
 
-describe('ClinicConfigModal', () => {
-  let component: ClinicConfigModal;
-  let fixture: ComponentFixture<ClinicConfigModal>;
+describe('ClinicConfigModalComponent', () => {
+  let component: ClinicConfigModalComponent;
+  let fixture: ComponentFixture<ClinicConfigModalComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [ClinicConfigModal]
+      imports: [ClinicConfigModalComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(ClinicConfigModal);
+    fixture = TestBed.createComponent(ClinicConfigModalComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

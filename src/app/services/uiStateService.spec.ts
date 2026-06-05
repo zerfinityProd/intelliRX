@@ -12,15 +12,16 @@ describe('UIStateService', () => {
         service = TestBed.inject(UIStateService);
 
         mockPatient = {
-            uniqueId: 'pat-123',
-            userId: 'user-456',
+            id: 'pat-123',
+            subscription_id: 'sub-456',
             name: 'John Doe',
-            familyId: 'fam-001',
+            family_id: 'fam-001',
             phone: '555-1234',
             email: 'john@example.com',
             gender: 'Male',
-            createdAt: new Date(),
-            updatedAt: new Date()
+            clinic_ids: ['clinic-1'],
+            created_at: new Date().toISOString(),
+            last_updated: new Date().toISOString()
         };
     });
 

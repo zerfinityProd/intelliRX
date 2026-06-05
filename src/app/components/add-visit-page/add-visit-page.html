@@ -318,18 +318,44 @@
       </form>
     </div>
 
-    <!-- ════════════════════ RIGHT AREA — Dental Chart + Slide Panels ════════════════════ -->
+    <!-- ════════════════════ RIGHT AREA — Anatomy Charts + Slide Panels ════════════════════ -->
     <div class="avp-right-area">
-      <div class="avp-dental-panel">
-        <!-- Teeth hint -->
-        <p class="avp-teeth-hint">Click to select · Double-click to deselect</p>
-        <app-dental-widget
-          [initialSelected]="selectedTeethIds"
-          (selectionChange)="onTeethSelectionChange($event)">
-        </app-dental-widget>
-        <p *ngIf="selectedTeethIds.length > 0" class="avp-teeth-summary">
-          Selected: <strong>{{ selectedTeethIds.join(', ') }}</strong>
-        </p>
+      <div class="avp-anatomy-panel">
+        
+        <!-- Tab Toggle -->
+        <div class="anatomy-tabs">
+          <button type="button" class="anatomy-tab" [class.active]="activeChartTab === 'skeletal'" (click)="activeChartTab = 'skeletal'" aria-label="Skeletal chart">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+              <path d="M12 2v20M8 6h8M8 10h8M8 14h8M8 18h8"></path>
+            </svg> Skeletal
+          </button>
+          <button type="button" class="anatomy-tab" [class.active]="activeChartTab === 'dental'" (click)="activeChartTab = 'dental'" aria-label="Dental chart">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+              <path d="M12 21a9 9 0 0 1-9-9c0-3 2-6 5-8a2 2 0 0 1 3 0c1.5 1.5 3 1.5 4.5 0a2 2 0 0 1 3 0c3 2 5 5 5 8a9 9 0 0 1-9 9z"></path>
+              <path d="M12 12v9"></path>
+            </svg> Dental
+          </button>
+        </div>
+
+        <!-- Skeletal Chart -->
+        <div class="anatomy-content" *ngIf="activeChartTab === 'skeletal'">
+          <app-fullbody-widget
+            [initialSelected]="selectedBoneIds"
+            (selectionChange)="onBonesSelectionChange($event)">
+          </app-fullbody-widget>
+        </div>
+
+        <!-- Dental Chart -->
+        <div class="anatomy-content" *ngIf="activeChartTab === 'dental'">
+          <p class="avp-teeth-hint">Click to select · Double-click to deselect</p>
+          <app-dental-widget
+            [initialSelected]="selectedTeethIds"
+            (selectionChange)="onTeethSelectionChange($event)">
+          </app-dental-widget>
+          <p *ngIf="selectedTeethIds.length > 0" class="avp-teeth-summary">
+            Selected: <strong>{{ selectedTeethIds.join(', ') }}</strong>
+          </p>
+        </div>
       </div>
 
       <!-- ── Visit History Slide Panel ── -->
@@ -481,6 +507,14 @@
       <div class="avp-modal-field" *ngIf="selectedVisit.examination?.length">
         <span class="avp-modal-label">Examination</span>
         <span class="avp-modal-value">{{ selectedVisit.examination!.join(', ') }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="selectedVisit.selectedTeeth?.length">
+        <span class="avp-modal-label">Selected Teeth</span>
+        <span class="avp-modal-value">{{ selectedVisit.selectedTeeth!.join(', ') }}</span>
+      </div>
+      <div class="avp-modal-field" *ngIf="$any(selectedVisit).selectedBones?.length">
+        <span class="avp-modal-label">Selected Bones</span>
+        <span class="avp-modal-value">{{ $any(selectedVisit).selectedBones.join(', ') }}</span>
       </div>
       <div class="avp-modal-field" *ngIf="selectedVisit.medicines?.length">
         <span class="avp-modal-label">Medicines</span>
