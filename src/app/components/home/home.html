@@ -58,8 +58,9 @@
 </div><!-- /kanban-home -->
 
 
-<!-- ── FAB Menu (child component) ── -->
+<!-- ── FAB Menu (hidden for admin / no clinic) ── -->
 <app-fab-menu
+  *ngIf="hasClinicSelected"
   [isFabOpen]="(uiState$ | async)?.isFabOpen || false"
   [permissions]="permissions"
   (toggleFabClicked)="toggleFab()"

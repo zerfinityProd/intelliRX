@@ -15,6 +15,14 @@ import { NavbarComponent } from '../navbar/navbar';
 
 export interface TimingBlock { label: string; start: string; end: string; }
 
+/** Represents a booking from another clinic (loaded from DB) that isn't in the current form. */
+export interface ExternalBooking {
+  clinicId: string;
+  clinicName: string;
+  availability: ClinicUserAvailability;
+  timings: TimingBlock[];
+}
+
 export interface AdminClinicState {
   id: string; name: string; address: string; phone: string; email: string;
   subscription_id: string; weekdays: string[]; timings: TimingBlock[];
@@ -81,6 +89,19 @@ export class AdminDashboardComponent implements OnInit {
   editingUser: AdminUserState | null = null;
   userForm: AdminUserState = this.emptyUserForm();
   userSearch = '';
+
+  /**
+   * Bookings loaded from the DB for the current user that are NOT represented
+   * as assignments in the form. Used to disable availability checkboxes.
+   */
+  externalBookings: ExternalBooking[] = [];
+
+  /**
+   * Clinic IDs that were in the form when it was opened.
+   * On save, only delete clinic_user records whose clinic ID is in this set
+   * but NOT in the current form — i.e. the user explicitly removed them.
+   */
+  private originalFormClinicIds = new Set<string>();
 
   // ── Confirm Dialog ────────────────────────────────────────────────────────
   confirmVisible = false;
@@ -309,35 +330,8 @@ export class AdminDashboardComponent implements OnInit {
     if (!this.subscription) return;
     try {
       console.log('[AdminDashboard] loadClinics for subscription:', this.subscription.id);
-      let raw = await this.adminService.getClinicsForSubscription(this.subscription.id);
+      const raw = await this.adminService.getClinicsForSubscription(this.subscription.id);
       console.log('[AdminDashboard] Clinics query returned:', raw.length);
-
-      // Diagnostic: if no clinics found, list ALL clinics to see what subscription_ids exist
-      if (raw.length === 0) {
-        console.warn('[AdminDashboard] No clinics found for subscription_id:', this.subscription.id);
-        try {
-          const allClinics = await this.api.listDocuments('clinics', 100);
-          console.log('[AdminDashboard] Total clinics in collection:', allClinics.length);
-          allClinics.forEach(c => {
-            console.log('[AdminDashboard]   clinic', c.id, '→ subscription_id:', c.data['subscription_id'], 'name:', c.data['name']);
-          });
-
-          // Fallback: if there are clinics but with mismatched subscription_id, use them
-          // (this handles cases where subscription_id was set differently)
-          if (allClinics.length > 0) {
-            // Try matching by the assigned subscription id (from user doc)
-            const matchByAssigned = allClinics.filter(c =>
-              c.data['subscription_id'] === this.assignedSubscriptionId
-            );
-            if (matchByAssigned.length > 0 && this.assignedSubscriptionId !== this.subscription.id) {
-              console.log('[AdminDashboard] Found', matchByAssigned.length, 'clinics matching assignedSubscriptionId:', this.assignedSubscriptionId);
-              raw = matchByAssigned.map(d => ({ ...(d.data as any), id: d.id }));
-            }
-          }
-        } catch (diagErr) {
-          console.warn('[AdminDashboard] Diagnostic clinic listing failed:', diagErr);
-        }
-      }
 
       this.clinics = await Promise.all(raw.map(async c => {
         let schedule = (c as any).schedule;
@@ -367,34 +361,22 @@ export class AdminDashboardComponent implements OnInit {
       const allCU = await this.adminService.getClinicUsers(this.subscription.id);
       console.log('[AdminDashboard] clinic_users returned:', allCU.length);
 
-      // Diagnostic: if no clinic_users found, list ALL clinic_users
-      if (allCU.length === 0) {
-        try {
-          const allDocs = await this.api.listDocuments('clinic_users', 100);
-          console.log('[AdminDashboard] Total clinic_users in collection:', allDocs.length);
-          allDocs.forEach(d => {
-            console.log('[AdminDashboard]   clinic_user', d.id, '→ clinic_id:', d.data['clinic_id'], 'user_id:', d.data['user_id'], 'status:', d.data['status']);
-          });
-        } catch (diagErr) {
-          console.warn('[AdminDashboard] Diagnostic clinic_users listing failed:', diagErr);
-        }
-      }
-
       const userIds = [...new Set(allCU.map(cu => cu.user_id).filter(Boolean))];
       console.log('[AdminDashboard] Unique user IDs to load:', userIds);
       this.users = [];
       for (const userId of userIds) {
         const userDoc = await this.adminService.getUserById(userId);
         if (!userDoc) { console.warn('[AdminDashboard] User not found:', userId); continue; }
-        // Derive role from user doc's global_roles
+        // Derive role per-assignment from the clinic_user record, with fallback to global_roles
         const globalRoles = userDoc.global_roles || [];
-        let userRole: 'doctor' | 'receptionist' = 'receptionist';
-        if (globalRoles.includes('doctor')) userRole = 'doctor';
+        const fallbackRole: 'doctor' | 'receptionist' = globalRoles.includes('doctor') ? 'doctor' : 'receptionist';
         const assignments: UserClinicAssignment[] = allCU.filter(cu => cu.user_id === userId).map(cu => {
           const clinic = this.clinics.find(c => c.id === cu.clinic_id);
+          const cuRole = (cu as any).role as string | undefined;
+          const role: 'doctor' | 'receptionist' = (cuRole === 'doctor' || cuRole === 'receptionist') ? cuRole : fallbackRole;
           return {
             clinicUserId: cu.id, clinicId: cu.clinic_id, clinicName: clinic?.name || cu.clinic_id,
-            role: userRole,
+            role,
             availability: (cu as any).availability || {},
           };
         });
@@ -480,7 +462,7 @@ export class AdminDashboardComponent implements OnInit {
         if (idx >= 0) this.clinics[idx] = { ...this.clinics[idx], ...clinicData, weekdays: schedule.weekdays, timings: schedule.timings, updated_at: now };
         this.showToast('Clinic updated successfully');
       } else {
-        const newId = this.adminService.computeNextClinicId(this.clinics.map(c => c.id));
+        const newId = await this.adminService.computeNextClinicId();
         await this.adminService.createClinic({ ...clinicData, subscription_id: this.subscription!.id, doctor_ids: [] }, newId);
         this.clinics.push({ id: newId, ...clinicData, subscription_id: this.subscription!.id, weekdays: schedule.weekdays, timings: schedule.timings, created_at: now, updated_at: now });
         this.stats.clinics = this.clinics.length;
@@ -543,24 +525,37 @@ export class AdminDashboardComponent implements OnInit {
 
   onStartSliderChange(t: TimingBlock, event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value, 10);
-    const max = this.timeToMinutes(t.end) - 15;
-    t.start = this.minutesToTime(Math.min(val, max));
+    const idx = this.clinicForm.timings.indexOf(t);
+    // Cannot start after own end minus 15 min
+    const maxVal = this.timeToMinutes(t.end) - 15;
+    // Cannot start before the previous shift ends
+    const minVal = idx > 0 ? this.timeToMinutes(this.clinicForm.timings[idx - 1].end) : 0;
+    t.start = this.minutesToTime(Math.max(minVal, Math.min(val, maxVal)));
     this.cdr.detectChanges();
   }
   onEndSliderChange(t: TimingBlock, event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value, 10);
-    const min = this.timeToMinutes(t.start) + 15;
-    t.end = this.minutesToTime(Math.max(val, min));
+    const idx = this.clinicForm.timings.indexOf(t);
+    // Cannot end before own start plus 15 min
+    const minVal = this.timeToMinutes(t.start) + 15;
+    // Cannot end after the next shift starts
+    const maxVal = idx < this.clinicForm.timings.length - 1
+      ? this.timeToMinutes(this.clinicForm.timings[idx + 1].start)
+      : 1440;
+    t.end = this.minutesToTime(Math.min(maxVal, Math.max(val, minVal)));
     this.cdr.detectChanges();
   }
 
   // ── User CRUD ─────────────────────────────────────────────────────────────
   openNewUserForm(): void {
     this.userForm = this.emptyUserForm();
+    this.externalBookings = [];
     if (this.clinics.length) {
       const c = this.clinics[0];
       this.userForm.assignments.push({ clinicId: c.id, clinicName: c.name, role: 'receptionist', availability: {} });
     }
+    // Empty for new users — never delete existing DB assignments via "+ Add Staff"
+    this.originalFormClinicIds = new Set();
     this.editingUser = null;
     this.showUserForm = true;
     this.cdr.detectChanges();
@@ -572,14 +567,45 @@ export class AdminDashboardComponent implements OnInit {
       assignments: user.assignments.map(a => ({ ...a, availability: this.deepCopyAvail(a.availability) })),
     };
     this.editingUser = user;
+    this.externalBookings = [];
+    // Remember which clinics were in the form at open time
+    this.originalFormClinicIds = new Set(this.userForm.assignments.map(a => a.clinicId));
     this.showUserForm = true;
     this.cdr.detectChanges();
+    // Load external bookings from DB in the background
+    if (user.userId) this.loadExternalBookings(user.userId);
   }
 
   cancelUserForm(): void {
     this.showUserForm = false;
     this.editingUser = null;
+    this.externalBookings = [];
     this.cdr.detectChanges();
+  }
+
+  /**
+   * Called when the email field loses focus in the new-user form.
+   * Looks up whether this email belongs to an existing user and,
+   * if so, loads their existing clinic bookings so the availability
+   * checkboxes can be disabled for conflicting time slots.
+   */
+  async onUserEmailBlur(): Promise<void> {
+    // Only for new user forms; editing already loads external bookings
+    if (this.editingUser) return;
+    const email = this.userForm.email.trim().toLowerCase();
+    if (!email) { this.externalBookings = []; return; }
+
+    try {
+      const existing = await this.adminService.getUserByEmail(email, this.subscription!.id);
+      if (existing?.id) {
+        await this.loadExternalBookings(existing.id);
+      } else {
+        this.externalBookings = [];
+        this.cdr.detectChanges();
+      }
+    } catch {
+      this.externalBookings = [];
+    }
   }
 
   addClinicAssignment(): void {
@@ -616,11 +642,96 @@ export class AdminDashboardComponent implements OnInit {
 
   isBlockBookedElsewhere(currentAssignment: UserClinicAssignment, day: string, block: string): boolean {
     if (currentAssignment.role !== 'doctor') return false;
-    return this.userForm.assignments.some(a =>
-      a !== currentAssignment &&
-      a.role === 'doctor' &&
-      (a.availability[day] || []).includes(block)
-    );
+
+    // Get the time range of the current block in the current clinic
+    const currentClinic = this.clinics.find(c => c.id === currentAssignment.clinicId);
+    if (!currentClinic) return false;
+    const currentTiming = currentClinic.timings.find(t => t.label === block);
+    if (!currentTiming) return false;
+    const curStart = this.timeToMinutes(currentTiming.start);
+    const curEnd = this.timeToMinutes(currentTiming.end);
+
+    // 1. Check all OTHER assignments in the form for time overlap on the same day
+    const formConflict = this.userForm.assignments.some(a => {
+      if (a === currentAssignment || a.role !== 'doctor') return false;
+      const bookedBlocks = a.availability[day] || [];
+      if (bookedBlocks.length === 0) return false;
+
+      const otherClinic = this.clinics.find(c => c.id === a.clinicId);
+      if (!otherClinic) return false;
+
+      return bookedBlocks.some(otherBlock => {
+        const otherTiming = otherClinic.timings.find(t => t.label === otherBlock);
+        if (!otherTiming) return false;
+        const otherStart = this.timeToMinutes(otherTiming.start);
+        const otherEnd = this.timeToMinutes(otherTiming.end);
+        return curStart < otherEnd && otherStart < curEnd;
+      });
+    });
+    if (formConflict) return true;
+
+    // 2. Check external bookings (from DB, not in the current form)
+    return this.externalBookings.some(ext => {
+      const bookedBlocks = ext.availability[day] || [];
+      if (bookedBlocks.length === 0) return false;
+
+      return bookedBlocks.some(otherBlock => {
+        const otherTiming = ext.timings.find(t => t.label === otherBlock);
+        if (!otherTiming) return false;
+        const otherStart = this.timeToMinutes(otherTiming.start);
+        const otherEnd = this.timeToMinutes(otherTiming.end);
+        return curStart < otherEnd && otherStart < curEnd;
+      });
+    });
+  }
+
+  /**
+   * Returns a tooltip describing which clinic holds the conflicting booking.
+   * Returns empty string if no conflict exists.
+   */
+  getBlockConflictTooltip(currentAssignment: UserClinicAssignment, day: string, block: string): string {
+    if (currentAssignment.role !== 'doctor') return '';
+
+    const currentClinic = this.clinics.find(c => c.id === currentAssignment.clinicId);
+    if (!currentClinic) return '';
+    const currentTiming = currentClinic.timings.find(t => t.label === block);
+    if (!currentTiming) return '';
+    const curStart = this.timeToMinutes(currentTiming.start);
+    const curEnd = this.timeToMinutes(currentTiming.end);
+
+    // Check form assignments
+    for (const a of this.userForm.assignments) {
+      if (a === currentAssignment || a.role !== 'doctor') continue;
+      const bookedBlocks = a.availability[day] || [];
+      const otherClinic = this.clinics.find(c => c.id === a.clinicId);
+      if (!otherClinic) continue;
+
+      for (const otherBlock of bookedBlocks) {
+        const otherTiming = otherClinic.timings.find(t => t.label === otherBlock);
+        if (!otherTiming) continue;
+        const otherStart = this.timeToMinutes(otherTiming.start);
+        const otherEnd = this.timeToMinutes(otherTiming.end);
+        if (curStart < otherEnd && otherStart < curEnd) {
+          return `Already assigned to "${otherClinic.name}" (${otherBlock} ${otherTiming.start}–${otherTiming.end})`;
+        }
+      }
+    }
+
+    // Check external bookings
+    for (const ext of this.externalBookings) {
+      const bookedBlocks = ext.availability[day] || [];
+      for (const otherBlock of bookedBlocks) {
+        const otherTiming = ext.timings.find(t => t.label === otherBlock);
+        if (!otherTiming) continue;
+        const otherStart = this.timeToMinutes(otherTiming.start);
+        const otherEnd = this.timeToMinutes(otherTiming.end);
+        if (curStart < otherEnd && otherStart < curEnd) {
+          return `Already assigned to "${ext.clinicName}" (${otherBlock} ${otherTiming.start}–${otherTiming.end})`;
+        }
+      }
+    }
+
+    return '';
   }
 
   async saveUser(): Promise<void> {
@@ -636,7 +747,7 @@ export class AdminDashboardComponent implements OnInit {
       return;
     }
 
-    // Intra-form conflict check
+    // Intra-form conflict check (time-range overlap between clinics)
     const doctorAssignments = this.userForm.assignments.filter(a => a.role === 'doctor');
     for (let i = 0; i < doctorAssignments.length; i++) {
       for (let j = i + 1; j < doctorAssignments.length; j++) {
@@ -644,18 +755,32 @@ export class AdminDashboardComponent implements OnInit {
         const a2 = doctorAssignments[j];
         const c1 = this.clinics.find(c => c.id === a1.clinicId);
         const c2 = this.clinics.find(c => c.id === a2.clinicId);
+        if (!c1 || !c2) continue;
         const avail1 = a1.availability || {};
         const avail2 = a2.availability || {};
         const allDays = new Set([...Object.keys(avail1), ...Object.keys(avail2)]);
         for (const day of allDays) {
-          const overlap = (avail1[day] || []).filter(b => (avail2[day] || []).includes(b));
-          if (overlap.length > 0) {
-            const dayLabel = this.weekdayLabels[day] || day;
-            this.showToast(
-              `${dayLabel}: "${c1?.name || a1.clinicId}" and "${c2?.name || a2.clinicId}" overlap on [${overlap.join(', ')}] — a doctor cannot be at two clinics simultaneously.`,
-              'error'
-            );
-            return;
+          const blocks1 = avail1[day] || [];
+          const blocks2 = avail2[day] || [];
+          for (const b1 of blocks1) {
+            const t1 = c1.timings.find(t => t.label === b1);
+            if (!t1) continue;
+            const s1 = this.timeToMinutes(t1.start);
+            const e1 = this.timeToMinutes(t1.end);
+            for (const b2 of blocks2) {
+              const t2 = c2.timings.find(t => t.label === b2);
+              if (!t2) continue;
+              const s2 = this.timeToMinutes(t2.start);
+              const e2 = this.timeToMinutes(t2.end);
+              if (s1 < e2 && s2 < e1) {
+                const dayLabel = this.weekdayLabels[day] || day;
+                this.showToast(
+                  `${dayLabel}: "${c1.name}" (${b1} ${t1.start}–${t1.end}) and "${c2.name}" (${b2} ${t2.start}–${t2.end}) overlap — a doctor cannot be at two clinics simultaneously.`,
+                  'error'
+                );
+                return;
+              }
+            }
           }
         }
       }
@@ -664,11 +789,18 @@ export class AdminDashboardComponent implements OnInit {
     this.isSaving = true;
     try {
       let userId = this.userForm.userId;
+      // Derive global_roles from the per-assignment roles
+      const assignmentRoles = new Set(this.userForm.assignments.map(a => a.role));
+      const derivedGlobalRoles: string[] = [];
+      if (assignmentRoles.has('doctor')) derivedGlobalRoles.push('doctor');
+      if (assignmentRoles.has('receptionist')) derivedGlobalRoles.push('receptionist');
+      if (derivedGlobalRoles.length === 0) derivedGlobalRoles.push('receptionist');
+
       const userPayload: any = {
         email: this.userForm.email.trim().toLowerCase(),
         name: this.userForm.name.trim(),
         specialization: this.userForm.specialization?.trim() || '',
-        global_roles: this.userForm.global_roles,
+        global_roles: derivedGlobalRoles,
         status: this.userForm.status,
         subscription_id: this.subscription!.id,
       };
@@ -714,33 +846,54 @@ export class AdminDashboardComponent implements OnInit {
         return;
       }
       // Sync clinic assignments
+      // Only delete clinic_user records that were originally in the form but
+      // were explicitly removed by the admin. Do NOT delete records for clinics
+      // that were never part of this editing session (preserves other clinics).
       const existingCUs = await this.adminService.getClinicUsers(this.subscription!.id);
       const userCUs = existingCUs.filter(cu => cu.user_id === userId);
       const newClinicIds = new Set(this.userForm.assignments.map(a => a.clinicId));
-      for (const cu of userCUs) { if (!newClinicIds.has(cu.clinic_id)) await this.adminService.deleteClinicUser(cu.id!); }
+      for (const cu of userCUs) {
+        // Only delete if the clinic was originally in the form AND is now removed
+        if (this.originalFormClinicIds.has(cu.clinic_id) && !newClinicIds.has(cu.clinic_id)) {
+          await this.adminService.deleteClinicUser(cu.id!);
+        }
+      }
       for (const assignment of this.userForm.assignments) {
         const existingCU = userCUs.find(cu => cu.clinic_id === assignment.clinicId);
         const cuPayload: any = {
           clinic_id: assignment.clinicId,
           user_id: userId, status: 'active',
+          role: assignment.role,
         };
         if (assignment.role === 'doctor' && Object.keys(assignment.availability).length > 0)
           cuPayload.availability = assignment.availability;
         if (existingCU) await this.adminService.updateClinicUser(existingCU.id!, cuPayload);
         else await this.adminService.createClinicUser(cuPayload);
       }
+      // Rebuild local state from DB to capture ALL assignments (including external ones)
+      const freshCUs = await this.adminService.getClinicUsers(this.subscription!.id);
+      const freshUserCUs = freshCUs.filter(cu => cu.user_id === userId);
+      const allAssignments: UserClinicAssignment[] = freshUserCUs.map(cu => {
+        const clinic = this.clinics.find(c => c.id === cu.clinic_id);
+        const cuRole = (cu as any).role as string | undefined;
+        const role: 'doctor' | 'receptionist' = (cuRole === 'doctor' || cuRole === 'receptionist') ? cuRole : 'receptionist';
+        return {
+          clinicUserId: cu.id, clinicId: cu.clinic_id,
+          clinicName: clinic?.name || cu.clinic_id,
+          role,
+          availability: this.deepCopyAvail((cu as any).availability || {}),
+        };
+      });
       const updated: AdminUserState = {
         userId, email: userPayload.email, name: userPayload.name, specialization: userPayload.specialization,
-        global_roles: [...this.userForm.global_roles], status: this.userForm.status,
-        assignments: this.userForm.assignments.map(a => ({
-          ...a, clinicName: this.clinics.find(c => c.id === a.clinicId)?.name || a.clinicId,
-          availability: this.deepCopyAvail(a.availability),
-        })),
+        global_roles: [...derivedGlobalRoles], status: this.userForm.status,
+        assignments: allAssignments,
       };
       const idx = this.users.findIndex(u => u.userId === userId);
       if (idx >= 0) this.users[idx] = updated; else this.users.push(updated);
       this.updateUserStats();
       this.showUserForm = false; this.editingUser = null;
+      this.externalBookings = [];
       this.showToast(this.editingUser ? 'User updated' : 'User created successfully');
     } catch (e: any) { this.showToast('Failed to save user: ' + e.message, 'error'); }
     finally { this.isSaving = false; this.cdr.detectChanges(); }
@@ -801,5 +954,50 @@ export class AdminDashboardComponent implements OnInit {
     const copy: ClinicUserAvailability = {};
     for (const day of Object.keys(a)) copy[day] = [...(a[day] || [])];
     return copy;
+  }
+
+  /**
+   * Load clinic_user records from the DB for this user that are NOT currently
+   * represented by assignments in the form. This covers clinics from the same
+   * subscription that the admin hasn't added to the form.
+   */
+  private async loadExternalBookings(userId: string): Promise<void> {
+    try {
+      const allCuDocs = await this.adminService.getAllClinicUsersForUser(userId);
+      const formClinicIds = new Set(this.userForm.assignments.map(a => a.clinicId));
+
+      const externals: ExternalBooking[] = [];
+      for (const cu of allCuDocs) {
+        if (formClinicIds.has(cu.clinic_id)) continue; // already in form
+        const avail: ClinicUserAvailability = (cu as any).availability || {};
+        if (Object.keys(avail).length === 0) continue; // no availability data
+
+        // Resolve clinic info for timings
+        let clinic = this.clinics.find(c => c.id === cu.clinic_id);
+        let timings: TimingBlock[] = [];
+        let clinicName = cu.clinic_id;
+
+        if (clinic) {
+          timings = clinic.timings;
+          clinicName = clinic.name;
+        } else {
+          // Clinic from another subscription — try to load its schedule
+          try {
+            const schedule = await this.adminService.getClinicSchedule(cu.clinic_id);
+            if (schedule?.timings) timings = schedule.timings;
+          } catch { /* ignore */ }
+          clinicName = cu.clinic_id; // Use ID as fallback name
+        }
+
+        if (timings.length > 0) {
+          externals.push({ clinicId: cu.clinic_id, clinicName, availability: avail, timings });
+        }
+      }
+
+      this.externalBookings = externals;
+      this.cdr.detectChanges();
+    } catch (err) {
+      console.warn('[AdminDashboard] Failed to load external bookings:', err);
+    }
   }
 }

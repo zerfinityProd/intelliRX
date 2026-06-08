@@ -14,6 +14,7 @@ import { ConfigService } from './configService';
     providedIn: 'root'
 })
 export class ThemeService {
+    private static readonly STORAGE_KEY = 'intellirx-theme';
     private readonly isDarkTheme$ = new BehaviorSubject<boolean>(this.loadThemeFromLocal());
 
     private authService = inject(AuthenticationService);
@@ -106,6 +107,10 @@ export class ThemeService {
      * Load theme from system preference (synchronous, used at startup)
      */
     private loadThemeFromLocal(): boolean {
+        const stored = localStorage.getItem(ThemeService.STORAGE_KEY);
+        if (stored === 'dark') return true;
+        if (stored === 'light') return false;
+        // No saved preference — fall back to OS system preference
         return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
 
@@ -118,6 +123,8 @@ export class ThemeService {
         } else {
             document.documentElement.removeAttribute('data-theme');
         }
+        // Persist to localStorage for instant load on next refresh
+        localStorage.setItem(ThemeService.STORAGE_KEY, isDark ? 'dark' : 'light');
     }
 
     /**

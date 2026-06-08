@@ -14,14 +14,14 @@ export const superAdminGuard: CanActivateFn = () => {
         take(1),
         switchMap(() => {
             if (!authService.isLoggedIn()) {
-                router.navigate(['/login']);
+                router.navigate(['/app/login']);
                 return of(false);
             }
             const email = authService.currentUserValue?.email || '';
             return from(authorizationService.getUserRole(email)).pipe(
                 map(role => {
                     if (role === 'z_admin') return true;
-                    router.navigate(['/login']);
+                    router.navigate(['/app/login']);
                     return false;
                 })
             );
@@ -39,14 +39,14 @@ export const ownerGuard: CanActivateFn = () => {
         take(1),
         switchMap(() => {
             if (!authService.isLoggedIn()) {
-                router.navigate(['/login']);
+                router.navigate(['/app/login']);
                 return of(false);
             }
             const email = authService.currentUserValue?.email || '';
             return from(authorizationService.getUserRole(email)).pipe(
                 map(role => {
                     if (role === 'subscription_owner') return true;
-                    router.navigate(['/login']);
+                    router.navigate(['/app/login']);
                     return false;
                 })
             );

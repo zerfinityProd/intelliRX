@@ -15,18 +15,17 @@ export const routes: Routes = [
         ]
     },
 
-    // ── Website Login (Z-Admin only) ──
-    {
-        path: 'login',
-        loadComponent: () => import('./components/login/login').then(m => m.LoginComponent),
-        data: { loginMode: 'website' }
-    },
-
-    // ── App Login (Admin / Doctors / Receptionists) ──
+    // ── Unified Login (All roles: Admin, Doctor, Staff, Z-Admin) ──
     {
         path: 'app/login',
         loadComponent: () => import('./components/login/login').then(m => m.LoginComponent),
-        data: { loginMode: 'app' }
+    },
+
+    // ── Backward compatibility: /login redirects to unified login ──
+    {
+        path: 'login',
+        redirectTo: 'app/login',
+        pathMatch: 'full'
     },
 
     // ── Registration (Website — creates a new subscription) ──

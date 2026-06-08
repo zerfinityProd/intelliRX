@@ -51,13 +51,12 @@ export const doctorGuard: CanActivateFn = () => {
                     }
                     // Block z_admin from clinical app routes
                     if (role === 'z_admin') {
-                        router.navigate(['/login']);
+                        router.navigate(['/app/login']);
                         return false;
                     }
-                    // Redirect admin to their dashboard
+                    // Allow admin (subscription_owner) full access like doctors
                     if (role === 'subscription_owner') {
-                        router.navigate(['/admin-dashboard']);
-                        return false;
+                        return true;
                     }
                     return true;
                 })

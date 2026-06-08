@@ -521,8 +521,8 @@ export class AdminSetupComponent implements OnInit {
           };
         }
       } else {
-        // Compute next clinic ID from local list — zero extra network calls.
-        const newClinicId = this.adminService.computeNextClinicId(this.clinics.map(c => c.id));
+        // Compute next globally unique clinic ID from Firestore.
+        const newClinicId = await this.adminService.computeNextClinicId();
         await this.adminService.createClinic({
           ...clinicData,
           subscription_id: this.selectedSubscription!.id,

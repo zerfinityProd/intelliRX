@@ -82,6 +82,7 @@ export class HomeComponent implements OnInit {
 
   get hasMoreResults(): boolean { return this.patientService.hasMoreResults; }
   get isLoadingMore(): boolean { return this.patientService.isLoadingMore; }
+  get hasClinicSelected(): boolean { return !!this.clinicContextService.getSelectedClinicId(); }
 
   private searchTimeout: any;
 

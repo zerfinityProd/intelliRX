@@ -65,53 +65,48 @@ export class AuthenticationService {
             runInInjectionContext(this.injector, async () => {
                 if (firebaseUser) {
                     const email = firebaseUser.email || '';
-                    // Skip the email-allowed check while registration is in progress;
-                    // the user doc hasn't been written to Firestore yet.
-                    const allowed = this._registering || this._loggingIn || await this.authorizationService.isEmailAllowed(email);
+
+                    // While a login or registration is in progress, the login methods
+                    // handle user setup themselves. Skip all processing here to avoid
+                    // race conditions (e.g. setting up a user that will be signed out).
+                    if (this._loggingIn || this._registering) {
+                        if (!this.authReady) {
+                            this.authReady = true;
+                            this.authReadySubject.next(true);
+                        }
+                        return;
+                    }
+
+                    // Page-refresh scenario: check if this email is registered
+                    const allowed = await this.authorizationService.isEmailAllowed(email);
                     if (!allowed) {
-                        // Auto-provision: user exists in Firebase Auth but not Firestore
-                        // (This handles page refresh for orphaned auth users)
-                        if (!this._registering && !this._loggingIn) {
-                            console.log('[Auth] onAuthStateChanged: auto-provisioning user:', email);
-                            try {
-                                await this.authorizationService.autoProvisionUser(
-                                    email,
-                                    firebaseUser.displayName || ''
-                                );
-                            } catch (provisionErr) {
-                                console.error('[Auth] Auto-provision failed in onAuthStateChanged:', provisionErr);
-                                await signOut(this.auth);
-                                this.setCurrentUser(null);
-                                return;
-                            }
+                        console.warn('[Auth] onAuthStateChanged: email not in users collection, signing out:', email);
+                        await signOut(this.auth);
+                        this.setCurrentUser(null);
+                        if (!this.authReady) {
+                            this.authReady = true;
+                            this.authReadySubject.next(true);
+                        }
+                        return;
+                    }
+
+                    // Fetch role and set subscription/clinic context
+                    const role = await this.authorizationService.getUserRole(email);
+                    const dbName = await this.authorizationService.getUserName(email);
+                    const assignments = await this.authorizationService.getUserAssignments(email);
+                    // Restore clinic context from localStorage (for page refreshes only).
+                    if (assignments.length > 0) {
+                        const currentClinic = this.clinicContextService.getSelectedClinicId();
+                        const matching = currentClinic
+                            ? assignments.find(a => a.clinicId === currentClinic)
+                            : null;
+                        if (matching) {
+                            this.clinicContextService.setClinicContext(matching.clinicId, matching.subscriptionId);
                         }
                     }
-                    {
-                        // Fetch role and set subscription/clinic context
-                        const role = await this.authorizationService.getUserRole(email);
-                        const dbName = await this.authorizationService.getUserName(email);
-                        const assignments = await this.authorizationService.getUserAssignments(email);
-                        // Restore clinic context from localStorage (for page refreshes only).
-                        // On a fresh login, the login component's ensureClinicSelected()
-                        // will prompt the user if they have multiple subscriptions/clinics.
-                        if (assignments.length > 0) {
-                            const currentClinic = this.clinicContextService.getSelectedClinicId();
-                            // Only restore if the stored clinic is still a valid assignment
-                            const matching = currentClinic
-                                ? assignments.find(a => a.clinicId === currentClinic)
-                                : null;
-                            if (matching) {
-                                // Stored clinic is still valid — restore its context (page refresh scenario)
-                                this.clinicContextService.setClinicContext(matching.clinicId, matching.subscriptionId);
-                            }
-                            // If no stored clinic (fresh login), leave context empty —
-                            // the login component will call ensureClinicSelected() and prompt the user.
-                        }
-                        const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
-                        // Override display name with database name if available
-                        if (dbName) user.name = dbName;
-                        this.setCurrentUser(user);
-                    }
+                    const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
+                    if (dbName) user.name = dbName;
+                    this.setCurrentUser(user);
                 } else {
                     this.setCurrentUser(null);
                 }
@@ -208,12 +203,10 @@ export class AuthenticationService {
             const userEmail = userCredential.user.email || email;
             const allowed = await this.authorizationService.isEmailAllowed(userEmail);
             if (!allowed) {
-                // Auto-provision: user exists in Firebase Auth but not Firestore
-                console.log('[Auth] Auto-provisioning user during login:', userEmail);
-                await this.authorizationService.autoProvisionUser(
-                    userEmail,
-                    userCredential.user.displayName || ''
-                );
+                // User not in Firestore users collection — block access
+                await signOut(this.auth);
+                this.setCurrentUser(null);
+                throw new Error('Access denied. Your email is not registered in the system.');
             }
             const role = await this.authorizationService.getUserRole(userEmail);
             const dbName = await this.authorizationService.getUserName(userEmail);
@@ -240,12 +233,10 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // Auto-provision: user exists in Firebase Auth but not Firestore
-                console.log('[Auth] Auto-provisioning user during Google login:', email);
-                await this.authorizationService.autoProvisionUser(
-                    email,
-                    result.user.displayName || ''
-                );
+                // User not in Firestore users collection — block access
+                await signOut(this.auth);
+                this.setCurrentUser(null);
+                throw new Error('Access denied. Your email is not registered in the system.');
             }
             const role = await this.authorizationService.getUserRole(email);
             const dbName = await this.authorizationService.getUserName(email);
@@ -271,12 +262,10 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // Auto-provision: user exists in Firebase Auth but not Firestore
-                console.log('[Auth] Auto-provisioning user during Microsoft login:', email);
-                await this.authorizationService.autoProvisionUser(
-                    email,
-                    result.user.displayName || ''
-                );
+                // User not in Firestore users collection — block access
+                await signOut(this.auth);
+                this.setCurrentUser(null);
+                throw new Error('Access denied. Your email is not registered in the system.');
             }
             const role = await this.authorizationService.getUserRole(email);
             const dbName = await this.authorizationService.getUserName(email);
@@ -302,12 +291,10 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // Auto-provision: user exists in Firebase Auth but not Firestore
-                console.log('[Auth] Auto-provisioning user during Apple login:', email);
-                await this.authorizationService.autoProvisionUser(
-                    email,
-                    result.user.displayName || ''
-                );
+                // User not in Firestore users collection — block access
+                await signOut(this.auth);
+                this.setCurrentUser(null);
+                throw new Error('Access denied. Your email is not registered in the system.');
             }
             const role = await this.authorizationService.getUserRole(email);
             const dbName = await this.authorizationService.getUserName(email);
@@ -362,12 +349,11 @@ export class AuthenticationService {
             const email = result.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // Auto-provision: user exists in Firebase Auth but not Firestore
-                console.log('[Auth] Auto-provisioning user during Google redirect:', email);
-                await this.authorizationService.autoProvisionUser(
-                    email,
-                    result.displayName || ''
-                );
+                // User not in Firestore users collection — block access
+                console.warn('[Auth] handleGoogleRedirectResult: email not registered, signing out:', email);
+                await signOut(this.auth);
+                this.setCurrentUser(null);
+                return;
             }
 
             const role = await this.authorizationService.getUserRole(email);

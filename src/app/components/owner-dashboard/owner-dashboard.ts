@@ -222,6 +222,6 @@ export class OwnerDashboardComponent implements OnInit {
 
   async logout() {
     await this.auth.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/app/login']);
   }
 }

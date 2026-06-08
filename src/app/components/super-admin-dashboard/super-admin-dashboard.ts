@@ -164,7 +164,7 @@ export class SuperAdminDashboardComponent implements OnInit {
 
   async logout(): Promise<void> {
     await this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/app/login']);
   }
 
   // ── Getters ───────────────────────────────────────────────────────────

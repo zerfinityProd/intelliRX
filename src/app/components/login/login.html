@@ -1,16 +1,12 @@
 <div class="login-page">
   <div class="login-card">
-    <!-- Logo -->
     <div class="text-center mb-2 login-logo">
       <svg width="40" height="40" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-1">
         <circle cx="25" cy="25" r="23" stroke="#148D9E" stroke-width="3"/>
         <path d="M18 25 L23 30 L33 20" stroke="#148D9E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <h1 class="h3 fw-bold mb-1 login-brand-title">IntelliRx</h1>
-      <p class="text-muted mb-0 fw-medium" style="font-size:13px">{{ portalTitle }}</p>
-      <p class="portal-badge" [class.portal-badge--app]="loginMode === 'app'">
-        {{ portalSubtitle }}
-      </p>
+      <p class="text-muted mb-0 fw-medium" style="font-size:13px">{{ portalSubtitle }}</p>
     </div>
 
     <!-- ── Forgot Password View ── -->
@@ -137,82 +133,15 @@
         </button>
       </form>
 
-      <!-- Register Form (only shown on website portal — registration creates a subscription) -->
-      <form *ngIf="!isLoginMode && loginMode === 'website'" (ngSubmit)="onRegister()" #registerForm="ngForm">
-        <div class="mb-3">
-          <label for="register-name" class="form-label fw-semibold" style="font-size:13px">Full Name</label>
-          <input
-            type="text"
-            id="register-name"
-            name="displayName"
-            [(ngModel)]="displayName"
-            placeholder="Enter your full name"
-            required
-            class="form-control"
-            [disabled]="isLoading"
-          />
-        </div>
 
-        <div class="mb-3">
-          <label for="register-email" class="form-label fw-semibold" style="font-size:13px">Email Address</label>
-          <input
-            type="email"
-            id="register-email"
-            name="email"
-            [(ngModel)]="email"
-            placeholder="Enter your email"
-            required
-            class="form-control"
-            [disabled]="isLoading"
-          />
-        </div>
 
-        <div class="mb-3">
-          <label for="register-password" class="form-label fw-semibold" style="font-size:13px">Password</label>
-          <input
-            type="password"
-            id="register-password"
-            name="password"
-            [(ngModel)]="password"
-            placeholder="At least 6 characters"
-            required
-            class="form-control"
-            [disabled]="isLoading"
-          />
-        </div>
-
-        <div *ngIf="errorMessage" class="alert alert-danger py-2 px-3">{{ errorMessage }}</div>
-        <div *ngIf="successMessage" class="alert alert-success py-2 px-3">✓ {{ successMessage }}</div>
-
-        <button type="submit" class="btn btn-primary w-100 py-2 fw-semibold" [disabled]="isLoading">
-          <span *ngIf="!isLoading">Create Account</span>
-          <span *ngIf="isLoading" class="loading-content">
-            <span class="loading-spinner"></span>
-            Creating account...
-          </span>
-        </button>
-      </form>
-
-      <!-- Toggle sign-in / sign-up (only on website portal) -->
-      <div class="text-center mt-3" *ngIf="loginMode === 'website'">
-        <p *ngIf="isLoginMode" class="text-muted mb-0" style="font-size:13px">
-          Don't have an account?
-          <a href="javascript:void(0)" (click)="toggleMode()" class="fw-semibold">Sign up</a>
-        </p>
-        <p *ngIf="!isLoginMode" class="text-muted mb-0" style="font-size:13px">
-          Already have an account?
-          <a href="javascript:void(0)" (click)="toggleMode()" class="fw-semibold">Sign in</a>
+      <!-- Back to Home -->
+      <div class="text-center mt-3">
+        <p class="text-muted mb-0" style="font-size:13px">
+          ← <a href="javascript:void(0)" (click)="goToHome()" class="fw-semibold">Back to IntelliRx Home</a>
         </p>
       </div>
 
-      <!-- Portal Switcher -->
-      <div class="portal-switcher text-center mt-3">
-        <p class="text-muted mb-0" style="font-size:13px" *ngIf="loginMode === 'website'">
-          Looking for the clinical app?
-          <a href="javascript:void(0)" (click)="goToOtherPortal()" class="fw-semibold">App Login →</a>
-        </p>
-
-      </div>
     </div>
   </div>
 </div>

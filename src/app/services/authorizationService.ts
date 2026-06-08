@@ -163,26 +163,12 @@ export class AuthorizationService {
                 userDocs = [matchedDoc];
             }
 
-            // Handle duplicate user documents: prefer the one with clinic_users entries
+            // Handle multiple user documents: aggregate clinic_users from ALL docs
+            // so that assignments across different subscriptions are all visible.
             let userDoc = userDocs[0];
             if (userDocs.length > 1) {
                 console.warn('[AuthZ] Found', userDocs.length, 'user docs for email:', normalized,
-                    '— IDs:', userDocs.map(d => d.id).join(', '));
-
-                // Check which user doc has associated clinic_users entries
-                for (const candidateDoc of userDocs) {
-                    const candidateResults = await this.api.runQuery('', {
-                        collectionId: 'clinic_users',
-                        filters: [
-                            { field: 'user_id', op: '==', value: candidateDoc.id }
-                        ],
-                    });
-                    if (candidateResults.length > 0) {
-                        console.log('[AuthZ] Preferring user doc', candidateDoc.id, 'which has', candidateResults.length, 'clinic_users entries');
-                        userDoc = candidateDoc;
-                        break;
-                    }
-                }
+                    '— IDs:', userDocs.map(d => d.id).join(', '), '— aggregating assignments from all');
             }
             const userData = userDoc.data;
             const userId = userDoc.id;
@@ -230,36 +216,37 @@ export class AuthorizationService {
             // Note: permissions are resolved solely from the roles collection.
             // Any permissions fields on user docs are ignored.
 
-            // Step 2: Find clinic_users entries for this user.
-            // Query by user_id only; filter status client-side because documents
-            // may lack the 'status' field entirely (treat missing → active).
-            const cuDocs = await this.api.runQuery('', {
-                collectionId: 'clinic_users',
-                filters: [
-                    { field: 'user_id', op: '==', value: userId }
-                ],
-            });
+            // Step 2: Find clinic_users entries for ALL user docs (not just one).
+            // This aggregates assignments across different subscriptions.
+            const allCuDocs: Array<{ id: string; data: any }> = [];
+            for (const doc of userDocs) {
+                const cuDocs = await this.api.runQuery('', {
+                    collectionId: 'clinic_users',
+                    filters: [
+                        { field: 'user_id', op: '==', value: doc.id }
+                    ],
+                });
+                console.log(`[AuthZ] clinic_users query for user_id="${doc.id}" returned ${cuDocs.length} docs`);
+                cuDocs.forEach((d, i) => {
+                    const cd = d.data;
+                    console.log(`[AuthZ]   clinic_users[${i}] id=${d.id}`,
+                        `clinic_id="${cd['clinic_id']}"`,
+                        `status="${cd['status'] ?? '(missing→active)'}"`,
+                        `user_id="${cd['user_id']}"`
+                    );
+                });
+                allCuDocs.push(...cuDocs);
+            }
 
-            console.log(`[AuthZ] clinic_users query for user_id="${userId}" returned ${cuDocs.length} docs`);
-            cuDocs.forEach((d, i) => {
-                const cd = d.data;
-                console.log(`[AuthZ]   clinic_users[${i}] id=${d.id}`,
-                    `clinic_id="${cd['clinic_id']}"`,
-                    `status="${cd['status'] ?? '(missing→active)'}"`,
-                    `user_id="${cd['user_id']}"`
-                );
-            });
-
-            if (cuDocs.length === 0) {
-                console.warn('[AuthZ] No clinic_users entries found for user_id:', userId,
-                    '(email:', normalized, '). The user needs a clinic_users record.');
+            if (allCuDocs.length === 0) {
+                console.warn('[AuthZ] No clinic_users entries found for any user docs of email:', normalized);
             }
 
             const assignments: ClinicAssignment[] = [];
 
             // Collect unique clinic IDs from active clinic_users docs
             const activeClinicIds: string[] = [];
-            for (const cuDoc of cuDocs) {
+            for (const cuDoc of allCuDocs) {
                 const cuData = cuDoc.data;
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') {
@@ -286,7 +273,7 @@ export class AuthorizationService {
             }
 
             // Build assignments from clinic_users + clinic docs
-            for (const cuDoc of cuDocs) {
+            for (const cuDoc of allCuDocs) {
                 const cuData = cuDoc.data;
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') continue;
@@ -306,7 +293,7 @@ export class AuthorizationService {
 
             // If specialization not found on user doc, check clinic_users docs
             if (!specialization) {
-                for (const cuDoc of cuDocs) {
+                for (const cuDoc of allCuDocs) {
                     const cuData = cuDoc.data;
                     const cuSpec = cuData['specialization'] || cuData['specialty'] || '';
                     if (cuSpec) { specialization = cuSpec; break; }

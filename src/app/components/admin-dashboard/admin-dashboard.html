@@ -285,7 +285,7 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="ad-label">Email *</label>
-                <input class="ad-input" type="email" [(ngModel)]="userForm.email" placeholder="user@example.com" [disabled]="!!editingUser" id="user-email" />
+                <input class="ad-input" type="email" [(ngModel)]="userForm.email" placeholder="user@example.com" [disabled]="!!editingUser" (blur)="onUserEmailBlur()" id="user-email" />
               </div>
               <div class="col-md-6">
                 <label class="ad-label">Full Name *</label>
@@ -347,7 +347,9 @@
                       <div class="ad-avail-day-row" *ngFor="let day of clinic.weekdays">
                         <div class="ad-avail-day-col">{{ weekdayLabels[day] || day }}</div>
                         <div class="ad-avail-cell" *ngFor="let t of clinic.timings">
-                          <label class="ad-avail-cb">
+                          <label class="ad-avail-cb"
+                            [title]="getBlockConflictTooltip(a, day, t.label)"
+                            [class.ad-avail-cb--disabled]="isBlockBookedElsewhere(a, day, t.label)">
                             <input type="checkbox" [checked]="isBlockSelected(a, day, t.label)"
                               (change)="toggleAvailability(a, day, t.label)"
                               [disabled]="isBlockBookedElsewhere(a, day, t.label)" />

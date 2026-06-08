@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { FirestoreApiService } from '../../services/firestore-api.service';
@@ -26,17 +26,11 @@ export class LoginComponent implements OnInit {
     isLoading: boolean = false;
     showForgotPassword: boolean = false;
 
-    /**
-     * 'website' = Owner/SuperAdmin portal (/login)
-     * 'app'     = Clinical app portal (/app/login)
-     */
-    loginMode: 'website' | 'app' = 'website';
-
     private readonly authService = inject(AuthenticationService);
     private readonly authorizationService = inject(AuthorizationService);
     private readonly firestoreApi = inject(FirestoreApiService);
     private readonly router = inject(Router);
-    private readonly route = inject(ActivatedRoute);
+
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
     private readonly clinicContextService = inject(ClinicContextService);
@@ -45,10 +39,7 @@ export class LoginComponent implements OnInit {
     constructor() { }
 
     async ngOnInit(): Promise<void> {
-        // Detect which login portal we are on from route data
-        this.loginMode = this.route.snapshot.data['loginMode'] || 'website';
-
-        // If the user navigated to /login explicitly, sign them out so they
+        // If the user navigated to /app/login explicitly, sign them out so they
         // can pick which account to use.
         if (this.authService.isLoggedIn()) {
             await this.authService.logout();
@@ -71,19 +62,25 @@ export class LoginComponent implements OnInit {
 
     /** Get the portal title for UI display */
     get portalTitle(): string {
-        return this.loginMode === 'website'
-            ? 'Z-Admin Portal'
-            : 'IntelliRX Application';
+        return 'Welcome Back';
     }
 
     get portalSubtitle(): string {
-        return this.loginMode === 'website'
-            ? 'Z-Admin Access Only'
-            : 'Admin, Doctor & Staff Portal';
+        return 'Admin, Doctor & Staff Portal';
     }
 
-    /** Navigate based on role, enforcing portal-specific rules */
+    /** Navigate based on role after successful login */
     private async navigateByRole(email: string): Promise<void> {
+        // ── Gate: only allow emails that exist in the users collection ──
+        const allowed = await this.authorizationService.isEmailAllowed(email);
+        if (!allowed) {
+            this.errorMessage = 'Access denied. Your email is not registered in the system. Please contact your administrator.';
+            await this.authService.logout();
+            this.isLoading = false;
+            this.cdr.detectChanges();
+            return;
+        }
+
         this.promptNotificationPermission(email);
 
         // Fetch user's role once for routing decisions
@@ -95,50 +92,30 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        if (this.loginMode === 'website') {
-            // Website login: Only z_admin allowed
-            if (role === 'z_admin') {
-                this.router.navigate(['/admin']);
-                return;
-            }
-            // Everyone else must use App Login
-            this.errorMessage = 'This portal is for Z-Admin only. Please use the App Login.';
-            await this.authService.logout();
-            this.isLoading = false;
-            this.cdr.detectChanges();
+        // Z-Admin → super admin dashboard
+        if (role === 'z_admin') {
+            this.router.navigate(['/admin']);
             return;
         }
 
-        if (this.loginMode === 'app') {
-            // App login: admin, doctors and receptionists allowed
-            if (role === 'z_admin') {
-                this.errorMessage = 'Z-Admin must use the Z-Admin Login portal.';
-                await this.authService.logout();
-                this.isLoading = false;
-                this.cdr.detectChanges();
-                return;
-            }
-
-            // Admin (subscription_owner) logging into the app → admin dashboard
-            if (role === 'subscription_owner') {
-                await this.ensureClinicSelected(email);
-                this.router.navigate(['/admin-dashboard']);
-                return;
-            }
-
-            // Doctor/Receptionist logging into the app
-            if (role === 'doctor' || role === 'receptionist') {
-                await this.ensureClinicSelected(email);
-                this.router.navigate(['/home']);
-                return;
-            }
-
-            this.errorMessage = 'No valid account found. Please contact your administrator.';
-            await this.authService.logout();
-            this.isLoading = false;
-            this.cdr.detectChanges();
+        // Admin (subscription_owner) → clinical home (can access admin dashboard from navbar)
+        if (role === 'subscription_owner') {
+            await this.ensureClinicSelected(email);
+            this.router.navigate(['/home']);
             return;
         }
+
+        // Doctor/Receptionist → clinical home
+        if (role === 'doctor' || role === 'receptionist') {
+            await this.ensureClinicSelected(email);
+            this.router.navigate(['/home']);
+            return;
+        }
+
+        this.errorMessage = 'No valid account found. Please contact your administrator.';
+        await this.authService.logout();
+        this.isLoading = false;
+        this.cdr.detectChanges();
     }
 
     /**
@@ -206,8 +183,17 @@ export class LoginComponent implements OnInit {
 
     private async promptSubscriptionSelection(subscriptionIds: string[]): Promise<string> {
         const { default: Swal } = await import('sweetalert2');
+        // Fetch subscription names for display
         const options: Record<string, string> = {};
-        for (const id of subscriptionIds) options[id] = id;
+        for (const id of subscriptionIds) {
+            try {
+                const doc = await this.firestoreApi.getDocument('subscriptions', id);
+                const name = doc?.data?.['entity_name'] || doc?.data?.['name'] || id;
+                options[id] = name;
+            } catch {
+                options[id] = id;
+            }
+        }
 
         const result = await Swal.fire({
             title: 'Select Organisation',
@@ -226,8 +212,17 @@ export class LoginComponent implements OnInit {
 
     private async promptClinicSelection(clinicIds: string[]): Promise<string> {
         const { default: Swal } = await import('sweetalert2');
+        // Fetch clinic names for display
         const options: Record<string, string> = {};
-        for (const id of clinicIds) options[id] = id;
+        for (const id of clinicIds) {
+            try {
+                const doc = await this.firestoreApi.getDocument('clinics', id);
+                const name = doc?.data?.['name'] || id;
+                options[id] = name;
+            } catch {
+                options[id] = id;
+            }
+        }
 
         const result = await Swal.fire({
             title: 'Select Clinic',
@@ -384,13 +379,11 @@ export class LoginComponent implements OnInit {
         }
     }
 
-    /** Navigate to the other login portal */
-    goToOtherPortal(): void {
-        if (this.loginMode === 'website') {
-            this.router.navigate(['/app/login']);
-        } else {
-            this.router.navigate(['/login']);
-        }
+
+
+    /** Navigate back to the IntelliRx home/landing page */
+    goToHome(): void {
+        this.router.navigate(['/']);
     }
 
     /**

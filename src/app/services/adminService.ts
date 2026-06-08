@@ -49,12 +49,14 @@ export class AdminService {
   }
 
   /**
-   * Given a list of existing clinic IDs, returns the next sequential ID
+   * Queries ALL clinic documents in Firestore and returns the next sequential ID
    * in the format clinic_01, clinic_02 … zero-padded to at least 2 digits.
-   * Call with your locally cached list to avoid any extra network round-trip.
+   * This ensures globally unique IDs across all subscriptions.
    */
-  computeNextClinicId(existingIds: string[]): string {
-    const max = existingIds.reduce((m, id) => {
+  async computeNextClinicId(): Promise<string> {
+    const allDocs = await this.api.listDocuments('clinics', 500);
+    const allIds = allDocs.map(d => d.id);
+    const max = allIds.reduce((m, id) => {
       const match = id.match(/^clinic_(\d+)$/);
       return match ? Math.max(m, parseInt(match[1], 10)) : m;
     }, 0);
