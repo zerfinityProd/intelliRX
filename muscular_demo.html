@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clinical Interactive Muscular System Explorer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+      /* Theme Defaults (Dark Mode) */
+      --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --bg-gradient: linear-gradient(135deg, #090d16 0%, #111827 100%);
+      --surface-base: #0b111e;
+      --surface-card: rgba(17, 24, 39, 0.75);
+      --border-glow: rgba(239, 68, 68, 0.1);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      
+      /* Muscle Visualization Colors (Dark Mode) */
+      --muscle-unselected: rgba(239, 68, 68, 0.08);
+      --muscle-stroke: rgba(239, 68, 68, 0.35);
+      --muscle-hover: rgba(239, 68, 68, 0.3);
+      --muscle-hover-stroke: #f87171;
+      --muscle-selected: rgba(239, 68, 68, 0.85);
+      --muscle-selected-stroke: #ef4444;
+      --muscle-glow: 0 0 12px rgba(239, 68, 68, 0.5);
+
+      /* General Theme Tokens */
+      --accent-color: #ef4444;
+      --accent-hover: #dc2626;
+      --accent-bg: rgba(239, 68, 68, 0.1);
+    }
+
+    [data-theme="light"] {
+      /* Theme Defaults (Light Mode) */
+      --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      --surface-base: #f8fafc;
+      --surface-card: rgba(255, 255, 255, 0.8);
+      --border-glow: rgba(220, 38, 38, 0.05);
+      --border-color: rgba(0, 0, 0, 0.08);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      
+      /* Muscle Visualization Colors (Light Mode) */
+      --muscle-unselected: rgba(220, 38, 38, 0.06);
+      --muscle-stroke: rgba(220, 38, 38, 0.25);
+      --muscle-hover: rgba(220, 38, 38, 0.15);
+      --muscle-hover-stroke: #dc2626;
+      --muscle-selected: rgba(220, 38, 38, 0.7);
+      --muscle-selected-stroke: #b91c1c;
+      --muscle-glow: 0 0 10px rgba(220, 38, 38, 0.35);
+
+      /* General Theme Tokens */
+      --accent-color: #dc2626;
+      --accent-hover: #b91c1c;
+      --accent-bg: rgba(220, 38, 38, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-family);
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 2rem;
+      background: rgba(var(--surface-base), 0.5);
+      border-bottom: 1px solid var(--border-color);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-logo {
+      width: 2rem;
+      height: 2rem;
+      background: var(--accent-color);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+    }
+
+    .brand-logo svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      stroke: white;
+    }
+
+    .brand-title h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+
+    .brand-title p {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-controls {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .theme-btn {
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .theme-btn:hover {
+      border-color: var(--accent-color);
+    }
+
+    .theme-btn svg {
+      width: 1.15rem;
+      height: 1.15rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+    }
+
+    /* main layout */
+    .dashboard {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 65px);
+      min-height: 0;
+      position: relative;
+    }
+
+    /* sidebar layout */
+    .sidebar-left {
+      width: 350px;
+      border-right: 1px solid var(--border-color);
+      background: rgba(11, 17, 30, 0.4);
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 1.5rem;
+      gap: 1.5rem;
+      overflow-y: auto;
+    }
+
+    /* center chart layout */
+    .viewport-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      position: relative;
+    }
+
+    .viewport-header {
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .view-toggles {
+      display: flex;
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      padding: 0.25rem;
+      border-radius: 8px;
+      gap: 0.25rem;
+    }
+
+    .toggle-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .toggle-btn.active {
+      background: var(--accent-color);
+      color: white;
+      box-shadow: 0 2px 6px rgba(239, 68, 68, 0.25);
+    }
+
+    .action-controls {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.45rem 0.85rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+
+    .action-btn:hover {
+      border-color: var(--accent-color);
+      background: var(--accent-bg);
+    }
+
+    .action-btn.danger {
+      color: var(--accent-color);
+    }
+
+    .action-btn.danger:hover {
+      background: var(--accent-color);
+      color: white;
+    }
+
+    /* charts screen split/tab */
+    .charts-wrapper {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 2rem;
+      padding: 2rem;
+      overflow-y: auto;
+      min-height: 0;
+    }
+
+    .chart-panel {
+      flex: 1;
+      height: 100%;
+      max-width: 450px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: border-color 0.3s ease;
+    }
+
+    .chart-panel:hover {
+      border-color: var(--border-glow);
+    }
+
+    .chart-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      border-bottom: 1.5px solid var(--border-color);
+      width: 100%;
+      padding-bottom: 0.5rem;
+      text-align: center;
+    }
+
+    .anatomy-svg {
+      width: 100%;
+      height: 100%;
+      max-height: 550px;
+    }
+
+    /* SVG Path Styles */
+    .body-silhouette {
+      fill: var(--surface-base);
+      stroke: var(--border-color);
+      stroke-width: 2.5;
+      stroke-linejoin: round;
+      opacity: 0.85;
+      transition: all 0.3s ease;
+    }
+
+    .tech-grid .grid-line {
+      stroke: var(--accent-color);
+      stroke-width: 1;
+      stroke-dasharray: 4 8;
+      opacity: 0.08;
+    }
+
+    .tech-grid .grid-circle {
+      fill: none;
+      stroke: var(--accent-color);
+      stroke-width: 1;
+      stroke-dasharray: 4 8;
+      opacity: 0.05;
+    }
+
+    .muscle-path {
+      fill: var(--muscle-unselected);
+      stroke: var(--muscle-stroke);
+      stroke-width: 1.2;
+      stroke-linejoin: round;
+      cursor: pointer;
+      transition: all 0.15s ease-out;
+    }
+
+    .muscle-path:hover {
+      fill: var(--muscle-hover);
+      stroke: var(--muscle-hover-stroke);
+      filter: drop-shadow(0 0 4px var(--accent-color));
+    }
+
+    .muscle-path.selected {
+      fill: var(--muscle-selected);
+      stroke: var(--muscle-selected-stroke);
+      filter: drop-shadow(0 0 6px var(--accent-color));
+    }
+
+    .muscle-path.dimmed {
+      opacity: 0.15;
+    }
+
+    /* tooltips styling */
+    .custom-tooltip {
+      position: absolute;
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      color: white;
+      padding: 0.5rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      pointer-events: none;
+      z-index: 100;
+      white-space: nowrap;
+      display: none;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="light"] .custom-tooltip {
+      background: rgba(255, 255, 255, 0.92);
+      color: #0f172a;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    /* components and details styling */
+    .search-container {
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.65rem 1rem 0.65rem 2.25rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.15);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 1rem;
+      height: 1rem;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* details card */
+    .info-card {
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .info-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background: var(--accent-color);
+    }
+
+    .info-title {
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .info-group {
+      font-size: 0.75rem;
+      color: var(--accent-color);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      margin-top: -0.25rem;
+    }
+
+    .info-detail {
+      font-size: 0.85rem;
+      line-height: 1.4;
+      color: var(--text-secondary);
+    }
+
+    .info-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      border-top: 1px solid var(--border-color);
+      padding-top: 0.5rem;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .meta-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .meta-val {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    /* selected sidebar list */
+    .selected-list-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .selected-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      padding-right: 0.25rem;
+    }
+
+    .muscle-badge {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--surface-card);
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .muscle-badge:hover {
+      border-color: var(--accent-color);
+      background: var(--accent-bg);
+    }
+
+    .muscle-badge-name {
+      font-weight: 500;
+    }
+
+    .muscle-badge-remove {
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      padding: 0.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+
+    .muscle-badge-remove:hover {
+      color: var(--accent-color);
+      background: rgba(239, 68, 68, 0.1);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      border: 1.5px dashed var(--border-color);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .empty-state svg {
+      width: 1.75rem;
+      height: 1.75rem;
+      opacity: 0.5;
+    }
+
+    /* responsive behaviors */
+    @media (max-width: 1023px) {
+      .dashboard {
+        flex-direction: column;
+        height: auto;
+        overflow-y: auto;
+      }
+      .sidebar-left {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+        height: auto;
+        overflow-y: visible;
+      }
+      .charts-wrapper {
+        flex-direction: column;
+        height: auto;
+        overflow-y: visible;
+      }
+      .chart-panel {
+        width: 100%;
+        max-width: 500px;
+        height: 600px;
+      }
+    }
+
+    /* hiding elements when toggle active */
+    .viewport-container.show-anterior .chart-panel.posterior {
+      display: none;
+    }
+    .viewport-container.show-posterior .chart-panel.anterior {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="brand">
+      <div class="brand-logo">
+        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M12 21a9 9 0 0 1-9-9c0-3 2-6 5-8a2 2 0 0 1 3 0c1.5 1.5 3 1.5 4.5 0a2 2 0 0 1 3 0c3 2 5 5 5 8a9 9 0 0 1-9 9z"/>
+          <path d="M12 12v9"/>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <h1>Anatomical Labs</h1>
+        <p>Interactive Muscle Navigator</p>
+      </div>
+    </div>
+    <div class="header-controls">
+      <button class="theme-btn" id="themeToggle" aria-label="Toggle Theme">
+        <svg viewBox="0 0 24 24" id="themeSun" style="display: none;">
+          <circle cx="12" cy="12" r="5" />
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+        </svg>
+        <svg viewBox="0 0 24 24" id="themeMoon">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <div class="dashboard" id="dashboardContainer">
+    
+    <!-- LEFT SIDEBAR -->
+    <div class="sidebar-left">
+      <!-- Search -->
+      <div class="search-container">
+        <svg class="search-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+        <input type="text" class="search-input" id="muscleSearch" placeholder="Search clinical muscles...">
+      </div>
+
+      <!-- Info Card -->
+      <div>
+        <div class="section-title">Anatomy Details</div>
+        <div class="info-card" id="infoCard">
+          <div class="info-title" id="infoName">No Muscle Selected</div>
+          <div class="info-group" id="infoGroup">Clinically Unassigned</div>
+          <div class="info-detail" id="infoDesc">Hover over or click a muscle group on the charts to load clinical diagnostics, antagonist mappings, and target exercises.</div>
+          <div class="info-meta">
+            <div class="meta-item">
+              <span class="meta-label">Antagonist</span>
+              <span class="meta-val" id="infoAntag">-</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Common Actions</span>
+              <span class="meta-val" id="infoAction">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected Muscles Sidebar -->
+      <div class="selected-list-container">
+        <div class="section-title">
+          <span>Selected Muscles</span>
+          <span id="selectedCount" class="meta-val" style="color: var(--accent-color);">0 Active</span>
+        </div>
+        <div class="selected-list" id="selectedList">
+          <div class="empty-state">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
+            </svg>
+            No muscles selected.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEWPORT CONTAINER -->
+    <div class="viewport-container" id="viewportContainer">
+      
+      <!-- VIEWPORT HEADER / CONTROLS -->
+      <div class="viewport-header">
+        <div class="view-toggles">
+          <button class="toggle-btn active" data-view="split">Split Screen</button>
+          <button class="toggle-btn" data-view="anterior">Anterior View</button>
+          <button class="toggle-btn" data-view="posterior">Posterior View</button>
+        </div>
+
+        <div class="action-controls">
+          <button class="action-btn" id="invertSelectionBtn">Invert</button>
+          <button class="action-btn danger" id="clearSelectionBtn">✕ Clear All</button>
+        </div>
+      </div>
+
+      <!-- CHARTS WRAPPER -->
+      <div class="charts-wrapper" id="chartsWrapper">
+        
+        <!-- ANTERIOR VIEW PANEL -->
+        <div class="chart-panel anterior">
+          <div class="chart-title">Anterior View (Front)</div>
+          <svg viewBox="0 0 400 800" class="anatomy-svg" id="anteriorSVG">
+            <!-- Tech Grid Background -->
+            <g class="tech-grid">
+              <circle cx="200" cy="400" r="300" class="grid-circle" />
+              <line x1="200" y1="50" x2="200" y2="750" class="grid-line" />
+              <line x1="50" y1="400" x2="350" y2="400" class="grid-line" />
+            </g>
+
+            <!-- Silhouette Background -->
+            <path class="body-silhouette" d="M 200,60 C 185,60 170,70 170,90 C 170,110 175,125 185,135 C 165,142 145,152 140,160 C 120,165 110,185 110,210 C 110,240 108,260 102,285 C 96,310 86,335 84,355 C 82,370 86,375 92,370 C 98,360 104,340 108,315 C 110,305 112,305 112,315 C 108,335 100,365 92,395 C 88,405 94,410 98,400 C 108,365 118,310 126,220 C 130,225 132,235 132,240 L 138,290 C 132,320 126,350 120,380 C 116,395 122,400 126,390 L 136,345 L 146,265 C 150,265 152,270 152,275 L 148,315 C 142,345 136,375 130,405 C 128,415 134,420 138,410 L 148,375 L 158,305 L 160,240 L 160,330 C 152,340 144,352 142,370 L 132,500 C 122,550 120,600 134,690 L 132,710 C 125,720 135,745 145,740 L 154,710 L 152,690 C 156,660 162,600 168,540 L 168,540 C 172,600 178,660 182,690 L 180,710 L 189,740 C 199,745 209,720 202,710 L 200,690 C 214,600 212,550 202,500 L 202,410 C 202,410 200,410 198,410 Z" />
+            <path class="body-silhouette" d="M 200,60 C 215,60 230,70 230,90 C 230,110 225,125 215,135 C 235,142 255,152 260,160 C 280,165 290,185 290,210 C 290,240 292,260 298,285 C 304,310 314,335 316,355 C 318,370 314,375 308,370 C 302,360 296,340 292,315 C 290,305 288,305 288,315 C 292,335 300,365 308,395 C 312,405 306,410 302,400 C 292,365 282,310 274,220 C 270,225 268,235 268,240 L 262,290 C 268,320 274,350 280,380 C 284,395 278,400 274,390 L 264,345 L 254,265 C 250,265 248,270 248,275 L 252,315 C 258,345 264,375 270,405 C 272,415 266,420 262,410 L 252,375 L 242,305 L 240,240 L 240,330 C 248,340 256,352 258,370 L 268,500 C 278,550 280,600 266,690 L 268,710 C 275,720 265,745 255,740 L 246,710 L 248,690 C 244,660 238,600 232,540 L 232,540 C 228,600 222,660 218,690 L 220,710 L 211,740 C 201,745 191,720 198,710 L 200,690 C 186,600 188,550 198,500 L 198,410 C 198,410 200,410 202,410 Z" />
+
+            <!-- Head & Neck -->
+            <path id="muscle_temporalis_left" class="muscle-path" d="M 184,80 C 182,70 174,68 170,72 C 168,78 170,88 175,94 C 180,94 184,88 184,80 Z" />
+            <path id="muscle_temporalis_right" class="muscle-path" d="M 216,80 C 218,70 226,68 230,72 C 232,78 230,88 225,94 C 220,94 216,88 216,80 Z" />
+            <path id="muscle_masseter_left" class="muscle-path" d="M 183,103 C 180,103 176,108 176,116 C 176,124 179,128 183,128 C 186,128 187,118 186,110 Z" />
+            <path id="muscle_masseter_right" class="muscle-path" d="M 217,103 C 220,103 224,108 224,116 C 224,124 221,128 217,128 C 214,128 213,118 214,110 Z" />
+            <path id="muscle_sternocleidomastoid_left" class="muscle-path" d="M 188,124 C 185,128 185,138 189,146 C 193,152 196,155 198,155 C 198,152 195,142 193,132 C 192,126 190,123 188,124 Z" />
+            <path id="muscle_sternocleidomastoid_right" class="muscle-path" d="M 212,124 C 215,128 215,138 211,146 C 207,152 204,155 202,155 C 202,152 205,142 207,132 C 208,126 210,123 212,124 Z" />
+            <path id="muscle_trapezius_left" class="muscle-path" d="M 186,125 C 183,128 176,134 168,139 C 158,145 150,152 147,157 C 147,158 152,157 158,154 C 168,149 178,142 186,132 Z" />
+            <path id="muscle_trapezius_right" class="muscle-path" d="M 214,125 C 217,128 224,134 232,139 C 242,145 250,152 253,157 C 253,158 248,157 242,154 C 232,149 222,142 214,132 Z" />
+
+            <!-- Shoulders & Arms -->
+            <path id="muscle_deltoid_left" class="muscle-path" d="M 148,158 C 142,162 136,168 130,178 C 124,188 123,198 126,204 C 128,206 131,202 134,196 C 140,186 146,176 149,166 Z" />
+            <path id="muscle_deltoid_right" class="muscle-path" d="M 252,158 C 258,162 264,168 270,178 C 276,188 277,198 274,204 C 272,206 269,202 266,196 C 260,186 254,176 251,166 Z" />
+            <path id="muscle_biceps_brachii_left" class="muscle-path" d="M 127,204 C 125,214 122,228 119,242 C 117,246 120,248 123,246 C 127,242 131,232 133,220 C 135,212 131,206 127,204 Z" />
+            <path id="muscle_biceps_brachii_right" class="muscle-path" d="M 273,204 C 275,214 278,228 281,242 C 283,246 280,248 277,246 C 273,242 269,232 267,220 C 265,212 269,206 273,204 Z" />
+            <path id="muscle_brachialis_left" class="muscle-path" d="M 132,220 C 130,230 126,242 121,250 C 125,252 129,244 133,232 Z" />
+            <path id="muscle_brachialis_right" class="muscle-path" d="M 268,220 C 270,230 274,242 279,250 C 275,252 271,244 267,232 Z" />
+            <path id="muscle_brachioradialis_left" class="muscle-path" d="M 121,250 C 117,258 110,274 104,290 C 98,304 95,312 96,315 C 97,315 101,306 106,294 C 114,276 121,262 123,252 Z" />
+            <path id="muscle_brachioradialis_right" class="muscle-path" d="M 279,250 C 283,258 290,274 296,290 C 302,304 305,312 304,315 C 303,315 299,306 294,294 C 286,276 279,262 277,252 Z" />
+            <path id="muscle_pronator_teres_left" class="muscle-path" d="M 122,254 C 119,259 116,268 113,276 C 115,278 119,271 122,262 Z" />
+            <path id="muscle_pronator_teres_right" class="muscle-path" d="M 278,254 C 281,259 284,268 287,276 C 285,278 281,271 278,262 Z" />
+            <path id="muscle_flexor_carpi_radialis_left" class="muscle-path" d="M 113,276 C 109,286 105,302 101,318 C 103,320 107,306 111,290 C 113,282 114,278 113,276 Z" />
+            <path id="muscle_flexor_carpi_radialis_right" class="muscle-path" d="M 287,276 C 291,286 295,302 299,318 C 297,320 293,306 289,290 C 287,282 286,278 287,276 Z" />
+            <path id="muscle_flexor_carpi_ulnaris_left" class="muscle-path" d="M 122,262 C 119,276 115,296 109,314 C 111,316 116,298 119,280 C 122,270 123,264 122,262 Z" />
+            <path id="muscle_flexor_carpi_ulnaris_right" class="muscle-path" d="M 279,262 C 282,278 286,298 292,318 L 289,320 C 284,302 280,282 277,266 Z" />
+
+            <!-- Torso (Anterior) -->
+            <path id="muscle_pectoralis_major_left" class="muscle-path" d="M 200,165 C 185,165 174,171 160,175 C 148,178 143,184 145,190 C 148,198 158,206 168,206 C 178,204 189,194 200,180 Z" />
+            <path id="muscle_pectoralis_major_right" class="muscle-path" d="M 200,165 C 215,165 226,171 240,175 C 252,178 257,184 255,190 C 252,198 242,206 232,206 C 222,204 211,194 200,180 Z" />
+            <path id="muscle_serratus_anterior_left" class="muscle-path" d="M 166,206 C 158,212 150,222 146,236 C 149,237 154,232 158,226 C 160,223 162,226 161,229 C 158,233 154,240 152,246 C 156,246 160,240 165,231 C 167,227 169,231 168,234 C 165,241 161,249 158,256 C 164,254 170,242 172,234 C 174,226 172,216 166,206 Z" />
+            <path id="muscle_serratus_anterior_right" class="muscle-path" d="M 230,200 C 240,208 248,220 252,235 C 246,237 240,232 234,220 Z" />
+            <path id="muscle_rectus_abdominis_left" class="muscle-path" d="M 198,210 C 190,210 186,211 184,213 C 182,215 182,224 184,226 C 186,227 190,228 198,228 Z M 198,232 C 190,232 184,233 182,235 C 180,237 180,246 182,248 C 184,249 190,250 198,250 Z M 198,254 C 188,254 182,256 180,259 C 178,262 178,272 180,274 C 182,276 188,277 198,277 Z M 198,281 C 188,281 180,283 178,287 C 176,291 176,306 178,312 C 180,315 186,316 198,316 Z" />
+            <path id="muscle_rectus_abdominis_right" class="muscle-path" d="M 202,210 C 210,210 214,211 216,213 C 218,215 218,224 216,226 C 214,227 210,228 202,228 Z M 202,232 C 210,232 216,233 218,235 C 220,237 220,246 218,248 C 216,249 210,250 202,250 Z M 202,254 C 212,254 218,256 220,259 C 222,262 222,272 220,274 C 218,276 212,277 202,277 Z M 202,281 C 212,281 220,283 222,287 C 224,291 224,306 222,312 C 220,315 214,316 202,316 Z" />
+            <path id="muscle_external_oblique_left" class="muscle-path" d="M 172,234 C 170,242 168,254 164,270 C 160,286 158,298 158,304 C 158,308 162,314 167,318 C 172,314 175,302 176,290 C 177,278 176,256 172,234 Z" />
+            <path id="muscle_external_oblique_right" class="muscle-path" d="M 228,234 C 230,242 232,254 236,270 C 240,286 242,298 242,304 C 242,308 238,314 233,318 C 228,314 225,302 224,290 C 223,278 224,256 228,234 Z" />
+
+            <!-- Legs (Anterior) -->
+            <path id="muscle_iliopsoas_left" class="muscle-path" d="M 176,322 C 171,328 165,338 162,348 C 160,354 161,357 165,357 C 170,354 175,344 178,332 Z" />
+            <path id="muscle_iliopsoas_right" class="muscle-path" d="M 224,322 C 229,328 235,338 238,348 C 240,354 239,357 235,357 C 230,354 225,344 222,332 Z" />
+            <path id="muscle_tensor_fasciae_latae_left" class="muscle-path" d="M 154,325 C 148,335 142,352 141,354 C 140,358 143,361 146,358 C 151,352 155,342 157,332 Z" />
+            <path id="muscle_tensor_fasciae_latae_right" class="muscle-path" d="M 246,325 C 252,335 258,352 259,354 C 260,358 257,361 254,358 C 249,352 245,342 243,332 Z" />
+            <path id="muscle_sartorius_left" class="muscle-path" d="M 152,326 C 156,352 165,398 174,446 C 182,492 188,528 190,544 C 190,546 188,546 186,542 C 182,526 174,484 166,436 C 157,388 147,344 144,328 Z" />
+            <path id="muscle_sartorius_right" class="muscle-path" d="M 256,330 C 248,370 236,430 226,490 C 220,520 215,540 214,550 C 217,550 222,535 228,510 C 238,450 252,390 262,335 Z" />
+            <path id="muscle_rectus_femoris_left" class="muscle-path" d="M 164,338 C 160,352 157,382 159,418 C 161,454 165,488 169,506 C 171,506 171,500 169,484 C 167,450 165,410 165,372 C 165,350 166,340 164,338 Z" />
+            <path id="muscle_rectus_femoris_right" class="muscle-path" d="M 236,338 C 240,352 243,382 241,418 C 239,454 235,488 231,506 C 229,506 229,500 231,484 C 233,450 235,410 235,372 C 235,350 234,340 236,338 Z" />
+            <path id="muscle_vastus_lateralis_left" class="muscle-path" d="M 158,340 C 151,368 143,412 139,460 C 135,502 139,516 145,516 C 151,514 156,498 160,466 C 164,432 164,374 158,340 Z" />
+            <path id="muscle_vastus_lateralis_right" class="muscle-path" d="M 242,342 C 248,380 258,430 262,495 C 254,520 242,525 232,525 C 236,480 240,420 242,342 Z" />
+            <path id="muscle_vastus_medialis_left" class="muscle-path" d="M 172,430 C 170,448 167,478 167,504 C 167,516 172,525 178,525 C 183,525 186,512 186,494 C 186,470 178,446 172,430 Z" />
+            <path id="muscle_vastus_medialis_right" class="muscle-path" d="M 228,430 C 230,448 233,478 233,504 C 233,516 228,525 222,525 C 217,525 214,512 214,494 C 214,470 222,446 228,430 Z" />
+            <path id="muscle_adductor_longus_left" class="muscle-path" d="M 180,332 C 183,348 186,370 190,394 C 190,396 186,396 183,382 C 178,366 176,350 176,336 Z" />
+            <path id="muscle_adductor_longus_right" class="muscle-path" d="M 220,332 C 217,348 214,370 210,394 C 210,396 214,396 217,382 C 222,366 224,350 224,336 Z" />
+            <path id="muscle_gracilis_left" class="muscle-path" d="M 188,336 C 191,364 194,402 196,448 C 198,476 198,490 197,490 C 195,490 191,462 187,418 C 183,380 181,350 181,338 Z" />
+            <path id="muscle_gracilis_right" class="muscle-path" d="M 212,336 C 209,364 206,402 204,448 C 202,476 202,490 203,490 C 205,490 209,462 213,418 C 217,380 219,350 219,338 Z" />
+            <path id="muscle_tibialis_anterior_left" class="muscle-path" d="M 160,568 C 158,574 153,602 148,638 C 143,674 142,688 143,688 C 145,688 150,664 156,626 C 161,592 162,574 160,568 Z" />
+            <path id="muscle_tibialis_anterior_right" class="muscle-path" d="M 240,568 C 242,574 247,602 252,638 C 257,674 258,688 257,688 C 255,688 250,664 244,626 C 239,592 238,574 240,568 Z" />
+            <path id="muscle_gastrocnemius_left_front" class="muscle-path" data-alias="muscle_gastrocnemius_left" d="M 146,572 C 140,590 140,610 144,625 C 148,625 152,610 152,590 Z" />
+            <path id="muscle_gastrocnemius_right_front" class="muscle-path" data-alias="muscle_gastrocnemius_right" d="M 254,572 C 260,590 260,610 256,625 C 252,625 248,610 248,590 Z" />
+            <path id="muscle_soleus_left_front" class="muscle-path" data-alias="muscle_soleus_left" d="M 144,625 C 142,645 142,670 146,690 C 148,690 150,670 148,645 Z" />
+            <path id="muscle_soleus_right_front" class="muscle-path" data-alias="muscle_soleus_right" d="M 256,625 C 258,645 258,670 254,690 C 252,690 250,670 252,645 Z" />
+            <path id="muscle_extensor_digitorum_left" class="muscle-path" d="M 152,580 C 149,615 146,650 144,680 L 146,680 C 149,650 152,615 154,580 Z" />
+            <path id="muscle_extensor_digitorum_right" class="muscle-path" d="M 248,580 C 251,615 254,650 256,680 L 254,680 C 251,650 248,615 246,580 Z" />
+          </svg>
+        </div>
+
+        <!-- POSTERIOR VIEW PANEL -->
+        <div class="chart-panel posterior">
+          <div class="chart-title">Posterior View (Back)</div>
+          <svg viewBox="0 0 400 800" class="anatomy-svg" id="posteriorSVG">
+            <!-- Tech Grid Background -->
+            <g class="tech-grid">
+              <circle cx="200" cy="400" r="300" class="grid-circle" />
+              <line x1="200" y1="50" x2="200" y2="750" class="grid-line" />
+              <line x1="50" y1="400" x2="350" y2="400" class="grid-line" />
+            </g>
+
+            <!-- Silhouette Background -->
+            <path class="body-silhouette" d="M 200,60 C 185,60 170,70 170,90 C 170,110 175,125 185,135 C 165,142 145,152 140,160 C 120,165 110,185 110,210 C 110,240 108,260 102,285 C 96,310 86,335 84,355 C 82,370 86,375 92,370 C 98,360 104,340 108,315 C 110,305 112,305 112,315 C 108,335 100,365 92,395 C 88,405 94,410 98,400 C 108,365 118,310 126,220 C 130,225 132,235 132,240 L 138,290 C 132,320 126,350 120,380 C 116,395 122,400 126,390 L 136,345 L 146,265 C 150,265 152,270 152,275 L 148,315 C 142,345 136,375 130,405 C 128,415 134,420 138,410 L 148,375 L 158,305 L 160,240 L 160,330 C 152,340 144,352 142,370 L 132,500 C 122,550 120,600 134,690 L 132,710 C 125,720 135,745 145,740 L 154,710 L 152,690 C 156,660 162,600 168,540 L 168,540 C 172,600 178,660 182,690 L 180,710 L 189,740 C 199,745 209,720 202,710 L 200,690 C 214,600 212,550 202,500 L 202,410 C 202,410 200,410 198,410 Z" />
+            <path class="body-silhouette" d="M 200,60 C 215,60 230,70 230,90 C 230,110 225,125 215,135 C 235,142 255,152 260,160 C 280,165 290,185 290,210 C 290,240 292,260 298,285 C 304,310 314,335 316,355 C 318,370 314,375 308,370 C 302,360 296,340 292,315 C 290,305 288,305 288,315 C 292,335 300,365 308,395 C 312,405 306,410 302,400 C 292,365 282,310 274,220 C 270,225 268,235 268,240 L 262,290 C 268,320 274,350 280,380 C 284,395 278,400 274,390 L 264,345 L 254,265 C 250,265 248,270 248,275 L 252,315 C 258,345 264,375 270,405 C 272,415 266,420 262,410 L 252,375 L 242,305 L 240,240 L 240,330 C 248,340 256,352 258,370 L 268,500 C 278,550 280,600 266,690 L 268,710 C 275,720 265,745 255,740 L 246,710 L 248,690 C 244,660 238,600 232,540 L 232,540 C 228,600 222,660 218,690 L 220,710 L 211,740 C 201,745 191,720 198,710 L 200,690 C 186,600 188,550 198,500 L 198,410 C 198,410 200,410 202,410 Z" />
+
+            <!-- Head & Neck (Posterior) -->
+            <path id="muscle_occipitalis_left" class="muscle-path" d="M 183,80 C 180,82 173,85 173,92 C 175,96 181,96 185,90 Z" />
+            <path id="muscle_occipitalis_right" class="muscle-path" d="M 217,80 C 220,82 227,85 227,92 C 225,96 219,96 215,90 Z" />
+            <path id="muscle_splenius_capitis_left" class="muscle-path" d="M 184,95 C 181,102 181,110 186,116 C 188,114 187,106 186,100 Z" />
+            <path id="muscle_splenius_capitis_right" class="muscle-path" d="M 216,95 C 219,102 219,110 214,116 C 212,114 213,106 214,100 Z" />
+
+            <!-- Back & Shoulders -->
+            <path id="muscle_trapezius_post_left" class="muscle-path" d="M 198,118 C 188,128 172,138 152,148 C 160,154 172,162 198,168 C 198,152 196,134 198,118 Z" />
+            <path id="muscle_trapezius_post_right" class="muscle-path" d="M 202,118 C 212,128 228,138 248,148 C 240,154 228,162 202,168 C 202,152 204,134 202,118 Z" />
+            <path id="muscle_deltoid_post_left" class="muscle-path" d="M 148,150 C 141,154 135,160 128,172 C 122,184 122,194 125,200 C 127,202 130,198 133,192 C 139,182 145,170 148,158 Z" />
+            <path id="muscle_deltoid_post_right" class="muscle-path" d="M 252,150 C 259,154 265,160 272,172 C 278,184 278,194 275,200 C 273,202 270,198 267,192 C 261,182 255,170 252,158 Z" />
+            <path id="muscle_infraspinatus_left" class="muscle-path" d="M 152,152 C 146,162 147,178 153,188 C 158,182 163,170 166,158 Z" />
+            <path id="muscle_infraspinatus_right" class="muscle-path" d="M 248,152 C 254,162 253,178 247,188 C 242,182 237,170 234,158 Z" />
+            <path id="muscle_teres_major_left" class="muscle-path" d="M 153,188 C 149,196 148,206 150,212 C 155,208 160,200 164,190 Z" />
+            <path id="muscle_teres_major_right" class="muscle-path" d="M 247,188 C 251,196 252,206 250,212 C 245,208 240,200 236,190 Z" />
+            <path id="muscle_latissimus_dorsi_left" class="muscle-path" d="M 198,168 C 182,174 164,188 152,212 C 146,236 146,268 152,294 C 164,296 182,286 198,266 C 198,230 198,196 198,168 Z" />
+            <path id="muscle_latissimus_dorsi_right" class="muscle-path" d="M 202,168 C 218,174 236,188 248,212 C 254,236 254,268 248,294 C 236,296 218,286 202,266 C 202,230 202,196 202,168 Z" />
+            <path id="muscle_erector_spinae_left" class="muscle-path" d="M 198,266 C 188,282 180,292 178,302 L 198,302 Z" />
+            <path id="muscle_erector_spinae_right" class="muscle-path" d="M 202,266 C 212,282 220,292 222,302 L 202,302 Z" />
+
+            <!-- Arms (Posterior) -->
+            <path id="muscle_triceps_brachii_left" class="muscle-path" d="M 127,200 C 124,212 121,228 118,242 C 121,246 126,238 129,224 C 131,214 130,205 127,200 Z" />
+            <path id="muscle_triceps_brachii_right" class="muscle-path" d="M 273,200 C 276,212 279,228 282,242 C 279,246 274,238 271,224 C 269,214 270,205 273,200 Z" />
+
+            <!-- Gluteals & Thighs (Posterior) -->
+            <path id="muscle_gluteus_medius_left" class="muscle-path" d="M 152,294 C 147,302 142,316 140,332 C 146,334 152,330 158,322 C 158,312 156,302 152,294 Z" />
+            <path id="muscle_gluteus_medius_right" class="muscle-path" d="M 248,294 C 253,302 258,316 260,332 C 254,334 248,330 242,322 C 242,312 244,302 248,294 Z" />
+            <path id="muscle_gluteus_maximus_left" class="muscle-path" d="M 158,322 C 152,334 146,350 146,368 C 152,378 165,382 178,376 C 180,356 176,336 158,322 Z" />
+            <path id="muscle_gluteus_maximus_right" class="muscle-path" d="M 242,322 C 248,334 254,350 254,368 C 248,378 235,382 222,376 C 220,356 224,336 242,322 Z" />
+            <path id="muscle_biceps_femoris_left" class="muscle-path" d="M 162,378 C 156,416 150,460 146,506 C 151,506 158,472 164,432 C 166,412 166,392 162,378 Z" />
+            <path id="muscle_biceps_femoris_right" class="muscle-path" d="M 238,378 C 244,416 250,460 254,506 C 249,506 242,472 236,432 C 234,412 234,392 238,378 Z" />
+            <path id="muscle_semitendinosus_left" class="muscle-path" d="M 170,378 C 166,412 160,456 154,500 L 158,500 C 164,460 170,416 174,382 Z" />
+            <path id="muscle_semitendinosus_right" class="muscle-path" d="M 230,378 C 234,412 240,456 246,500 L 242,500 C 236,460 230,416 226,382 Z" />
+            <path id="muscle_semimembranosus_left" class="muscle-path" d="M 176,388 C 173,422 170,460 166,506 L 170,506 C 174,460 176,422 178,392 Z" />
+            <path id="muscle_semimembranosus_right" class="muscle-path" d="M 222,388 C 227,422 230,460 234,506 L 230,506 C 226,460 224,422 222,392 Z" />
+            <path id="muscle_adductor_magnus_left" class="muscle-path" d="M 178,392 C 181,416 184,446 186,476 C 183,476 179,446 176,416 Z" />
+            <path id="muscle_adductor_magnus_right" class="muscle-path" d="M 220,392 C 219,416 216,446 214,476 C 217,476 221,446 224,416 Z" />
+
+            <!-- Calves (Posterior) -->
+            <path id="muscle_gastrocnemius_left" class="muscle-path" d="M 164,568 C 172,590 172,620 164,640 C 148,640 134,620 142,568 Z" />
+            <path id="muscle_gastrocnemius_right" class="muscle-path" d="M 236,568 C 228,590 228,620 236,640 C 252,640 266,620 258,568 Z" />
+            <path id="muscle_soleus_left" class="muscle-path" d="M 142,630 C 140,650 140,674 144,694 C 152,694 154,674 154,630 Z" />
+            <path id="muscle_soleus_right" class="muscle-path" d="M 256,630 C 258,650 258,680 254,700 C 246,700 244,680 244,635 Z" />
+          </svg>
+        </div>
+
+      </div>
+
+      <!-- MOUSE-CURSOR TOOLTIP -->
+      <div class="custom-tooltip" id="muscleTooltip"></div>
+
+    </div>
+  </div>
+
+  <script>
+    // Clinical Muscle Database
+    const muscleDatabase = {
+      'muscle_temporalis_left': { name: 'Left Temporalis', group: 'Head & Neck', action: 'Elevates/retracts mandible', antagonist: 'Platysma / Digastric', desc: 'Main muscle for jaw mastication, running from the temporal fossa to coronoid process.' },
+      'muscle_temporalis_right': { name: 'Right Temporalis', group: 'Head & Neck', action: 'Elevates/retracts mandible', antagonist: 'Platysma / Digastric', desc: 'Main muscle for jaw mastication, running from the temporal fossa to coronoid process.' },
+      'muscle_masseter_left': { name: 'Left Masseter', group: 'Head & Neck', action: 'Jaw closure and chewing', antagonist: 'Platysma', desc: 'A thick, powerful facial muscle essential for masticatory jaw force.' },
+      'muscle_masseter_right': { name: 'Right Masseter', group: 'Head & Neck', action: 'Jaw closure and chewing', antagonist: 'Platysma', desc: 'A thick, powerful facial muscle essential for masticatory jaw force.' },
+      'muscle_sternocleidomastoid_left': { name: 'Left Sternocleidomastoid', group: 'Head & Neck', action: 'Flexes and rotates neck lateral', antagonist: 'Splenius Capitis', desc: 'Passes obliquely across the side of the neck, critical for postural head alignment.' },
+      'muscle_sternocleidomastoid_right': { name: 'Right Sternocleidomastoid', group: 'Head & Neck', action: 'Flexes and rotates neck lateral', antagonist: 'Splenius Capitis', desc: 'Passes obliquely across the side of the neck, critical for postural head alignment.' },
+      'muscle_trapezius_left': { name: 'Left Trapezius (Upper)', group: 'Head & Neck', action: 'Scapular elevation/rotation', antagonist: 'Latissimus Dorsi', desc: 'Upper fibers running from occipital bone to outer clavicle, supporting shoulder girdle elevation.' },
+      'muscle_trapezius_right': { name: 'Right Trapezius (Upper)', group: 'Head & Neck', action: 'Scapular elevation/rotation', antagonist: 'Latissimus Dorsi', desc: 'Upper fibers running from occipital bone to outer clavicle, supporting shoulder girdle elevation.' },
+      
+      // Torso (Anterior)
+      'muscle_pectoralis_major_left': { name: 'Left Pectoralis Major', group: 'Torso (Anterior)', action: 'Shoulder adduction / medial rotation', antagonist: 'Deltoid (Posterior) / Latissimus', desc: 'Large fan-shaped chest muscle, active in pressing and pushing functions.' },
+      'muscle_pectoralis_major_right': { name: 'Right Pectoralis Major', group: 'Torso (Anterior)', action: 'Shoulder adduction / medial rotation', antagonist: 'Deltoid (Posterior) / Latissimus', desc: 'Large fan-shaped chest muscle, active in pressing and pushing functions.' },
+      'muscle_rectus_abdominis_left': { name: 'Left Rectus Abdominis', group: 'Torso (Anterior)', action: 'Lumbar spine flexion', antagonist: 'Erector Spinae', desc: 'Paired clinical muscle running vertically on each side of the anterior abdominal wall.' },
+      'muscle_rectus_abdominis_right': { name: 'Right Rectus Abdominis', group: 'Torso (Anterior)', action: 'Lumbar spine flexion', antagonist: 'Erector Spinae', desc: 'Paired clinical muscle running vertically on each side of the anterior abdominal wall.' },
+      'muscle_external_oblique_left': { name: 'Left External Oblique', group: 'Torso (Anterior)', action: 'Torso rotation / lateral flexion', antagonist: 'Contralateral Oblique', desc: 'Helps pull the chest downwards and compress the abdominal cavity.' },
+      'muscle_external_oblique_right': { name: 'Right External Oblique', group: 'Torso (Anterior)', action: 'Torso rotation / lateral flexion', antagonist: 'Contralateral Oblique', desc: 'Helps pull the chest downwards and compress the abdominal cavity.' },
+      'muscle_serratus_anterior_left': { name: 'Left Serratus Anterior', group: 'Torso (Anterior)', action: 'Scapular protraction', antagonist: 'Trapezius (Middle/Lower)', desc: 'Fans around the rib cage, holding the scapula against the thoracic wall.' },
+      'muscle_serratus_anterior_right': { name: 'Right Serratus Anterior', group: 'Torso (Anterior)', action: 'Scapular protraction', antagonist: 'Trapezius (Middle/Lower)', desc: 'Fans around the rib cage, holding the scapula against the thoracic wall.' },
+
+      // Upper Limbs
+      'muscle_deltoid_left': { name: 'Left Deltoid (Anterior)', group: 'Upper Limbs', action: 'Shoulder abduction / flex', antagonist: 'Latissimus Dorsi', desc: 'Rounded outline muscle of the shoulder, driving lateral raising movements.' },
+      'muscle_deltoid_right': { name: 'Right Deltoid (Anterior)', group: 'Upper Limbs', action: 'Shoulder abduction / flex', antagonist: 'Latissimus Dorsi', desc: 'Rounded outline muscle of the shoulder, driving lateral raising movements.' },
+      'muscle_biceps_brachii_left': { name: 'Left Biceps Brachii', group: 'Upper Limbs', action: 'Elbow flexion / supination', antagonist: 'Triceps Brachii', desc: 'Two-headed arm flexor running across the glenohumeral and elbow joints.' },
+      'muscle_biceps_brachii_right': { name: 'Right Biceps Brachii', group: 'Upper Limbs', action: 'Elbow flexion / supination', antagonist: 'Triceps Brachii', desc: 'Two-headed arm flexor running across the glenohumeral and elbow joints.' },
+      'muscle_brachialis_left': { name: 'Left Brachialis', group: 'Upper Limbs', action: 'Synergist elbow flexion', antagonist: 'Triceps Brachii', desc: 'Deep flexor situated beneath the biceps brachii, providing high mechanical advantage.' },
+      'muscle_brachialis_right': { name: 'Right Brachialis', group: 'Upper Limbs', action: 'Synergist elbow flexion', antagonist: 'Triceps Brachii', desc: 'Deep flexor situated beneath the biceps brachii, providing high mechanical advantage.' },
+      'muscle_brachioradialis_left': { name: 'Left Brachioradialis', group: 'Upper Limbs', action: 'Flexes forearm in neutral', antagonist: 'Triceps Brachii', desc: 'Located on the lateral forearm, active in hammer-grip flexing actions.' },
+      'muscle_brachioradialis_right': { name: 'Right Brachioradialis', group: 'Upper Limbs', action: 'Flexes forearm in neutral', antagonist: 'Triceps Brachii', desc: 'Located on the lateral forearm, active in hammer-grip flexing actions.' },
+      'muscle_pronator_teres_left': { name: 'Left Pronator Teres', group: 'Upper Limbs', action: 'Forearm pronation', antagonist: 'Supinator', desc: 'Located mainly in the forearm, serves to pronate the palm downwards.' },
+      'muscle_pronator_teres_right': { name: 'Right Pronator Teres', group: 'Upper Limbs', action: 'Forearm pronation', antagonist: 'Supinator', desc: 'Located mainly in the forearm, serves to pronate the palm downwards.' },
+      'muscle_flexor_carpi_radialis_left': { name: 'Left Flexor Carpi Radialis', group: 'Upper Limbs', action: 'Wrist flexion / abduction', antagonist: 'Extensor Carpi Radialis', desc: 'Forearm flexor helping to pull wrist forward and laterally.' },
+      'muscle_flexor_carpi_radialis_right': { name: 'Right Flexor Carpi Radialis', group: 'Upper Limbs', action: 'Wrist flexion / abduction', antagonist: 'Extensor Carpi Radialis', desc: 'Forearm flexor helping to pull wrist forward and laterally.' },
+      'muscle_flexor_carpi_ulnaris_left': { name: 'Left Flexor Carpi Ulnaris', group: 'Upper Limbs', action: 'Wrist flexion / adduction', antagonist: 'Extensor Carpi Ulnaris', desc: 'Forearm flexor helping to pull wrist forward and medially.' },
+      'muscle_flexor_carpi_ulnaris_right': { name: 'Right Flexor Carpi Ulnaris', group: 'Upper Limbs', action: 'Wrist flexion / adduction', antagonist: 'Extensor Carpi Ulnaris', desc: 'Forearm flexor helping to pull wrist forward and medially.' },
+
+      // Lower Limbs (Anterior)
+      'muscle_iliopsoas_left': { name: 'Left Iliopsoas', group: 'Lower Limbs', action: 'Primary hip flexion', antagonist: 'Gluteus Maximus', desc: 'Strongest of the hip flexors, pulling the thigh up toward the pelvis.' },
+      'muscle_iliopsoas_right': { name: 'Right Iliopsoas', group: 'Lower Limbs', action: 'Primary hip flexion', antagonist: 'Gluteus Maximus', desc: 'Strongest of the hip flexors, pulling the thigh up toward the pelvis.' },
+      'muscle_tensor_fasciae_latae_left': { name: 'Left Tensor Fasciae Latae', group: 'Lower Limbs', action: 'Thigh abduction / rotation', antagonist: 'Adductor Longus', desc: 'Small hip muscle that tenses the fascia lata (IT band).' },
+      'muscle_tensor_fasciae_latae_right': { name: 'Right Tensor Fasciae Latae', group: 'Lower Limbs', action: 'Thigh abduction / rotation', antagonist: 'Adductor Longus', desc: 'Small hip muscle that tenses the fascia lata (IT band).' },
+      'muscle_sartorius_left': { name: 'Left Sartorius', group: 'Lower Limbs', action: 'Hip flexion, abduction, rotation', antagonist: 'Gluteus Maximus', desc: 'Longest muscle in the human body, running diagonally down the thigh.' },
+      'muscle_sartorius_right': { name: 'Right Sartorius', group: 'Lower Limbs', action: 'Hip flexion, abduction, rotation', antagonist: 'Gluteus Maximus', desc: 'Longest muscle in the human body, running diagonally down the thigh.' },
+      'muscle_rectus_femoris_left': { name: 'Left Rectus Femoris', group: 'Lower Limbs', action: 'Knee extension / hip flexion', antagonist: 'Hamstrings', desc: 'The central, bulkier head of the quadriceps muscle group.' },
+      'muscle_rectus_femoris_right': { name: 'Right Rectus Femoris', group: 'Lower Limbs', action: 'Knee extension / hip flexion', antagonist: 'Hamstrings', desc: 'The central, bulkier head of the quadriceps muscle group.' },
+      'muscle_vastus_lateralis_left': { name: 'Left Vastus Lateralis', group: 'Lower Limbs', action: 'Knee extension', antagonist: 'Hamstrings', desc: 'The largest and most lateral head of the quadriceps group.' },
+      'muscle_vastus_lateralis_right': { name: 'Right Vastus Lateralis', group: 'Lower Limbs', action: 'Knee extension', antagonist: 'Hamstrings', desc: 'The largest and most lateral head of the quadriceps group.' },
+      'muscle_vastus_medialis_left': { name: 'Left Vastus Medialis', group: 'Lower Limbs', action: 'Knee extension / patellar tracking', antagonist: 'Hamstrings', desc: 'The tear-drop shaped inner quad head, critical for knee stability.' },
+      'muscle_vastus_medialis_right': { name: 'Right Vastus Medialis', group: 'Lower Limbs', action: 'Knee extension / patellar tracking', antagonist: 'Hamstrings', desc: 'The tear-drop shaped inner quad head, critical for knee stability.' },
+      'muscle_adductor_longus_left': { name: 'Left Adductor Longus', group: 'Lower Limbs', action: 'Thigh adduction', antagonist: 'Gluteus Medius', desc: 'Sits on the inner thigh, bringing the leg inward toward centerline.' },
+      'muscle_adductor_longus_right': { name: 'Right Adductor Longus', group: 'Lower Limbs', action: 'Thigh adduction', antagonist: 'Gluteus Medius', desc: 'Sits on the inner thigh, bringing the leg inward toward centerline.' },
+      'muscle_gracilis_left': { name: 'Left Gracilis', group: 'Lower Limbs', action: 'Thigh adduction / knee flex', antagonist: 'Tensor Fasciae Latae', desc: 'Most superficial inner thigh muscle, crossing pelvis and knee.' },
+      'muscle_gracilis_right': { name: 'Right Gracilis', group: 'Lower Limbs', action: 'Thigh adduction / knee flex', antagonist: 'Tensor Fasciae Latae', desc: 'Most superficial inner thigh muscle, crossing pelvis and knee.' },
+      'muscle_tibialis_anterior_left': { name: 'Left Tibialis Anterior', group: 'Lower Limbs', action: 'Foot dorsiflexion / inversion', antagonist: 'Gastrocnemius', desc: 'Muscle situated on the lateral side of the shin; active in foot elevation.' },
+      'muscle_tibialis_anterior_right': { name: 'Right Tibialis Anterior', group: 'Lower Limbs', action: 'Foot dorsiflexion / inversion', antagonist: 'Gastrocnemius', desc: 'Muscle situated on the lateral side of the shin; active in foot elevation.' },
+      'muscle_gastrocnemius_left': { name: 'Left Gastrocnemius (Calf)', group: 'Lower Limbs', action: 'Plantar flexion / knee flex', antagonist: 'Tibialis Anterior', desc: 'Double-headed calf muscle that forms the primary back calf bulk.' },
+      'muscle_gastrocnemius_right': { name: 'Right Gastrocnemius (Calf)', group: 'Lower Limbs', action: 'Plantar flexion / knee flex', antagonist: 'Tibialis Anterior', desc: 'Double-headed calf muscle that forms the primary back calf bulk.' },
+      'muscle_soleus_left': { name: 'Left Soleus', group: 'Lower Limbs', action: 'Foot plantar flexion', antagonist: 'Tibialis Anterior', desc: 'A broad flat muscle lying beneath the gastrocnemius.' },
+      'muscle_soleus_right': { name: 'Right Soleus', group: 'Lower Limbs', action: 'Foot plantar flexion', antagonist: 'Tibialis Anterior', desc: 'A broad flat muscle lying beneath the gastrocnemius.' },
+      'muscle_extensor_digitorum_left': { name: 'Left Extensor Digitorum Longus', group: 'Lower Limbs', action: 'Toes extension / foot dorsiflexion', antagonist: 'Flexor Digitorum Longus', desc: 'Feather-like muscle situated on lateral shin.' },
+      'muscle_extensor_digitorum_right': { name: 'Right Extensor Digitorum Longus', group: 'Lower Limbs', action: 'Toes extension / foot dorsiflexion', antagonist: 'Flexor Digitorum Longus', desc: 'Feather-like muscle situated on lateral shin.' },
+
+      // Posterior View Specific
+      'muscle_occipitalis_left': { name: 'Left Occipitalis', group: 'Head & Neck', action: 'Pulls scalp posterior', antagonist: 'Frontalis', desc: 'Back part of the epicranius muscle, anchoring scalp tension.' },
+      'muscle_occipitalis_right': { name: 'Right Occipitalis', group: 'Head & Neck', action: 'Pulls scalp posterior', antagonist: 'Frontalis', desc: 'Back part of the epicranius muscle, anchoring scalp tension.' },
+      'muscle_splenius_capitis_left': { name: 'Left Splenius Capitis', group: 'Head & Neck', action: 'Neck extension / lateral rotate', antagonist: 'Sternocleidomastoid', desc: 'Strap-like muscle in back of neck, crucial for head stability.' },
+      'muscle_splenius_capitis_right': { name: 'Right Splenius Capitis', group: 'Head & Neck', action: 'Neck extension / lateral rotate', antagonist: 'Sternocleidomastoid', desc: 'Strap-like muscle in back of neck, crucial for head stability.' },
+      'muscle_trapezius_post_left': { name: 'Left Trapezius (Posterior)', group: 'Torso (Posterior)', action: 'Scapular retraction / depress', antagonist: 'Pectoralis Major', desc: 'Lower fibers pulling scapulae down and inward.' },
+      'muscle_trapezius_post_right': { name: 'Right Trapezius (Posterior)', group: 'Torso (Posterior)', action: 'Scapular retraction / depress', antagonist: 'Pectoralis Major', desc: 'Lower fibers pulling scapulae down and inward.' },
+      'muscle_deltoid_post_left': { name: 'Left Deltoid (Posterior)', group: 'Upper Limbs', action: 'Shoulder horizontal abduction', antagonist: 'Pectoralis Major', desc: 'Rear head of the shoulder muscle group.' },
+      'muscle_deltoid_post_right': { name: 'Right Deltoid (Posterior)', group: 'Upper Limbs', action: 'Shoulder horizontal abduction', antagonist: 'Pectoralis Major', desc: 'Rear head of the shoulder muscle group.' },
+      'muscle_infraspinatus_left': { name: 'Left Infraspinatus', group: 'Torso (Posterior)', action: 'Shoulder lateral rotation', antagonist: 'Subscapularis', desc: 'Thick triangular rotator cuff muscle covering dorsal scapula.' },
+      'muscle_infraspinatus_right': { name: 'Right Infraspinatus', group: 'Torso (Posterior)', action: 'Shoulder lateral rotation', antagonist: 'Subscapularis', desc: 'Thick triangular rotator cuff muscle covering dorsal scapula.' },
+      'muscle_teres_major_left': { name: 'Left Teres Major', group: 'Torso (Posterior)', action: 'Adduction / internal rotate', antagonist: 'Infraspinatus', desc: 'Sits below rotator cuff, drawing arm back and inward.' },
+      'muscle_teres_major_right': { name: 'Right Teres Major', group: 'Torso (Posterior)', action: 'Adduction / internal rotate', antagonist: 'Infraspinatus', desc: 'Sits below rotator cuff, drawing arm back and inward.' },
+      'muscle_latissimus_dorsi_left': { name: 'Left Latissimus Dorsi', group: 'Torso (Posterior)', action: 'Shoulder extension / adduction', antagonist: 'Deltoid / Pectoralis Major', desc: 'Large, flat, triangular muscle of back (often called "lats").' },
+      'muscle_latissimus_dorsi_right': { name: 'Right Latissimus Dorsi', group: 'Torso (Posterior)', action: 'Shoulder extension / adduction', antagonist: 'Deltoid / Pectoralis Major', desc: 'Large, flat, triangular muscle of back (often called "lats").' },
+      'muscle_erector_spinae_left': { name: 'Left Erector Spinae', group: 'Torso (Posterior)', action: 'Spinal extension / erect posture', antagonist: 'Rectus Abdominis', desc: 'Deep muscle running beside spine, keeping spine erect.' },
+      'muscle_erector_spinae_right': { name: 'Right Erector Spinae', group: 'Torso (Posterior)', action: 'Spinal extension / erect posture', antagonist: 'Rectus Abdominis', desc: 'Deep muscle running beside spine, keeping spine erect.' },
+      'muscle_triceps_brachii_left': { name: 'Left Triceps Brachii', group: 'Upper Limbs', action: 'Elbow extension', antagonist: 'Biceps Brachii', desc: 'Three-headed muscle on posterior arm, primary elbow extensor.' },
+      'muscle_triceps_brachii_right': { name: 'Right Triceps Brachii', group: 'Upper Limbs', action: 'Elbow extension', antagonist: 'Biceps Brachii', desc: 'Three-headed muscle on posterior arm, primary elbow extensor.' },
+      'muscle_gluteus_medius_left': { name: 'Left Gluteus Medius', group: 'Lower Limbs', action: 'Pelvic stability / hip abduct', antagonist: 'Thigh Adductors', desc: 'Located on lateral hip, preventing hip drop on weight shifts.' },
+      'muscle_gluteus_medius_right': { name: 'Right Gluteus Medius', group: 'Lower Limbs', action: 'Pelvic stability / hip abduct', antagonist: 'Thigh Adductors', desc: 'Located on lateral hip, preventing hip drop on weight shifts.' },
+      'muscle_gluteus_maximus_left': { name: 'Left Gluteus Maximus', group: 'Lower Limbs', action: 'Hip extension / lateral rotate', antagonist: 'Iliopsoas', desc: 'Strongest gluteal muscle; drives heavy extension actions like squats.' },
+      'muscle_gluteus_maximus_right': { name: 'Right Gluteus Maximus', group: 'Lower Limbs', action: 'Hip extension / lateral rotate', antagonist: 'Iliopsoas', desc: 'Strongest gluteal muscle; drives heavy extension actions like squats.' },
+      'muscle_biceps_femoris_left': { name: 'Left Biceps Femoris (Hamstring)', group: 'Lower Limbs', action: 'Knee flexion / hip extension', antagonist: 'Quadriceps', desc: 'The lateral part of the hamstring group, critical in knee flexion.' },
+      'muscle_biceps_femoris_right': { name: 'Right Biceps Femoris (Hamstring)', group: 'Lower Limbs', action: 'Knee flexion / hip extension', antagonist: 'Quadriceps', desc: 'The lateral part of the hamstring group, critical in knee flexion.' },
+      'muscle_semitendinosus_left': { name: 'Left Semitendinosus (Hamstring)', group: 'Lower Limbs', action: 'Knee flexion / hip extension', antagonist: 'Quadriceps', desc: 'Long superficial medial hamstring head.' },
+      'muscle_semitendinosus_right': { name: 'Right Semitendinosus (Hamstring)', group: 'Lower Limbs', action: 'Knee flexion / hip extension', antagonist: 'Quadriceps', desc: 'Long superficial medial hamstring head.' },
+      'muscle_semimembranosus_left': { name: 'Left Semimembranosus (Hamstring)', group: 'Lower Limbs', action: 'Knee flexion / hip extension', antagonist: 'Quadriceps', desc: 'Flat medial deep hamstring head, sitting beneath semitendinosus.' },
+      'muscle_semimembranosus_right': { name: 'Right Semimembranosus (Hamstring)', group: 'Lower Limbs', action: 'Knee flexion / hip extension', antagonist: 'Quadriceps', desc: 'Flat medial deep hamstring head, sitting beneath semitendinosus.' },
+      'muscle_adductor_magnus_left': { name: 'Left Adductor Magnus', group: 'Lower Limbs', action: 'Thigh adduction / extension', antagonist: 'Gluteus Medius', desc: 'Largest adductor muscle, sitting deep inside the posterior thigh.' },
+      'muscle_adductor_magnus_right': { name: 'Right Adductor Magnus', group: 'Lower Limbs', action: 'Thigh adduction / extension', antagonist: 'Gluteus Medius', desc: 'Largest adductor muscle, sitting deep inside the posterior thigh.' }
+    };
+
+    // State Variables
+    const selectedMuscles = new Set();
+    let isolatedMuscle = null;
+    let clickTimeout = null;
+
+    // DOM References
+    const dashboardContainer = document.getElementById('dashboardContainer');
+    const viewportContainer = document.getElementById('viewportContainer');
+    const chartsWrapper = document.getElementById('chartsWrapper');
+    const selectedList = document.getElementById('selectedList');
+    const selectedCount = document.getElementById('selectedCount');
+    const muscleSearch = document.getElementById('muscleSearch');
+    const tooltip = document.getElementById('muscleTooltip');
+    const infoName = document.getElementById('infoName');
+    const infoGroup = document.getElementById('infoGroup');
+    const infoDesc = document.getElementById('infoDesc');
+    const infoAntag = document.getElementById('infoAntag');
+    const infoAction = document.getElementById('infoAction');
+
+    // Theme setup
+    const themeToggle = document.getElementById('themeToggle');
+    const themeSun = document.getElementById('themeSun');
+    const themeMoon = document.getElementById('themeMoon');
+
+    themeToggle.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      
+      if (newTheme === 'dark') {
+        themeSun.style.display = 'none';
+        themeMoon.style.display = 'block';
+      } else {
+        themeSun.style.display = 'block';
+        themeMoon.style.display = 'none';
+      }
+    });
+
+    // View toggling logic
+    const viewButtons = document.querySelectorAll('.view-toggles button');
+    viewButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        viewButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const view = btn.getAttribute('data-view');
+        
+        viewportContainer.className = 'viewport-container';
+        if (view !== 'split') {
+          viewportContainer.classList.add('show-' + view);
+        }
+      });
+    });
+
+    // Clean details view helper
+    function showMuscleDetails(id) {
+      // Handle front/back alias mapping
+      let cleanedId = id;
+      if (id.endsWith('_front')) {
+        const pathElement = document.getElementById(id);
+        cleanedId = pathElement.getAttribute('data-alias') || id;
+      }
+      
+      const details = muscleDatabase[cleanedId];
+      if (details) {
+        infoName.textContent = details.name;
+        infoGroup.textContent = details.group;
+        infoDesc.textContent = details.desc;
+        infoAntag.textContent = details.antagonist || 'None mapped';
+        infoAction.textContent = details.action || 'None';
+      }
+    }
+
+    function clearDetails() {
+      infoName.textContent = 'No Muscle Selected';
+      infoGroup.textContent = 'Clinically Unassigned';
+      infoDesc.textContent = 'Hover over or click a muscle group on the charts to load clinical diagnostics, antagonist mappings, and target exercises.';
+      infoAntag.textContent = '-';
+      infoAction.textContent = '-';
+    }
+
+    // Dynamic Sidebar List Update
+    function updateSidebar() {
+      if (selectedMuscles.size === 0) {
+        selectedCount.textContent = '0 Active';
+        selectedList.innerHTML = `
+          <div class="empty-state">
+            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2" />
+            </svg>
+            No muscles selected.
+          </div>
+        `;
+        return;
+      }
+
+      selectedCount.textContent = `${selectedMuscles.size} Active`;
+      let listHTML = '';
+
+      selectedMuscles.forEach(id => {
+        // Resolve path ID to base ID (remove front/back identifiers if needed)
+        const pathElement = document.getElementById(id);
+        const baseId = pathElement ? (pathElement.getAttribute('data-alias') || id) : id;
+        const name = muscleDatabase[baseId]?.name || id;
+
+        listHTML += `
+          <div class="muscle-badge" data-path-id="${id}">
+            <span class="muscle-badge-name">${name}</span>
+            <button class="muscle-badge-remove" aria-label="Deselect ${name}">✕</button>
+          </div>
+        `;
+      });
+
+      selectedList.innerHTML = listHTML;
+    }
+
+    // Sync elements selected classes
+    function syncSVGClasses() {
+      // Reset all classes
+      document.querySelectorAll('.muscle-path').forEach(p => p.classList.remove('selected'));
+      
+      // Re-apply selected state
+      selectedMuscles.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.add('selected');
+          
+          // Also highlight matching alias paths (such as posterior/anterior crossover paths like soleus)
+          const alias = el.getAttribute('data-alias');
+          if (alias) {
+            document.querySelectorAll(`[data-alias="${alias}"], #${alias}`).forEach(sibling => {
+              sibling.classList.add('selected');
+            });
+          } else {
+            document.querySelectorAll(`[data-alias="${id}"]`).forEach(sibling => {
+              sibling.classList.add('selected');
+            });
+          }
+        }
+      });
+    }
+
+    // Toggle selections
+    function toggleSelection(id) {
+      if (selectedMuscles.has(id)) {
+        selectedMuscles.delete(id);
+        
+        // Also remove matching alias path selections
+        const el = document.getElementById(id);
+        const alias = el?.getAttribute('data-alias');
+        if (alias) {
+          document.querySelectorAll(`[data-alias="${alias}"], #${alias}`).forEach(sibling => {
+            selectedMuscles.delete(sibling.id);
+          });
+        } else {
+          document.querySelectorAll(`[data-alias="${id}"]`).forEach(sibling => {
+            selectedMuscles.delete(sibling.id);
+          });
+        }
+      } else {
+        selectedMuscles.add(id);
+      }
+      syncSVGClasses();
+      updateSidebar();
+      
+      const activeElement = document.getElementById(id);
+      if (activeElement && selectedMuscles.has(id)) {
+        showMuscleDetails(id);
+      } else if (selectedMuscles.size > 0) {
+        // Show details of the last selected
+        const lastSelected = Array.from(selectedMuscles).pop();
+        showMuscleDetails(lastSelected);
+      } else {
+        clearDetails();
+      }
+    }
+
+    // Event Delegation on Charts Wrapper (Click & DblClick)
+    chartsWrapper.addEventListener('click', (e) => {
+      const path = e.target.closest('.muscle-path');
+      if (!path) return;
+
+      // Prevent single click firing immediately on double click
+      if (clickTimeout) {
+        clearTimeout(clickTimeout);
+        clickTimeout = null;
+        return;
+      }
+
+      clickTimeout = setTimeout(() => {
+        toggleSelection(path.id);
+        clickTimeout = null;
+      }, 200);
+    });
+
+    chartsWrapper.addEventListener('dblclick', (e) => {
+      if (clickTimeout) {
+        clearTimeout(clickTimeout);
+        clickTimeout = null;
+      }
+
+      const path = e.target.closest('.muscle-path');
+      
+      // Double click on background: reset everything
+      if (!path) {
+        selectedMuscles.clear();
+        isolatedMuscle = null;
+        syncSVGClasses();
+        updateSidebar();
+        clearDetails();
+        return;
+      }
+
+      // Isolate logic
+      if (isolatedMuscle === path.id) {
+        // Already isolated, reset
+        selectedMuscles.clear();
+        isolatedMuscle = null;
+        clearDetails();
+      } else {
+        // Isolate selected muscle
+        selectedMuscles.clear();
+        selectedMuscles.add(path.id);
+        isolatedMuscle = path.id;
+        showMuscleDetails(path.id);
+      }
+
+      syncSVGClasses();
+      updateSidebar();
+    });
+
+    // Tooltip and Hover States
+    chartsWrapper.addEventListener('mousemove', (e) => {
+      const path = e.target.closest('.muscle-path');
+      if (!path) {
+        tooltip.style.display = 'none';
+        return;
+      }
+
+      // Get clinical name
+      const aliasId = path.getAttribute('data-alias') || path.id;
+      const details = muscleDatabase[aliasId];
+      const name = details ? details.name : path.id;
+
+      tooltip.textContent = name;
+      tooltip.style.display = 'block';
+
+      // Position tooltip following cursor within viewport
+      const wrapperRect = chartsWrapper.getBoundingClientRect();
+      const x = e.clientX - wrapperRect.left + 15;
+      const y = e.clientY - wrapperRect.top + 15;
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    });
+
+    chartsWrapper.addEventListener('mouseleave', () => {
+      tooltip.style.display = 'none';
+    });
+
+    // Sidebar items removal click listener
+    selectedList.addEventListener('click', (e) => {
+      const removeBtn = e.target.closest('.muscle-badge-remove');
+      if (!removeBtn) return;
+
+      const badge = e.target.closest('.muscle-badge');
+      const pathId = badge.getAttribute('data-path-id');
+      toggleSelection(pathId);
+    });
+
+    // Sidebar list hover states to preview details
+    selectedList.addEventListener('mouseover', (e) => {
+      const badge = e.target.closest('.muscle-badge');
+      if (!badge) return;
+      const pathId = badge.getAttribute('data-path-id');
+      showMuscleDetails(pathId);
+    });
+
+    // Invert Selection
+    document.getElementById('invertSelectionBtn').addEventListener('click', () => {
+      const allPaths = document.querySelectorAll('.muscle-path');
+      allPaths.forEach(path => {
+        const id = path.id;
+        if (selectedMuscles.has(id)) {
+          selectedMuscles.delete(id);
+        } else {
+          selectedMuscles.add(id);
+        }
+      });
+      syncSVGClasses();
+      updateSidebar();
+      
+      if (selectedMuscles.size > 0) {
+        showMuscleDetails(Array.from(selectedMuscles).pop());
+      } else {
+        clearDetails();
+      }
+    });
+
+    // Clear Selection
+    document.getElementById('clearSelectionBtn').addEventListener('click', () => {
+      selectedMuscles.clear();
+      isolatedMuscle = null;
+      syncSVGClasses();
+      updateSidebar();
+      clearDetails();
+    });
+
+    // Search and Highlight matching muscles
+    muscleSearch.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      const allPaths = document.querySelectorAll('.muscle-path');
+
+      if (!query) {
+        allPaths.forEach(p => p.classList.remove('dimmed'));
+        return;
+      }
+
+      allPaths.forEach(path => {
+        const id = path.id;
+        const alias = path.getAttribute('data-alias') || id;
+        const details = muscleDatabase[alias];
+        const name = details ? details.name.toLowerCase() : '';
+        const group = details ? details.group.toLowerCase() : '';
+
+        if (name.includes(query) || group.includes(query) || id.toLowerCase().includes(query)) {
+          path.classList.remove('dimmed');
+        } else {
+          path.classList.add('dimmed');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

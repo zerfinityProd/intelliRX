@@ -9,6 +9,7 @@ import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import { DentalWidgetComponent } from '../widgets/dental-widget/dental-widget';
 import { FullbodyWidgetComponent } from '../widgets/fullbody-widget/fullbody-widget';
+import { MuscularWidgetComponent } from '../widgets/muscular-widget/muscular-widget';
 import { AuthorizationService } from '../../services/authorizationService';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
@@ -44,7 +45,7 @@ interface FrequencyState {
 @Component({
     selector: 'app-add-visit-page',
     standalone: true,
-    imports: [CommonModule, FormsModule, NavbarComponent, DentalWidgetComponent, FullbodyWidgetComponent],
+    imports: [CommonModule, FormsModule, NavbarComponent, DentalWidgetComponent, FullbodyWidgetComponent, MuscularWidgetComponent],
     templateUrl: './add-visit-page.html',
     styleUrl: './add-visit-page.css'
 })
@@ -95,8 +96,11 @@ export class AddVisitPageComponent implements OnInit {
     // ── Skeletal chart selection ──────────────────────────────
     selectedBoneIds: string[] = [];
 
+    // ── Muscular chart selection ──────────────────────────────
+    selectedMuscleIds: string[] = [];
+
     // ── Widget toggle state & specialty ───────────────────────
-    activeChartTab: 'dental' | 'skeletal' = 'skeletal';
+    activeChartTab: 'dental' | 'skeletal' | 'muscular' = 'skeletal';
     doctorSpecialty: string = '';
 
     // ── Edit mode ─────────────────────────────────────────────
@@ -146,6 +150,8 @@ export class AddVisitPageComponent implements OnInit {
                 const specLower = (this.doctorSpecialty || '').toLowerCase();
                 if (specLower.includes('dent')) {
                     this.activeChartTab = 'dental';
+                } else if (specLower.includes('physio') || specLower.includes('therap')) {
+                    this.activeChartTab = 'muscular';
                 } else {
                     this.activeChartTab = 'skeletal';
                 }
@@ -222,6 +228,7 @@ export class AddVisitPageComponent implements OnInit {
                 newExamStatus: this.newExamStatus,
                 selectedTeethIds: this.selectedTeethIds,
                 selectedBoneIds: this.selectedBoneIds,
+                selectedMuscleIds: this.selectedMuscleIds,
                 activeChartTab: this.activeChartTab,
                 timestamp: Date.now()
             };
@@ -258,6 +265,7 @@ export class AddVisitPageComponent implements OnInit {
             this.newExamStatus = data.newExamStatus || '';
             if (Array.isArray(data.selectedTeethIds)) this.selectedTeethIds = data.selectedTeethIds;
             if (Array.isArray(data.selectedBoneIds)) this.selectedBoneIds = data.selectedBoneIds;
+            if (Array.isArray(data.selectedMuscleIds)) this.selectedMuscleIds = data.selectedMuscleIds;
             if (data.activeChartTab) this.activeChartTab = data.activeChartTab;
             this.cdr.detectChanges();
         } catch { /* silent */ }
@@ -311,6 +319,7 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     // ── Dental chart ──────────────────────────────────────────
+    // ── Dental chart ──────────────────────────────────────────
     onTeethSelectionChange(ids: number[]): void {
         this.selectedTeethIds = ids;
     }
@@ -319,10 +328,103 @@ export class AddVisitPageComponent implements OnInit {
         this.selectedBoneIds = ids;
     }
 
+    onMusclesSelectionChange(ids: string[]): void {
+        this.selectedMuscleIds = ids;
+    }
+
+    getSelectedMuscleNames(): string[] {
+        const names: Record<string, string> = {
+            'muscle_temporalis_left': 'Left Temporalis',
+            'muscle_temporalis_right': 'Right Temporalis',
+            'muscle_masseter_left': 'Left Masseter',
+            'muscle_masseter_right': 'Right Masseter',
+            'muscle_sternocleidomastoid_left': 'Left Sternocleidomastoid',
+            'muscle_sternocleidomastoid_right': 'Right Sternocleidomastoid',
+            'muscle_trapezius_left': 'Left Trapezius (Upper)',
+            'muscle_trapezius_right': 'Right Trapezius (Upper)',
+            'muscle_pectoralis_major_left': 'Left Pectoralis Major',
+            'muscle_pectoralis_major_right': 'Right Pectoralis Major',
+            'muscle_rectus_abdominis_left': 'Left Rectus Abdominis',
+            'muscle_rectus_abdominis_right': 'Right Rectus Abdominis',
+            'muscle_external_oblique_left': 'Left External Oblique',
+            'muscle_external_oblique_right': 'Right External Oblique',
+            'muscle_serratus_anterior_left': 'Left Serratus Anterior',
+            'muscle_serratus_anterior_right': 'Right Serratus Anterior',
+            'muscle_deltoid_left': 'Left Deltoid (Anterior)',
+            'muscle_deltoid_right': 'Right Deltoid (Anterior)',
+            'muscle_biceps_brachii_left': 'Left Biceps Brachii',
+            'muscle_biceps_brachii_right': 'Right Biceps Brachii',
+            'muscle_brachialis_left': 'Left Brachialis',
+            'muscle_brachialis_right': 'Right Brachialis',
+            'muscle_pronator_teres_left': 'Left Pronator Teres',
+            'muscle_pronator_teres_right': 'Right Pronator Teres',
+            'muscle_brachioradialis_left': 'Left Brachioradialis',
+            'muscle_brachioradialis_right': 'Right Brachioradialis',
+            'muscle_flexor_carpi_radialis_left': 'Left Flexor Carpi Radialis',
+            'muscle_flexor_carpi_radialis_right': 'Right Flexor Carpi Radialis',
+            'muscle_flexor_carpi_ulnaris_left': 'Left Flexor Carpi Ulnaris',
+            'muscle_flexor_carpi_ulnaris_right': 'Right Flexor Carpi Ulnaris',
+            'muscle_iliopsoas_left': 'Left Iliopsoas',
+            'muscle_iliopsoas_right': 'Right Iliopsoas',
+            'muscle_tensor_fasciae_latae_left': 'Left Tensor Fasciae Latae',
+            'muscle_tensor_fasciae_latae_right': 'Right Tensor Fasciae Latae',
+            'muscle_sartorius_left': 'Left Sartorius',
+            'muscle_sartorius_right': 'Right Sartorius',
+            'muscle_rectus_femoris_left': 'Left Rectus Femoris',
+            'muscle_rectus_femoris_right': 'Right Rectus Femoris',
+            'muscle_vastus_lateralis_left': 'Left Vastus Lateralis',
+            'muscle_vastus_lateralis_right': 'Right Vastus Lateralis',
+            'muscle_vastus_medialis_left': 'Left Vastus Medialis',
+            'muscle_vastus_medialis_right': 'Right Vastus Medialis',
+            'muscle_adductor_longus_left': 'Left Adductor Longus',
+            'muscle_adductor_longus_right': 'Right Adductor Longus',
+            'muscle_gracilis_left': 'Left Gracilis',
+            'muscle_gracilis_right': 'Right Gracilis',
+            'muscle_tibialis_anterior_left': 'Left Tibialis Anterior',
+            'muscle_tibialis_anterior_right': 'Right Tibialis Anterior',
+            'muscle_gastrocnemius_left': 'Left Gastrocnemius (Calf)',
+            'muscle_gastrocnemius_right': 'Right Gastrocnemius (Calf)',
+            'muscle_soleus_left': 'Left Soleus',
+            'muscle_soleus_right': 'Right Soleus',
+            'muscle_extensor_digitorum_left': 'Left Extensor Digitorum Longus',
+            'muscle_extensor_digitorum_right': 'Right Extensor Digitorum Longus',
+            'muscle_occipitalis_left': 'Left Occipitalis',
+            'muscle_occipitalis_right': 'Right Occipitalis',
+            'muscle_splenius_capitis_left': 'Left Splenius Capitis',
+            'muscle_splenius_capitis_right': 'Right Splenius Capitis',
+            'muscle_trapezius_post_left': 'Left Trapezius (Posterior)',
+            'muscle_trapezius_post_right': 'Right Trapezius (Posterior)',
+            'muscle_latissimus_dorsi_left': 'Left Latissimus Dorsi',
+            'muscle_latissimus_dorsi_right': 'Right Latissimus Dorsi',
+            'muscle_infraspinatus_left': 'Left Infraspinatus',
+            'muscle_infraspinatus_right': 'Right Infraspinatus',
+            'muscle_teres_major_left': 'Left Teres Major',
+            'muscle_teres_major_right': 'Right Teres Major',
+            'muscle_erector_spinae_left': 'Left Erector Spinae',
+            'muscle_erector_spinae_right': 'Right Erector Spinae',
+            'muscle_gluteus_medius_left': 'Left Gluteus Medius',
+            'muscle_gluteus_medius_right': 'Right Gluteus Medius',
+            'muscle_gluteus_maximus_left': 'Left Gluteus Maximus',
+            'muscle_gluteus_maximus_right': 'Right Gluteus Maximus',
+            'muscle_biceps_femoris_left': 'Left Biceps Femoris (Hamstring)',
+            'muscle_biceps_femoris_right': 'Right Biceps Femoris (Hamstring)',
+            'muscle_semitendinosus_left': 'Left Semitendinosus (Hamstring)',
+            'muscle_semitendinosus_right': 'Right Semitendinosus (Hamstring)',
+            'muscle_semimembranosus_left': 'Left Semimembranosus (Hamstring)',
+            'muscle_semimembranosus_right': 'Right Semimembranosus (Hamstring)',
+            'muscle_adductor_magnus_left': 'Left Adductor Magnus',
+            'muscle_adductor_magnus_right': 'Right Adductor Magnus',
+            'muscle_triceps_brachii_left': 'Left Triceps Brachii',
+            'muscle_triceps_brachii_right': 'Right Triceps Brachii',
+            'muscle_deltoid_post_left': 'Left Deltoid (Posterior)',
+            'muscle_deltoid_post_right': 'Right Deltoid (Posterior)',
+        };
+        return this.selectedMuscleIds.map(id => names[id] || id);
+    }
+
     private populateEditFields(visit: any): void {
         this.chiefComplaintsText = visit.chiefComplaints || '';
         this.clinicalFindingsText = visit.presentIllness || '';
-        this.diagnosis = visit.diagnosis || '';
         this.treatmentPlan = visit.treatmentPlan || '';
         this.advice = visit.advice || '';
 
@@ -336,9 +438,16 @@ export class AddVisitPageComponent implements OnInit {
             this.selectedBoneIds = visit.selectedBones;
         }
 
+        // Restore selected muscles
+        if (Array.isArray(visit.selectedMuscles)) {
+            this.selectedMuscleIds = visit.selectedMuscles;
+        }
+
         // Auto-select tab based on data saved
         if (Array.isArray(visit.selectedBones) && visit.selectedBones.length > 0) {
             this.activeChartTab = 'skeletal';
+        } else if (Array.isArray(visit.selectedMuscles) && visit.selectedMuscles.length > 0) {
+            this.activeChartTab = 'muscular';
         } else if (Array.isArray(visit.selectedTeeth) && visit.selectedTeeth.length > 0) {
             this.activeChartTab = 'dental';
         }
@@ -650,6 +759,7 @@ export class AddVisitPageComponent implements OnInit {
                 doctor_id: currentEmail,
                 selectedTeeth: this.selectedTeethIds,
                 selectedBones: this.selectedBoneIds,
+                selectedMuscles: this.selectedMuscleIds,
             };
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;
@@ -836,6 +946,7 @@ export class AddVisitPageComponent implements OnInit {
             medicines: this.medicines.map(m => `${m.name}|${m.dosage}|${m.frequency}|${m.durationDays}`),
             selectedTeeth: [...this.selectedTeethIds].sort(),
             selectedBones: [...this.selectedBoneIds].sort(),
+            selectedMuscles: [...this.selectedMuscleIds].sort(),
         });
     }
 
@@ -902,6 +1013,9 @@ export class AddVisitPageComponent implements OnInit {
         const bonesStr = this.selectedBoneIds.length > 0
             ? this.selectedBoneIds.join(', ')
             : 'None';
+        const musclesStr = this.selectedMuscleIds.length > 0
+            ? this.getSelectedMuscleNames().join(', ')
+            : 'None';
 
         const examRows = this.examinations.map(e =>
             `<tr><td>${e.testName}</td><td>${e.status || '-'}</td><td>${e.result || '-'}</td></tr>`
@@ -959,6 +1073,7 @@ export class AddVisitPageComponent implements OnInit {
     ${field('Advice', this.advice)}
     ${this.selectedTeethIds.length > 0 ? field('Teeth Affected', teethStr) : ''}
     ${this.selectedBoneIds.length > 0 ? field('Bones Affected', bonesStr) : ''}
+    ${this.selectedMuscleIds.length > 0 ? field('Muscles Affected', musclesStr) : ''}
   </div>
 
   ${this.examinations.length > 0 ? `
