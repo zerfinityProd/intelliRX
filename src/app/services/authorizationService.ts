@@ -56,6 +56,8 @@ interface UserLookupResult {
     subscriptionId: string;
     clinicIds: string[];
     role: string;
+    /** Full global_roles array from the users collection */
+    globalRoles: string[];
     timestamp: number;
 }
 
@@ -189,8 +191,9 @@ export class AuthorizationService {
             // Extract role from global_roles array
             let role: string = 'doctor';
             const globalRoles = getField(userData, 'global_roles');
-            if (globalRoles && Array.isArray(globalRoles)) {
-                for (const r of globalRoles) {
+            const globalRolesArray: string[] = (globalRoles && Array.isArray(globalRoles)) ? [...globalRoles] : [];
+            if (globalRolesArray.length > 0) {
+                for (const r of globalRolesArray) {
                     if (r === 'recep' || r === 'receptionist') {
                         role = 'receptionist';
                         break;
@@ -313,6 +316,7 @@ export class AuthorizationService {
                 subscriptionId,
                 clinicIds,
                 role,
+                globalRoles: globalRolesArray,
                 timestamp: Date.now()
             };
 
@@ -451,6 +455,20 @@ export class AuthorizationService {
     }
 
     /**
+     * Returns the full global_roles array for a given email.
+     * Use this when you need to know ALL roles (e.g. login routing).
+     */
+    async getUserGlobalRoles(email: string): Promise<string[]> {
+        try {
+            const result = await this.lookupUser(email);
+            return result?.globalRoles ?? [];
+        } catch (error) {
+            console.warn('getUserGlobalRoles failed for:', email, error);
+            return [];
+        }
+    }
+
+    /**
      * Resolve permissions from the roles collection only.
      * Reads: roles/{roleName} → permissions array
      *
@@ -462,12 +480,27 @@ export class AuthorizationService {
             const result = await this.lookupUser(email);
             if (!result) return { ...DEFAULT_PERMISSIONS };
 
-            const roleName = result.role;
+            // Merge permissions from ALL global_roles so that admin+doctor
+            // users get both admin and doctor permissions (e.g. canAppointment).
+            const allRoles = result.globalRoles.length > 0
+                ? result.globalRoles
+                : [result.role];
 
-            // Load permissions from roles/{roleName} — the single source of truth
-            const permNames = await this.loadRoleDefaults(roleName);
+            // Map role names: 'admin' → 'subscription_owner', 'receptionist'/'recep' stays
+            const resolvedRoleNames = allRoles.map(r => {
+                if (r === 'admin') return 'subscription_owner';
+                if (r === 'recep') return 'receptionist';
+                return r;
+            });
 
-            const permissions = this.mapPermissionNames(permNames);
+            // Load permissions from each role and merge them (union)
+            let mergedPermNames: string[] = [];
+            for (const roleName of new Set(resolvedRoleNames)) {
+                const permNames = await this.loadRoleDefaults(roleName);
+                mergedPermNames = mergedPermNames.concat(permNames);
+            }
+
+            const permissions = this.mapPermissionNames([...new Set(mergedPermNames)]);
 
             return permissions;
         } catch (error) {
@@ -785,6 +818,33 @@ export class AuthorizationService {
             return doctors;
         } catch (error) {
             console.error('getDoctorsForSubscription failed:', subscriptionId, error);
+            return [];
+        }
+    }
+
+    /**
+     * Fetch all clinics for a given subscription ID.
+     * Returns id + name pairs for dropdown display.
+     * Unlike getUserClinicIds(), this returns ALL clinics in the subscription,
+     * not just the ones the user is assigned to via clinic_users.
+     */
+    async getAllClinicsForSubscription(subscriptionId: string): Promise<Array<{ id: string; name: string }>> {
+        if (!subscriptionId) return [];
+        try {
+            const clinicDocs = await this.api.runQuery('', {
+                collectionId: 'clinics',
+                filters: [
+                    { field: 'subscription_id', op: '==', value: subscriptionId }
+                ],
+            });
+            return clinicDocs
+                .filter(d => (d.data['status'] || 'active') === 'active')
+                .map(d => ({
+                    id: d.id,
+                    name: d.data['name'] || d.id
+                }));
+        } catch (error) {
+            console.error('getAllClinicsForSubscription failed:', subscriptionId, error);
             return [];
         }
     }

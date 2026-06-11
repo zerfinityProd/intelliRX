@@ -212,6 +212,15 @@ export class HomeComponent implements OnInit {
       if (rawEmail) {
         this.userRole = await this.authorizationService.getUserRole(rawEmail);
         this.permissions = await this.authorizationService.getUserPermissions(rawEmail);
+
+        // For admin+doctor users: getUserRole returns 'subscription_owner', but
+        // the dashboard should behave as a doctor dashboard. Check global_roles.
+        if (this.userRole === 'subscription_owner') {
+          const globalRoles = await this.authorizationService.getUserGlobalRoles(rawEmail);
+          if (globalRoles.includes('doctor')) {
+            this.userRole = 'doctor';
+          }
+        }
       }
     } catch {
       this.userRole = 'doctor';

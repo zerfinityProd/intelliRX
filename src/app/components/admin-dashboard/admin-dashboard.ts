@@ -409,6 +409,22 @@ export class AdminDashboardComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  /** True when the staff member has doctor or admin in their global_roles */
+  hasNavigableRole(user: AdminUserState): boolean {
+    return user.global_roles.some(r => r === 'doctor' || r === 'admin');
+  }
+
+  /** Navigate to the appropriate dashboard for a staff member */
+  navigateToDashboard(user: AdminUserState): void {
+    const hasDoctor = user.global_roles.includes('doctor');
+    const hasAdmin = user.global_roles.includes('admin');
+    if (hasDoctor) {
+      this.router.navigate(['/home']);
+    } else if (hasAdmin) {
+      this.router.navigate(['/admin-dashboard']);
+    }
+  }
+
   async logout(): Promise<void> {
     await this.authService.logout();
     this.router.navigate(['/app/login']);
@@ -789,27 +805,86 @@ export class AdminDashboardComponent implements OnInit {
     this.isSaving = true;
     try {
       let userId = this.userForm.userId;
-      // Derive global_roles from the per-assignment roles
+      // Derive assignment-based roles from the per-assignment roles
       const assignmentRoles = new Set(this.userForm.assignments.map(a => a.role));
-      const derivedGlobalRoles: string[] = [];
-      if (assignmentRoles.has('doctor')) derivedGlobalRoles.push('doctor');
-      if (assignmentRoles.has('receptionist')) derivedGlobalRoles.push('receptionist');
-      if (derivedGlobalRoles.length === 0) derivedGlobalRoles.push('receptionist');
+      const derivedAssignmentRoles: string[] = [];
+      if (assignmentRoles.has('doctor')) derivedAssignmentRoles.push('doctor');
+      if (assignmentRoles.has('receptionist')) derivedAssignmentRoles.push('receptionist');
+      if (derivedAssignmentRoles.length === 0) derivedAssignmentRoles.push('receptionist');
 
       const userPayload: any = {
         email: this.userForm.email.trim().toLowerCase(),
         name: this.userForm.name.trim(),
         specialization: this.userForm.specialization?.trim() || '',
-        global_roles: derivedGlobalRoles,
+        global_roles: derivedAssignmentRoles, // will be merged below if existing user
         status: this.userForm.status,
         subscription_id: this.subscription!.id,
       };
       if (userId) {
-        await this.adminService.updateUser(userId, userPayload);
+        // Editing existing user — check if email was changed to one that belongs to another user
+        const oldUser = await this.adminService.getUserById(userId);
+        const emailChanged = oldUser && oldUser.email.toLowerCase().trim() !== userPayload.email;
+
+        if (emailChanged) {
+          // Email was changed — check if the NEW email already belongs to another user
+          const targetUser = await this.adminService.getUserByEmail(userPayload.email);
+          if (targetUser && targetUser.id !== userId) {
+            // Merge into the existing user with the new email
+            const oldUserId = userId;
+            userId = targetUser.id!;
+            // Preserve non-assignment roles from the target user (admin, z_admin)
+            const preservedRoles = (targetUser.global_roles || []).filter(
+              (r: string) => !['doctor', 'receptionist'].includes(r)
+            );
+            userPayload.global_roles = [...new Set([...preservedRoles, ...derivedAssignmentRoles])];
+            // Don't overwrite the target user's subscription_id if they have one
+            if (targetUser.subscription_id && !userPayload.subscription_id) {
+              userPayload.subscription_id = targetUser.subscription_id;
+            }
+            await this.adminService.updateUser(userId, userPayload);
+
+            // Migrate clinic_user records from the old user to the target user
+            const oldCUs = await this.adminService.getClinicUsers(this.subscription!.id);
+            for (const cu of oldCUs.filter(cu => cu.user_id === oldUserId)) {
+              await this.adminService.updateClinicUser(cu.id!, { user_id: userId } as any);
+            }
+
+            // Delete the old (now-orphaned) user doc
+            await this.adminService.deleteUser(oldUserId);
+          } else {
+            // New email doesn't belong to anyone else — just update this user
+            if (oldUser) {
+              const preservedRoles = (oldUser.global_roles || []).filter(
+                (r: string) => !['doctor', 'receptionist'].includes(r)
+              );
+              userPayload.global_roles = [...new Set([...preservedRoles, ...derivedAssignmentRoles])];
+            }
+            await this.adminService.updateUser(userId, userPayload);
+          }
+        } else {
+          // Email not changed — standard update with role merge
+          if (oldUser) {
+            const preservedRoles = (oldUser.global_roles || []).filter(
+              (r: string) => !['doctor', 'receptionist'].includes(r)
+            );
+            userPayload.global_roles = [...new Set([...preservedRoles, ...derivedAssignmentRoles])];
+          }
+          await this.adminService.updateUser(userId, userPayload);
+        }
       } else {
-        const existing = await this.adminService.getUserByEmail(userPayload.email, this.subscription!.id);
-        if (existing) { userId = existing.id!; await this.adminService.updateUser(userId, userPayload); }
-        else { userId = await this.adminService.createUser(userPayload); }
+        // New user — search by email WITHOUT subscription filter to avoid duplicates
+        const existing = await this.adminService.getUserByEmail(userPayload.email);
+        if (existing) {
+          userId = existing.id!;
+          // Merge roles: preserve existing non-assignment roles (admin, z_admin)
+          const preservedRoles = (existing.global_roles || []).filter(
+            (r: string) => !['doctor', 'receptionist'].includes(r)
+          );
+          userPayload.global_roles = [...new Set([...preservedRoles, ...derivedAssignmentRoles])];
+          await this.adminService.updateUser(userId, userPayload);
+        } else {
+          userId = await this.adminService.createUser(userPayload);
+        }
       }
 
       // Cross-subscription conflict check
@@ -886,7 +961,7 @@ export class AdminDashboardComponent implements OnInit {
       });
       const updated: AdminUserState = {
         userId, email: userPayload.email, name: userPayload.name, specialization: userPayload.specialization,
-        global_roles: [...derivedGlobalRoles], status: this.userForm.status,
+        global_roles: [...userPayload.global_roles], status: this.userForm.status,
         assignments: allAssignments,
       };
       const idx = this.users.findIndex(u => u.userId === userId);

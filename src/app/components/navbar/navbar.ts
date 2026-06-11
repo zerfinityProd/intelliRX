@@ -24,6 +24,7 @@ export class NavbarComponent implements OnInit {
   isDarkTheme$: Observable<boolean>;
   uiState$: Observable<any>;
   isAdmin = false;
+  isDoctor = false;
 
   constructor(
     private authService: AuthenticationService,
@@ -39,11 +40,18 @@ export class NavbarComponent implements OnInit {
     this.uiState$ = this.uiStateService.getUIState();
   }
 
+  /** True when the current route is the admin dashboard */
+  get isOnAdminDashboard(): boolean {
+    return this.router.url.startsWith('/admin-dashboard');
+  }
+
   async ngOnInit(): Promise<void> {
     const email = this.authService.currentUserValue?.email;
     if (email) {
       const role = await this.authorizationService.getUserRole(email);
-      this.isAdmin = role === 'subscription_owner';
+      const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
+      this.isAdmin = role === 'subscription_owner' || globalRoles.includes('admin');
+      this.isDoctor = globalRoles.includes('doctor');
     }
   }
 
@@ -59,6 +67,11 @@ export class NavbarComponent implements OnInit {
   goToAdminDashboard(): void {
     this.uiStateService.toggleUserMenu(); // close menu
     this.router.navigate(['/admin-dashboard']);
+  }
+
+  goToDoctorDashboard(): void {
+    this.uiStateService.toggleUserMenu(); // close menu
+    this.router.navigate(['/home']);
   }
 
   toggleUserMenu(): void {

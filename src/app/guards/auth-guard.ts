@@ -5,21 +5,45 @@ import { AuthorizationService } from '../services/authorizationService';
 import { filter, take, switchMap, from, of, map } from 'rxjs';
 
 /**
- * Base auth guard — only checks if user is logged in.
- * Redirects to /app/login if not authenticated (since protected routes are app routes).
- * Used for routes accessible by ALL roles (e.g. /add-appointment, /appointments).
+ * Base auth guard — checks if user is logged in.
+ * Redirects to /app/login if not authenticated.
+ * Redirects admin-only users (no clinical role) to /admin-dashboard.
+ * Used for routes accessible by ALL clinical roles (e.g. /home, /add-appointment).
  */
 export const authGuard: CanActivateFn = () => {
     const authService = inject(AuthenticationService);
+    const authorizationService = inject(AuthorizationService);
     const router = inject(Router);
 
     return authService.authReady$.pipe(
         filter(ready => ready),
         take(1),
-        map(() => {
-            if (authService.isLoggedIn()) return true;
-            router.navigate(['/app/login']);
-            return false;
+        switchMap(() => {
+            if (!authService.isLoggedIn()) {
+                router.navigate(['/app/login']);
+                return of(false);
+            }
+
+            const email = authService.currentUserValue?.email || '';
+            if (!email) {
+                router.navigate(['/app/login']);
+                return of(false);
+            }
+
+            return from(authorizationService.getUserGlobalRoles(email)).pipe(
+                map(globalRoles => {
+                    const isAdmin = globalRoles.includes('admin');
+                    const hasClinicalRole = globalRoles.includes('doctor') || globalRoles.includes('receptionist');
+
+                    // Admin-only users (no doctor/receptionist role) cannot access clinical routes
+                    if (isAdmin && !hasClinicalRole) {
+                        router.navigate(['/admin-dashboard']);
+                        return false;
+                    }
+
+                    return true;
+                })
+            );
         })
     );
 };

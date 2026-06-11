@@ -241,13 +241,14 @@
   padding: 8px 14px; border-radius: 10px;
   border: 1.5px solid var(--clr-border, #C8DDE3);
   background: var(--clr-bg, #E0F4F7); color: var(--clr-text-muted, #5A8A9C);
-  font-family: inherit; font-size: 13px; font-weight: 500;
+  font-family: inherit; font-size: 13px; font-weight: 600;
   cursor: pointer; transition: all 0.15s;
+  min-width: 48px; text-align: center; box-sizing: border-box;
 }
 .ad-day-btn:hover { border-color: var(--clr-primary, #148D9E); color: var(--clr-primary); }
 .ad-day-btn--selected {
   background: rgba(20,141,158,0.15); border-color: var(--clr-primary, #148D9E);
-  color: var(--clr-primary, #148D9E); font-weight: 600;
+  color: var(--clr-primary, #148D9E);
 }
 [data-theme="dark"] .ad-day-btn { background: var(--dk-bg3); border-color: var(--dk-border); color: var(--dk-text2); }
 [data-theme="dark"] .ad-day-btn--selected { background: rgba(20,141,158,0.2); border-color: #148D9E; color: #1CB5C9; }

@@ -108,8 +108,8 @@
           My Leaves
         </button>
 
-        <!-- Admin Dashboard (only for subscription_owner) -->
-        <button *ngIf="isAdmin" class="user-dropdown__item" role="menuitem" aria-label="Admin Dashboard"
+        <!-- Admin Dashboard (only for subscription_owner, hidden when already on admin dashboard) -->
+        <button *ngIf="isAdmin && !isOnAdminDashboard" class="user-dropdown__item" role="menuitem" aria-label="Admin Dashboard"
           (click)="goToAdminDashboard(); $event.stopPropagation()">
           <span class="user-dropdown__item-icon" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -118,6 +118,17 @@
             </svg>
           </span>
           Admin Dashboard
+        </button>
+
+        <!-- Doctor Dashboard (for admin+doctor users, shown when on admin dashboard) -->
+        <button *ngIf="isDoctor && isOnAdminDashboard" class="user-dropdown__item" role="menuitem" aria-label="Doctor Dashboard"
+          (click)="goToDoctorDashboard(); $event.stopPropagation()">
+          <span class="user-dropdown__item-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+          </span>
+          Doctor Dashboard
         </button>
 
         <!-- Logout -->

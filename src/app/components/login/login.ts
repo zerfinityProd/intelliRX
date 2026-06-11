@@ -83,7 +83,8 @@ export class LoginComponent implements OnInit {
 
         this.promptNotificationPermission(email);
 
-        // Fetch user's role once for routing decisions
+        // Fetch all global roles for routing decisions
+        const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
         const role = await this.authorizationService.getUserRole(email);
         if (!role) {
             this.errorMessage = 'Could not determine user role. Please try again.';
@@ -98,7 +99,24 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        // Admin (subscription_owner) → clinical home (can access admin dashboard from navbar)
+        // Admin routing — depends on whether they also have clinical roles
+        const isAdmin = globalRoles.includes('admin');
+        const hasClinicalRole = globalRoles.includes('doctor') || globalRoles.includes('receptionist');
+
+        if (isAdmin && hasClinicalRole) {
+            // Admin + Doctor/Receptionist → clinical home (they can access admin dashboard from navbar)
+            await this.ensureClinicSelected(email);
+            this.router.navigate(['/home']);
+            return;
+        }
+
+        if (isAdmin && !hasClinicalRole) {
+            // Admin-only → admin dashboard (no access to clinical home)
+            this.router.navigate(['/admin-dashboard']);
+            return;
+        }
+
+        // Subscription owner without 'admin' in global_roles (legacy)
         if (role === 'subscription_owner') {
             await this.ensureClinicSelected(email);
             this.router.navigate(['/home']);

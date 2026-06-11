@@ -77,6 +77,7 @@ export class AddAppointmentComponent implements OnInit {
   maxDate: string = this.computeMaxDate();
 
   userRole: string = 'doctor';
+  userGlobalRoles: string[] = [];
   canChooseDoctor: boolean = true;
   doctorContextReady: boolean = false;
 
@@ -160,13 +161,24 @@ export class AddAppointmentComponent implements OnInit {
     try {
       if (rawEmail) {
         this.userRole = await this.authorizationService.getUserRole(rawEmail);
+        this.userGlobalRoles = await this.authorizationService.getUserGlobalRoles(rawEmail);
       }
     } catch {
       this.userRole = 'doctor';
+      this.userGlobalRoles = [];
     }
 
-    // Doctor: lock to the single doctor record matching this email.
-    if (this.userRole === 'doctor') {
+    // Determine if user can choose clinic/doctor based on global_roles:
+    // - Admin → always shows chooser (admin overrides doctor behavior)
+    // - Receptionist → shows chooser
+    // - Pure doctor (no admin, no receptionist) → auto-locked to self
+    const hasAdmin = this.userGlobalRoles.some(r => r === 'admin');
+    const hasReceptionist = this.userGlobalRoles.some(r => r === 'receptionist' || r === 'recep');
+    const shouldShowChooser = hasAdmin || hasReceptionist
+      || this.userRole === 'subscription_owner' || this.userRole === 'z_admin';
+
+    // Doctor-only: lock to the single doctor record matching this email.
+    if (!shouldShowChooser) {
       this.canChooseDoctor = false;
       const authEmail = rawEmail ? normalizeEmail(rawEmail) : '';
       const match = authEmail
@@ -236,19 +248,19 @@ export class AddAppointmentComponent implements OnInit {
       // Load clinic-specific timings for slot generation (after context is set)
       await this.refreshTimeSlotsForClinic();
     } else {
-      // Receptionist: can choose any doctor.
+      // Receptionist / admin+receptionist: can choose any doctor.
       this.canChooseDoctor = true;
 
       this.subscriptionId = rawEmail
         ? await this.authorizationService.getUserSubscriptionId(rawEmail).catch(() => null)
         : null;
 
-      // Load clinics (SaaS scoping)
-      if (rawEmail) {
+      // Load ALL clinics under the subscription (not just user-assigned ones)
+      if (rawEmail && this.subscriptionId) {
         try {
-          const clinicIds = await this.authorizationService.getUserClinicIds(rawEmail);
-          this.clinics = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
-          this.selectedClinicId = clinicIds[0] ?? '';
+          const allClinics = await this.authorizationService.getAllClinicsForSubscription(this.subscriptionId);
+          this.clinics = allClinics.map(c => ({ id: c.id, label: c.name || c.id }));
+          this.selectedClinicId = allClinics.length > 0 ? allClinics[0].id : '';
           this.clinicContextService.setClinicContext(
             this.selectedClinicId || null,
             this.subscriptionId ?? null
