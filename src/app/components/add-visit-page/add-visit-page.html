@@ -326,8 +326,14 @@
         <div class="anatomy-tabs">
           <button type="button" class="anatomy-tab" [class.active]="activeChartTab === 'skeletal'" (click)="activeChartTab = 'skeletal'" aria-label="Skeletal chart">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
-              <path d="M12 2v20M8 6h8M8 10h8M8 14h8M8 18h8"></path>
+              <path d="M8 2v20M16 2v20M3 12h18M3 6h18M3 18h18"></path>
             </svg> Skeletal
+          </button>
+          <button type="button" class="anatomy-tab" [class.active]="activeChartTab === 'muscular'" (click)="activeChartTab = 'muscular'" aria-label="Muscular chart">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M12 8v8M8 12h8"></path>
+            </svg> Muscular
           </button>
           <button type="button" class="anatomy-tab" [class.active]="activeChartTab === 'dental'" (click)="activeChartTab = 'dental'" aria-label="Dental chart">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
@@ -343,6 +349,17 @@
             [initialSelected]="selectedBoneIds"
             (selectionChange)="onBonesSelectionChange($event)">
           </app-fullbody-widget>
+        </div>
+
+        <!-- Muscular Chart -->
+        <div class="anatomy-content" *ngIf="activeChartTab === 'muscular'">
+          <app-muscular-widget
+            [initialSelected]="selectedMuscleIds"
+            (selectionChange)="onMusclesSelectionChange($event)">
+          </app-muscular-widget>
+          <p *ngIf="selectedMuscleIds.length > 0" class="avp-teeth-summary" style="margin-top: 10px;">
+            Selected Muscles: <strong>{{ getSelectedMuscleNames().join(', ') }}</strong>
+          </p>
         </div>
 
         <!-- Dental Chart -->

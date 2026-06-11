@@ -2,33 +2,29 @@
   <div class="skeleton-widget-header">
     <div class="header-left">
       <div class="header-title-row">
-        <h3 class="skeleton-widget-title">Human Skeletal System</h3>
         <span class="view-pill" *ngIf="currentView !== 'full'">{{ getViewName() }}</span>
       </div>
-      <div class="header-subtitle-row">
-        <p class="skeleton-widget-hint" *ngIf="currentView === 'full'">Click highlighted regions (Hands, Feet, Skull, Spine) to zoom in for detailed bone selection.</p>
-        <div class="back-navigation" *ngIf="currentView !== 'full'">
+      <div class="header-subtitle-row" *ngIf="currentView !== 'full'">
+        <div class="back-navigation">
           <button class="back-btn" (click)="setView('full')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
               <path d="M19 12H5M12 19l-7-7 7-7"></path>
             </svg>
             Back to Full Body
           </button>
-          <span class="hint-separator">·</span>
-          <span class="skeleton-widget-hint">Click bones to select</span>
         </div>
       </div>
     </div>
-    <div class="header-right" *ngIf="selectedBoneIds.length > 0">
+    <div class="header-right">
       <div class="selection-counter">
         <span class="badge">{{ selectedBoneIds.length }}</span>
         <span class="counter-label">selected</span>
       </div>
-      <button class="clear-btn" (click)="clearSelection()" aria-label="Deselect all bones">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
+      <button class="clear-btn" (click)="clearSelection()" aria-label="Deselect all bones" [disabled]="selectedBoneIds.length === 0">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
           <path d="M18 6L6 18M6 6l12 12"></path>
         </svg>
-        Deselect All
+        Clear
       </button>
     </div>
   </div>
@@ -46,218 +42,213 @@
           <circle cx="200" cy="400" r="300" class="grid-circle" />
         </g>
 
-        <!-- UPFRONT SKULL (Visible upfront, acts as zoom hotspot) -->
+        <!-- ── SKULL HOTSPOT (compact, refined cranium) ── -->
         <g class="hotspot-group" (click)="toggleBone('hotspot_skull')" (mouseenter)="showTooltip($event, 'hotspot_skull')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)">
-          <!-- Highlight Area border (dotted) -->
-          <path d="M170,40 C160,10 240,10 230,40 C235,55 230,70 200,75 C170,70 165,55 170,40 Z" class="hotspot-area" />
-          <!-- Realistic Cranium, cheek flares and chin -->
-          <path d="M 180,48 C 176,22 224,22 220,48 C 226,52 223,60 216,63 C 213,72 208,78 200,78 C 192,78 187,72 184,63 C 177,60 174,52 180,48 Z" fill="#cbd5e1" stroke="#475569" stroke-width="1.5" stroke-linejoin="round" />
-          <!-- Eye orbits (realistic quadrangular shapes) -->
-          <path d="M 186,44 Q 192,42 196,45 Q 196,51 192,53 Q 186,51 186,44 Z" fill="#475569" />
-          <path d="M 204,45 Q 208,42 214,44 Q 214,51 208,53 Q 204,51 204,45 Z" fill="#475569" />
-          <!-- Nasal aperture and septum line -->
-          <path d="M 197,56 C 197,54 199,52 200,52 C 201,52 203,54 203,56 C 203,60 201,62 200,62 C 199,62 197,60 197,56 Z" fill="#475569" />
-          <line x1="200" y1="52" x2="200" y2="62" stroke="#cbd5e1" stroke-width="0.8" />
-          <!-- Suture / dental arches lines -->
-          <path d="M 191,69 L 209,69" stroke="#475569" stroke-width="1" />
-          <line x1="194" y1="66" x2="194" y2="72" stroke="#475569" stroke-width="0.8" />
-          <line x1="197" y1="66" x2="197" y2="72" stroke="#475569" stroke-width="0.8" />
-          <line x1="200" y1="66" x2="200" y2="72" stroke="#475569" stroke-width="0.8" />
-          <line x1="203" y1="66" x2="203" y2="72" stroke="#475569" stroke-width="0.8" />
-          <line x1="206" y1="66" x2="206" y2="72" stroke="#475569" stroke-width="0.8" />
-          
-          <rect x="160" y="5" width="80" height="78" class="hotspot-box" />
-          <text x="245" y="40" class="hotspot-label">Skull (22) ↗</text>
+          <path d="M176,22 C169,8 231,8 224,22 C231,40 227,58 200,64 C173,58 169,40 176,22 Z" class="hotspot-area" />
+          <!-- Refined cranium with natural forehead-to-chin taper -->
+          <path d="M186,28 C183,12 217,12 214,28 C219,34 217,48 211,52 C208,58 205,62 200,64 C195,62 192,58 189,52 C183,48 181,34 186,28 Z" fill="#cbd5e1" stroke="#475569" stroke-width="1.2" stroke-linejoin="round" />
+          <!-- Eye orbits -->
+          <path d="M190,36 Q194,34 196,37 Q196,40 193,41 Q190,40 190,36 Z" fill="#475569" />
+          <path d="M204,37 Q207,34 210,36 Q210,40 207,41 Q204,40 204,37 Z" fill="#475569" />
+          <!-- Nasal aperture -->
+          <path d="M198,44 C198,42 200,41 200,41 C200,41 202,42 202,44 C202,47 201,49 200,49 C199,49 198,47 198,44 Z" fill="#475569" />
+          <!-- Dental arch hint -->
+          <path d="M194,55 L206,55" stroke="#475569" stroke-width="0.8" />
+          <line x1="197" y1="53" x2="197" y2="57" stroke="#475569" stroke-width="0.6" />
+          <line x1="200" y1="53" x2="200" y2="57" stroke="#475569" stroke-width="0.6" />
+          <line x1="203" y1="53" x2="203" y2="57" stroke="#475569" stroke-width="0.6" />
+          <rect x="168" y="5" width="64" height="65" class="hotspot-box" />
+          <text x="237" y="30" class="hotspot-label">Skull (22) ↗</text>
         </g>
 
-        <!-- UPFRONT SPINE COLUMN (Segment-by-segment stack visible upfront, acts as zoom hotspot) -->
+        <!-- ── SPINE HOTSPOT (narrow vertebral column) ── -->
         <g class="hotspot-group" (click)="toggleBone('hotspot_spine')" (mouseenter)="showTooltip($event, 'hotspot_spine')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)">
-          <!-- Highlight Area border (dotted) -->
-          <rect x="185" y="82" width="30" height="248" rx="15" class="hotspot-area" />
-          <!-- Cervical Spine stack -->
-          <rect x="195" y="82" width="10" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="195" y="88" width="10" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="194" y="94" width="12" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="194" y="100" width="12" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="194" y="106" width="12" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <!-- Thoracic Spine stack -->
-          <rect x="193" y="112" width="14" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="193" y="122" width="14" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="192" y="132" width="16" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="192" y="142" width="16" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="192" y="152" width="16" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="191" y="162" width="18" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="191" y="172" width="18" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="191" y="182" width="18" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="190" y="192" width="20" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="190" y="202" width="20" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="190" y="212" width="20" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="189" y="222" width="22" height="6" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <!-- Lumbar Spine stack -->
-          <rect x="188" y="232" width="24" height="7" rx="1.5" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="188" y="243" width="24" height="7" rx="1.5" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="187" y="254" width="26" height="7" rx="1.5" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="187" y="265" width="26" height="7" rx="1.5" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <rect x="187" y="276" width="26" height="7" rx="1.5" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
+          <rect x="191" y="68" width="18" height="200" rx="9" class="hotspot-area" />
+          <!-- Cervical vertebrae (5 shown) -->
+          <rect x="197" y="70" width="6" height="3" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="197" y="75" width="6" height="3" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="196" y="80" width="8" height="3" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="196" y="85" width="8" height="3" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="196" y="90" width="8" height="3" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <!-- Thoracic vertebrae (12 shown) -->
+          <rect x="195" y="96" width="10" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="195" y="103" width="10" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="194" y="110" width="12" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="194" y="117" width="12" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="194" y="124" width="12" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="193" y="131" width="14" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="193" y="138" width="14" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="193" y="145" width="14" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="192" y="152" width="16" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="192" y="159" width="16" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="192" y="166" width="16" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="191" y="173" width="18" height="4" rx="1" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <!-- Lumbar vertebrae (5 shown) -->
+          <rect x="191" y="182" width="18" height="5" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="190" y="190" width="20" height="5" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="190" y="198" width="20" height="5" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="189" y="206" width="22" height="5" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="189" y="214" width="22" height="5" rx="1.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
           <!-- Sacrum / Coccyx -->
-          <path d="M188,287 L212,287 L206,312 L194,312 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <path d="M196,315 L204,315 L200,326 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          
-          <rect x="185" y="80" width="30" height="250" class="hotspot-box" />
-          <text x="225" y="210" class="hotspot-label">Spine (26) ↗</text>
+          <path d="M191,224 L209,224 L205,248 L195,248 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <path d="M197,251 L203,251 L200,262 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <rect x="189" y="68" width="22" height="200" class="hotspot-box" />
+          <text x="218" y="170" class="hotspot-label">Spine (26) ↗</text>
         </g>
 
-        <!-- UPFRONT LEFT HAND (Visible wrist + finger bones upfront, zoom hotspot) -->
+        <!-- ── LEFT HAND HOTSPOT ── -->
         <g class="hotspot-group" (click)="toggleBone('hotspot_hand_left')" (mouseenter)="showTooltip($event, 'hotspot_hand_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)">
-          <!-- Highlight Area border (dotted) -->
-          <circle cx="95" cy="410" r="35" class="hotspot-area" />
-          <!-- Wrist Carpals (pebbles) -->
-          <circle cx="92" cy="398" r="3" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="98" cy="398" r="3" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="89" cy="403" r="3.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="95" cy="404" r="3.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="101" cy="403" r="3.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
+          <circle cx="113" cy="400" r="28" class="hotspot-area" />
+          <!-- Carpal pebbles -->
+          <circle cx="110" cy="390" r="2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="115" cy="390" r="2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="108" cy="394" r="2.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="113" cy="395" r="2.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="118" cy="394" r="2.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
           <!-- Fingers -->
-          <path d="M84,405 L72,414 L64,418" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" />
-          <path d="M90,407 L86,425 L84,435" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-          <path d="M95,407 L95,428 L95,440" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-          <path d="M100,407 L103,426 L105,437" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-          <path d="M105,405 L112,420 L116,428" fill="none" stroke="#475569" stroke-width="1.6" stroke-linecap="round" />
-          
-          <rect x="60" y="375" width="70" height="70" class="hotspot-box" />
-          <text x="35" y="415" class="hotspot-label">Left Hand (27) ↙</text>
+          <path d="M104,397 L95,405 L90,409" fill="none" stroke="#475569" stroke-width="1.4" stroke-linecap="round" />
+          <path d="M108,399 L105,413 L104,421" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M113,399 L113,414 L113,423" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M118,399 L120,413 L121,421" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M122,397 L127,409 L130,416" fill="none" stroke="#475569" stroke-width="1.1" stroke-linecap="round" />
+          <rect x="85" y="372" width="56" height="56" class="hotspot-box" />
+          <text x="56" y="405" class="hotspot-label">Left Hand (27) ↙</text>
         </g>
 
-        <!-- UPFRONT RIGHT HAND (Visible wrist + finger bones upfront, zoom hotspot) -->
+        <!-- ── RIGHT HAND HOTSPOT ── -->
         <g class="hotspot-group" (click)="toggleBone('hotspot_hand_right')" (mouseenter)="showTooltip($event, 'hotspot_hand_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)">
-          <!-- Highlight Area border (dotted) -->
-          <circle cx="305" cy="410" r="35" class="hotspot-area" />
-          <!-- Wrist Carpals (pebbles) -->
-          <circle cx="302" cy="398" r="3" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="308" cy="398" r="3" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="299" cy="403" r="3.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="305" cy="404" r="3.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <circle cx="311" cy="403" r="3.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
+          <circle cx="287" cy="400" r="28" class="hotspot-area" />
+          <!-- Carpal pebbles -->
+          <circle cx="284" cy="390" r="2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="289" cy="390" r="2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="282" cy="394" r="2.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="287" cy="395" r="2.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <circle cx="292" cy="394" r="2.2" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
           <!-- Fingers -->
-          <path d="M316,405 L328,414 L336,418" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" />
-          <path d="M310,407 L314,425 L316,435" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-          <path d="M305,407 L305,428 L305,440" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-          <path d="M300,407 L297,426 L295,437" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-          <path d="M295,405 L288,420 L284,428" fill="none" stroke="#475569" stroke-width="1.6" stroke-linecap="round" />
-
-          <rect x="270" y="375" width="70" height="70" class="hotspot-box" />
-          <text x="350" y="415" class="hotspot-label">Right Hand (27) ↘</text>
+          <path d="M296,397 L305,405 L310,409" fill="none" stroke="#475569" stroke-width="1.4" stroke-linecap="round" />
+          <path d="M292,399 L295,413 L296,421" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M287,399 L287,414 L287,423" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M282,399 L280,413 L279,421" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <path d="M278,397 L273,409 L270,416" fill="none" stroke="#475569" stroke-width="1.1" stroke-linecap="round" />
+          <rect x="259" y="372" width="56" height="56" class="hotspot-box" />
+          <text x="322" y="405" class="hotspot-label">Right Hand (27) ↘</text>
         </g>
 
-        <!-- UPFRONT LEFT FOOT (Visible ankle + toe bones upfront, zoom hotspot) -->
+        <!-- ── LEFT FOOT HOTSPOT ── -->
         <g class="hotspot-group" (click)="toggleBone('hotspot_foot_left')" (mouseenter)="showTooltip($event, 'hotspot_foot_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)">
-          <!-- Highlight Area border (dotted) -->
-          <ellipse cx="150" cy="740" rx="30" ry="45" class="hotspot-area" />
-          <!-- Heel / Ankle block -->
-          <path d="M143,710 L153,710 L156,725 L144,730 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <!-- Toes -->
-          <path d="M142,728 L132,746 L126,756" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
-          <path d="M146,730 L140,750 L136,762" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round" />
-          <path d="M150,731 L148,751 L146,763" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round" />
-          <path d="M154,730 L155,750 L155,762" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" />
-          <path d="M158,728 L163,745 L166,755" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-
-          <text x="80" y="745" class="hotspot-label">Left Foot (26) ↙</text>
+          <ellipse cx="160" cy="735" rx="24" ry="38" class="hotspot-area" />
+          <path d="M155,712 L163,712 L165,724 L156,728 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <path d="M154,726 L147,738 L143,748" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M157,728 L153,743 L151,752" fill="none" stroke="#475569" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M160,729 L159,744 L158,753" fill="none" stroke="#475569" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M163,728 L164,743 L164,752" fill="none" stroke="#475569" stroke-width="1.4" stroke-linecap="round" />
+          <path d="M166,726 L170,738 L172,747" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <text x="97" y="740" class="hotspot-label">Left Foot (26) ↙</text>
         </g>
 
-        <!-- UPFRONT RIGHT FOOT (Visible ankle + toe bones upfront, zoom hotspot) -->
+        <!-- ── RIGHT FOOT HOTSPOT ── -->
         <g class="hotspot-group" (click)="toggleBone('hotspot_foot_right')" (mouseenter)="showTooltip($event, 'hotspot_foot_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)">
-          <!-- Highlight Area border (dotted) -->
-          <ellipse cx="250" cy="740" rx="30" ry="45" class="hotspot-area" />
-          <!-- Heel / Ankle block -->
-          <path d="M257,710 L247,710 L244,725 L256,730 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.8" />
-          <!-- Toes -->
-          <path d="M258,728 L268,746 L274,756" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
-          <path d="M254,730 L260,750 L264,762" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round" />
-          <path d="M250,731 L252,751 L254,763" fill="none" stroke="#475569" stroke-width="2.2" stroke-linecap="round" />
-          <path d="M246,730 L245,750 L245,762" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" />
-          <path d="M242,728 L237,745 L234,755" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
-
-          <text x="290" y="745" class="hotspot-label">Right Foot (26) ↘</text>
+          <ellipse cx="240" cy="735" rx="24" ry="38" class="hotspot-area" />
+          <path d="M245,712 L237,712 L235,724 L244,728 Z" fill="#cbd5e1" stroke="#475569" stroke-width="0.6" />
+          <path d="M246,726 L253,738 L257,748" fill="none" stroke="#475569" stroke-width="1.8" stroke-linecap="round" />
+          <path d="M243,728 L247,743 L249,752" fill="none" stroke="#475569" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M240,729 L241,744 L242,753" fill="none" stroke="#475569" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M237,728 L236,743 L236,752" fill="none" stroke="#475569" stroke-width="1.4" stroke-linecap="round" />
+          <path d="M234,726 L230,738 L228,747" fill="none" stroke="#475569" stroke-width="1.2" stroke-linecap="round" />
+          <text x="274" y="740" class="hotspot-label">Right Foot (26) ↘</text>
         </g>
 
-        <!-- SELECTABLE MAJOR BONES -->
+        <!-- ═══════ SELECTABLE MAJOR BONES ═══════ -->
         
-        <!-- Clavicles -->
-        <path d="M190,85 L140,82 C135,84 135,86 140,85 L190,89 Z" class="bone-path" [class.selected]="isSelected('clavicle_left')" (click)="toggleBone('clavicle_left')" (mouseenter)="showTooltip($event, 'clavicle_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M210,85 L260,82 C265,84 265,86 260,85 L210,89 Z" class="bone-path" [class.selected]="isSelected('clavicle_right')" (click)="toggleBone('clavicle_right')" (mouseenter)="showTooltip($event, 'clavicle_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Clavicles (thin S-curves from sternum to shoulder tip) -->
+        <path d="M196,84 L155,82 C151,83 151,86 155,85 L196,87 Z" class="bone-path" [class.selected]="isSelected('clavicle_left')" (click)="toggleBone('clavicle_left')" (mouseenter)="showTooltip($event, 'clavicle_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M204,84 L245,82 C249,83 249,86 245,85 L204,87 Z" class="bone-path" [class.selected]="isSelected('clavicle_right')" (click)="toggleBone('clavicle_right')" (mouseenter)="showTooltip($event, 'clavicle_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
-        <!-- Scapulae (Shoulder blades) -->
-        <path d="M130,95 C120,95 125,125 115,135 C125,140 140,135 140,110 Z" class="bone-path" [class.selected]="isSelected('scapula_left')" (click)="toggleBone('scapula_left')" (mouseenter)="showTooltip($event, 'scapula_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M270,95 C280,95 275,125 285,135 C275,140 260,135 260,110 Z" class="bone-path" [class.selected]="isSelected('scapula_right')" (click)="toggleBone('scapula_right')" (mouseenter)="showTooltip($event, 'scapula_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Scapulae (compact triangular shoulder blades) -->
+        <path d="M148,93 C142,94 142,115 138,122 C143,125 152,122 152,106 Z" class="bone-path" [class.selected]="isSelected('scapula_left')" (click)="toggleBone('scapula_left')" (mouseenter)="showTooltip($event, 'scapula_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M252,93 C258,94 258,115 262,122 C257,125 248,122 248,106 Z" class="bone-path" [class.selected]="isSelected('scapula_right')" (click)="toggleBone('scapula_right')" (mouseenter)="showTooltip($event, 'scapula_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
-        <!-- Sternum -->
-        <rect x="195" y="90" width="10" height="70" rx="3" class="bone-path" [class.selected]="isSelected('sternum')" (click)="toggleBone('sternum')" (mouseenter)="showTooltip($event, 'sternum')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Sternum (narrow breastbone) -->
+        <rect x="197" y="88" width="6" height="58" rx="2" class="bone-path" [class.selected]="isSelected('sternum')" (click)="toggleBone('sternum')" (mouseenter)="showTooltip($event, 'sternum')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
-        <!-- Ribs (Thicker paths + wide transparent hit targets for easy selection) -->
-        
-        <!-- Ribs Left (12 Individual Selectable Ribs) -->
-        <path d="M195,95 C170,95 140,98 140,110" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_1')" (click)="toggleBone('rib_left_1')" (mouseenter)="showTooltip($event, 'rib_left_1')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,102 C165,102 135,106 135,120" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_2')" (click)="toggleBone('rib_left_2')" (mouseenter)="showTooltip($event, 'rib_left_2')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,110 C160,110 130,116 130,130" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_3')" (click)="toggleBone('rib_left_3')" (mouseenter)="showTooltip($event, 'rib_left_3')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,118 C155,118 125,126 125,140" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_4')" (click)="toggleBone('rib_left_4')" (mouseenter)="showTooltip($event, 'rib_left_4')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,126 C150,126 120,136 120,150" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_5')" (click)="toggleBone('rib_left_5')" (mouseenter)="showTooltip($event, 'rib_left_5')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,134 C145,134 116,146 116,160" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_6')" (click)="toggleBone('rib_left_6')" (mouseenter)="showTooltip($event, 'rib_left_6')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,142 C145,142 114,156 114,170" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_7')" (click)="toggleBone('rib_left_7')" (mouseenter)="showTooltip($event, 'rib_left_7')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,150 C145,150 112,166 112,180" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_8')" (click)="toggleBone('rib_left_8')" (mouseenter)="showTooltip($event, 'rib_left_8')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,158 C145,158 112,176 112,190" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_9')" (click)="toggleBone('rib_left_9')" (mouseenter)="showTooltip($event, 'rib_left_9')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,166 C145,166 112,186 112,200" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_left_10')" (click)="toggleBone('rib_left_10')" (mouseenter)="showTooltip($event, 'rib_left_10')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,174 C150,174 115,196 115,210" class="bone-stroke" stroke-width="6.5" [class.selected]="isSelected('rib_left_11')" (click)="toggleBone('rib_left_11')" (mouseenter)="showTooltip($event, 'rib_left_11')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M195,182 C155,182 118,206 118,220" class="bone-stroke" stroke-width="6.5" [class.selected]="isSelected('rib_left_12')" (click)="toggleBone('rib_left_12')" (mouseenter)="showTooltip($event, 'rib_left_12')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- ── Left Ribs (12, thin curved strokes) ── -->
+        <path d="M197,92 C180,92 162,94 160,103" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_1')" (click)="toggleBone('rib_left_1')" (mouseenter)="showTooltip($event, 'rib_left_1')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,99 C178,99 157,103 155,112" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_2')" (click)="toggleBone('rib_left_2')" (mouseenter)="showTooltip($event, 'rib_left_2')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,106 C174,106 150,112 148,122" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_3')" (click)="toggleBone('rib_left_3')" (mouseenter)="showTooltip($event, 'rib_left_3')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,113 C170,113 146,120 144,131" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_4')" (click)="toggleBone('rib_left_4')" (mouseenter)="showTooltip($event, 'rib_left_4')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,120 C168,120 143,129 141,140" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_5')" (click)="toggleBone('rib_left_5')" (mouseenter)="showTooltip($event, 'rib_left_5')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,127 C166,127 140,138 138,150" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_6')" (click)="toggleBone('rib_left_6')" (mouseenter)="showTooltip($event, 'rib_left_6')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,134 C166,134 139,147 137,159" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_7')" (click)="toggleBone('rib_left_7')" (mouseenter)="showTooltip($event, 'rib_left_7')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,142 C168,142 140,157 139,168" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_8')" (click)="toggleBone('rib_left_8')" (mouseenter)="showTooltip($event, 'rib_left_8')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,150 C170,150 143,166 142,177" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_9')" (click)="toggleBone('rib_left_9')" (mouseenter)="showTooltip($event, 'rib_left_9')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,158 C172,158 148,174 147,185" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_left_10')" (click)="toggleBone('rib_left_10')" (mouseenter)="showTooltip($event, 'rib_left_10')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,167 C176,167 155,182 155,193" class="bone-stroke" stroke-width="3.8" [class.selected]="isSelected('rib_left_11')" (click)="toggleBone('rib_left_11')" (mouseenter)="showTooltip($event, 'rib_left_11')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M197,176 C180,176 160,190 160,201" class="bone-stroke" stroke-width="3.8" [class.selected]="isSelected('rib_left_12')" (click)="toggleBone('rib_left_12')" (mouseenter)="showTooltip($event, 'rib_left_12')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
-        <!-- Ribs Right (12 Individual Selectable Ribs) -->
-        <path d="M205,95 C230,95 260,98 260,110" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_1')" (click)="toggleBone('rib_right_1')" (mouseenter)="showTooltip($event, 'rib_right_1')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,102 C235,102 265,106 265,120" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_2')" (click)="toggleBone('rib_right_2')" (mouseenter)="showTooltip($event, 'rib_right_2')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,110 C240,110 270,116 270,130" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_3')" (click)="toggleBone('rib_right_3')" (mouseenter)="showTooltip($event, 'rib_right_3')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,118 C245,118 275,126 275,140" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_4')" (click)="toggleBone('rib_right_4')" (mouseenter)="showTooltip($event, 'rib_right_4')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,126 C250,126 280,136 280,150" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_5')" (click)="toggleBone('rib_right_5')" (mouseenter)="showTooltip($event, 'rib_right_5')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,134 C255,134 284,146 284,160" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_6')" (click)="toggleBone('rib_right_6')" (mouseenter)="showTooltip($event, 'rib_right_6')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,142 C255,142 286,156 286,170" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_7')" (click)="toggleBone('rib_right_7')" (mouseenter)="showTooltip($event, 'rib_right_7')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,150 C255,150 288,166 288,180" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_8')" (click)="toggleBone('rib_right_8')" (mouseenter)="showTooltip($event, 'rib_right_8')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,158 C255,158 288,176 288,190" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_9')" (click)="toggleBone('rib_right_9')" (mouseenter)="showTooltip($event, 'rib_right_9')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,166 C255,166 288,186 288,200" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('rib_right_10')" (click)="toggleBone('rib_right_10')" (mouseenter)="showTooltip($event, 'rib_right_10')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,174 C250,174 285,196 285,210" class="bone-stroke" stroke-width="6.5" [class.selected]="isSelected('rib_right_11')" (click)="toggleBone('rib_right_11')" (mouseenter)="showTooltip($event, 'rib_right_11')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path d="M205,182 C245,182 282,206 282,220" class="bone-stroke" stroke-width="6.5" [class.selected]="isSelected('rib_right_12')" (click)="toggleBone('rib_right_12')" (mouseenter)="showTooltip($event, 'rib_right_12')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- ── Right Ribs (12, mirror of left) ── -->
+        <path d="M203,92 C220,92 238,94 240,103" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_1')" (click)="toggleBone('rib_right_1')" (mouseenter)="showTooltip($event, 'rib_right_1')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,99 C222,99 243,103 245,112" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_2')" (click)="toggleBone('rib_right_2')" (mouseenter)="showTooltip($event, 'rib_right_2')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,106 C226,106 250,112 252,122" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_3')" (click)="toggleBone('rib_right_3')" (mouseenter)="showTooltip($event, 'rib_right_3')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,113 C230,113 254,120 256,131" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_4')" (click)="toggleBone('rib_right_4')" (mouseenter)="showTooltip($event, 'rib_right_4')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,120 C232,120 257,129 259,140" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_5')" (click)="toggleBone('rib_right_5')" (mouseenter)="showTooltip($event, 'rib_right_5')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,127 C234,127 260,138 262,150" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_6')" (click)="toggleBone('rib_right_6')" (mouseenter)="showTooltip($event, 'rib_right_6')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,134 C234,134 261,147 263,159" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_7')" (click)="toggleBone('rib_right_7')" (mouseenter)="showTooltip($event, 'rib_right_7')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,142 C232,142 260,157 261,168" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_8')" (click)="toggleBone('rib_right_8')" (mouseenter)="showTooltip($event, 'rib_right_8')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,150 C230,150 257,166 258,177" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_9')" (click)="toggleBone('rib_right_9')" (mouseenter)="showTooltip($event, 'rib_right_9')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,158 C228,158 252,174 253,185" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('rib_right_10')" (click)="toggleBone('rib_right_10')" (mouseenter)="showTooltip($event, 'rib_right_10')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,167 C224,167 245,182 245,193" class="bone-stroke" stroke-width="3.8" [class.selected]="isSelected('rib_right_11')" (click)="toggleBone('rib_right_11')" (mouseenter)="showTooltip($event, 'rib_right_11')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path d="M203,176 C220,176 240,190 240,201" class="bone-stroke" stroke-width="3.8" [class.selected]="isSelected('rib_right_12')" (click)="toggleBone('rib_right_12')" (mouseenter)="showTooltip($event, 'rib_right_12')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
+        <!-- ── Pelvis (compact butterfly-wing ilium) ── -->
+        <!-- Left Ilium -->
+        <path d="M196,272 C190,260 172,257 158,264 C150,272 148,290 158,306 C165,314 176,314 183,310 C187,302 192,288 194,280 Z" class="bone-path" [class.selected]="isSelected('pelvis_left')" (click)="toggleBone('pelvis_left')" (mouseenter)="showTooltip($event, 'pelvis_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Right Ilium -->
+        <path d="M204,272 C210,260 228,257 242,264 C250,272 252,290 242,306 C235,314 224,314 217,310 C213,302 208,288 206,280 Z" class="bone-path" [class.selected]="isSelected('pelvis_right')" (click)="toggleBone('pelvis_right')" (mouseenter)="showTooltip($event, 'pelvis_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Pubic Arch -->
+        <path d="M170,310 C178,324 190,327 200,327 C210,327 222,324 230,310 C224,304 214,300 200,300 C186,300 176,304 170,310 Z" fill="#cbd5e1" stroke="#475569" stroke-width="1.2" />
+        <!-- Obturator foramina -->
+        <circle cx="183" cy="310" r="4" class="hole-bg-light" />
+        <circle cx="217" cy="310" r="4" class="hole-bg-light" />
 
-        <!-- Redesigned Pelvis (Broad butterfly wings and sacrum arch) -->
-        <!-- Left Ilium Wing -->
-        <path d="M194,322 C185,307 155,302 135,312 C125,322 120,347 135,367 C145,377 165,377 175,372 C180,362 185,342 190,337 Z" class="bone-path" [class.selected]="isSelected('pelvis_left')" (click)="toggleBone('pelvis_left')" (mouseenter)="showTooltip($event, 'pelvis_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <!-- Right Ilium Wing -->
-        <path d="M206,322 C215,307 245,302 265,312 C275,322 280,347 265,367 C255,377 235,377 225,372 C220,362 215,342 210,337 Z" class="bone-path" [class.selected]="isSelected('pelvis_right')" (click)="toggleBone('pelvis_right')" (mouseenter)="showTooltip($event, 'pelvis_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <!-- Lower Pelvic Arch -->
-        <path d="M165,370 C175,387 190,390 200,390 C210,390 225,387 235,370 C230,362 220,357 200,357 C180,357 170,362 165,370 Z" fill="#cbd5e1" stroke="#475569" stroke-width="1.5" />
-        <!-- Obturator holes -->
-        <circle cx="178" cy="372" r="5" class="hole-bg-light" />
-        <circle cx="222" cy="372" r="5" class="hole-bg-light" />
+        <!-- ═══════ LIMBS (anatomically shaped paths) ═══════ -->
 
-        <!-- LEFT ARM -->
-        <path d="M135,100 L115,260" class="bone-stroke" stroke-width="12" [class.selected]="isSelected('humerus_left')" (click)="toggleBone('humerus_left')" (mouseenter)="showTooltip($event, 'humerus_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="110" y1="270" x2="90" y2="380" class="bone-stroke" stroke-width="8" [class.selected]="isSelected('radius_left')" (click)="toggleBone('radius_left')" (mouseenter)="showTooltip($event, 'radius_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="120" y1="270" x2="105" y2="380" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('ulna_left')" (click)="toggleBone('ulna_left')" (mouseenter)="showTooltip($event, 'ulna_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- ── LEFT ARM ── -->
+        <!-- Humerus (tapered bone-path shape: wider epiphyses, narrow shaft) -->
+        <path d="M152,95 C152,89 158,89 158,95 Q152,170 147,245 C147,251 140,251 140,245 Q149,170 152,95 Z" class="bone-path" [class.selected]="isSelected('humerus_left')" (click)="toggleBone('humerus_left')" (mouseenter)="showTooltip($event, 'humerus_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Radius -->
+        <line x1="138" y1="255" x2="118" y2="378" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('radius_left')" (click)="toggleBone('radius_left')" (mouseenter)="showTooltip($event, 'radius_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Ulna -->
+        <line x1="146" y1="255" x2="128" y2="378" class="bone-stroke" stroke-width="2.5" [class.selected]="isSelected('ulna_left')" (click)="toggleBone('ulna_left')" (mouseenter)="showTooltip($event, 'ulna_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
-        <!-- RIGHT ARM -->
-        <path d="M265,100 L285,260" class="bone-stroke" stroke-width="12" [class.selected]="isSelected('humerus_right')" (click)="toggleBone('humerus_right')" (mouseenter)="showTooltip($event, 'humerus_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="290" y1="270" x2="310" y2="380" class="bone-stroke" stroke-width="8" [class.selected]="isSelected('radius_right')" (click)="toggleBone('radius_right')" (mouseenter)="showTooltip($event, 'radius_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="280" y1="270" x2="295" y2="380" class="bone-stroke" stroke-width="6" [class.selected]="isSelected('ulna_right')" (click)="toggleBone('ulna_right')" (mouseenter)="showTooltip($event, 'ulna_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- ── RIGHT ARM ── -->
+        <!-- Humerus -->
+        <path d="M248,95 C248,89 242,89 242,95 Q248,170 253,245 C253,251 260,251 260,245 Q251,170 248,95 Z" class="bone-path" [class.selected]="isSelected('humerus_right')" (click)="toggleBone('humerus_right')" (mouseenter)="showTooltip($event, 'humerus_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Radius -->
+        <line x1="262" y1="255" x2="282" y2="378" class="bone-stroke" stroke-width="3.5" [class.selected]="isSelected('radius_right')" (click)="toggleBone('radius_right')" (mouseenter)="showTooltip($event, 'radius_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Ulna -->
+        <line x1="254" y1="255" x2="272" y2="378" class="bone-stroke" stroke-width="2.5" [class.selected]="isSelected('ulna_right')" (click)="toggleBone('ulna_right')" (mouseenter)="showTooltip($event, 'ulna_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
-        <!-- LEFT LEG -->
-        <path d="M165,395 L140,560" class="bone-stroke" stroke-width="14" [class.selected]="isSelected('femur_left')" (click)="toggleBone('femur_left')" (mouseenter)="showTooltip($event, 'femur_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <circle cx="140" cy="570" r="8" class="bone-path" [class.selected]="isSelected('patella_left')" (click)="toggleBone('patella_left')" (mouseenter)="showTooltip($event, 'patella_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="140" y1="585" x2="145" y2="705" class="bone-stroke" stroke-width="10" [class.selected]="isSelected('tibia_left')" (click)="toggleBone('tibia_left')" (mouseenter)="showTooltip($event, 'tibia_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="130" y1="585" x2="135" y2="705" class="bone-stroke" stroke-width="5" [class.selected]="isSelected('fibula_left')" (click)="toggleBone('fibula_left')" (mouseenter)="showTooltip($event, 'fibula_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- ── LEFT LEG ── -->
+        <!-- Femur (tapered bone-path shape) -->
+        <path d="M167,352 C167,345 177,345 177,352 Q168,450 165,545 C165,552 157,552 157,545 Q164,450 167,352 Z" class="bone-path" [class.selected]="isSelected('femur_left')" (click)="toggleBone('femur_left')" (mouseenter)="showTooltip($event, 'femur_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Patella -->
+        <circle cx="161" cy="556" r="5" class="bone-path" [class.selected]="isSelected('patella_left')" (click)="toggleBone('patella_left')" (mouseenter)="showTooltip($event, 'patella_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Tibia -->
+        <line x1="161" y1="568" x2="158" y2="700" class="bone-stroke" stroke-width="4.5" [class.selected]="isSelected('tibia_left')" (click)="toggleBone('tibia_left')" (mouseenter)="showTooltip($event, 'tibia_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Fibula -->
+        <line x1="155" y1="568" x2="151" y2="700" class="bone-stroke" stroke-width="2.5" [class.selected]="isSelected('fibula_left')" (click)="toggleBone('fibula_left')" (mouseenter)="showTooltip($event, 'fibula_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
-        <!-- RIGHT LEG -->
-        <path d="M235,395 L260,560" class="bone-stroke" stroke-width="14" [class.selected]="isSelected('femur_right')" (click)="toggleBone('femur_right')" (mouseenter)="showTooltip($event, 'femur_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <circle cx="260" cy="570" r="8" class="bone-path" [class.selected]="isSelected('patella_right')" (click)="toggleBone('patella_right')" (mouseenter)="showTooltip($event, 'patella_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="260" y1="585" x2="255" y2="705" class="bone-stroke" stroke-width="10" [class.selected]="isSelected('tibia_right')" (click)="toggleBone('tibia_right')" (mouseenter)="showTooltip($event, 'tibia_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <line x1="270" y1="585" x2="265" y2="705" class="bone-stroke" stroke-width="5" [class.selected]="isSelected('fibula_right')" (click)="toggleBone('fibula_right')" (mouseenter)="showTooltip($event, 'fibula_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- ── RIGHT LEG ── -->
+        <!-- Femur -->
+        <path d="M233,352 C233,345 223,345 223,352 Q232,450 235,545 C235,552 243,552 243,545 Q236,450 233,352 Z" class="bone-path" [class.selected]="isSelected('femur_right')" (click)="toggleBone('femur_right')" (mouseenter)="showTooltip($event, 'femur_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Patella -->
+        <circle cx="239" cy="556" r="5" class="bone-path" [class.selected]="isSelected('patella_right')" (click)="toggleBone('patella_right')" (mouseenter)="showTooltip($event, 'patella_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Tibia -->
+        <line x1="239" y1="568" x2="242" y2="700" class="bone-stroke" stroke-width="4.5" [class.selected]="isSelected('tibia_right')" (click)="toggleBone('tibia_right')" (mouseenter)="showTooltip($event, 'tibia_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <!-- Fibula -->
+        <line x1="245" y1="568" x2="249" y2="700" class="bone-stroke" stroke-width="2.5" [class.selected]="isSelected('fibula_right')" (click)="toggleBone('fibula_right')" (mouseenter)="showTooltip($event, 'fibula_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
       </svg>
+
     </div>
 
     <!-- ════════ SKULL DETAIL VIEW (Professional Medical Grade) ════════ -->
@@ -273,11 +264,11 @@
         <!-- 1. Deep Recesses Layer (Provides anatomical background shadows inside cavities) -->
         <g class="skull-recesses">
           <!-- Left Orbit recess -->
-          <path d="M 54,102 C 52,112 54,124 66,126 C 78,128 84,120 82,104 C 80,94 56,92 54,102 Z" fill="#1e293b" stroke="none" />
+          <path d="M 55,102 C 51,108 53,123 63,126 C 75,128 82,121 82,106 C 82,97 59,96 55,102 Z" fill="#1e293b" stroke="none" />
           <!-- Right Orbit recess -->
-          <path d="M 146,102 C 148,112 146,124 134,126 C 122,128 116,120 118,104 C 120,94 144,92 146,102 Z" fill="#1e293b" stroke="none" />
+          <path d="M 145,102 C 149,108 147,123 137,126 C 125,128 118,121 118,106 C 118,97 141,96 145,102 Z" fill="#1e293b" stroke="none" />
           <!-- Nasal Cavity recess -->
-          <path d="M 100,114 C 94,114 90,122 90,132 C 90,140 94,144 100,144 C 106,144 110,140 110,132 C 110,122 106,114 100,114 Z" fill="#1e293b" stroke="none" />
+          <path d="M 100,114 C 95,114 91,118 90,128 C 89,136 94,144 100,144 C 106,144 111,136 110,128 C 109,118 105,114 100,114 Z" fill="#1e293b" stroke="none" />
           <!-- Oral Cavity recess -->
           <path d="M 64,160 C 64,160 80,166 100,166 C 120,166 136,160 136,160 L 136,163 C 136,163 120,169 100,169 C 80,169 64,163 64,163 Z" fill="#0f172a" stroke="none" opacity="0.9" />
         </g>
@@ -285,20 +276,20 @@
         <!-- 2. Internal Orbit / Nasal Cavity Bones (Anatomical low-level details) -->
         
         <!-- Lacrimal Bone (Medial wall of eye sockets, anterior part) -->
-        <path id="skull_lacrimal_left" d="M 56,104 C 55,108 55,114 56,118 L 60,118 L 59,106 Z" class="bone-path" [class.selected]="isSelected('skull_lacrimal_left')" (click)="toggleBone('skull_lacrimal_left')" (mouseenter)="showTooltip($event, 'skull_lacrimal_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path id="skull_lacrimal_right" d="M 144,104 C 145,108 145,114 144,118 L 140,118 L 141,106 Z" class="bone-path" [class.selected]="isSelected('skull_lacrimal_right')" (click)="toggleBone('skull_lacrimal_right')" (mouseenter)="showTooltip($event, 'skull_lacrimal_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_lacrimal_left" d="M 56,104 C 55,108 55,114 56,118 C 57.5,118 58.5,118 60,118 C 59.5,114 59.2,110 59,106 C 58,105.3 57,104.7 56,104 Z" class="bone-path" [class.selected]="isSelected('skull_lacrimal_left')" (click)="toggleBone('skull_lacrimal_left')" (mouseenter)="showTooltip($event, 'skull_lacrimal_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_lacrimal_right" d="M 144,104 C 145,108 145,114 144,118 C 142.5,118 141.5,118 140,118 C 140.5,114 140.8,110 141,106 C 142,105.3 143,104.7 144,104 Z" class="bone-path" [class.selected]="isSelected('skull_lacrimal_right')" (click)="toggleBone('skull_lacrimal_right')" (mouseenter)="showTooltip($event, 'skull_lacrimal_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Ethmoid Bone (Medial wall of eye sockets, posterior part + nasal septum upper plate) -->
-        <path id="skull_ethmoid_left_orbit" d="M 60,106 L 66,105 L 65,119 L 60,119 Z" class="bone-path" [class.selected]="isSelected('skull_ethmoid')" (click)="toggleBone('skull_ethmoid')" (mouseenter)="showTooltip($event, 'skull_ethmoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path id="skull_ethmoid_right_orbit" d="M 140,106 L 134,105 L 135,119 L 140,119 Z" class="bone-path" [class.selected]="isSelected('skull_ethmoid')" (click)="toggleBone('skull_ethmoid')" (mouseenter)="showTooltip($event, 'skull_ethmoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path id="skull_ethmoid_septum" d="M 98.5,114 L 101.5,114 L 101.5,130 L 98.5,130 Z" class="bone-path" [class.selected]="isSelected('skull_ethmoid')" (click)="toggleBone('skull_ethmoid')" (mouseenter)="showTooltip($event, 'skull_ethmoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_ethmoid_left_orbit" d="M 60,106 C 62,105.5 64,105 66,105 C 65.5,110 65,115 65,119 C 63,119 61.5,119 60,119 C 60,114.5 60,110 60,106 Z" class="bone-path" [class.selected]="isSelected('skull_ethmoid')" (click)="toggleBone('skull_ethmoid')" (mouseenter)="showTooltip($event, 'skull_ethmoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_ethmoid_right_orbit" d="M 140,106 C 138,105.5 136,105 134,105 C 134.5,110 135,115 135,119 C 137,119 138.5,119 140,119 C 140,114.5 140,110 140,106 Z" class="bone-path" [class.selected]="isSelected('skull_ethmoid')" (click)="toggleBone('skull_ethmoid')" (mouseenter)="showTooltip($event, 'skull_ethmoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_ethmoid_septum" d="M 98.5,114 C 99.5,114 100.5,114 101.5,114 C 101.5,119.5 101,125 101.5,130 C 100.5,130 99.5,130 98.5,130 C 99,125 98.5,119.5 98.5,114 Z" class="bone-path" [class.selected]="isSelected('skull_ethmoid')" (click)="toggleBone('skull_ethmoid')" (mouseenter)="showTooltip($event, 'skull_ethmoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Sphenoid Bone (Posterior wall of eye sockets) -->
         <path id="skull_sphenoid_left" d="M 66,105 C 72,106 78,107 80,108 C 78,114 76,120 74,124 C 70,123 66,121 65,119 Z" class="bone-path" [class.selected]="isSelected('skull_sphenoid')" (click)="toggleBone('skull_sphenoid')" (mouseenter)="showTooltip($event, 'skull_sphenoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
         <path id="skull_sphenoid_right" d="M 134,105 C 128,106 122,107 120,108 C 122,114 124,120 126,124 C 130,123 134,121 135,119 Z" class="bone-path" [class.selected]="isSelected('skull_sphenoid')" (click)="toggleBone('skull_sphenoid')" (mouseenter)="showTooltip($event, 'skull_sphenoid')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Vomer (Lower vertical nasal septum) -->
-        <path id="skull_vomer" d="M 98.5,130 L 101.5,130 L 101.5,144 L 98.5,144 Z" class="bone-path" [class.selected]="isSelected('skull_vomer')" (click)="toggleBone('skull_vomer')" (mouseenter)="showTooltip($event, 'skull_vomer')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_vomer" d="M 98.5,130 C 99.5,130 100.5,130 101.5,130 C 101.2,134.5 101.5,139 101.5,144 C 100.5,144 99.5,144 98.5,144 C 98.5,139 98.8,134.5 98.5,130 Z" class="bone-path" [class.selected]="isSelected('skull_vomer')" (click)="toggleBone('skull_vomer')" (mouseenter)="showTooltip($event, 'skull_vomer')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Inferior Nasal Concha (Left & Right scroll bones on nasal cavity walls) -->
         <path id="skull_concha_left" d="M 90,132 C 92,132 96,134 96,136 C 96,138 92,140 90,140 Z" class="bone-path" [class.selected]="isSelected('skull_concha_left')" (click)="toggleBone('skull_concha_left')" (mouseenter)="showTooltip($event, 'skull_concha_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
@@ -313,8 +304,8 @@
         <!-- 3. Outer Skull Bones (Overlays orbits and nasal cavity edges for organic depth) -->
         
         <!-- Occipital Bone (Visible peeking out from the base of the skull at the back-sides) -->
-        <path id="skull_occipital_left" d="M 42,116 C 38,120 38,128 44,132 L 46,134 L 46,128 Z" class="bone-path" [class.selected]="isSelected('skull_occipital')" (click)="toggleBone('skull_occipital')" (mouseenter)="showTooltip($event, 'skull_occipital')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
-        <path id="skull_occipital_right" d="M 158,116 C 162,120 162,128 156,132 L 154,134 L 154,128 Z" class="bone-path" [class.selected]="isSelected('skull_occipital')" (click)="toggleBone('skull_occipital')" (mouseenter)="showTooltip($event, 'skull_occipital')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_occipital_left" d="M 42,116 C 38,120 38,128 44,132 C 45,133 45.5,133.5 46,134 C 46,132 46,130 46,128 Z" class="bone-path" [class.selected]="isSelected('skull_occipital')" (click)="toggleBone('skull_occipital')" (mouseenter)="showTooltip($event, 'skull_occipital')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_occipital_right" d="M 158,116 C 162,120 162,128 156,132 C 155,133 154.5,133.5 154,134 C 154,132 154,130 154,128 Z" class="bone-path" [class.selected]="isSelected('skull_occipital')" (click)="toggleBone('skull_occipital')" (mouseenter)="showTooltip($event, 'skull_occipital')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Parietal Left -->
         <path id="skull_parietal_left" d="M 100,23 C 75,23 55,28 40,56 C 39,66 40,72 42,76 L 44,76 C 44,76 43,72 45,60 C 52,45 58,35 65,31 C 71,27 76,28 82,26 C 88,27 93,25 100,25 Z" class="bone-path" [class.selected]="isSelected('skull_parietal_left')" (click)="toggleBone('skull_parietal_left')" (mouseenter)="showTooltip($event, 'skull_parietal_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
@@ -323,30 +314,30 @@
         <path id="skull_parietal_right" d="M 100,23 C 125,23 145,28 160,56 C 161,66 160,72 158,76 L 156,76 C 156,76 157,72 155,60 C 148,45 142,35 135,31 C 129,27 124,28 118,26 C 112,27 107,25 100,25 Z" class="bone-path" [class.selected]="isSelected('skull_parietal_right')" (click)="toggleBone('skull_parietal_right')" (mouseenter)="showTooltip($event, 'skull_parietal_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Temporal Left -->
-        <path id="skull_temporal_left" d="M 42,76 C 40,84 39,92 42,106 C 43,110 44,113 46,116 L 48,116 L 50,108 L 48,94 L 44,76 Z" class="bone-path" [class.selected]="isSelected('skull_temporal_left')" (click)="toggleBone('skull_temporal_left')" (mouseenter)="showTooltip($event, 'skull_temporal_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_temporal_left" d="M 42,76 C 40,84 39,94 42,106 C 43,110 44,114 46,117 C 47,117 48,116 49,114 C 50,111 50,105 49,99 C 48,96 46,90 45,84 C 44,79 43,77 42,76 Z" class="bone-path" [class.selected]="isSelected('skull_temporal_left')" (click)="toggleBone('skull_temporal_left')" (mouseenter)="showTooltip($event, 'skull_temporal_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
         
         <!-- Temporal Right -->
-        <path id="skull_temporal_right" d="M 158,76 C 160,84 161,92 158,106 C 157,110 156,113 154,116 L 152,116 L 150,108 L 152,94 L 156,76 Z" class="bone-path" [class.selected]="isSelected('skull_temporal_right')" (click)="toggleBone('skull_temporal_right')" (mouseenter)="showTooltip($event, 'skull_temporal_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_temporal_right" d="M 158,76 C 160,84 161,94 158,106 C 157,110 156,114 154,117 C 153,117 152,116 151,114 C 150,111 150,105 151,99 C 152,96 154,90 155,84 C 156,79 157,77 158,76 Z" class="bone-path" [class.selected]="isSelected('skull_temporal_right')" (click)="toggleBone('skull_temporal_right')" (mouseenter)="showTooltip($event, 'skull_temporal_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Zygomatic Left (Cheekbone with lateral orbit border) -->
-        <path id="skull_zygomatic_left" d="M 48,94 C 44,102 38,110 36,118 C 35,126 40,132 46,134 L 56,126 C 54,118 53,108 52,96 L 48,94 Z" class="bone-path" [class.selected]="isSelected('skull_zygomatic_left')" (click)="toggleBone('skull_zygomatic_left')" (mouseenter)="showTooltip($event, 'skull_zygomatic_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_zygomatic_left" d="M 48,94 C 44,101 38,109 36,118 C 35,126 40,131 46,134 C 50,131 53,128 56,126 C 53,118 51,108 52,96 C 51,95 49,94 48,94 Z" class="bone-path" [class.selected]="isSelected('skull_zygomatic_left')" (click)="toggleBone('skull_zygomatic_left')" (mouseenter)="showTooltip($event, 'skull_zygomatic_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
         
         <!-- Zygomatic Right (Cheekbone with lateral orbit border) -->
-        <path id="skull_zygomatic_right" d="M 152,94 C 156,102 162,110 164,118 C 165,126 160,132 154,134 L 144,126 C 146,118 147,108 148,96 L 152,94 Z" class="bone-path" [class.selected]="isSelected('skull_zygomatic_right')" (click)="toggleBone('skull_zygomatic_right')" (mouseenter)="showTooltip($event, 'skull_zygomatic_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_zygomatic_right" d="M 152,94 C 156,101 162,109 164,118 C 165,126 160,131 154,134 C 150,131 147,128 144,126 C 147,118 149,108 148,96 C 149,95 151,94 152,94 Z" class="bone-path" [class.selected]="isSelected('skull_zygomatic_right')" (click)="toggleBone('skull_zygomatic_right')" (mouseenter)="showTooltip($event, 'skull_zygomatic_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Frontal Bone (Forehead, brow ridges, coronal suture) -->
-        <path id="skull_frontal" d="M 100,25 C 93,25 88,27 82,26 C 76,28 71,27 65,31 C 58,35 52,45 45,60 C 43,72 44,82 48,94 C 49,95 50,96 52,96 C 60,94 70,91 90,96 C 96,96 104,96 110,96 C 130,91 140,94 148,96 C 150,96 151,95 152,94 C 156,82 157,72 155,60 C 148,45 142,35 135,31 C 129,27 124,28 118,26 C 112,27 107,25 100,25 Z" class="bone-path" [class.selected]="isSelected('skull_frontal')" (click)="toggleBone('skull_frontal')" (mouseenter)="showTooltip($event, 'skull_frontal')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_frontal" d="M 100,24 C 85,24 70,27 60,33 C 52,38 46,48 44,62 C 43,74 44,86 48,94 C 49,95 51,97 53,97 C 56,92 68,91 78,96 C 80,98 83,100 84,103 L 92,103 L 100,97 L 108,103 C 109,100 112,98 114,96 C 124,91 136,92 139,97 C 141,97 143,95 144,94 C 148,86 149,74 148,62 C 146,48 140,38 132,33 C 122,27 107,24 100,24 Z" class="bone-path" [class.selected]="isSelected('skull_frontal')" (click)="toggleBone('skull_frontal')" (mouseenter)="showTooltip($event, 'skull_frontal')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Nasal Bone (Bridge of the nose) -->
         <!-- Left Nasal -->
-        <path id="skull_nasal_left" d="M 92,96 L 100,96 L 100,114 L 94,114 Z" class="bone-path" [class.selected]="isSelected('skull_nasal_left')" (click)="toggleBone('skull_nasal_left')" (mouseenter)="showTooltip($event, 'skull_nasal_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_nasal_left" d="M 92.5,100 C 93,105 93.5,110 94,114 C 96,114 98,114 100,114 L 100,97 C 97.5,97 95,98.5 92.5,100 Z" class="bone-path" [class.selected]="isSelected('skull_nasal_left')" (click)="toggleBone('skull_nasal_left')" (mouseenter)="showTooltip($event, 'skull_nasal_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
         <!-- Right Nasal -->
-        <path id="skull_nasal_right" d="M 100,96 L 108,96 L 106,114 L 100,114 Z" class="bone-path" [class.selected]="isSelected('skull_nasal_right')" (click)="toggleBone('skull_nasal_right')" (mouseenter)="showTooltip($event, 'skull_nasal_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
+        <path id="skull_nasal_right" d="M 107.5,100 C 107,105 106.5,110 106,114 C 104,114 102,114 100,114 L 100,97 C 102.5,97 105,98.5 107.5,100 Z" class="bone-path" [class.selected]="isSelected('skull_nasal_right')" (click)="toggleBone('skull_nasal_right')" (mouseenter)="showTooltip($event, 'skull_nasal_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" />
 
         <!-- Left Maxilla Group -->
         <g id="skull_maxilla_left" [class.selected]="isSelected('skull_maxilla_left')" (click)="toggleBone('skull_maxilla_left')" (mouseenter)="showTooltip($event, 'skull_maxilla_left')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" class="bone-group">
           <!-- Maxilla Bone Body Left -->
-          <path d="M 64,160 C 54,154 48,144 46,134 L 56,126 C 68,124 76,122 90,96 L 92,114 C 90,120 91,126 94,134 L 98,137 L 100,134 L 100,163 C 80,161 70,160 64,160 Z" class="bone-path" />
+          <path d="M 64,160 C 54,154 48,144 46,134 C 49,131 52,128 56,126 C 62,125 72,124 78,126 C 84,124 87,118 89.5,110 C 90,107 91,104 92.5,100 C 92,108 90,116 93.5,124 C 95.5,128 97,133 98,137 C 98.5,138 99.5,138.5 100,139 L 100,163 C 80,161 70,160 64,160 Z" class="bone-path" />
           <!-- Upper Left Teeth (5 individual rounded teeth) -->
           <path d="M 65,157 C 65,161 71,161 71,158 Z" class="tooth-path" />
           <path d="M 72,158 C 72,163 78,163 78,159 Z" class="tooth-path" />
@@ -358,7 +349,7 @@
         <!-- Right Maxilla Group -->
         <g id="skull_maxilla_right" [class.selected]="isSelected('skull_maxilla_right')" (click)="toggleBone('skull_maxilla_right')" (mouseenter)="showTooltip($event, 'skull_maxilla_right')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" class="bone-group">
           <!-- Maxilla Bone Body Right -->
-          <path d="M 136,160 C 146,154 152,144 154,134 L 144,126 C 132,124 124,122 110,96 L 108,114 C 110,120 109,126 106,134 L 102,137 L 100,134 L 100,163 C 120,161 130,160 136,160 Z" class="bone-path" />
+          <path d="M 136,160 C 146,154 152,144 154,134 C 151,131 148,128 144,126 C 138,125 128,124 122,126 C 116,124 113,118 110.5,110 C 110,107 109,104 107.5,100 C 108,108 110,116 106.5,124 C 104.5,128 103,133 102,137 C 101.5,138 100.5,138.5 100,139 L 100,163 C 120,161 130,160 136,160 Z" class="bone-path" />
           <!-- Upper Right Teeth (5 individual rounded teeth) -->
           <path d="M 101,161 C 101,167 107,167 107,161 Z" class="tooth-path" />
           <path d="M 108,161 C 108,165 114,165 114,160 Z" class="tooth-path" />
@@ -387,7 +378,7 @@
         <!-- Mandible (Lower Jaw Group containing lower teeth) -->
         <g id="skull_mandible" [class.selected]="isSelected('skull_mandible')" (click)="toggleBone('skull_mandible')" (mouseenter)="showTooltip($event, 'skull_mandible')" (mouseleave)="hideTooltip()" (mousemove)="updateTooltipPos($event)" class="bone-group">
           <!-- Mandible Bone Body -->
-          <path d="M 46,136 C 45,142 46,148 48,154 C 48,154 44,174 46,178 C 48,184 58,198 84,204 L 94,206 L 100,208 L 106,206 L 116,204 C 142,198 152,184 154,178 C 156,174 152,154 152,154 C 154,148 155,142 154,136 C 152,142 144,146 136,163 C 130,165 110,167 100,167 C 90,167 70,165 64,163 C 56,146 48,142 46,136 Z" class="bone-path" />
+          <path d="M 46,136 C 45,145 44,158 46,172 C 47,178 52,189 64,196 C 74,201 86,204 94,205 C 96,205.5 98,206 100,206 C 102,206 104,205.5 106,205 C 114,204 126,201 136,196 C 148,189 153,178 154,172 C 156,158 155,145 154,136 C 152,142 144,146 136,163 C 130,165 110,167 100,167 C 90,167 70,165 64,163 C 56,146 48,142 46,136 Z" class="bone-path" />
           <!-- Lower Teeth (Individual rounded anatomical teeth) -->
           <path d="M 65,163 C 65,159 71,159 71,162 Z" class="tooth-path" />
           <path d="M 72,162 C 72,157 78,157 78,161 Z" class="tooth-path" />
