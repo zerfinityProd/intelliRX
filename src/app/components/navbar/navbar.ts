@@ -25,6 +25,7 @@ export class NavbarComponent implements OnInit {
   uiState$: Observable<any>;
   isAdmin = false;
   isDoctor = false;
+  showSwitchClinic = false;
 
   constructor(
     private authService: AuthenticationService,
@@ -52,6 +53,12 @@ export class NavbarComponent implements OnInit {
       const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
       this.isAdmin = role === 'subscription_owner' || globalRoles.includes('admin');
       this.isDoctor = globalRoles.includes('doctor');
+
+      // Show "Switch Clinic" only if user has more than 1 clinic or subscription
+      const assignments = await this.authorizationService.getUserAssignments(email);
+      const uniqueSubs = new Set(assignments.map(a => a.subscriptionId));
+      const uniqueClinics = new Set(assignments.map(a => a.clinicId));
+      this.showSwitchClinic = uniqueSubs.size > 1 || uniqueClinics.size > 1;
     }
   }
 
@@ -120,10 +127,12 @@ export class NavbarComponent implements OnInit {
     const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
 
     let chosenSubId: string;
+
+    // ── Case 2: Only 1 subscription — skip subscription picker ──
     if (subscriptionIds.length === 1) {
       chosenSubId = subscriptionIds[0];
     } else {
-      // Prompt subscription selection with names
+      // ── Case 3: Multiple subscriptions — ask to choose subscription first ──
       const subOptions: Record<string, string> = {};
       for (const id of subscriptionIds) {
         try {
@@ -157,9 +166,10 @@ export class NavbarComponent implements OnInit {
 
     let chosenClinicId: string;
     if (clinicsInSub.length === 1) {
+      // Only 1 clinic in this subscription — auto-select it
       chosenClinicId = clinicsInSub[0];
     } else {
-      // Prompt clinic selection with names
+      // Multiple clinics — prompt user to pick one
       const clinicOptions: Record<string, string> = {};
       for (const id of clinicsInSub) {
         try {
@@ -184,6 +194,13 @@ export class NavbarComponent implements OnInit {
       });
       if (clinicResult.isDismissed) return;
       chosenClinicId = String(clinicResult.value ?? clinicsInSub[0]);
+    }
+
+    // Don't reload if user selected the same clinic they're already on
+    const currentClinicId = this.clinicContextService.getSelectedClinicId();
+    const currentSubId = this.clinicContextService.getSubscriptionId();
+    if (chosenClinicId === currentClinicId && chosenSubId === currentSubId) {
+      return;
     }
 
     // Apply context and reload

@@ -4,15 +4,36 @@ import { ClinicService } from './clinicService';
 import { AuthorizationService } from './authorizationService';
 import { ClinicContextService } from './clinicContextService';
 import { LeaveService } from './leave';
+import { Leave } from '../models/leave.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../config/systemSettings';
 import {
     generateTimeSlotsFromConfig,
     generateTimeSlotsFromClinicTimings,
     filterTimingsByAvailability,
-    getWeekdayKey,
     getWeekdayCode,
-    isClinicOpenOnDate
+    isClinicOpenOnDate,
+    getAvailabilityLabelsForDay
 } from '../utilities/timeSlotUtils';
+
+/**
+ * Leave information returned alongside time slots so the UI can display
+ * contextual banners (e.g. "Doctor is on leave").
+ */
+export interface LeaveInfo {
+    /** True when the doctor has at least one approved leave on the selected date. */
+    onLeave: boolean;
+    /** 'All Day', 'FH', 'SH', or comma-separated combination. */
+    leaveType: string;
+    /** The raw approved leave records for this date. */
+    leaves: Leave[];
+}
+
+export interface TimeSlotsResult {
+    slots: string[];
+    leaveInfo: LeaveInfo | null;
+    /** Slots blocked by doctor leave — shown disabled in UI with a 'Leave' tag. */
+    leaveBlockedSlots: string[];
+}
 
 /**
  * Centralised time-slot generation.
@@ -30,27 +51,22 @@ export class TimeSlotService {
     private leaveService = inject(LeaveService);
 
     /**
-     * Generate the list of available time slots for a clinic on a given date,
-     * optionally filtered by a specific doctor's weekday availability.
-     *
-     * @param clinicId    The clinic to fetch schedule for. Falls back to the
-     *                    currently-selected clinic if null/undefined.
-     * @param date        The date to generate slots for (used for weekday
-     *                    and doctor-availability checks).
-     * @param doctorEmail Normalised doctor email for availability filtering.
-     *                    Pass empty string to skip doctor filtering.
-     * @param invalidateCache If true, forces a fresh fetch of clinic data.
-     * @returns           Array of "HH:mm" time slot strings.
+     * Generate time slots AND leave context for a clinic on a given date.
+     * This is the primary method — `getTimeSlotsForClinic()` is a thin wrapper.
      */
-    async getTimeSlotsForClinic(
+    async getTimeSlotsWithLeaveInfo(
         clinicId?: string | null,
         date?: Date | string | null,
         doctorEmail?: string,
         invalidateCache?: boolean
-    ): Promise<string[]> {
+    ): Promise<TimeSlotsResult> {
         const id = clinicId || this.clinicContextService.getSelectedClinicId();
         if (!id) {
-            return generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+            return {
+                slots: generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots),
+                leaveInfo: null,
+                leaveBlockedSlots: []
+            };
         }
 
         try {
@@ -70,51 +86,130 @@ export class TimeSlotService {
                 effectiveDate = new Date(date + 'T00:00:00');
             }
 
+            console.log('[TimeSlotsService] \u2500 getTimeSlotsWithLeaveInfo',
+                '\n  clinicId:', id,
+                '\n  date:', date, '\u2192 effectiveDate:', effectiveDate,
+                '\n  doctorEmail:', doctorEmail || '(none)',
+                '\n  clinic timings:', JSON.stringify(timings));
+
+
             // Check if the clinic is open on this day
             if (effectiveDate && weekdays && weekdays.length > 0) {
                 if (!isClinicOpenOnDate(weekdays, effectiveDate)) {
-                    return []; // Clinic closed on this day
+                    return { slots: [], leaveInfo: null, leaveBlockedSlots: [] };
                 }
             }
 
-            // Apply doctor availability filtering
-            if (doctorEmail && effectiveDate && timings && timings.length > 0) {
+            // ── Doctor availability filtering ──────────────────────────
+            // Uses getAvailabilityLabelsForDay() which tries ALL known day-key
+            // formats to handle the mismatch between admin-dashboard short codes
+            // ('M','T','W','Th','F','Sa','Su') and staff-config-modal 3-letter
+            // codes ('mon','tue','wed','thu','fri','sat','sun').
+            let timingsWereFiltered = false;
+            if (doctorEmail && effectiveDate) {
                 const availability = await this.authorizationService.getDoctorAvailability(
                     doctorEmail, id
                 );
                 if (availability) {
-                    const dayKey = getWeekdayKey(effectiveDate);
-                    const dayLabels = availability[dayKey];
-                    timings = filterTimingsByAvailability(timings, dayLabels, true);
-                }
+                    const { labels: dayLabels, scheduled } =
+                        getAvailabilityLabelsForDay(availability, effectiveDate);
 
-                // Check for leaves
-                const doctorId = await this.authorizationService.getUserId(doctorEmail);
-                if (doctorId) {
-                    // format date to YYYY-MM-DD
+                    // `scheduled` = true when the availability map has any days configured.
+                    // If the current day is not listed AND the map is configured,
+                    // the doctor is not available on this day → treat as unavailable.
+                    const dayExistsInAvailability = scheduled;
+
+                    if (timings && timings.length > 0) {
+                        // Filter clinic timing blocks to only those the doctor works
+                        timings = filterTimingsByAvailability(timings, dayLabels, dayExistsInAvailability);
+                    } else if (dayExistsInAvailability && (!dayLabels || dayLabels.length === 0)) {
+                        // No clinic timings to filter, doctor is explicitly unavailable this day
+                        timingsWereFiltered = true;
+                    }
+                    timingsWereFiltered = true;
+                }
+            }
+
+            // ── Leave filtering ────────────────────────────────────────
+            // user_id in leaves is stored as normalized email (see my-leaves.ts).
+            // We use doctorEmail directly — no getUserId() lookup needed.
+            let leaveInfo: LeaveInfo | null = null;
+            let leaveBlockedSlots: string[] = [];
+
+            if (doctorEmail && effectiveDate) {
                     const y = effectiveDate.getFullYear();
                     const m = String(effectiveDate.getMonth() + 1).padStart(2, '0');
                     const d = String(effectiveDate.getDate()).padStart(2, '0');
                     const isoDate = `${y}-${m}-${d}`;
-                    
-                    const leaves = await this.leaveService.getDoctorLeaves(doctorId, id, isoDate);
-                    const approvedLeaves = leaves.filter(l => l.status === 'approved');
-                    
-                    for (const leave of approvedLeaves) {
-                        if (leave.timing === 'All Day') {
-                            return []; // No slots
-                        } else {
-                            // Filter out the specific timing (FH or SH)
-                            timings = timings.filter(t => t.label !== leave.timing);
+
+                    const leaveResult = await this.leaveService.isDoctorOnLeave(
+                        doctorEmail, id, isoDate
+                    );
+
+                    if (leaveResult && leaveResult.onLeave) {
+                        leaveInfo = {
+                            onLeave: true,
+                            leaveType: leaveResult.leaveType,
+                            leaves: leaveResult.leaves
+                        };
+
+                        if (leaveResult.leaveType === 'All Day') {
+                            // Full-day leave: all slots blocked but still shown disabled
+                            const allSlots = generateTimeSlotsFromClinicTimings(timings);
+                            return { slots: allSlots, leaveInfo, leaveBlockedSlots: allSlots };
+                        }
+
+                        // Half-day leave — collect blocked slots
+                        if (timings && timings.length > 0) {
+                            for (const leave of leaveResult.leaves) {
+                                if (leave.timing !== 'All Day') {
+                                    const blockedTimings = timings.filter(t =>
+                                        t.label.toUpperCase() === leave.timing.toUpperCase()
+                                    );
+                                    leaveBlockedSlots = [
+                                        ...leaveBlockedSlots,
+                                        ...generateTimeSlotsFromClinicTimings(blockedTimings)
+                                    ];
+                                }
+                            }
                         }
                     }
-                }
             }
 
-            return generateTimeSlotsFromClinicTimings(timings);
+            // If availability filtering reduced timings to empty (and no leave),
+            // return no slots — the doctor is just unavailable that day.
+            if (timingsWereFiltered && (!timings || timings.length === 0)) {
+                return { slots: [], leaveInfo, leaveBlockedSlots };
+            }
+
+            return {
+                slots: generateTimeSlotsFromClinicTimings(timings),
+                leaveInfo,
+                leaveBlockedSlots
+            };
         } catch {
-            return generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+            return {
+                slots: generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots),
+                leaveInfo: null,
+                leaveBlockedSlots: []
+            };
         }
+    }
+
+    /**
+     * Generate the list of available time slots for a clinic on a given date.
+     * Backward-compatible wrapper around getTimeSlotsWithLeaveInfo().
+     */
+    async getTimeSlotsForClinic(
+        clinicId?: string | null,
+        date?: Date | string | null,
+        doctorEmail?: string,
+        invalidateCache?: boolean
+    ): Promise<string[]> {
+        const result = await this.getTimeSlotsWithLeaveInfo(
+            clinicId, date, doctorEmail, invalidateCache
+        );
+        return result.slots;
     }
 
     /** Generate default time slots from system settings (no clinic context). */

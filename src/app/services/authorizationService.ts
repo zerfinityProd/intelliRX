@@ -544,8 +544,29 @@ export class AuthorizationService {
     async getUserSubscriptionId(email: string): Promise<string | null> {
         try {
             const result = await this.lookupUser(email);
-            if (!result || result.assignments.length === 0) return null;
-            return result.assignments[0].subscriptionId;
+            if (result && result.assignments.length > 0) {
+                return result.assignments[0].subscriptionId;
+            }
+
+            // Fallback: clinic docs may be missing the subscription_id field, which causes
+            // lookupUser to build zero assignments. Try finding the subscription by owner_email.
+            const normalized = normalizeEmail(email);
+            console.warn('[AuthZ] getUserSubscriptionId: no assignments from lookupUser for', normalized,
+                '— falling back to subscriptions query by owner_email');
+            try {
+                const subDocs = await this.api.runQuery('', {
+                    collectionId: 'subscriptions',
+                    filters: [{ field: 'owner_email', op: '==', value: normalized }],
+                });
+                if (subDocs.length > 0) {
+                    console.log('[AuthZ] Fallback subscription found via owner_email:', subDocs[0].id);
+                    return subDocs[0].id;
+                }
+            } catch (fallbackErr) {
+                console.warn('[AuthZ] Fallback subscriptions query failed:', fallbackErr);
+            }
+
+            return null;
         } catch (error) {
             console.warn('getUserSubscriptionId failed for:', email, error);
             return null;
@@ -647,8 +668,12 @@ export class AuthorizationService {
     /**
      * Fetch a doctor's per-weekday availability for a specific clinic.
      *
-     * Returns the availability map (e.g. { M: ["FH"], T: ["FH","SH"] })
-     * or null if the doctor has no availability configured (meaning all blocks available).
+     * Returns the availability map (e.g. { M: ["FH"] } short-code format from
+     * admin-dashboard, or { mon: ["FH"] } 3-letter format from staff-config-modal)
+     * or null if no availability is configured (meaning no restriction = all slots).
+     *
+     * Uses a single user_id filter + client-side clinic_id match to avoid silent
+     * failures caused by compound query issues or user_id value mismatches.
      */
     async getDoctorAvailability(
         email: string,
@@ -656,33 +681,61 @@ export class AuthorizationService {
     ): Promise<ClinicUserAvailability | null> {
         try {
             const result = await this.lookupUser(email);
-            if (!result) return null;
+            if (!result) {
+                console.warn('[Avail] lookupUser null for', email);
+                return null;
+            }
 
+            // Single-field query then client-side clinic_id match — more robust than
+            // a compound query which silently returns 0 rows on user_id mismatch.
             const cuDocs = await this.api.runQuery('', {
                 collectionId: 'clinic_users',
                 filters: [
-                    { field: 'user_id', op: '==', value: result.userId },
-                    { field: 'clinic_id', op: '==', value: clinicId }
+                    { field: 'user_id', op: '==', value: result.userId }
                 ],
             });
 
-            // Filter client-side: treat missing status as active
-            const activeDocs = cuDocs.filter(d => {
-                const s = d.data['status'] || 'active';
-                return s === 'active';
-            });
-            if (activeDocs.length === 0) return null;
+            console.log('[Avail] clinic_users for userId', result.userId, '→', cuDocs.length, 'docs',
+                cuDocs.map(d =>
+                    `id=${d.id} clinic_id=${d.data['clinic_id']} status=${d.data['status']} avail_keys=${Object.keys(d.data['availability'] || {}).join(',') || 'none'}`
+                ).join(' | '));
 
-            const cuData = activeDocs[0].data;
-            const availability = cuData['availability'];
-            if (!availability || typeof availability !== 'object') return null;
+            // Find the doc matching this clinic.
+            // NOTE: We do NOT filter by status here — a doctor marked 'inactive' in one context
+            // may still have their availability schedule stored. We pick the doc that has the
+            // availability map; if multiple exist we prefer the one with a non-empty map.
+            const allMatchingDocs = cuDocs.filter(d => d.data['clinic_id'] === clinicId);
+
+            if (allMatchingDocs.length === 0) {
+                console.warn('[Avail] No clinic_users doc for clinicId:', clinicId,
+                    '— found clinic_ids:', cuDocs.map(d => d.data['clinic_id']));
+                return null;
+            }
+
+            // Prefer a doc that has a populated availability map
+            const matchingDoc =
+                allMatchingDocs.find(d => {
+                    const av = d.data['availability'];
+                    return av && typeof av === 'object' && !Array.isArray(av) && Object.keys(av).length > 0;
+                }) ?? allMatchingDocs[0];
+
+            const availability = matchingDoc.data['availability'];
+            console.log('[Avail] matched doc', matchingDoc.id,
+                'status=', matchingDoc.data['status'],
+                'availability=', JSON.stringify(availability));
+
+            if (!availability || typeof availability !== 'object' || Array.isArray(availability)) {
+                console.warn('[Avail] availability field missing or wrong type in doc', matchingDoc.id);
+                return null;
+            }
 
             return availability as ClinicUserAvailability;
         } catch (error) {
-            console.warn('getDoctorAvailability failed for:', email, clinicId, error);
+            console.warn('[Avail] getDoctorAvailability failed for', email, clinicId, error);
             return null;
         }
     }
+
 
     /**
      * Fetch all doctors assigned to a specific clinic from the database.

@@ -1,54 +1,144 @@
-<div class="leaves-container">
-  <div class="header">
-    <button class="btn btn-outline" (click)="goBack()">← Back</button>
-    <h2>My Leaves</h2>
-  </div>
+<app-navbar [showBack]="true"></app-navbar>
 
-  <div class="content">
-    <div class="apply-card card">
-      <h3>Apply for Leave</h3>
-      <div class="form-group">
-        <label>Date</label>
-        <input type="date" [(ngModel)]="newLeave.date" [min]="minDate" class="form-control">
+<div class="lv-page">
+  <div class="lv-container">
+
+    <!-- ── Page Header ── -->
+    <div class="lv-page-header">
+      <div class="lv-page-header__icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
       </div>
-      <div class="form-group">
-        <label>Shift / Timing</label>
-        <select [(ngModel)]="newLeave.timing" class="form-control">
-          <option value="All Day">All Day</option>
-          <option value="FH">First Half (FH)</option>
-          <option value="SH">Second Half (SH)</option>
-        </select>
+      <div>
+        <h1 class="lv-page-title">My Leaves</h1>
+        <p class="lv-page-sub">Apply for leave and track your leave history</p>
       </div>
-      <button class="btn btn-primary" (click)="applyLeave()" [disabled]="isSubmitting || !newLeave.date">
-        {{ isSubmitting ? 'Submitting...' : 'Apply Leave' }}
-      </button>
     </div>
 
-    <div class="history-card card">
-      <h3>Leave History</h3>
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Date</th>
-            <th>Timing</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let leave of leaves">
-            <td>{{ leave.date | date:'mediumDate' }}</td>
-            <td>{{ leave.timing }}</td>
-            <td><span class="status-badge" [class.approved]="leave.status === 'approved'">{{ leave.status | titlecase }}</span></td>
-            <td>
-              <button class="btn btn-outline btn-sm text-danger" (click)="cancelLeave(leave.id!)">Cancel</button>
-            </td>
-          </tr>
-          <tr *ngIf="leaves.length === 0">
-            <td colspan="4" class="text-center">No leaves found</td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- ── Content Grid ── -->
+    <div class="lv-grid">
+
+      <!-- ══ Apply Card ══ -->
+      <div class="lv-apply-card">
+        <div class="lv-card-header">
+          <div class="lv-card-header__icon lv-card-header__icon--apply">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </div>
+          <h3 class="lv-card-title">Apply for Leave</h3>
+        </div>
+
+        <div class="lv-form-group">
+          <label class="lv-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Date <span class="lv-required">*</span>
+          </label>
+          <input type="date" [(ngModel)]="newLeave.date" [min]="minDate" class="lv-input" />
+        </div>
+
+        <div class="lv-form-group">
+          <label class="lv-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            Shift / Timing
+          </label>
+          <select [(ngModel)]="newLeave.timing" class="lv-input lv-select">
+            <option value="All Day">🕐 All Day</option>
+            <option value="FH">🌅 First Half (FH)</option>
+            <option value="SH">🌆 Second Half (SH)</option>
+          </select>
+        </div>
+
+        <button class="lv-btn-apply" (click)="applyLeave()" [disabled]="isSubmitting || !newLeave.date">
+          <span *ngIf="isSubmitting" class="lv-spinner"></span>
+          <svg *ngIf="!isSubmitting" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          {{ isSubmitting ? 'Submitting…' : 'Apply Leave' }}
+        </button>
+
+        <!-- Tip -->
+        <div class="lv-tip">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+          <span>Once approved, your leave will block appointment bookings for that day/shift.</span>
+        </div>
+      </div>
+
+      <!-- ══ History Card ══ -->
+      <div class="lv-history-card">
+        <div class="lv-card-header">
+          <div class="lv-card-header__icon lv-card-header__icon--history">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+          </div>
+          <h3 class="lv-card-title">Leave History</h3>
+          <span class="lv-count-badge" *ngIf="leaves.length > 0">{{ leaves.length }}</span>
+        </div>
+
+        <!-- Empty state -->
+        <div class="lv-empty" *ngIf="leaves.length === 0">
+          <div class="lv-empty__icon">📋</div>
+          <div class="lv-empty__title">No leaves yet</div>
+          <div class="lv-empty__desc">Your leave requests will appear here once you apply.</div>
+        </div>
+
+        <!-- Leave list (card-based, not table) -->
+        <div class="lv-list" *ngIf="leaves.length > 0">
+          <div class="lv-item" *ngFor="let leave of leaves" [class.lv-item--approved]="leave.status === 'approved'"
+            [class.lv-item--pending]="leave.status === 'pending'" [class.lv-item--rejected]="leave.status === 'rejected'">
+            <div class="lv-item__left">
+              <div class="lv-item__date-badge">
+                <span class="lv-item__day">{{ leave.date | date:'dd' }}</span>
+                <span class="lv-item__month">{{ leave.date | date:'MMM' }}</span>
+              </div>
+            </div>
+            <div class="lv-item__body">
+              <div class="lv-item__timing">
+                <span class="lv-timing-chip">
+                  {{ leave.timing === 'All Day' ? '🕐' : (leave.timing === 'FH' ? '🌅' : '🌆') }}
+                  {{ leave.timing }}
+                </span>
+              </div>
+              <div class="lv-item__date-full">{{ leave.date | date:'EEEE, MMM d, yyyy' }}</div>
+            </div>
+            <div class="lv-item__right">
+              <span class="lv-status"
+                [class.lv-status--approved]="leave.status === 'approved'"
+                [class.lv-status--pending]="leave.status === 'pending'"
+                [class.lv-status--rejected]="leave.status === 'rejected'">
+                {{ leave.status === 'approved' ? '✓' : (leave.status === 'pending' ? '⏳' : '✕') }}
+                {{ leave.status | titlecase }}
+              </span>
+              <button class="lv-btn-cancel" (click)="cancelLeave(leave.id!)"
+                title="Cancel this leave">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>

@@ -15,7 +15,8 @@ import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicService } from '../../services/clinicService';
-import { TimeSlotService } from '../../services/timeSlotService';
+import { TimeSlotService, LeaveInfo } from '../../services/timeSlotService';
+import { LeaveService } from '../../services/leave';
 import { todayLocalISO } from '../../utilities/local-date';
 import { isSlotInPast as sharedIsSlotInPast } from '../../utilities/date-helpers';
 import { Doctor } from '../../interfaces/doctor';
@@ -97,6 +98,11 @@ export class AddAppointmentComponent implements OnInit {
   samePatientBookedSlots: string[] = [];
   isLoadingSlots: boolean = false;
 
+  /** Leave context for the selected doctor on the selected date. */
+  doctorLeaveInfo: LeaveInfo | null = null;
+  /** Slots blocked by doctor leave — shown as disabled with a 'Leave' tag. */
+  leaveBlockedSlots: string[] = [];
+
   errorMessage: string = '';
   newPatientWarning: string = '';
   isSubmitting: boolean = false;
@@ -110,6 +116,7 @@ export class AddAppointmentComponent implements OnInit {
   private clinicContextService = inject(ClinicContextService);
   private clinicService = inject(ClinicService);
   private timeSlotService = inject(TimeSlotService);
+  private leaveService = inject(LeaveService);
   private notificationService = inject(NotificationService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -378,12 +385,29 @@ export class AddAppointmentComponent implements OnInit {
       ? normalizeEmail(this.selectedDoctor.email)
       : '';
 
-    this.allTimeSlots = await this.timeSlotService.getTimeSlotsForClinic(
+    console.log('[Slots] refreshTimeSlotsForClinic →',
+      'clinic:', this.selectedClinicId,
+      'date:', effectiveDate,
+      'doctorEmail:', doctorEmail || '(empty – no filtering)',
+      'selectedDoctor:', this.selectedDoctor?.name, this.selectedDoctor?.email);
+
+    const result = await this.timeSlotService.getTimeSlotsWithLeaveInfo(
       this.selectedClinicId || null,
       effectiveDate,
       doctorEmail,
       true // invalidate cache to get fresh schedule data
     );
+
+    console.log('[Slots] result →', result.slots.length, 'slots', result.slots.slice(0, 3));
+
+    this.allTimeSlots = result.slots;
+    this.doctorLeaveInfo = result.leaveInfo;
+    this.leaveBlockedSlots = result.leaveBlockedSlots;
+  }
+
+  /** True when the slot is blocked by an approved doctor leave */
+  isSlotLeaveBlocked(slot: string): boolean {
+    return this.leaveBlockedSlots.includes(slot);
   }
 
   formatSlotLabel(time: string): string {
@@ -403,7 +427,11 @@ export class AddAppointmentComponent implements OnInit {
   }
 
   get availableSlots(): string[] {
-    return this.allTimeSlots.filter(s => !this.bookedSlots.includes(s) && !this.isSlotInPast(s));
+    return this.allTimeSlots.filter(s =>
+      !this.bookedSlots.includes(s) &&
+      !this.leaveBlockedSlots.includes(s) &&
+      !this.isSlotInPast(s)
+    );
   }
 
   /** True when this slot is already booked by the same patient being booked */
@@ -883,6 +911,48 @@ export class AddAppointmentComponent implements OnInit {
       return;
     }
     if (!this.selectedTimeSlot) { this.errorMessage = 'Please select a time slot'; return; }
+
+    // ── Leave validation (race-condition guard) ────────────────────────
+    // Re-check at submission time in case a leave was approved after the page loaded.
+    // user_id in leaves is stored as normalized email — use doctorEmail directly.
+    const doctorEmail = this.selectedDoctor?.email
+      ? normalizeEmail(this.selectedDoctor.email)
+      : '';
+    if (doctorEmail && this.appointmentDate && this.selectedClinicId) {
+      try {
+        const leaveCheck = await this.leaveService.isDoctorOnLeave(
+          doctorEmail, this.selectedClinicId, this.appointmentDate
+        );
+        if (leaveCheck && leaveCheck.onLeave) {
+          if (leaveCheck.leaveType === 'All Day') {
+            this.errorMessage = `Cannot book — ${this.selectedDoctor?.name || 'Doctor'} is on approved full-day leave on ${this.appointmentDate}. No appointments can be booked.`;
+            this.cdr.markForCheck();
+            return;
+          }
+          // Half-day leave — check if selected slot falls in blocked period
+          const freshResult = await this.timeSlotService.getTimeSlotsWithLeaveInfo(
+            this.selectedClinicId, this.appointmentDate, doctorEmail, true
+          );
+          if (freshResult.leaveBlockedSlots.includes(this.selectedTimeSlot)) {
+            this.errorMessage = `Cannot book — ${this.selectedDoctor?.name || 'Doctor'} is on ${leaveCheck.leaveType} leave during this time slot on ${this.appointmentDate}.`;
+            // Refresh so the user sees the updated blocked state
+            this.allTimeSlots = freshResult.slots;
+            this.leaveBlockedSlots = freshResult.leaveBlockedSlots;
+            this.doctorLeaveInfo = freshResult.leaveInfo;
+            this.selectedTimeSlot = '';
+            this.cdr.markForCheck();
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Leave validation check failed at submit time:', e);
+        // Do NOT silently proceed — surface the error so the user knows
+        this.errorMessage = 'Could not verify doctor availability. Please refresh and try again.';
+        this.cdr.markForCheck();
+        return;
+      }
+    }
+
     this.isSubmitting = true;
     this.errorMessage = '';
 

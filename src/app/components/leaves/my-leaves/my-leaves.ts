@@ -6,11 +6,13 @@ import { LeaveService } from '../../../services/leave';
 import { Leave } from '../../../models/leave.model';
 import { AuthenticationService } from '../../../services/authenticationService';
 import { ClinicContextService } from '../../../services/clinicContextService';
+import { NavbarComponent } from '../../navbar/navbar';
+import { normalizeEmail } from '../../../utilities/normalize-email';
 
 @Component({
   selector: 'app-my-leaves',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NavbarComponent],
   templateUrl: './my-leaves.html',
   styleUrl: './my-leaves.css'
 })
@@ -45,42 +47,84 @@ export class MyLeavesComponent implements OnInit {
   async applyLeave() {
     if (!this.newLeave.date) return;
     
-    const userId = this.auth.getCurrentUserId();
+    // Use normalized email as user_id — consistent with how timeSlotService
+    // and add-appointment look up leaves (both sides use email as the key).
+    const userEmail = normalizeEmail(this.auth.currentUserValue?.email || '');
     const clinicId = this.clinicContext.getSelectedClinicId();
-    
-    if (!userId || !clinicId) {
-      alert('Error: missing user or clinic context');
+
+    if (!userEmail || !clinicId) {
+      const { default: Swal } = await import('sweetalert2');
+      Swal.fire({ icon: 'error', title: 'Missing Context', text: 'Could not determine user or clinic. Please try logging out and back in.', confirmButtonColor: '#148D9E' });
       return;
     }
 
     this.isSubmitting = true;
     try {
+      // Check for duplicate leave using already-loaded local data (no extra query needed)
+      const duplicate = this.leaves.find(l =>
+        l.date === this.newLeave.date &&
+        (l.timing === this.newLeave.timing || l.timing === 'All Day' || this.newLeave.timing === 'All Day')
+      );
+      if (duplicate) {
+        const { default: Swal } = await import('sweetalert2');
+        Swal.fire({ icon: 'warning', title: 'Already Applied', text: `You already have a ${duplicate.timing} leave on this date.`, confirmButtonColor: '#148D9E' });
+        this.isSubmitting = false;
+        return;
+      }
+
       await this.leaveService.addLeave({
-        user_id: userId,
+        user_id: userEmail,
         clinic_id: clinicId,
         date: this.newLeave.date,
         timing: this.newLeave.timing,
-        status: 'approved' // auto approve for now
+        status: 'approved'
       });
       
       this.newLeave.date = '';
       this.newLeave.timing = 'All Day';
       await this.loadLeaves();
-    } catch (e) {
-      console.error(e);
-      alert('Failed to apply leave');
+
+      const { default: Swal } = await import('sweetalert2');
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      Swal.fire({
+        icon: 'success',
+        title: 'Leave Applied!',
+        text: 'Your leave has been recorded and appointments will be blocked accordingly.',
+        confirmButtonColor: '#148D9E',
+        background: isDark ? '#1f1f1f' : '#ffffff',
+        color: isDark ? '#e0e0e0' : '#1e293b',
+      });
+    } catch (e: any) {
+      console.error('Leave apply error:', e);
+      const { default: Swal } = await import('sweetalert2');
+      Swal.fire({ icon: 'error', title: 'Failed to Apply Leave', text: e?.message || 'An unexpected error occurred. Please try again.', confirmButtonColor: '#148D9E' });
     } finally {
       this.isSubmitting = false;
     }
   }
 
   async cancelLeave(id: string) {
-    if (!confirm('Are you sure you want to cancel this leave?')) return;
+    const { default: Swal } = await import('sweetalert2');
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const result = await Swal.fire({
+      title: 'Cancel Leave?',
+      text: 'Are you sure you want to cancel this leave request?',
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Cancel It',
+      cancelButtonText: 'Keep It',
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#94a3b8',
+      background: isDark ? '#1f1f1f' : '#ffffff',
+      color: isDark ? '#e0e0e0' : '#1e293b',
+    });
+    if (!result.isConfirmed) return;
     try {
       await this.leaveService.deleteLeave(id);
       await this.loadLeaves();
+      Swal.fire({ icon: 'success', title: 'Leave Cancelled', timer: 1500, showConfirmButton: false, background: isDark ? '#1f1f1f' : '#ffffff', color: isDark ? '#e0e0e0' : '#1e293b' });
     } catch (e) {
-      alert('Failed to cancel leave');
+      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not cancel the leave. Please try again.', confirmButtonColor: '#148D9E' });
     }
   }
 

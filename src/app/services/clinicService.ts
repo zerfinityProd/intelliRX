@@ -31,14 +31,14 @@ export class ClinicService {
   private async fetchScheduleSubcollection(clinicId: string): Promise<ClinicSchedule> {
     const defaultSchedule: ClinicSchedule = { weekdays: [], timings: [] };
     try {
-      // Query the schedule subcollection under clinics/{clinicId}
-      const docs = await this.api.runQuery(`clinics/${clinicId}`, {
-        collectionId: 'schedule',
-      });
-      if (docs.length === 0) return defaultSchedule;
+      // Directly fetch the known schedule document at clinics/{clinicId}/schedule/schedule
+      const result = await this.api.getDocument(`clinics/${clinicId}/schedule`, 'schedule');
+      if (!result) {
+        console.warn(`📅 No schedule document found for clinic ${clinicId}`);
+        return defaultSchedule;
+      }
 
-      // Use the first schedule document
-      const data = docs[0].data;
+      const data = result.data;
       const weekdays: string[] = Array.isArray(data['weekdays']) ? data['weekdays'] : [];
       const rawTimings = Array.isArray(data['timings']) ? data['timings'] : [];
       const timings = rawTimings.map((t: any) => ({
@@ -50,7 +50,7 @@ export class ClinicService {
       console.log(`📅 Schedule loaded for clinic ${clinicId}: weekdays=${JSON.stringify(weekdays)}, timings=${timings.length} block(s)`);
       return { weekdays, timings };
     } catch (error) {
-      console.warn('Error fetching schedule subcollection for clinic:', clinicId, error);
+      console.warn('Error fetching schedule for clinic:', clinicId, error);
       return defaultSchedule;
     }
   }

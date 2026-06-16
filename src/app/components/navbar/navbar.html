@@ -84,7 +84,7 @@
           {{ (isDarkTheme$ | async) ? 'Light Mode' : 'Dark Mode' }}
         </button>
 
-        <button class="user-dropdown__item" role="menuitem" aria-label="Switch Clinic"
+        <button *ngIf="showSwitchClinic && !isOnAdminDashboard" class="user-dropdown__item" role="menuitem" aria-label="Switch Clinic"
           (click)="switchClinic(); $event.stopPropagation()">
           <span class="user-dropdown__item-icon" aria-hidden="true">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

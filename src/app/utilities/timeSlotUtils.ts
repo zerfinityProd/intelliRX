@@ -60,13 +60,45 @@ export function generateTimeSlotsFromClinicTimings(
 }
 
 /**
- * Convert a Date to a short weekday key matching Firestore availability fields.
- * Uses the same format as clinic schedule.weekdays: "Su", "M", "T", "W", "Th", "F", "Sa"
+ * Looks up a doctor's available timing labels for a specific date from the
+ * availability map, trying ALL known day-key formats so it works regardless
+ * of which admin UI saved the data:
+ *
+ *   • admin-dashboard / admin-setup  → short codes: 'Su','M','T','W','Th','F','Sa'
+ *   • staff-config-modal (owner)     → 3-letter lowercase: 'sun','mon','tue','wed','thu','fri','sat'
+ *
+ * Returns:
+ *   labels    – the timing labels for that day (e.g. ['FH']) or undefined if not found.
+ *   scheduled – true when the availability map has ANY days configured, meaning
+ *               an unfound day means "doctor not working" (not "no restriction").
  */
-export function getWeekdayKey(date: Date): string {
-  const codes = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
-  return codes[date.getDay()];
+export function getAvailabilityLabelsForDay(
+  availability: Record<string, string[]>,
+  date: Date
+): { labels: string[] | undefined; scheduled: boolean } {
+  const dayIndex = date.getDay(); // 0=Sun … 6=Sat
+
+  // All known formats for each weekday, in priority order
+  const SHORT_CODES = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
+  const THREE_LETTER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+  const keysToTry = [
+    SHORT_CODES[dayIndex],   // 'Th'  – admin-dashboard / admin-setup
+    THREE_LETTER[dayIndex],  // 'thu' – staff-config-modal (owner dashboard)
+  ];
+
+  const scheduled = Object.keys(availability).length > 0;
+
+  for (const key of keysToTry) {
+    if (Object.prototype.hasOwnProperty.call(availability, key)) {
+      return { labels: availability[key], scheduled };
+    }
+  }
+
+  // Day not listed in the map
+  return { labels: undefined, scheduled };
 }
+
 
 /**
  * Convert a Date to a short weekday code matching the clinic schedule.weekdays format.

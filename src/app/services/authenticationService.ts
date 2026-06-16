@@ -10,7 +10,8 @@ import {
     signOut,
     onAuthStateChanged,
     updateProfile,
-    sendPasswordResetEmail
+    sendPasswordResetEmail,
+    deleteUser
 } from '@angular/fire/auth';
 
 import { Router } from '@angular/router';
@@ -80,7 +81,10 @@ export class AuthenticationService {
                     // Page-refresh scenario: check if this email is registered
                     const allowed = await this.authorizationService.isEmailAllowed(email);
                     if (!allowed) {
-                        console.warn('[Auth] onAuthStateChanged: email not in users collection, signing out:', email);
+                        console.warn('[Auth] onAuthStateChanged: email not in users collection, deleting auth user & signing out:', email);
+                        // Delete the orphaned Firebase Auth user so it doesn't
+                        // persist in the Authentication console.
+                        try { await deleteUser(firebaseUser); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
                         await signOut(this.auth);
                         this.setCurrentUser(null);
                         if (!this.authReady) {
@@ -199,15 +203,16 @@ export class AuthenticationService {
     async login(email: string, password: string): Promise<User> {
         this._loggingIn = true;
         try {
-            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-            const userEmail = userCredential.user.email || email;
-            const allowed = await this.authorizationService.isEmailAllowed(userEmail);
+            // Check Firestore FIRST — if email is not in the users collection,
+            // reject immediately without touching Firebase Auth at all.
+            // This prevents orphan auth-user creation for unregistered emails.
+            const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // User not in Firestore users collection — block access
-                await signOut(this.auth);
-                this.setCurrentUser(null);
                 throw new Error('Access denied. Your email is not registered in the system.');
             }
+
+            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+            const userEmail = userCredential.user.email || email;
             const role = await this.authorizationService.getUserRole(userEmail);
             const dbName = await this.authorizationService.getUserName(userEmail);
             const user: User = { ...this.transformFirebaseUser(userCredential.user), role };
@@ -233,7 +238,9 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // User not in Firestore users collection — block access
+                // User not in Firestore users collection — delete the auto-created
+                // Firebase Auth user so it doesn't linger in the console, then block.
+                try { await deleteUser(result.user); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
                 await signOut(this.auth);
                 this.setCurrentUser(null);
                 throw new Error('Access denied. Your email is not registered in the system.');
@@ -262,7 +269,9 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // User not in Firestore users collection — block access
+                // User not in Firestore users collection — delete the auto-created
+                // Firebase Auth user so it doesn't linger in the console, then block.
+                try { await deleteUser(result.user); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
                 await signOut(this.auth);
                 this.setCurrentUser(null);
                 throw new Error('Access denied. Your email is not registered in the system.');
@@ -291,7 +300,9 @@ export class AuthenticationService {
             const email = result.user.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // User not in Firestore users collection — block access
+                // User not in Firestore users collection — delete the auto-created
+                // Firebase Auth user so it doesn't linger in the console, then block.
+                try { await deleteUser(result.user); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
                 await signOut(this.auth);
                 this.setCurrentUser(null);
                 throw new Error('Access denied. Your email is not registered in the system.');
@@ -349,8 +360,9 @@ export class AuthenticationService {
             const email = result.email || '';
             const allowed = await this.authorizationService.isEmailAllowed(email);
             if (!allowed) {
-                // User not in Firestore users collection — block access
-                console.warn('[Auth] handleGoogleRedirectResult: email not registered, signing out:', email);
+                // User not in Firestore users collection — delete auth user & block
+                console.warn('[Auth] handleGoogleRedirectResult: email not registered, deleting auth user & signing out:', email);
+                try { await deleteUser(result); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
                 await signOut(this.auth);
                 this.setCurrentUser(null);
                 return;

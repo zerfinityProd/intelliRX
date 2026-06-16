@@ -134,13 +134,31 @@ export class OwnerDashboardComponent implements OnInit {
     event.preventDefault();
     this.isInviting = true;
     try {
-      // Create user doc
+      const normalizedEmail = this.inviteForm.email.toLowerCase().trim();
+      const newRole = this.inviteForm.role;
+
+      // Check if a user with this email already exists
+      const existingDocs = await this.api.runQuery('', {
+        collectionId: 'users',
+        filters: [{ field: 'email', op: '==', value: normalizedEmail }],
+      });
+
+      if (existingDocs.length > 0) {
+        const existingName = existingDocs[0].data['name'] || normalizedEmail;
+        alert(`A staff member with email "${normalizedEmail}" already exists (${existingName}). Please use the Edit button to update their roles or assignments.`);
+        this.isInviting = false;
+        return;
+      }
+
+      // No existing user — create a new user doc
       const userId = this.api.generateDocId();
       await this.api.setDocument('users', userId, {
-        email: this.inviteForm.email.toLowerCase().trim(),
+        email: normalizedEmail,
         name: this.inviteForm.name,
-        global_roles: [this.inviteForm.role],
-        status: 'active'
+        global_roles: [newRole],
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       });
 
       // Create clinic_users doc
@@ -148,6 +166,7 @@ export class OwnerDashboardComponent implements OnInit {
       await this.api.setDocument('clinic_users', cuId, {
         user_id: userId,
         clinic_id: this.inviteForm.clinicId,
+        role: newRole,
         status: 'active'
       });
 

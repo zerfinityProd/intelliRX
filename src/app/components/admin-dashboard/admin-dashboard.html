@@ -401,10 +401,20 @@
                     <td class="ad-cell-muted">{{ user.email }}</td>
                     <td>
                       <div class="d-flex flex-wrap gap-1">
-                        <span class="ad-role-tag" *ngFor="let a of user.assignments"
-                          [class.ad-tag-doc]="a.role === 'doctor'" [class.ad-tag-rec]="a.role === 'receptionist'">
-                          {{ a.role === 'doctor' ? '🩺' : '🗂' }} {{ a.clinicName }}
-                        </span>
+                        <ng-container *ngFor="let a of user.assignments">
+                          <span class="ad-role-tag"
+                            [class.ad-tag-doc]="a.role === 'doctor'" [class.ad-tag-rec]="a.role === 'receptionist'">
+                            {{ a.role === 'doctor' ? '🩺' : '🗂' }} {{ a.clinicName }}
+                          </span>
+                        </ng-container>
+                        <!-- Show extra global roles that aren't already represented by an assignment -->
+                        <ng-container *ngFor="let r of user.global_roles">
+                          <span class="ad-role-tag"
+                            *ngIf="(r === 'doctor' || r === 'receptionist') && !hasAssignmentWithRole(user, r)"
+                            [class.ad-tag-doc]="r === 'doctor'" [class.ad-tag-rec]="r === 'receptionist'">
+                            {{ r === 'doctor' ? '🩺' : '🗂' }} {{ r | titlecase }}
+                          </span>
+                        </ng-container>
                       </div>
                     </td>
                     <td>

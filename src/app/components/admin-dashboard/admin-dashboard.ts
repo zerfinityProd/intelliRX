@@ -414,6 +414,11 @@ export class AdminDashboardComponent implements OnInit {
     return user.global_roles.some(r => r === 'doctor' || r === 'admin');
   }
 
+  /** True when the user has at least one clinic assignment with the given role */
+  hasAssignmentWithRole(user: AdminUserState, role: string): boolean {
+    return user.assignments.some(a => a.role === role);
+  }
+
   /** Navigate to the appropriate dashboard for a staff member */
   navigateToDashboard(user: AdminUserState): void {
     const hasDoctor = user.global_roles.includes('doctor');
@@ -763,6 +768,16 @@ export class AdminDashboardComponent implements OnInit {
       return;
     }
 
+    // Duplicate assignment check — same clinic + same role should not appear twice
+    const assignmentKeys = this.userForm.assignments.map(a => `${a.clinicId}::${a.role}`);
+    const dupeKey = assignmentKeys.find((k, i) => assignmentKeys.indexOf(k) !== i);
+    if (dupeKey) {
+      const [cId, role] = dupeKey.split('::');
+      const cName = this.clinics.find(c => c.id === cId)?.name || cId;
+      this.showToast(`Duplicate assignment: "${cName}" already has a ${role} assignment. You can edit the existing one instead.`, 'error');
+      return;
+    }
+
     // Intra-form conflict check (time-range overlap between clinics)
     const doctorAssignments = this.userForm.assignments.filter(a => a.role === 'doctor');
     for (let i = 0; i < doctorAssignments.length; i++) {
@@ -875,13 +890,13 @@ export class AdminDashboardComponent implements OnInit {
         // New user — search by email WITHOUT subscription filter to avoid duplicates
         const existing = await this.adminService.getUserByEmail(userPayload.email);
         if (existing) {
-          userId = existing.id!;
-          // Merge roles: preserve existing non-assignment roles (admin, z_admin)
-          const preservedRoles = (existing.global_roles || []).filter(
-            (r: string) => !['doctor', 'receptionist'].includes(r)
+          this.showToast(
+            `A staff member with email "${userPayload.email}" already exists (${existing.name}). Please use the Edit button to update their roles or assignments.`,
+            'error'
           );
-          userPayload.global_roles = [...new Set([...preservedRoles, ...derivedAssignmentRoles])];
-          await this.adminService.updateUser(userId, userPayload);
+          this.isSaving = false;
+          this.cdr.detectChanges();
+          return;
         } else {
           userId = await this.adminService.createUser(userPayload);
         }
@@ -926,15 +941,16 @@ export class AdminDashboardComponent implements OnInit {
       // that were never part of this editing session (preserves other clinics).
       const existingCUs = await this.adminService.getClinicUsers(this.subscription!.id);
       const userCUs = existingCUs.filter(cu => cu.user_id === userId);
-      const newClinicIds = new Set(this.userForm.assignments.map(a => a.clinicId));
+      const newAssignmentKeys = new Set(this.userForm.assignments.map(a => `${a.clinicId}::${a.role}`));
       for (const cu of userCUs) {
+        const cuKey = `${cu.clinic_id}::${(cu as any).role || ''}`;
         // Only delete if the clinic was originally in the form AND is now removed
-        if (this.originalFormClinicIds.has(cu.clinic_id) && !newClinicIds.has(cu.clinic_id)) {
+        if (this.originalFormClinicIds.has(cu.clinic_id) && !newAssignmentKeys.has(cuKey)) {
           await this.adminService.deleteClinicUser(cu.id!);
         }
       }
       for (const assignment of this.userForm.assignments) {
-        const existingCU = userCUs.find(cu => cu.clinic_id === assignment.clinicId);
+        const existingCU = userCUs.find(cu => cu.clinic_id === assignment.clinicId && (cu as any).role === assignment.role);
         const cuPayload: any = {
           clinic_id: assignment.clinicId,
           user_id: userId, status: 'active',
