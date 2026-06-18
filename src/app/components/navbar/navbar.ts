@@ -81,6 +81,15 @@ export class NavbarComponent implements OnInit {
     this.router.navigate(['/home']);
   }
 
+  /** Toggles between admin dashboard and doctor dashboard when logo is clicked by an admin */
+  toggleDashboard(): void {
+    if (this.isOnAdminDashboard) {
+      this.router.navigate(['/home']);
+    } else {
+      this.router.navigate(['/admin-dashboard']);
+    }
+  }
+
   toggleUserMenu(): void {
     this.uiStateService.toggleUserMenu();
   }

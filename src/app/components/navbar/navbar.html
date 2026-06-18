@@ -15,7 +15,15 @@
       <span *ngIf="showBack" class="navbar-back-divider" aria-hidden="true"></span>
 
       <!-- Brand -->
-      <span class="navbar-brand p-0 brand-hover-wrap" style="cursor:default" role="img" aria-label="IntelliRx logo">
+      <span
+        class="navbar-brand p-0 brand-hover-wrap"
+        [style.cursor]="isAdmin ? 'pointer' : 'default'"
+        [attr.role]="isAdmin ? 'button' : 'img'"
+        [attr.tabindex]="isAdmin ? 0 : null"
+        [attr.aria-label]="isAdmin ? (isOnAdminDashboard ? 'Switch to Doctor Dashboard' : 'Switch to Admin Dashboard') : 'IntelliRx logo'"
+        (click)="isAdmin && toggleDashboard()"
+        (keydown.enter)="isAdmin && toggleDashboard()"
+        (keydown.space)="isAdmin && toggleDashboard()">
         <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
           <circle cx="25" cy="25" r="23" stroke="#148D9E" stroke-width="3" />
           <path d="M18 25 L23 30 L33 20" stroke="#148D9E" stroke-width="3" stroke-linecap="round"
