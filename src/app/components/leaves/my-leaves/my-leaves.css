@@ -448,6 +448,7 @@
   background: var(--dk-bg2, #222);
   border-color: var(--dk-border, #2a2a2a);
   color: var(--dk-text1, #e0e0e0);
+  color-scheme: dark;
 }
 
 :host-context([data-theme="dark"]) .lv-input:focus {
@@ -515,6 +516,22 @@
   border-color: #f87171;
   color: #f87171;
   background: rgba(239, 68, 68, 0.1);
+}
+
+/* ── Fix native <select> in dark mode — full override strips Chrome's striped artefact ── */
+:host-context([data-theme="dark"]) .lv-select {
+  -webkit-appearance: none;
+  appearance: none;
+  /* Full background shorthand overrides both color AND the browser's native texture */
+  background: var(--dk-bg2, #222) url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%231CB5C9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+  color: var(--dk-text1, #e0e0e0);
+  border-color: var(--dk-border, #2a2a2a);
+  color-scheme: dark;
+}
+
+:host-context([data-theme="dark"]) .lv-select option {
+  background: var(--dk-bg2, #222);
+  color: var(--dk-text1, #e0e0e0);
 }
 
 /* ═══════════════════════════════════════════════════════════

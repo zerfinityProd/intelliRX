@@ -61,17 +61,19 @@
 
 /* ── Dark Mode ──────────────────────────────────────────────────────────── */
 [data-theme="dark"] .navbar-back-btn {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #cdd8e0;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
 }
 
 [data-theme="dark"] .navbar-back-btn svg {
-  color: #cdd8e0;
+  color: #fff;
 }
 
 [data-theme="dark"] .navbar-back-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
 [data-theme="dark"] .navbar-back-divider {

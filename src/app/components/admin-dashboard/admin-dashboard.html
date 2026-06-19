@@ -316,7 +316,7 @@
                     <div class="col-md-5">
                       <label class="ad-label">Clinic</label>
                       <select class="ad-input" [ngModel]="a.clinicId" (ngModelChange)="onAssignmentClinicChange(a, $event)" id="assign-clinic-{{ai}}">
-                        <option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}</option>
+                        <option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}{{ c.address ? ' — ' + c.address : '' }}</option>
                       </select>
                     </div>
                     <div class="col-md-4">

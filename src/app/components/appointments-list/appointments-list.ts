@@ -56,7 +56,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   // Permission flags
   canAppointment = false;
   canCancel = false;
+  canAddVisit = false;
   userRole: string = 'doctor';
+  currentUserEmail: string = '';
 
   // Doctor name cache for display
   private doctorNameCache = new Map<string, string>();
@@ -672,7 +674,21 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       const perms = await this.authorizationService.getUserPermissions(email);
       this.canAppointment = perms.canAppointment;
       this.canCancel = perms.canCancel;
+      this.canAddVisit = perms.canAddVisit;
       this.userRole = await this.authorizationService.getUserRole(email);
+      // Store normalized email for per-card Add Visit visibility
+      this.currentUserEmail = normalizeEmail(email);
+
+      // If the user is a subscription_owner (admin) who also has the doctor
+      // global role, treat them as a doctor for visit actions.
+      if (this.userRole === 'subscription_owner') {
+        const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
+        if (globalRoles.includes('doctor')) {
+          this.userRole = 'doctor';
+          // Ensure canAddVisit is true for admin+doctor users
+          this.canAddVisit = true;
+        }
+      }
       this.cdr.detectChanges();
     } catch {
       // Default to false (no permissions) on failure

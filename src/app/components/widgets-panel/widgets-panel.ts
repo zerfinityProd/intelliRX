@@ -18,6 +18,7 @@ export class WidgetsPanelComponent {
   @Input() todayAppointmentCount: number = 0;
   @Input() isLoadingAppts: boolean = true;
   @Input() selectedDashboardDoctor: Doctor | null = null;
+  @Input() selectedClinicLabel: string = '';
 
   // Doctor/Clinic context
   @Input() userRole: string = 'doctor';

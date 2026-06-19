@@ -568,13 +568,42 @@
   margin-top: 2px;
 }
 
+.widget-banner__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.widget-banner__clinic {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 20px;
+  padding: 1px 7px 1px 5px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.widget-banner__spec-dot {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1;
+}
+
 .widget-banner__specialization {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 400;
   color: rgba(255, 255, 255, 0.6);
-  margin-top: 3px;
   font-style: italic;
   letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .widget-banner__cta {

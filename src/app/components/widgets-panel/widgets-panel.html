@@ -24,8 +24,19 @@
         <div class="widget-banner__label">
           {{ selectedDashboardDoctor ? selectedDashboardDoctor.name + "'s" : "Today's" }} Appointments
         </div>
-        <div class="widget-banner__specialization" *ngIf="selectedDashboardDoctor?.specialty">
-          {{ selectedDashboardDoctor?.specialty }}
+        <div class="widget-banner__meta" *ngIf="selectedClinicLabel || selectedDashboardDoctor?.specialty">
+          <span class="widget-banner__clinic" *ngIf="selectedClinicLabel">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            {{ selectedClinicLabel }}
+          </span>
+          <span class="widget-banner__spec-dot" *ngIf="selectedClinicLabel && selectedDashboardDoctor?.specialty">·</span>
+          <span class="widget-banner__specialization" *ngIf="selectedDashboardDoctor?.specialty">
+            {{ selectedDashboardDoctor?.specialty }}
+          </span>
         </div>
       </div>
     </div>

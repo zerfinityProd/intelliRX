@@ -30,6 +30,8 @@ export class AppointmentStatusBoardComponent {
   @Input() updatingId: string | null = null;
   @Input() userRole: string = 'doctor';
   @Input() canCancel: boolean = false;
+  @Input() canAddVisit: boolean = false;
+  @Input() currentUserEmail: string = '';
 
   // Drag state
   @Input() draggingAppt: Appointment | null = null;

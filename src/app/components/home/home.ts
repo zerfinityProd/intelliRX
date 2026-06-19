@@ -67,6 +67,16 @@ export class HomeComponent implements OnInit {
   doctorClinics: Array<{ id: string; label: string }> = [];
   selectedDoctorClinicId: string = '';
 
+  /** Display label for the currently active clinic in the appointment banner */
+  get selectedClinicLabel(): string {
+    if (this.userRole === 'doctor') {
+      // Use the doctor's own clinic switcher list
+      return this.doctorClinics.find(c => c.id === this.selectedDoctorClinicId)?.label || '';
+    }
+    // Receptionist: use the dashboard clinic list
+    return this.dashboardClinics.find(c => c.id === this.selectedDashboardClinicId)?.label || '';
+  }
+
   // Slot viewer
   showSlots: boolean = false;
   bookedSlotsForSelected: string[] = [];
@@ -264,7 +274,14 @@ export class HomeComponent implements OnInit {
       if (rawEmail) {
         try {
           const clinicIds = await this.authorizationService.getUserClinicIds(rawEmail);
-          this.dashboardClinics = clinicIds.map(id => ({ id, label: `Clinic ${id}` }));
+          // Resolve real clinic names
+          const clinicEntries = await Promise.all(
+            clinicIds.map(async id => ({
+              id,
+              label: await this.clinicService.getClinicName(id).catch(() => id)
+            }))
+          );
+          this.dashboardClinics = clinicEntries;
           this.selectedDashboardClinicId = clinicIds[0] ?? '';
         } catch {
           this.dashboardClinics = [];
@@ -287,13 +304,14 @@ export class HomeComponent implements OnInit {
     if (!email) return;
     try {
       const assignments = await this.authorizationService.getUserAssignments(email);
-      // Show all clinics across all subscriptions
+      // Show all clinics across all subscriptions, resolving real names
       const seen = new Set<string>();
       this.doctorClinics = [];
       for (const a of assignments) {
         if (!seen.has(a.clinicId)) {
           seen.add(a.clinicId);
-          this.doctorClinics.push({ id: a.clinicId, label: `Clinic ${a.clinicId}` });
+          const clinicName = await this.clinicService.getClinicName(a.clinicId).catch(() => a.clinicId);
+          this.doctorClinics.push({ id: a.clinicId, label: clinicName });
         }
       }
       this.selectedDoctorClinicId = this.clinicContextService.getSelectedClinicId() || (assignments[0]?.clinicId ?? '');

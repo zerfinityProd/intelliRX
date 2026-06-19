@@ -146,22 +146,44 @@ export class AppointmentService {
    * Fetch appointments for the current user.
    * - Doctors: see only appointments where doctor_id matches their email.
    * - Receptionists: see all appointments for the currently selected clinic.
+   * - Admin (subscription_owner) + receptionist global role: see ALL appointments
+   *   across the entire subscription (no clinic filter).
    *
    * Each role uses a separate cache to prevent cross-role data leakage.
    */
   async getAppointments(): Promise<Appointment[]> {
     try {
       const email = this.getCurrentUserEmail();
-      const role = await this.authorizationService.getUserRole(email);
       const clinicId = this.clinicContextService.getSelectedClinicId();
 
+      // Determine effective role:
+      // 1. Get primary role.
+      // 2. If primary role is subscription_owner (admin), also check global_roles.
+      //    If the admin has 'receptionist' in global_roles, behave as receptionist
+      //    so they see all doctors' appointments.
+      //    Admins are NOT filtered by clinic — they see the full subscription.
+      let role = await this.authorizationService.getUserRole(email);
+      let isAdminReceptionist = false;
+      if (role === 'subscription_owner') {
+        const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
+        if (globalRoles.includes('receptionist')) {
+          role = 'receptionist';
+          isAdminReceptionist = true; // admin: no clinic filter
+        }
+      }
+
       if (role === 'receptionist') {
-        // Use the receptionist-specific cache
+        // Admin+receptionist: no clinic filter — see all subscription appointments
+        if (isAdminReceptionist) {
+          if (this.allCache !== null) return this.allCache;
+          return this.getAllAppointments();
+        }
+
+        // Regular receptionist: filter by selected clinic
         if (this.receptionistCache !== null && this.receptionistCacheClinicId === clinicId) {
           return this.receptionistCache;
         }
         const all = await this.getAllAppointments();
-        // Filter by the current clinic so receptionists see only their clinic's appointments
         const filtered = clinicId
           ? all.filter(a => a.clinic_id === clinicId)
           : all;
