@@ -164,6 +164,28 @@
   box-shadow: 0 0 0 3px rgba(20, 141, 158, 0.12);
 }
 
+.lv-input--error {
+  border-color: #C13B3B !important;
+  box-shadow: 0 0 0 3px rgba(193, 59, 59, 0.12) !important;
+}
+
+.lv-date-error {
+  display: flex; align-items: flex-start; gap: 5px;
+  margin-top: 6px;
+  font-size: 12px; font-weight: 600;
+  color: #C13B3B;
+  line-height: 1.4;
+  animation: lv-err-in 0.2s ease;
+}
+.lv-date-error svg { flex-shrink: 0; margin-top: 1px; }
+@keyframes lv-err-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+:host-context([data-theme="dark"]) .lv-date-error { color: #e05555; }
+:host-context([data-theme="dark"]) .lv-input--error {
+  border-color: #e05555 !important;
+  box-shadow: 0 0 0 3px rgba(224, 85, 85, 0.15) !important;
+}
+
 .lv-select {
   appearance: none;
   cursor: pointer;

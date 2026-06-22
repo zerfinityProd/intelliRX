@@ -1,5 +1,5 @@
 <!-- src/app/components/admin-dashboard/admin-dashboard.html -->
-<app-navbar></app-navbar>
+<app-navbar [showBack]="activeSection !== null" (backClick)="clearSection()"></app-navbar>
 
 <div class="ad-page">
 
@@ -110,10 +110,6 @@
 
         <!-- ══ CLINICS SECTION ════════════════════════════════════ -->
         <div *ngIf="activeSection === 'clinics'">
-          <button class="ad-back-btn" (click)="clearSection()" id="btn-back-clinics">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-            Back
-          </button>
           <div class="ad-page-header">
             <div>
               <h1 class="ad-page-title">Clinic Management</h1>
@@ -256,10 +252,6 @@
 
         <!-- ══ USERS SECTION ══════════════════════════════════════ -->
         <div *ngIf="activeSection === 'users'">
-          <button class="ad-back-btn" (click)="clearSection()" id="btn-back-staff">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-            Back
-          </button>
           <div class="ad-page-header">
             <div>
               <h1 class="ad-page-title">Staff Management</h1>
@@ -304,66 +296,154 @@
               </div>
             </div>
 
-            <!-- Clinic Assignments -->
-            <div class="ad-form-section">
-              <div class="d-flex align-items-center justify-content-between mb-2">
-                <div class="ad-section-lbl mb-0">Clinic Assignments</div>
-                <button class="ad-btn-ghost-sm" (click)="addClinicAssignment()">+ Assign Clinic</button>
-              </div>
-              <div class="d-flex flex-column gap-3">
-                <div class="ad-assignment-card" *ngFor="let a of userForm.assignments; let ai = index">
-                  <div class="row g-3 align-items-end">
-                    <div class="col-md-5">
-                      <label class="ad-label">Clinic</label>
-                      <select class="ad-input" [ngModel]="a.clinicId" (ngModelChange)="onAssignmentClinicChange(a, $event)" id="assign-clinic-{{ai}}">
-                        <option *ngFor="let c of clinics" [value]="c.id">{{ c.name }}{{ c.address ? ' — ' + c.address : '' }}</option>
-                      </select>
-                    </div>
-                    <div class="col-md-4">
-                      <label class="ad-label">Role</label>
-                      <select class="ad-input" [(ngModel)]="a.role" (ngModelChange)="onAssignmentRoleChange(a)" id="assign-role-{{ai}}">
-                        <option value="doctor">Doctor</option>
-                        <option value="receptionist">Receptionist</option>
-                      </select>
-                    </div>
-                    <div class="col-md-3 text-end">
-                      <button class="ad-btn-danger-sm" (click)="removeClinicAssignment(ai)">🗑 Remove</button>
-                    </div>
-                  </div>
 
-                  <!-- Doctor availability grid -->
-                  <div class="ad-avail-section" *ngIf="a.role === 'doctor' && getClinicForAssignment(a.clinicId) as clinic">
-                    <div class="ad-avail-title">
-                      Availability <span class="ad-avail-hint">— select when this doctor is available</span>
-                    </div>
-                    <div class="ad-avail-table">
-                      <div class="ad-avail-header-row">
-                        <div class="ad-avail-day-col">Day</div>
-                        <div class="ad-avail-block-col" *ngFor="let t of clinic.timings">
-                          <div class="ad-block-name">{{ t.label }}</div>
-                          <div class="ad-block-time">{{ t.start }}–{{ t.end }}</div>
-                        </div>
-                      </div>
-                      <div class="ad-avail-day-row" *ngFor="let day of clinic.weekdays">
-                        <div class="ad-avail-day-col">{{ weekdayLabels[day] || day }}</div>
-                        <div class="ad-avail-cell" *ngFor="let t of clinic.timings">
-                          <label class="ad-avail-cb"
-                            [title]="getBlockConflictTooltip(a, day, t.label)"
-                            [class.ad-avail-cb--disabled]="isBlockBookedElsewhere(a, day, t.label)">
-                            <input type="checkbox" [checked]="isBlockSelected(a, day, t.label)"
-                              (change)="toggleAvailability(a, day, t.label)"
-                              [disabled]="isBlockBookedElsewhere(a, day, t.label)" />
-                            <span class="ad-avail-visual"></span>
-                          </label>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="ad-empty-assignments" *ngIf="userForm.assignments.length === 0">
-                  No clinic assigned. Click "+ Assign Clinic" to add.
+            <!-- Clinic Assignments — Matrix Layout -->
+            <div class="ad-form-section">
+              <div class="ad-section-lbl mb-3">Clinic Assignments</div>
+
+              <!-- Empty state -->
+              <div class="ad-matrix-empty" *ngIf="userForm.assignments.length === 0">
+                <div class="ad-matrix-empty-icon">🏥</div>
+                <div class="ad-matrix-empty-text">No clinics assigned yet</div>
+                <div class="ad-matrix-empty-sub">Click the button below to assign this staff member to a clinic</div>
+              </div>
+
+              <!-- Matrix table -->
+              <div class="ad-matrix-wrap" *ngIf="userForm.assignments.length > 0">
+                <div class="ad-matrix-scroll">
+                  <table class="ad-matrix-table">
+                    <thead>
+                      <tr>
+                        <th class="ad-matrix-th-clinic">Clinic &amp; Role</th>
+                        <th class="ad-matrix-th-day" *ngFor="let day of getUnionWeekdays()">
+                          {{ weekdayLabels[day] || day }}
+                        </th>
+                        <th class="ad-matrix-th-action"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let a of userForm.assignments; let ai = index" class="ad-matrix-row">
+
+                        <!-- Clinic info cell -->
+                        <td class="ad-matrix-clinic-cell">
+                          <select class="ad-matrix-clinic-select"
+                            [ngModel]="a.clinicId"
+                            (ngModelChange)="onAssignmentClinicChange(a, $event)"
+                            id="assign-clinic-{{ai}}">
+                            <option *ngFor="let c of getAvailableClinicsForRow(a)" [value]="c.id">
+                              {{ c.name }}{{ c.address ? ' — ' + c.address : '' }}
+                            </option>
+                          </select>
+
+                          <div class="ad-matrix-role-row">
+                            <label class="ad-matrix-role-chip-label"
+                              [class.ad-matrix-role-active-doc]="a.role === 'doctor'"
+                              [class.ad-matrix-role-chip--taken]="isRoleDisabledForAssignment(a, 'doctor')"
+                              [title]="isRoleDisabledForAssignment(a, 'doctor') ? 'Doctor role already assigned for this clinic' : '🩺 Doctor'">
+                              <input type="radio" [name]="'role-' + ai" value="doctor"
+                                [(ngModel)]="a.role"
+                                [disabled]="isRoleDisabledForAssignment(a, 'doctor')"
+                                (ngModelChange)="onAssignmentRoleChange(a)" />
+                              🩺 Doctor
+                              <span *ngIf="isRoleDisabledForAssignment(a, 'doctor')" class="ad-role-taken-badge">taken</span>
+                            </label>
+                            <label class="ad-matrix-role-chip-label"
+                              [class.ad-matrix-role-active-rec]="a.role === 'receptionist'"
+                              [class.ad-matrix-role-chip--taken]="isRoleDisabledForAssignment(a, 'receptionist')"
+                              [title]="isRoleDisabledForAssignment(a, 'receptionist') ? 'Receptionist role already assigned for this clinic' : '🗂 Receptionist'">
+                              <input type="radio" [name]="'role-' + ai" value="receptionist"
+                                [(ngModel)]="a.role"
+                                [disabled]="isRoleDisabledForAssignment(a, 'receptionist')"
+                                (ngModelChange)="onAssignmentRoleChange(a)" />
+                              🗂 Receptionist
+                              <span *ngIf="isRoleDisabledForAssignment(a, 'receptionist')" class="ad-role-taken-badge">taken</span>
+                            </label>
+                          </div>
+
+                        </td>
+
+                        <!-- Day cells -->
+                        <td class="ad-matrix-day-cell"
+                          *ngFor="let day of getUnionWeekdays()">
+                          <ng-container *ngIf="a.role === 'doctor'">
+                            <ng-container *ngFor="let t of getTimingsForAssignment(a)">
+                              <ng-container *ngIf="getClinicForAssignment(a.clinicId) as clinic">
+                                <ng-container *ngIf="clinic.weekdays.includes(day); else noDay">
+                                  <div class="ad-day-block-wrap">
+                                    <button class="ad-block-chip"
+                                      [class.ad-block-chip--active]="isBlockSelected(a, day, t.label)"
+                                      [class.ad-block-chip--conflict]="isBlockBookedElsewhere(a, day, t.label)"
+                                      [disabled]="isBlockBookedElsewhere(a, day, t.label)"
+                                      [title]="getBlockConflictTooltip(a, day, t.label) || (isBlockSelected(a, day, t.label) ? 'Available' : 'Not available')"
+                                      (click)="toggleAvailability(a, day, t.label)"
+                                      type="button"
+                                      [id]="'chip-' + ai + '-' + day + '-' + t.label">
+                                      {{ t.label }}
+                                    </button>
+                                    <!-- Per-day time range — shown when chip is active -->
+                                    <div class="ad-day-time-range"
+                                         *ngIf="isBlockSelected(a, day, t.label)"
+                                         [class.ad-day-time-range--error]="getTimeRangeError(a, day, t.label)">
+                                      <input class="ad-day-time-input" type="time"
+                                        [ngModel]="getEffectiveDayTiming(a, day, t.label).start"
+                                        (ngModelChange)="setDayBlockOverride(a, day, t.label, 'start', $event)"
+                                        [min]="t.start"
+                                        [max]="getEffectiveDayTiming(a, day, t.label).end || t.end"
+                                        [title]="'Start time within ' + t.label + ' (' + t.start + ' – ' + t.end + ')'"
+                                        [id]="'dtr-start-' + ai + '-' + day + '-' + t.label" />
+                                      <span class="ad-day-time-sep">–</span>
+                                      <input class="ad-day-time-input" type="time"
+                                        [ngModel]="getEffectiveDayTiming(a, day, t.label).end"
+                                        (ngModelChange)="setDayBlockOverride(a, day, t.label, 'end', $event)"
+                                        [min]="getEffectiveDayTiming(a, day, t.label).start || t.start"
+                                        [max]="t.end"
+                                        [title]="'End time within ' + t.label + ' (' + t.start + ' – ' + t.end + ')'"
+                                        [id]="'dtr-end-' + ai + '-' + day + '-' + t.label" />
+                                    </div>
+                                    <!-- Inline error shown when time is outside block range -->
+                                    <div class="ad-time-range-err"
+                                         *ngIf="getTimeRangeError(a, day, t.label)"
+                                         [id]="'terr-' + ai + '-' + day + '-' + t.label">
+                                      ⚠ {{ getTimeRangeError(a, day, t.label) }}
+                                    </div>
+                                  </div>
+                                </ng-container>
+                                <ng-template #noDay>
+                                  <span class="ad-block-chip ad-block-chip--na" title="Clinic closed on this day">—</span>
+                                </ng-template>
+                              </ng-container>
+                            </ng-container>
+                          </ng-container>
+                          <ng-container *ngIf="a.role === 'receptionist'">
+                            <span class="ad-matrix-rec-badge">
+                              <ng-container *ngIf="getClinicForAssignment(a.clinicId) as clinic">
+                                <ng-container *ngIf="clinic.weekdays.includes(day)">✓</ng-container>
+                                <ng-container *ngIf="!clinic.weekdays.includes(day)">—</ng-container>
+                              </ng-container>
+                            </span>
+                          </ng-container>
+                        </td>
+
+                        <!-- Remove button -->
+                        <td class="ad-matrix-action-cell">
+                          <button class="ad-matrix-remove-btn"
+                            (click)="removeClinicAssignment(ai)"
+                            title="Remove assignment"
+                            [id]="'btn-remove-assign-' + ai">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
+
+              <!-- Add clinic row -->
+              <button class="ad-matrix-add-btn" (click)="addClinicAssignment()" type="button" id="btn-add-clinic-assign">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Clinic
+              </button>
             </div>
 
             <div class="ad-form-actions">

@@ -25,7 +25,14 @@ export class MyLeavesComponent implements OnInit {
     timing: 'All Day' as 'All Day' | 'FH' | 'SH'
   };
 
+  dateError = '';
+
   minDate = new Date().toISOString().split('T')[0];
+  maxDate = (() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().split('T')[0];
+  })();
 
   constructor(
     private leaveService: LeaveService,
@@ -38,6 +45,19 @@ export class MyLeavesComponent implements OnInit {
     await this.loadLeaves();
   }
 
+  onDateChange(): void {
+    this.dateError = '';
+    if (!this.newLeave.date) return;
+    if (this.newLeave.date < this.minDate) {
+      this.dateError = 'Past dates are not allowed. Please choose today or a future date.';
+      return;
+    }
+    if (this.newLeave.date > this.maxDate) {
+      this.dateError = 'Date is too far ahead. Leave can be applied up to 1 year in advance.';
+      return;
+    }
+  }
+
   async loadLeaves() {
     this.leaves = await this.leaveService.getMyLeaves();
     // sort by date descending
@@ -46,7 +66,21 @@ export class MyLeavesComponent implements OnInit {
 
   async applyLeave() {
     if (!this.newLeave.date) return;
-    
+
+    // Guard: reject past dates (browser [min] can be bypassed by typing)
+    if (this.newLeave.date < this.minDate) {
+      const { default: Swal } = await import('sweetalert2');
+      Swal.fire({ icon: 'error', title: 'Invalid Date', text: 'You cannot apply leave for a past date.', confirmButtonColor: '#148D9E' });
+      this.newLeave.date = '';
+      return;
+    }
+    // Guard: reject dates too far in the future
+    if (this.newLeave.date > this.maxDate) {
+      const { default: Swal } = await import('sweetalert2');
+      Swal.fire({ icon: 'error', title: 'Invalid Date', text: 'Leave can only be applied up to 1 year in advance.', confirmButtonColor: '#148D9E' });
+      this.newLeave.date = '';
+      return;
+    }
     // Use normalized email as user_id — consistent with how timeSlotService
     // and add-appointment look up leaves (both sides use email as the key).
     const userEmail = normalizeEmail(this.auth.currentUserValue?.email || '');

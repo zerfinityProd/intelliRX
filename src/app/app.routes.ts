@@ -40,12 +40,21 @@ export const routes: Routes = [
     },
 
     // ── Z-Admin Route (Website-side) ──
+    // pathMatch:'full' prevents this from swallowing /admin/* sub-paths via prefix matching
     {
         path: 'admin',
+        pathMatch: 'full',
         loadComponent: () => import('./components/super-admin/super-admin').then(m => m.SuperAdminComponent),
         //canActivate: [superAdminGuard]
     },
+
     // ── Admin Dashboard (subscription_owner logged via App Login) ──
+    // Route alias: /admin/dashboard → same component (handles browser refresh on that URL)
+    {
+        path: 'admin/dashboard',
+        loadComponent: () => import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),
+        canActivate: [adminGuard]
+    },
     {
         path: 'admin-dashboard',
         loadComponent: () => import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),

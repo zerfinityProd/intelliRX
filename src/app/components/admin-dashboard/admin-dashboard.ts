@@ -1,8 +1,9 @@
 // src/app/components/admin-dashboard/admin-dashboard.ts
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
+import { Location } from '@angular/common';
 import { filter, firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AdminService } from '../../services/adminService';
@@ -32,6 +33,14 @@ export interface AdminClinicState {
 export interface UserClinicAssignment {
   clinicUserId?: string; clinicId: string; clinicName: string;
   role: 'doctor' | 'receptionist'; availability: ClinicUserAvailability;
+  /** Per-block time overrides (applies to all days): key = block label, value = { start, end } */
+  timingOverrides?: Record<string, { start: string; end: string }>;
+  /**
+   * Per-day per-block time overrides.
+   * Key 1 = weekday code (e.g. 'M'), Key 2 = block label (e.g. 'FH'),
+   * Value = { start, end } — overrides timingOverrides > clinic default for that specific day.
+   */
+  dayBlockOverrides?: Record<string, Record<string, { start: string; end: string }>>;
 }
 
 export interface AdminUserState {
@@ -49,11 +58,13 @@ type ActiveSection = 'clinics' | 'users' | null;
   templateUrl: './admin-dashboard.html',
   styleUrl: './admin-dashboard.css',
 })
-export class AdminDashboardComponent implements OnInit {
+export class AdminDashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthenticationService);
   private adminService = inject(AdminService);
   private api = inject(FirestoreApiService);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private location = inject(Location);
   private cdr = inject(ChangeDetectorRef);
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -101,7 +112,10 @@ export class AdminDashboardComponent implements OnInit {
    * On save, only delete clinic_user records whose clinic ID is in this set
    * but NOT in the current form — i.e. the user explicitly removed them.
    */
-  private originalFormClinicIds = new Set<string>();
+  private originalFormClinicIds = new Set<string>(); // tracks 'clinicId::role' pairs
+
+  /** Per-cell time validation errors. Key = 'clinicId::role::day::blockLabel' */
+  timeRangeErrors = new Map<string, string>();
 
   // ── Confirm Dialog ────────────────────────────────────────────────────────
   confirmVisible = false;
@@ -114,6 +128,13 @@ export class AdminDashboardComponent implements OnInit {
   toastType: 'success' | 'error' = 'success';
   toastVisible = false;
   private toastTimer: any;
+
+  // ── Draft persistence (survives page refresh) ─────────────────────────────
+  private readonly DRAFT_KEY = 'irx_admin_user_form_draft';
+  private draftInterval: any;
+  /** True when the page is about to refresh (vs navigate away) */
+  private isPageRefresh = false;
+  private beforeUnloadHandler = () => { this.isPageRefresh = true; };
 
   // ── Getters ───────────────────────────────────────────────────────────────
   get greeting(): string {
@@ -153,6 +174,7 @@ export class AdminDashboardComponent implements OnInit {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {
+    window.addEventListener('beforeunload', this.beforeUnloadHandler);
     console.log('[AdminDashboard] ngOnInit — waiting for authReady$');
     await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
     this.adminName = this.authService.currentUserValue?.name || 'Admin';
@@ -173,6 +195,77 @@ export class AdminDashboardComponent implements OnInit {
     }
     this.isLoading = false;
     this.cdr.detectChanges();
+
+    // Restore section from URL query param after data is loaded
+    const sectionParam = this.route.snapshot.queryParamMap.get('section') as ActiveSection;
+    if (sectionParam === 'clinics' || sectionParam === 'users') {
+      this.activeSection = sectionParam;
+      this.cdr.detectChanges();
+    }
+
+    // Restore user form draft if one was saved before the refresh
+    this.restoreUserFormDraft();
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('beforeunload', this.beforeUnloadHandler);
+    this.stopDraftSave();
+    // If the user navigated away intentionally (not a refresh), clear the draft
+    // so stale data doesn't reappear when they come back to this route.
+    if (!this.isPageRefresh) {
+      this.clearDraft();
+    }
+  }
+
+  // ── Draft helpers ──────────────────────────────────────────────────────────
+  private saveDraft(): void {
+    if (!this.showUserForm) return;
+    try {
+      sessionStorage.setItem(this.DRAFT_KEY, JSON.stringify({
+        userForm: this.userForm,
+        editingUserId: this.editingUser?.userId ?? null,
+      }));
+    } catch { /* storage full — ignore */ }
+  }
+
+  private clearDraft(): void {
+    sessionStorage.removeItem(this.DRAFT_KEY);
+    this.stopDraftSave();
+  }
+
+  private startDraftSave(): void {
+    this.stopDraftSave();
+    this.saveDraft(); // immediate save
+    this.draftInterval = setInterval(() => this.saveDraft(), 1500);
+  }
+
+  private stopDraftSave(): void {
+    if (this.draftInterval) { clearInterval(this.draftInterval); this.draftInterval = null; }
+  }
+
+  private restoreUserFormDraft(): void {
+    const raw = sessionStorage.getItem(this.DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw);
+      if (!draft?.userForm) return;
+      this.userForm = draft.userForm;
+      if (draft.editingUserId) {
+        this.editingUser = this.users.find(u => u.userId === draft.editingUserId) ?? null;
+        if (this.editingUser) {
+          this.originalFormClinicIds = new Set(
+            this.userForm.assignments.map((a: any) => `${a.clinicId}::${a.role}`)
+          );
+        }
+      } else {
+        this.editingUser = null;
+        this.originalFormClinicIds = new Set();
+      }
+      this.showUserForm = true;
+      this.activeSection = 'users'; // make sure the section is open
+      this.startDraftSave();
+      this.cdr.detectChanges();
+    } catch { sessionStorage.removeItem(this.DRAFT_KEY); }
   }
 
   // Known plan defaults — used when plan.limits is not embedded in the
@@ -378,6 +471,8 @@ export class AdminDashboardComponent implements OnInit {
             clinicUserId: cu.id, clinicId: cu.clinic_id, clinicName: clinic?.name || cu.clinic_id,
             role,
             availability: (cu as any).availability || {},
+            timingOverrides: this.deepCopyTimingOverrides((cu as any).timingOverrides),
+            dayBlockOverrides: this.deepCopyDayBlockOverrides((cu as any).dayBlockOverrides),
           };
         });
         this.users.push({
@@ -399,6 +494,9 @@ export class AdminDashboardComponent implements OnInit {
     this.activeSection = s;
     this.showClinicForm = false;
     this.showUserForm = false;
+    // Persist section in URL so page refresh restores this view
+    const url = this.location.path().split('?')[0];
+    this.location.replaceState(url, s ? `section=${s}` : '');
     this.cdr.detectChanges();
   }
 
@@ -406,6 +504,9 @@ export class AdminDashboardComponent implements OnInit {
     this.activeSection = null;
     this.showClinicForm = false;
     this.showUserForm = false;
+    // Remove section param from URL when returning to overview
+    const url = this.location.path().split('?')[0];
+    this.location.replaceState(url);
     this.cdr.detectChanges();
   }
 
@@ -579,19 +680,26 @@ export class AdminDashboardComponent implements OnInit {
     this.originalFormClinicIds = new Set();
     this.editingUser = null;
     this.showUserForm = true;
+    this.startDraftSave();
     this.cdr.detectChanges();
   }
 
   openEditUserForm(user: AdminUserState): void {
     this.userForm = {
       ...user, global_roles: [...user.global_roles],
-      assignments: user.assignments.map(a => ({ ...a, availability: this.deepCopyAvail(a.availability) })),
+      assignments: user.assignments.map(a => ({
+        ...a,
+        availability: this.deepCopyAvail(a.availability),
+        timingOverrides: this.deepCopyTimingOverrides(a.timingOverrides),
+        dayBlockOverrides: this.deepCopyDayBlockOverrides(a.dayBlockOverrides),
+      })),
     };
     this.editingUser = user;
     this.externalBookings = [];
     // Remember which clinics were in the form at open time
-    this.originalFormClinicIds = new Set(this.userForm.assignments.map(a => a.clinicId));
+    this.originalFormClinicIds = new Set(this.userForm.assignments.map(a => `${a.clinicId}::${a.role}`));
     this.showUserForm = true;
+    this.startDraftSave();
     this.cdr.detectChanges();
     // Load external bookings from DB in the background
     if (user.userId) this.loadExternalBookings(user.userId);
@@ -601,6 +709,7 @@ export class AdminDashboardComponent implements OnInit {
     this.showUserForm = false;
     this.editingUser = null;
     this.externalBookings = [];
+    this.clearDraft();
     this.cdr.detectChanges();
   }
 
@@ -631,8 +740,28 @@ export class AdminDashboardComponent implements OnInit {
 
   addClinicAssignment(): void {
     if (!this.clinics.length) { this.showToast('No clinics available. Add a clinic first.', 'error'); return; }
-    const c = this.clinics[0];
-    this.userForm.assignments.push({ clinicId: c.id, clinicName: c.name, role: 'receptionist', availability: {} });
+    // Find first clinic that still has at least one role free
+    const current = this.userForm.assignments;
+    const available = this.clinics.filter(c => {
+      const existing = current.filter(a => a.clinicId === c.id);
+      const hasDoctor       = existing.some(a => a.role === 'doctor');
+      const hasReceptionist = existing.some(a => a.role === 'receptionist');
+      return !(hasDoctor && hasReceptionist);
+    });
+    if (!available.length) {
+      this.showToast('All clinics already have both Doctor and Receptionist assigned.', 'error');
+      return;
+    }
+    const c = available[0];
+    // Choose whichever role isn't yet assigned for this clinic
+    const existingForClinic = current.filter(a => a.clinicId === c.id);
+    const hasRec  = existingForClinic.some(a => a.role === 'receptionist');
+    const role: 'doctor' | 'receptionist' = hasRec ? 'doctor' : 'receptionist';
+    this.userForm.assignments.push({
+      clinicId: c.id, clinicName: c.name,
+      role, availability: {},
+      timingOverrides: {}, dayBlockOverrides: {}
+    });
     this.cdr.detectChanges();
   }
 
@@ -643,19 +772,174 @@ export class AdminDashboardComponent implements OnInit {
 
   onAssignmentClinicChange(a: UserClinicAssignment, clinicId: string): void {
     const clinic = this.clinics.find(c => c.id === clinicId);
-    a.clinicId = clinicId; a.clinicName = clinic?.name || clinicId; a.availability = {};
+    a.clinicId = clinicId;
+    a.clinicName = clinic?.name || clinicId;
+    a.availability = {}; a.timingOverrides = {}; a.dayBlockOverrides = {};
+
+    // Auto-correct role if the current role is already taken in another row for this clinic
+    const othersForClinic = this.userForm.assignments.filter(
+      other => other !== a && other.clinicId === clinicId
+    );
+    const doctorTaken       = othersForClinic.some(o => o.role === 'doctor');
+    const receptionistTaken = othersForClinic.some(o => o.role === 'receptionist');
+    if (a.role === 'doctor'       && doctorTaken)       a.role = 'receptionist';
+    if (a.role === 'receptionist' && receptionistTaken) a.role = 'doctor';
+
+    this.cdr.detectChanges();
   }
 
-  onAssignmentRoleChange(a: UserClinicAssignment): void { if (a.role !== 'doctor') a.availability = {}; }
+  onAssignmentRoleChange(a: UserClinicAssignment): void {
+    // Guard: if the newly selected role is already taken by another row for this clinic, revert
+    if (this.isRoleDisabledForAssignment(a, a.role)) {
+      // Flip to the other role
+      a.role = a.role === 'doctor' ? 'receptionist' : 'doctor';
+      this.showToast(`That role is already assigned for this clinic. Switched to ${a.role}.`, 'error');
+    }
+    if (a.role !== 'doctor') { a.availability = {}; a.timingOverrides = {}; a.dayBlockOverrides = {}; }
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Returns true when the given role is already taken in another row for the same clinic.
+   * Used to disable the corresponding radio chip.
+   */
+  isRoleDisabledForAssignment(currentAssignment: UserClinicAssignment, role: string): boolean {
+    return this.userForm.assignments.some(
+      a => a !== currentAssignment && a.clinicId === currentAssignment.clinicId && a.role === role
+    );
+  }
 
   getClinicForAssignment(clinicId: string): AdminClinicState | undefined {
     return this.clinics.find(c => c.id === clinicId);
   }
 
+  /**
+   * Returns clinics available for a given row's dropdown.
+   * A clinic is excluded only when BOTH doctor AND receptionist roles are
+   * already taken by other rows — allowing the same clinic to appear twice
+   * (once as doctor, once as receptionist).
+   */
+  getAvailableClinicsForRow(currentAssignment: UserClinicAssignment): AdminClinicState[] {
+    const others = this.userForm.assignments.filter(a => a !== currentAssignment);
+    return this.clinics.filter(c => {
+      const sameClinic = others.filter(a => a.clinicId === c.id);
+      const hasDoctor       = sameClinic.some(a => a.role === 'doctor');
+      const hasReceptionist = sameClinic.some(a => a.role === 'receptionist');
+      // Exclude only if both roles are already taken
+      return !(hasDoctor && hasReceptionist);
+    });
+  }
+
+  /** Returns all weekdays across all current assignments (union), in canonical order */
+  getUnionWeekdays(): string[] {
+    const order = this.allWeekdays;
+    const days = new Set<string>();
+    for (const a of this.userForm.assignments) {
+      const clinic = this.clinics.find(c => c.id === a.clinicId);
+      if (clinic) clinic.weekdays.forEach(d => days.add(d));
+    }
+    return order.filter(d => days.has(d));
+  }
+
+  /** Returns the timing block list for a given assignment's clinic */
+  getTimingsForAssignment(a: UserClinicAssignment): TimingBlock[] {
+    return this.clinics.find(c => c.id === a.clinicId)?.timings || [];
+  }
+
+  /**
+   * Returns the effective start/end for a specific day+block combination.
+   * Priority: dayBlockOverrides[day][block] > timingOverrides[block] > clinic default.
+   */
+  getEffectiveDayTiming(a: UserClinicAssignment, day: string, blockLabel: string): { start: string; end: string } {
+    const dayOverride = a.dayBlockOverrides?.[day]?.[blockLabel];
+    if (dayOverride) return dayOverride;
+    const blockOverride = a.timingOverrides?.[blockLabel];
+    if (blockOverride) return blockOverride;
+    const clinic = this.clinics.find(c => c.id === a.clinicId);
+    const block = clinic?.timings.find(t => t.label === blockLabel);
+    return block ? { start: block.start, end: block.end } : { start: '', end: '' };
+  }
+
+  /** Unique key for a per-day block cell error */
+  private trErrKey(a: UserClinicAssignment, day: string, blockLabel: string): string {
+    return `${a.clinicId}::${a.role}::${day}::${blockLabel}`;
+  }
+
+  /** Returns the current validation error for a cell (for use in template) */
+  getTimeRangeError(a: UserClinicAssignment, day: string, blockLabel: string): string {
+    return this.timeRangeErrors.get(this.trErrKey(a, day, blockLabel)) || '';
+  }
+
+  /** Mutates the per-day per-block override, strictly clamped to the clinic's block range */
+  setDayBlockOverride(a: UserClinicAssignment, day: string, blockLabel: string, field: 'start' | 'end', value: string): void {
+    if (!value) return;
+
+    // Resolve the block's hard boundaries from the clinic DB
+    const clinic = this.clinics.find(c => c.id === a.clinicId);
+    const block  = clinic?.timings.find(t => t.label === blockLabel);
+    const blockMin = block ? this.timeToMinutes(block.start) : 0;
+    const blockMax = block ? this.timeToMinutes(block.end)   : 24 * 60;
+
+    let mins = this.timeToMinutes(value);
+    const errKey = this.trErrKey(a, day, blockLabel);
+    let errMsg = '';
+
+    if (field === 'start') {
+      if (mins < blockMin) {
+        errMsg = `Start cannot be before ${block!.start} (${blockLabel}: ${block!.start}–${block!.end})`;
+        mins = blockMin;
+      } else if (mins >= blockMax) {
+        errMsg = `Start must be before ${block!.end} (${blockLabel} ends at ${block!.end})`;
+        mins = blockMin;
+      }
+    } else {
+      if (mins > blockMax) {
+        errMsg = `End cannot exceed ${block!.end} (${blockLabel}: ${block!.start}–${block!.end})`;
+        mins = blockMax;
+      } else if (mins <= blockMin) {
+        errMsg = `End must be after ${block!.start} (${blockLabel} starts at ${block!.start})`;
+        mins = blockMax;
+      }
+    }
+
+    if (errMsg) {
+      this.timeRangeErrors.set(errKey, errMsg);
+      // Error stays until user enters a valid value — no auto-clear
+    } else {
+      this.timeRangeErrors.delete(errKey);
+    }
+
+    // Re-format back to HH:MM
+    const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+    const mm = String(mins % 60).padStart(2, '0');
+    const clamped = `${hh}:${mm}`;
+
+    // Ensure start < end within the override itself
+    if (!a.dayBlockOverrides) a.dayBlockOverrides = {};
+    if (!a.dayBlockOverrides[day]) a.dayBlockOverrides[day] = {};
+    if (!a.dayBlockOverrides[day][blockLabel]) {
+      const eff = this.getEffectiveDayTiming(a, day, blockLabel);
+      a.dayBlockOverrides[day][blockLabel] = { ...eff };
+    }
+
+    const override = a.dayBlockOverrides[day][blockLabel];
+    if (field === 'start') {
+      const endMins = this.timeToMinutes(override.end || block?.end || '');
+      override.start = this.timeToMinutes(clamped) < endMins ? clamped : block?.start ?? clamped;
+    } else {
+      const startMins = this.timeToMinutes(override.start || block?.start || '');
+      override.end = this.timeToMinutes(clamped) > startMins ? clamped : block?.end ?? clamped;
+    }
+
+    this.cdr.detectChanges();
+  }
+
+
   toggleAvailability(a: UserClinicAssignment, day: string, block: string): void {
     if (!a.availability[day]) a.availability[day] = [];
     const idx = a.availability[day].indexOf(block);
     if (idx >= 0) a.availability[day].splice(idx, 1); else a.availability[day].push(block);
+    this.cdr.detectChanges();
   }
   isBlockSelected(a: UserClinicAssignment, day: string, block: string): boolean {
     return (a.availability[day] || []).includes(block);
@@ -945,7 +1229,7 @@ export class AdminDashboardComponent implements OnInit {
       for (const cu of userCUs) {
         const cuKey = `${cu.clinic_id}::${(cu as any).role || ''}`;
         // Only delete if the clinic was originally in the form AND is now removed
-        if (this.originalFormClinicIds.has(cu.clinic_id) && !newAssignmentKeys.has(cuKey)) {
+        if (this.originalFormClinicIds.has(cuKey) && !newAssignmentKeys.has(cuKey)) {
           await this.adminService.deleteClinicUser(cu.id!);
         }
       }
@@ -958,6 +1242,10 @@ export class AdminDashboardComponent implements OnInit {
         };
         if (assignment.role === 'doctor' && Object.keys(assignment.availability).length > 0)
           cuPayload.availability = assignment.availability;
+        if (assignment.role === 'doctor' && assignment.timingOverrides && Object.keys(assignment.timingOverrides).length > 0)
+          cuPayload.timingOverrides = assignment.timingOverrides;
+        if (assignment.role === 'doctor' && assignment.dayBlockOverrides && Object.keys(assignment.dayBlockOverrides).length > 0)
+          cuPayload.dayBlockOverrides = assignment.dayBlockOverrides;
         if (existingCU) await this.adminService.updateClinicUser(existingCU.id!, cuPayload);
         else await this.adminService.createClinicUser(cuPayload);
       }
@@ -973,6 +1261,8 @@ export class AdminDashboardComponent implements OnInit {
           clinicName: clinic?.name || cu.clinic_id,
           role,
           availability: this.deepCopyAvail((cu as any).availability || {}),
+          timingOverrides: this.deepCopyTimingOverrides((cu as any).timingOverrides),
+          dayBlockOverrides: this.deepCopyDayBlockOverrides((cu as any).dayBlockOverrides),
         };
       });
       const updated: AdminUserState = {
@@ -985,6 +1275,7 @@ export class AdminDashboardComponent implements OnInit {
       this.updateUserStats();
       this.showUserForm = false; this.editingUser = null;
       this.externalBookings = [];
+      this.clearDraft();
       this.showToast(this.editingUser ? 'User updated' : 'User created successfully');
     } catch (e: any) { this.showToast('Failed to save user: ' + e.message, 'error'); }
     finally { this.isSaving = false; this.cdr.detectChanges(); }
@@ -1044,6 +1335,25 @@ export class AdminDashboardComponent implements OnInit {
   private deepCopyAvail(a: ClinicUserAvailability): ClinicUserAvailability {
     const copy: ClinicUserAvailability = {};
     for (const day of Object.keys(a)) copy[day] = [...(a[day] || [])];
+    return copy;
+  }
+
+  private deepCopyTimingOverrides(o?: Record<string, { start: string; end: string }>): Record<string, { start: string; end: string }> | undefined {
+    if (!o) return undefined;
+    const copy: Record<string, { start: string; end: string }> = {};
+    for (const key of Object.keys(o)) copy[key] = { ...o[key] };
+    return copy;
+  }
+
+  private deepCopyDayBlockOverrides(
+    o?: Record<string, Record<string, { start: string; end: string }>>
+  ): Record<string, Record<string, { start: string; end: string }>> | undefined {
+    if (!o) return undefined;
+    const copy: Record<string, Record<string, { start: string; end: string }>> = {};
+    for (const day of Object.keys(o)) {
+      copy[day] = {};
+      for (const block of Object.keys(o[day])) copy[day][block] = { ...o[day][block] };
+    }
     return copy;
   }
 

@@ -44,7 +44,14 @@
             </svg>
             Date <span class="lv-required">*</span>
           </label>
-          <input type="date" [(ngModel)]="newLeave.date" [min]="minDate" class="lv-input" />
+          <input type="date" [(ngModel)]="newLeave.date" [min]="minDate" [max]="maxDate"
+                 class="lv-input" [class.lv-input--error]="dateError" (change)="onDateChange()" />
+          <div *ngIf="dateError" class="lv-date-error">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            {{ dateError }}
+          </div>
         </div>
 
         <div class="lv-form-group">
@@ -62,7 +69,7 @@
           </select>
         </div>
 
-        <button class="lv-btn-apply" (click)="applyLeave()" [disabled]="isSubmitting || !newLeave.date">
+        <button class="lv-btn-apply" (click)="applyLeave()" [disabled]="isSubmitting || !newLeave.date || !!dateError">
           <span *ngIf="isSubmitting" class="lv-spinner"></span>
           <svg *ngIf="!isSubmitting" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 6 9 17 4 12"></polyline>
