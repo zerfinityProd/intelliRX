@@ -39,11 +39,24 @@
       </ng-container>
     </div>
 
-    <!-- User section -->
-    <div class="nav-avatar-wrap" (click)="toggleUserMenu()" role="button" tabindex="0"
-      [attr.aria-expanded]="(uiState$ | async)?.isUserMenuOpen"
-      aria-label="User menu" aria-haspopup="true"
-      (keydown.enter)="toggleUserMenu()" (keydown.space)="toggleUserMenu()">
+    <!-- Right side: clinic name + user avatar -->
+    <div class="navbar-right-group">
+
+      <!-- Clinic context pill — shown for doctor/receptionist when a clinic is active -->
+      <div class="navbar-clinic-pill" *ngIf="currentClinicName && !isOnAdminDashboard" aria-label="Current clinic">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+        <div class="navbar-clinic-pill__text">
+          <span class="navbar-clinic-pill__name">{{ currentClinicName }}</span>
+          <span class="navbar-clinic-pill__addr" *ngIf="currentClinicAddress">{{ currentClinicAddress }}</span>
+        </div>
+      </div>
+
+      <div class="nav-avatar-wrap" (click)="toggleUserMenu()" role="button" tabindex="0"
+        [attr.aria-expanded]="(uiState$ | async)?.isUserMenuOpen"
+        aria-label="User menu" aria-haspopup="true"
+        (keydown.enter)="toggleUserMenu()" (keydown.space)="toggleUserMenu()">
       <div class="user-avatar nav-avatar-btn" aria-hidden="true">
         {{ (currentUser$ | async)?.name?.charAt(0)?.toUpperCase() }}
       </div>
@@ -153,6 +166,7 @@
           Logout
         </button>
       </div>
-    </div>
-  </div>
+      </div><!-- /nav-avatar-wrap -->
+    </div><!-- /navbar-right-group -->
+  </div><!-- /container-fluid -->
 </nav>

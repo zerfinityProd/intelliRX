@@ -1028,6 +1028,15 @@
 .tag-clinic {
   background: rgba(20, 141, 158, 0.1);
   color: var(--ad-primary);
+  display: inline-flex; flex-direction: column; align-items: flex-start;
+}
+.tag-clinic-addr, .tag-addr {
+  font-size: 10px; font-weight: 400; opacity: 0.75;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+}
+.tag-addr {
+  background: rgba(20,141,158,0.07); color: var(--ad-primary);
+  padding: 2px 8px; border-radius: 20px;
 }
 .tag-role {
   background: rgba(167, 139, 250, 0.1);

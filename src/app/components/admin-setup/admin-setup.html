@@ -543,6 +543,7 @@
                 <span class="tag" *ngFor="let r of user.global_roles">{{ r }}</span>
                 <span class="tag tag-clinic" *ngFor="let a of user.assignments">
                   {{ a.clinicName }} ({{ a.role }})
+                  <span class="tag-clinic-addr" *ngIf="a.clinicAddress">{{ a.clinicAddress }}</span>
                 </span>
               </div>
             </div>
@@ -798,6 +799,7 @@
                 <div class="ru-assigns">
                   <div *ngFor="let a of user.assignments" class="ru-assign">
                     <span class="tag">{{ a.clinicName }}</span>
+                    <span class="tag tag-addr" *ngIf="a.clinicAddress">{{ a.clinicAddress }}</span>
                     <span class="tag tag-role">{{ a.role }}</span>
                     <span class="avail-summary" *ngIf="a.role === 'doctor'">
                       {{ getAvailabilitySummary(a.availability) }}

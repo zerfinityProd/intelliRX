@@ -229,6 +229,7 @@ export class SuperAdminDashboardComponent implements OnInit {
       plan_name: sub.plan?.name as 'basic' | 'premium' || 'basic',
       max_clinics: sub.plan?.limits?.max_clinics || 5,
       max_doctors: sub.plan?.limits?.max_doctors || 10,
+      max_receptionists: sub.plan?.limits?.max_receptionists || 10,
       max_appointments_per_day: sub.plan?.limits?.max_appointments_per_day || 50,
       status: sub.status,
     };
@@ -257,6 +258,7 @@ export class SuperAdminDashboardComponent implements OnInit {
           limits: {
             max_clinics: this.subForm.max_clinics,
             max_doctors: this.subForm.max_doctors,
+            max_receptionists: this.subForm.max_receptionists,
             max_appointments_per_day: this.subForm.max_appointments_per_day,
           },
         },
@@ -298,7 +300,7 @@ export class SuperAdminDashboardComponent implements OnInit {
     return {
       entity_name: '', owner_email: '', billing_email: '',
       plan_name: 'basic' as 'basic' | 'premium',
-      max_clinics: 5, max_doctors: 10, max_appointments_per_day: 50,
+      max_clinics: 5, max_doctors: 10, max_receptionists: 10, max_appointments_per_day: 50,
       status: 'active' as 'active' | 'inactive' | 'suspended',
     };
   }

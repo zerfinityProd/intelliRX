@@ -1,6 +1,7 @@
 export interface PlanLimits {
   max_clinics: number;
   max_doctors: number;
+  max_receptionists: number;
   max_appointments_per_day: number;
 }
 

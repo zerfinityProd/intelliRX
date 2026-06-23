@@ -405,8 +405,13 @@
 
 /* ── Role tags ───────────────────────────────────────────────────────── */
 .ad-role-tag {
-  display: inline-block; padding: 3px 9px; border-radius: 99px;
+  display: inline-flex; flex-direction: column; align-items: flex-start;
+  padding: 3px 9px; border-radius: 8px;
   font-size: 11px; font-weight: 600;
+}
+.ad-role-tag-addr {
+  font-size: 10px; font-weight: 400; opacity: 0.75;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
 }
 .ad-tag-doc {
   background: rgba(20,141,158,0.12); color: #148D9E;
@@ -839,17 +844,30 @@
 
 /* ── Day cells ───────────────────────────────────────────── */
 .ad-matrix-day-cell {
-  min-width: 108px; padding: 12px 6px;
-  text-align: center; vertical-align: top;
+  width: 110px; min-width: 110px; max-width: 110px;
+  padding: 10px 4px;
+  vertical-align: top;
   border-right: 1px solid var(--clr-border, #C8DDE3);
 }
 .ad-matrix-day-cell:last-of-type { border-right: none; }
 [data-theme="dark"] .ad-matrix-day-cell { border-right-color: rgba(255,255,255,0.05); }
 
-/* ── Per-chip wrapper inside a day cell ──────────────────── */
+/* Inner column container — guarantees FH/SH always stack vertically */
+.ad-day-cell-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Per-chip wrapper ───────────────────────────────────────────── */
 .ad-day-block-wrap {
-  display: inline-flex; flex-direction: column;
-  align-items: center; gap: 5px; margin: 3px 2px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 62px;  /* chip(32) + gap(4) + pill(22) — never shifts */
 }
 
 /* ── Block chips (FH / SH toggles) ──────────────────────── */
@@ -887,10 +905,36 @@
   box-shadow: 0 6px 18px rgba(20,141,158,0.55);
   transform: translateY(-2px) scale(1.05);
 }
+
 .ad-block-chip--conflict {
   background: rgba(193,59,59,0.08);
   border-color: rgba(193,59,59,0.3);
   color: #C13B3B; cursor: not-allowed; opacity: 0.65;
+}
+/* Overlap = warning (slot has time overlap with another clinic, but still selectable) */
+.ad-block-chip--overlap {
+  background: rgba(217,119,6,0.08);
+  border-color: rgba(217,119,6,0.35);
+  color: #B45309;
+  cursor: pointer;
+}
+.ad-block-chip--overlap:hover {
+  background: rgba(217,119,6,0.15);
+  border-color: rgba(217,119,6,0.55);
+  transform: translateY(-1px);
+}
+/* Overlap + active = selected despite overlap — same teal as normal active */
+.ad-block-chip--active-overlap {
+  background: linear-gradient(135deg, #148D9E 0%, #1CB5C9 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(20,141,158,0.45);
+  transform: translateY(-1px);
+}
+.ad-block-chip--active-overlap:hover {
+  background: linear-gradient(135deg, #0E6877 0%, #148D9E 100%);
+  box-shadow: 0 6px 18px rgba(20,141,158,0.55);
+  transform: translateY(-2px) scale(1.05);
 }
 .ad-block-chip--na {
   border-color: transparent; color: rgba(90,138,156,0.3);
@@ -900,18 +944,24 @@
 [data-theme="dark"] .ad-block-chip { border-color: rgba(255,255,255,0.1); color: #5a7a8a; }
 [data-theme="dark"] .ad-block-chip:hover:not(:disabled):not(.ad-block-chip--na) { border-color: #1CB5C9; color: #1CB5C9; background: rgba(28,181,201,0.1); }
 [data-theme="dark"] .ad-block-chip--active { background: linear-gradient(135deg, #148D9E, #1CB5C9); box-shadow: 0 4px 16px rgba(28,181,201,0.4); }
+[data-theme="dark"] .ad-block-chip--overlap { background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.4); color: #FCD34D; }
+[data-theme="dark"] .ad-block-chip--overlap:hover { background: rgba(245,158,11,0.18); border-color: rgba(245,158,11,0.6); }
+[data-theme="dark"] .ad-block-chip--active-overlap { background: linear-gradient(135deg, #148D9E, #1CB5C9); box-shadow: 0 4px 16px rgba(28,181,201,0.4); }
 [data-theme="dark"] .ad-block-chip--na { color: rgba(255,255,255,0.1); border-color: transparent; }
 
 /* ── Per-day time range pill (shown when chip active) ────── */
 .ad-day-time-range {
-  display: flex; align-items: center; gap: 3px;
-  background: linear-gradient(135deg, rgba(20,141,158,0.10), rgba(28,181,201,0.07));
-  border: 1px solid rgba(20,141,158,0.28);
-  border-radius: 10px; padding: 4px 7px;
-  animation: ad-fade-down 0.18s cubic-bezier(0.34,1.56,0.64,1);
-  box-shadow: 0 2px 8px rgba(20,141,158,0.12);
-  width: max-content;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(20,141,158,0.08);
+  border: 1px solid rgba(20,141,158,0.22);
+  border-radius: 6px;
+  padding: 3px 5px;
+  animation: ad-fade-down 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 /* Error state: red border + glow */
 .ad-day-time-range--error {
@@ -953,33 +1003,51 @@
   to   { opacity: 1; transform: translateY(0)  scale(1); }
 }
 
-/* Hide ugly browser clock icon */
-.ad-day-time-input::-webkit-calendar-picker-indicator,
-.ad-day-time-input::-webkit-inner-spin-button,
-.ad-day-time-input::-webkit-clear-button {
-  display: none; -webkit-appearance: none; appearance: none;
-}
-.ad-day-time-input {
-  border: none; background: transparent;
-  font-size: 10.5px; font-family: 'Courier New', monospace;
-  color: var(--clr-primary, #148D9E); font-weight: 700;
-  outline: none; width: 44px; text-align: center;
-  cursor: text; padding: 1px 2px; letter-spacing: 0.02em;
-  -webkit-appearance: none; -moz-appearance: textfield;
-}
-.ad-day-time-input:focus {
-  background: rgba(20,141,158,0.12); border-radius: 5px;
-}
-.ad-day-time-sep {
-  font-size: 10px; color: rgba(20,141,158,0.6); font-weight: 900; flex-shrink: 0; line-height: 1;
-}
 [data-theme="dark"] .ad-day-time-range {
-  background: linear-gradient(135deg, rgba(28,181,201,0.14), rgba(20,141,158,0.08));
-  border-color: rgba(28,181,201,0.3); box-shadow: 0 2px 10px rgba(28,181,201,0.15);
+  background: rgba(28,181,201,0.1);
+  border-color: rgba(28,181,201,0.25);
 }
 [data-theme="dark"] .ad-day-time-input { color: #1CB5C9; }
-[data-theme="dark"] .ad-day-time-input:focus { background: rgba(28,181,201,0.14); }
-[data-theme="dark"] .ad-day-time-sep { color: rgba(28,181,201,0.5); }
+[data-theme="dark"] .ad-day-time-input:focus { background: rgba(28,181,201,0.14); border-radius: 3px; }
+[data-theme="dark"] .ad-day-time-sep { color: rgba(28,181,201,0.45); }
+[data-theme="dark"] .ad-dtr-ampm { color: #1CB5C9; }
+
+/* ── Hide ugly browser clock icon ──────────────────────────── */
+.ad-day-time-input::-webkit-calendar-picker-indicator,
+.ad-day-time-input::-webkit-inner-spin-button,
+.ad-day-time-input::-webkit-clear-button { display: none; -webkit-appearance: none; }
+
+.ad-day-time-input {
+  border: none; background: transparent;
+  font-size: 9.5px; font-family: 'Courier New', monospace;
+  color: var(--clr-primary, #148D9E); font-weight: 700;
+  outline: none; width: 34px; text-align: center;
+  cursor: text; padding: 0; letter-spacing: 0;
+  -webkit-appearance: none;
+}
+.ad-day-time-input:focus { background: rgba(20,141,158,0.1); border-radius: 3px; }
+
+.ad-day-time-sep {
+  font-size: 8px; color: rgba(20,141,158,0.5);
+  font-weight: 900; flex-shrink: 0; line-height: 1;
+}
+
+/* AM/PM superscript badge next to each time */
+.ad-dtr-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+}
+.ad-dtr-ampm {
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--clr-primary, #148D9E);
+  line-height: 1;
+  opacity: 0.75;
+  text-transform: lowercase;
+}
+[data-theme="dark"] .ad-dtr-ampm { color: #1CB5C9; }
 
 /* ── Receptionist day badge ──────────────────────────────── */
 .ad-matrix-rec-badge {

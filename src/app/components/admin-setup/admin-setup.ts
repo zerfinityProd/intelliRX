@@ -35,6 +35,7 @@ export interface UserClinicAssignment {
   clinicUserId?: string;
   clinicId: string;
   clinicName: string;
+  clinicAddress?: string;
   role: 'doctor' | 'receptionist';
   availability: ClinicUserAvailability;
 }
@@ -130,6 +131,7 @@ export class AdminSetupComponent implements OnInit {
     plan_name: 'basic' as 'basic' | 'premium',
     max_clinics: 5,
     max_doctors: 10,
+    max_receptionists: 10,
     max_appointments_per_day: 50,
     status: 'active' as 'active' | 'inactive' | 'suspended',
   };
@@ -356,6 +358,7 @@ export class AdminSetupComponent implements OnInit {
       plan_name: 'basic',
       max_clinics: 5,
       max_doctors: 10,
+      max_receptionists: 10,
       max_appointments_per_day: 50,
       status: 'active',
     };
@@ -379,6 +382,7 @@ export class AdminSetupComponent implements OnInit {
           limits: {
             max_clinics: this.newSub.max_clinics,
             max_doctors: this.newSub.max_doctors,
+            max_receptionists: this.newSub.max_receptionists,
             max_appointments_per_day: this.newSub.max_appointments_per_day,
           },
         },
@@ -715,6 +719,7 @@ export class AdminSetupComponent implements OnInit {
               clinicUserId: cu.id,
               clinicId: cu.clinic_id,
               clinicName: clinic?.name || cu.clinic_id,
+              clinicAddress: clinic?.address || '',
               role: userRole,
               availability: (cu as any).availability || {},
             };
@@ -751,6 +756,7 @@ export class AdminSetupComponent implements OnInit {
       this.userForm.assignments = [{
         clinicId: this.clinics[0].id,
         clinicName: this.clinics[0].name,
+        clinicAddress: this.clinics[0].address || '',
         role: 'receptionist',
         availability: {},
       }];
@@ -795,6 +801,7 @@ export class AdminSetupComponent implements OnInit {
     this.userForm.assignments.push({
       clinicId: firstClinic.id,
       clinicName: firstClinic.name,
+      clinicAddress: firstClinic.address || '',
       role: 'receptionist',
       availability: {},
     });
@@ -810,6 +817,7 @@ export class AdminSetupComponent implements OnInit {
     const clinic = this.clinics.find(c => c.id === clinicId);
     assignment.clinicId = clinicId;
     assignment.clinicName = clinic?.name || clinicId;
+    assignment.clinicAddress = clinic?.address || '';
     assignment.availability = {};
     this.checkConflictsSync();
     this.cdr.detectChanges();
@@ -1022,6 +1030,7 @@ export class AdminSetupComponent implements OnInit {
         clinicUserId: a.clinicUserId,
         clinicId: a.clinicId,
         clinicName: this.clinics.find(c => c.id === a.clinicId)?.name || a.clinicId,
+        clinicAddress: this.clinics.find(c => c.id === a.clinicId)?.address || '',
         role: a.role,
         availability: this.deepCopyAvail(a.availability),
       }));

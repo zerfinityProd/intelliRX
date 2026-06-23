@@ -39,6 +39,7 @@
           <div class="ad-sub-limits">
             <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.clinics }}/{{ subscription.plan.limits.max_clinics }}</span>Clinics</div>
             <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.doctors }}/{{ subscription.plan.limits.max_doctors }}</span>Doctors</div>
+            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.receptionists }}/{{ subscription.plan.limits.max_receptionists }}</span>Receptionists</div>
           </div>
         </div>
 
@@ -79,33 +80,6 @@
             </div>
           </div>
 
-          <!-- Quick stats row -->
-          <div class="row g-3 mt-3">
-            <div class="col-6 col-md-3">
-              <div class="ad-mini-stat">
-                <div class="ad-mini-val">{{ stats.clinics }}</div>
-                <div class="ad-mini-lbl">Clinics</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="ad-mini-stat">
-                <div class="ad-mini-val">{{ stats.doctors }}</div>
-                <div class="ad-mini-lbl">Doctors</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="ad-mini-stat">
-                <div class="ad-mini-val">{{ stats.receptionists }}</div>
-                <div class="ad-mini-lbl">Receptionists</div>
-              </div>
-            </div>
-            <div class="col-6 col-md-3">
-              <div class="ad-mini-stat">
-                <div class="ad-mini-val">{{ stats.totalUsers }}</div>
-                <div class="ad-mini-lbl">Total Staff</div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- ══ CLINICS SECTION ════════════════════════════════════ -->
@@ -176,9 +150,9 @@
                       <input class="ad-input" type="text" [(ngModel)]="t.label" placeholder="FH / SH" maxlength="10" />
                     </div>
                     <div class="ad-time-display">
-                      <span class="ad-time-badge">{{ t.start }}</span>
+                      <span class="ad-time-badge">{{ to12h(t.start) }}</span>
                       <span class="ad-time-sep">→</span>
-                      <span class="ad-time-badge">{{ t.end }}</span>
+                      <span class="ad-time-badge">{{ to12h(t.end) }}</span>
                     </div>
                     <button class="ad-btn-danger-sm" (click)="removeTimingBlock(i)" [disabled]="clinicForm.timings.length <= 1">🗑</button>
                   </div>
@@ -366,53 +340,60 @@
                         <td class="ad-matrix-day-cell"
                           *ngFor="let day of getUnionWeekdays()">
                           <ng-container *ngIf="a.role === 'doctor'">
-                            <ng-container *ngFor="let t of getTimingsForAssignment(a)">
-                              <ng-container *ngIf="getClinicForAssignment(a.clinicId) as clinic">
-                                <ng-container *ngIf="clinic.weekdays.includes(day); else noDay">
-                                  <div class="ad-day-block-wrap">
-                                    <button class="ad-block-chip"
-                                      [class.ad-block-chip--active]="isBlockSelected(a, day, t.label)"
-                                      [class.ad-block-chip--conflict]="isBlockBookedElsewhere(a, day, t.label)"
-                                      [disabled]="isBlockBookedElsewhere(a, day, t.label)"
-                                      [title]="getBlockConflictTooltip(a, day, t.label) || (isBlockSelected(a, day, t.label) ? 'Available' : 'Not available')"
-                                      (click)="toggleAvailability(a, day, t.label)"
-                                      type="button"
-                                      [id]="'chip-' + ai + '-' + day + '-' + t.label">
-                                      {{ t.label }}
-                                    </button>
-                                    <!-- Per-day time range — shown when chip is active -->
-                                    <div class="ad-day-time-range"
-                                         *ngIf="isBlockSelected(a, day, t.label)"
-                                         [class.ad-day-time-range--error]="getTimeRangeError(a, day, t.label)">
-                                      <input class="ad-day-time-input" type="time"
-                                        [ngModel]="getEffectiveDayTiming(a, day, t.label).start"
-                                        (ngModelChange)="setDayBlockOverride(a, day, t.label, 'start', $event)"
-                                        [min]="t.start"
-                                        [max]="getEffectiveDayTiming(a, day, t.label).end || t.end"
-                                        [title]="'Start time within ' + t.label + ' (' + t.start + ' – ' + t.end + ')'"
-                                        [id]="'dtr-start-' + ai + '-' + day + '-' + t.label" />
-                                      <span class="ad-day-time-sep">–</span>
-                                      <input class="ad-day-time-input" type="time"
-                                        [ngModel]="getEffectiveDayTiming(a, day, t.label).end"
-                                        (ngModelChange)="setDayBlockOverride(a, day, t.label, 'end', $event)"
-                                        [min]="getEffectiveDayTiming(a, day, t.label).start || t.start"
-                                        [max]="t.end"
-                                        [title]="'End time within ' + t.label + ' (' + t.start + ' – ' + t.end + ')'"
-                                        [id]="'dtr-end-' + ai + '-' + day + '-' + t.label" />
+                            <div class="ad-day-cell-inner">
+                              <ng-container *ngFor="let t of getTimingsForAssignment(a)">
+                                <ng-container *ngIf="getClinicForAssignment(a.clinicId) as clinic">
+                                  <ng-container *ngIf="clinic.weekdays.includes(day); else noDay">
+                                    <div class="ad-day-block-wrap">
+                                      <button class="ad-block-chip"
+                                        [class.ad-block-chip--active]="isBlockSelected(a, day, t.label)"
+                                        [title]="getBlockConflictTooltip(a, day, t.label) || (isBlockSelected(a, day, t.label) ? 'Click to deselect' : 'Click to assign')"
+                                        (click)="toggleAvailability(a, day, t.label)"
+                                        type="button"
+                                        [id]="'chip-' + ai + '-' + day + '-' + t.label">
+                                        {{ t.label }}
+                                      </button>
+                                      <div class="ad-day-time-range"
+                                           *ngIf="isBlockSelected(a, day, t.label)"
+                                           [class.ad-day-time-range--error]="getTimeRangeError(a, day, t.label)">
+                                        <div class="ad-dtr-field">
+                                          <input class="ad-day-time-input" type="time"
+                                            [ngModel]="getEffectiveDayTiming(a, day, t.label).start"
+                                            (ngModelChange)="setDayBlockOverride(a, day, t.label, 'start', $event)"
+                                            [min]="t.start"
+                                            [max]="getEffectiveDayTiming(a, day, t.label).end || t.end"
+                                            [title]="'Start time within ' + t.label + ' (' + t.start + ' – ' + t.end + ')'"
+                                            [id]="'dtr-start-' + ai + '-' + day + '-' + t.label" />
+                                          <span class="ad-dtr-ampm">{{ to12h(getEffectiveDayTiming(a, day, t.label).start).slice(-2) }}</span>
+                                        </div>
+                                        <span class="ad-day-time-sep">–</span>
+                                        <div class="ad-dtr-field">
+                                          <input class="ad-day-time-input" type="time"
+                                            [ngModel]="getEffectiveDayTiming(a, day, t.label).end"
+                                            (ngModelChange)="setDayBlockOverride(a, day, t.label, 'end', $event)"
+                                            [min]="getEffectiveDayTiming(a, day, t.label).start || t.start"
+                                            [max]="t.end"
+                                            [title]="'End time within ' + t.label + ' (' + t.start + ' – ' + t.end + ')'"
+                                            [id]="'dtr-end-' + ai + '-' + day + '-' + t.label" />
+                                          <span class="ad-dtr-ampm">{{ to12h(getEffectiveDayTiming(a, day, t.label).end).slice(-2) }}</span>
+                                        </div>
+                                      </div>
+                                      <!-- Inline error -->
+                                      <div class="ad-time-range-err"
+                                           *ngIf="getTimeRangeError(a, day, t.label)"
+                                           [id]="'terr-' + ai + '-' + day + '-' + t.label">
+                                        ⚠ {{ getTimeRangeError(a, day, t.label) }}
+                                      </div>
                                     </div>
-                                    <!-- Inline error shown when time is outside block range -->
-                                    <div class="ad-time-range-err"
-                                         *ngIf="getTimeRangeError(a, day, t.label)"
-                                         [id]="'terr-' + ai + '-' + day + '-' + t.label">
-                                      ⚠ {{ getTimeRangeError(a, day, t.label) }}
+                                  </ng-container>
+                                  <ng-template #noDay>
+                                    <div class="ad-day-block-wrap">
+                                      <span class="ad-block-chip ad-block-chip--na" title="Clinic closed on this day">—</span>
                                     </div>
-                                  </div>
+                                  </ng-template>
                                 </ng-container>
-                                <ng-template #noDay>
-                                  <span class="ad-block-chip ad-block-chip--na" title="Clinic closed on this day">—</span>
-                                </ng-template>
                               </ng-container>
-                            </ng-container>
+                            </div>
                           </ng-container>
                           <ng-container *ngIf="a.role === 'receptionist'">
                             <span class="ad-matrix-rec-badge">
@@ -485,6 +466,7 @@
                           <span class="ad-role-tag"
                             [class.ad-tag-doc]="a.role === 'doctor'" [class.ad-tag-rec]="a.role === 'receptionist'">
                             {{ a.role === 'doctor' ? '🩺' : '🗂' }} {{ a.clinicName }}
+                            <span class="ad-role-tag-addr" *ngIf="a.clinicAddress">{{ a.clinicAddress }}</span>
                           </span>
                         </ng-container>
                         <!-- Show extra global roles that aren't already represented by an assignment -->

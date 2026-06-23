@@ -188,6 +188,12 @@ input[type="date"] {
   color: #ffffff;
 }
 
+[data-theme="dark"] .navbar-clinic-pill,
+[data-theme="dark"] .navbar-clinic-pill__name,
+[data-theme="dark"] .navbar-clinic-pill__addr {
+  color: #ffffff !important;
+}
+
 /*  Buttons  */
 [data-theme="dark"] .btn-outline-secondary {
   --bs-btn-color: var(--dk-text1);

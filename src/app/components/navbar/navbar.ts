@@ -1,7 +1,7 @@
-import { Component, HostListener, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, HostListener, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { AuthenticationService, User } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { ThemeService } from '../../services/themeService';
@@ -16,7 +16,7 @@ import { FirestoreApiService } from '../../services/firestore-api.service';
   templateUrl: './navbar.html',
   styleUrl: './navbar.css'
 })
-export class NavbarComponent implements OnInit {
+export class NavbarComponent implements OnInit, OnDestroy {
   @Input() showBack: boolean = false;
   @Input() pageTitle: string = '';
   @Output() backClick = new EventEmitter<void>();
@@ -26,6 +26,9 @@ export class NavbarComponent implements OnInit {
   isAdmin = false;
   isDoctor = false;
   showSwitchClinic = false;
+  currentClinicName = '';
+  currentClinicAddress = '';
+  private contextSub?: Subscription;
 
   constructor(
     private authService: AuthenticationService,
@@ -60,6 +63,27 @@ export class NavbarComponent implements OnInit {
       const uniqueClinics = new Set(assignments.map(a => a.clinicId));
       this.showSwitchClinic = uniqueSubs.size > 1 || uniqueClinics.size > 1;
     }
+
+    // Load clinic name and react to context changes (e.g. after Switch Clinic)
+    this.contextSub = this.clinicContextService.context$.subscribe(async ctx => {
+      if (ctx.clinicId) {
+        try {
+          const doc = await this.firestoreApi.getDocument('clinics', ctx.clinicId);
+          this.currentClinicName = doc?.data?.['name'] || '';
+          this.currentClinicAddress = doc?.data?.['address'] || '';
+        } catch {
+          this.currentClinicName = '';
+          this.currentClinicAddress = '';
+        }
+      } else {
+        this.currentClinicName = '';
+        this.currentClinicAddress = '';
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.contextSub?.unsubscribe();
   }
 
   toggleTheme(): void {
@@ -183,7 +207,9 @@ export class NavbarComponent implements OnInit {
       for (const id of clinicsInSub) {
         try {
           const doc = await this.firestoreApi.getDocument('clinics', id);
-          clinicOptions[id] = doc?.data?.['name'] || id;
+          const name = doc?.data?.['name'] || id;
+          const addr = doc?.data?.['address'];
+          clinicOptions[id] = addr ? `${name} — ${addr}` : name;
         } catch {
           clinicOptions[id] = id;
         }

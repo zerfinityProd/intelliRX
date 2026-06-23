@@ -31,7 +31,7 @@ export interface AdminClinicState {
 }
 
 export interface UserClinicAssignment {
-  clinicUserId?: string; clinicId: string; clinicName: string;
+  clinicUserId?: string; clinicId: string; clinicName: string; clinicAddress?: string;
   role: 'doctor' | 'receptionist'; availability: ClinicUserAvailability;
   /** Per-block time overrides (applies to all days): key = block label, value = { start, end } */
   timingOverrides?: Record<string, { start: string; end: string }>;
@@ -270,12 +270,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   // Known plan defaults — used when plan.limits is not embedded in the
   // subscription doc AND the plans collection can't be read (security rules).
-  private readonly PLAN_DEFAULTS: Record<string, { max_clinics: number; max_doctors: number }> = {
-    starter: { max_clinics: 3, max_doctors: 3 },
-    basic:   { max_clinics: 5, max_doctors: 5 },
-    demo:    { max_clinics: 2, max_doctors: 2 },
-    pro:     { max_clinics: 5, max_doctors: 5 },
-    premium: { max_clinics: 10, max_doctors: 20 },
+  private readonly PLAN_DEFAULTS: Record<string, { max_clinics: number; max_doctors: number; max_receptionists: number }> = {
+    starter: { max_clinics: 3, max_doctors: 3,  max_receptionists: 3  },
+    basic:   { max_clinics: 5, max_doctors: 5,  max_receptionists: 5  },
+    demo:    { max_clinics: 2, max_doctors: 2,  max_receptionists: 2  },
+    pro:     { max_clinics: 5, max_doctors: 5,  max_receptionists: 5  },
+    premium: { max_clinics: 10, max_doctors: 20, max_receptionists: 20 },
   };
 
   private async loadSubscription(): Promise<void> {
@@ -358,12 +358,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       if (typeof rawPlan === 'string') {
         this.subscription.plan = {
           name: rawPlan,
-          limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
+          limits: { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 }
         };
       } else if (!rawPlan) {
         this.subscription.plan = {
           name: 'basic',
-          limits: { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 }
+          limits: { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 }
         };
       }
 
@@ -384,10 +384,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
               // Handle potential field name variations/typos
               const maxClinics = planDoc.data['max_clinics'] ?? planDoc.data['max_clinincs'] ?? 0;
               const maxDoctors = planDoc.data['max_doctors'] ?? 0;
+              const maxReceptionists = planDoc.data['max_receptionists'] ?? planDoc.data['max_receptionist'] ?? 0;
               if (maxClinics || maxDoctors) {
                 this.subscription.plan.limits = {
                   max_clinics: maxClinics,
                   max_doctors: maxDoctors,
+                  max_receptionists: maxReceptionists,
                   max_appointments_per_day: 0,
                 };
               }
@@ -404,6 +406,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           this.subscription.plan.limits = {
             max_clinics: defaults.max_clinics,
             max_doctors: defaults.max_doctors,
+            max_receptionists: defaults.max_receptionists,
             max_appointments_per_day: 0,
           };
         }
@@ -411,7 +414,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
       // Ensure limits object always exists
       if (!this.subscription.plan?.limits) {
-        this.subscription.plan.limits = { max_clinics: 0, max_doctors: 0, max_appointments_per_day: 0 };
+        this.subscription.plan.limits = { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 };
       }
     } catch (e: any) {
       console.error('[AdminDashboard] loadSubscription error:', e);
@@ -469,6 +472,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           const role: 'doctor' | 'receptionist' = (cuRole === 'doctor' || cuRole === 'receptionist') ? cuRole : fallbackRole;
           return {
             clinicUserId: cu.id, clinicId: cu.clinic_id, clinicName: clinic?.name || cu.clinic_id,
+            clinicAddress: clinic?.address || '',
             role,
             availability: (cu as any).availability || {},
             timingOverrides: this.deepCopyTimingOverrides((cu as any).timingOverrides),
@@ -629,7 +633,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   getScheduleSummary(clinic: AdminClinicState): string {
     if (!clinic.weekdays.length) return 'No schedule set';
     return clinic.weekdays.map(d => this.weekdayLabels[d] || d).join(', ') +
-      ' · ' + clinic.timings.map(t => `${t.label} ${t.start}–${t.end}`).join(', ');
+      ' · ' + clinic.timings.map(t => `${t.label} ${this.to12h(t.start)}–${this.to12h(t.end)}`).join(', ');
   }
 
   // ── Time slider helpers ────────────────────────────────────────────────────
@@ -644,6 +648,17 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
   timeToPercent(time: string): number { return (this.timeToMinutes(time) / 1440) * 100; }
+
+  /** Convert 24h "HH:MM" string to 12h "H:MM AM/PM" format. */
+  to12h(time: string): string {
+    if (!time) return '';
+    const [hStr, mStr] = time.split(':');
+    let h = parseInt(hStr, 10);
+    const m = mStr || '00';
+    const ampm = h < 12 ? 'AM' : 'PM';
+    h = h % 12 || 12;
+    return `${h}:${m} ${ampm}`;
+  }
 
   onStartSliderChange(t: TimingBlock, event: Event): void {
     const val = parseInt((event.target as HTMLInputElement).value, 10);
@@ -758,7 +773,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     const hasRec  = existingForClinic.some(a => a.role === 'receptionist');
     const role: 'doctor' | 'receptionist' = hasRec ? 'doctor' : 'receptionist';
     this.userForm.assignments.push({
-      clinicId: c.id, clinicName: c.name,
+      clinicId: c.id, clinicName: c.name, clinicAddress: c.address || '',
       role, availability: {},
       timingOverrides: {}, dayBlockOverrides: {}
     });
@@ -774,6 +789,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     const clinic = this.clinics.find(c => c.id === clinicId);
     a.clinicId = clinicId;
     a.clinicName = clinic?.name || clinicId;
+    a.clinicAddress = clinic?.address || '';
     a.availability = {}; a.timingOverrides = {}; a.dayBlockOverrides = {};
 
     // Auto-correct role if the current role is already taken in another row for this clinic
@@ -1017,7 +1033,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         const otherStart = this.timeToMinutes(otherTiming.start);
         const otherEnd = this.timeToMinutes(otherTiming.end);
         if (curStart < otherEnd && otherStart < curEnd) {
-          return `Already assigned to "${otherClinic.name}" (${otherBlock} ${otherTiming.start}–${otherTiming.end})`;
+          return `⚠ Time overlaps with "${otherClinic.name}" (${otherBlock}: ${this.to12h(otherTiming.start)}–${this.to12h(otherTiming.end)}). You can still select it.`;
         }
       }
     }
@@ -1259,6 +1275,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         return {
           clinicUserId: cu.id, clinicId: cu.clinic_id,
           clinicName: clinic?.name || cu.clinic_id,
+          clinicAddress: clinic?.address || '',
           role,
           availability: this.deepCopyAvail((cu as any).availability || {}),
           timingOverrides: this.deepCopyTimingOverrides((cu as any).timingOverrides),
