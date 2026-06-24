@@ -236,7 +236,8 @@ export class LoginComponent implements OnInit {
             try {
                 const doc = await this.firestoreApi.getDocument('clinics', id);
                 const name = doc?.data?.['name'] || id;
-                options[id] = name;
+                const address = doc?.data?.['address'];
+                options[id] = address ? `${name} — ${address}` : name;
             } catch {
                 options[id] = id;
             }

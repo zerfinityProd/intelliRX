@@ -5,7 +5,7 @@ import { AuthorizationService } from './authorizationService';
 import { ClinicContextService } from './clinicContextService';
 import { LeaveService } from './leave';
 import { Leave } from '../models/leave.model';
-import { DEFAULT_SYSTEM_SETTINGS } from '../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../config/userSettings';
 import {
     generateTimeSlotsFromConfig,
     generateTimeSlotsFromClinicTimings,

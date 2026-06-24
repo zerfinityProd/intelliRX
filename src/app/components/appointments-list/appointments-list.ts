@@ -13,7 +13,7 @@ import { PatientService } from '../../services/patient';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { Patient } from '../../models/patient.model';
-import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { AppointmentCleanupService } from '../../services/appointmentCleanupService';
 import { todayLocalISO } from '../../utilities/local-date';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';

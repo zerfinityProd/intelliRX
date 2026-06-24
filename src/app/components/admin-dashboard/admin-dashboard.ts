@@ -8,8 +8,10 @@ import { filter, firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AdminService } from '../../services/adminService';
 import { FirestoreApiService } from '../../services/firestore-api.service';
+import { ConfigService } from '../../services/configService';
 import { Subscription } from '../../models/subscription.model';
 import { ClinicUserAvailability } from '../../models/clinic-user.model';
+import { MultiClinicConfig, DEFAULT_MULTI_CLINIC_CONFIG } from '../../config/userSettings';
 import { NavbarComponent } from '../navbar/navbar';
 
 // ── Local interfaces ──────────────────────────────────────────────────────────
@@ -49,7 +51,7 @@ export interface AdminUserState {
   assignments: UserClinicAssignment[];
 }
 
-type ActiveSection = 'clinics' | 'users' | null;
+type ActiveSection = 'clinics' | 'users' | 'config' | null;
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -62,6 +64,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthenticationService);
   private adminService = inject(AdminService);
   private api = inject(FirestoreApiService);
+  private configService = inject(ConfigService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private location = inject(Location);
@@ -81,6 +84,16 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   // ── Stats ─────────────────────────────────────────────────────────────────
   stats = { clinics: 0, doctors: 0, receptionists: 0, totalUsers: 0 };
+
+  // ── Configuration (multi-clinic settings + slot interval) ──────────────────
+  configSettings: MultiClinicConfig = { ...DEFAULT_MULTI_CLINIC_CONFIG };
+  /** Subscription-wide default slot duration in minutes */
+  slotMinutes = 30;
+  /** Per-clinic overrides: clinicId → minutes (null = use subscription default) */
+  clinicSlotMinutes = new Map<string, number | null>();
+  readonly slotPresets = [5, 10, 15, 20, 30, 45, 60];
+  configLoading = false;
+  configSaving = false;
 
   // ── Clinics ───────────────────────────────────────────────────────────────
   clinics: AdminClinicState[] = [];
@@ -185,7 +198,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       await this.loadSubscription();
       console.log('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
       if (this.subscription) {
-        await Promise.all([this.loadClinics(), this.loadUsers()]);
+        await Promise.all([this.loadClinics(), this.loadUsers(), this.loadConfig()]);
         console.log('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
       } else {
         console.warn('[AdminDashboard] No subscription found — dashboard will show "No Subscription" state');
@@ -501,6 +514,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     // Persist section in URL so page refresh restores this view
     const url = this.location.path().split('?')[0];
     this.location.replaceState(url, s ? `section=${s}` : '');
+    // Load config settings when navigating to the config panel
+    if (s === 'config') { this.loadConfig(); }
     this.cdr.detectChanges();
   }
 
@@ -512,6 +527,167 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     const url = this.location.path().split('?')[0];
     this.location.replaceState(url);
     this.cdr.detectChanges();
+  }
+
+  // ── Config helpers ────────────────────────────────────────────────────────
+
+  async loadConfig(): Promise<void> {
+    if (!this.subscription) return;
+    this.configLoading = true;
+    this.cdr.detectChanges();
+    try {
+      const cfg = await this.configService.getSubscriptionConfig(this.subscription.id);
+      // Multi-clinic flags
+      if (cfg?.multiClinic) {
+        this.configSettings = {
+          share_patients_across_clinics: cfg.multiClinic.share_patients_across_clinics ?? DEFAULT_MULTI_CLINIC_CONFIG.share_patients_across_clinics,
+          allow_doctor_time_clash: cfg.multiClinic.allow_doctor_time_clash ?? DEFAULT_MULTI_CLINIC_CONFIG.allow_doctor_time_clash,
+        };
+      } else {
+        this.configSettings = { ...DEFAULT_MULTI_CLINIC_CONFIG };
+      }
+      // Subscription-wide default slot interval
+      this.slotMinutes = cfg?.timeSlots?.slotMinutes ?? 30;
+
+      // Per-clinic slot overrides
+      this.clinicSlotMinutes.clear();
+      await Promise.all(this.clinics.map(async clinic => {
+        try {
+          const clinicCfg = await this.configService.getClinicConfig(clinic.id);
+          const override = clinicCfg?.timeSlots?.slotMinutes ?? null;
+          this.clinicSlotMinutes.set(clinic.id, override);
+        } catch {
+          this.clinicSlotMinutes.set(clinic.id, null);
+        }
+      }));
+    } catch (e) {
+      console.error('[AdminDashboard] loadConfig error:', e);
+      this.configSettings = { ...DEFAULT_MULTI_CLINIC_CONFIG };
+      this.slotMinutes = 30;
+    } finally {
+      this.configLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async saveConfig(): Promise<void> {
+    if (!this.subscription) return;
+    // Validate default slot minutes
+    const mins = Number(this.slotMinutes);
+    if (!mins || mins < 5 || mins > 120) {
+      this.showToast('Default slot interval must be between 5 and 120 minutes', 'error');
+      return;
+    }
+    this.configSaving = true;
+    this.cdr.detectChanges();
+    try {
+      // Save subscription-level config
+      const existing = await this.configService.getSubscriptionConfig(this.subscription.id);
+      await this.configService.setSubscriptionConfig(this.subscription.id, {
+        ...existing,
+        multiClinic: { ...this.configSettings },
+        timeSlots: { ...(existing?.timeSlots ?? {}), slotMinutes: mins },
+      });
+
+      // Save per-clinic slot overrides in parallel
+      await Promise.all(this.clinics.map(async clinic => {
+        const override = this.clinicSlotMinutes.get(clinic.id) ?? null;
+        try {
+          const existingCfg = await this.configService.getClinicConfig(clinic.id) ?? {};
+          if (override !== null) {
+            await this.configService.setClinicConfig(clinic.id, {
+              ...existingCfg,
+              timeSlots: { ...(existingCfg.timeSlots ?? {}), slotMinutes: override },
+            });
+          } else {
+            // Remove clinic-level override — keep existing config but clear slotMinutes
+            const { timeSlots, ...rest } = existingCfg as any;
+            await this.configService.setClinicConfig(clinic.id, { ...rest });
+          }
+        } catch (e) {
+          console.warn(`[AdminDashboard] Could not save slot for clinic ${clinic.id}:`, e);
+        }
+      }));
+
+      this.showToast('Configuration saved successfully', 'success');
+    } catch (e) {
+      console.error('[AdminDashboard] saveConfig error:', e);
+      this.showToast('Failed to save configuration', 'error');
+    } finally {
+      this.configSaving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  /** Returns the clinic-specific slot override, or null if using the subscription default. */
+  getClinicSlot(clinicId: string): number | null {
+    return this.clinicSlotMinutes.get(clinicId) ?? null;
+  }
+
+  /** Sets (or clears) the slot override for a specific clinic. */
+  setClinicSlot(clinicId: string, minutes: number | null): void {
+    if (minutes !== null) {
+      const clamped = Math.min(120, Math.max(5, minutes));
+      this.clinicSlotMinutes.set(clinicId, clamped);
+    } else {
+      this.clinicSlotMinutes.set(clinicId, null);
+    }
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Handles the Doctor Availability & Time Clash toggle.
+   * - Turning OFF  → saves immediately with no prompt.
+   * - Turning ON   → shows a confirmation warning first, then saves.
+   */
+  async onTimeClashToggle(event: Event): Promise<void> {
+    event.preventDefault(); // prevent checkbox default — we drive state manually
+    if (!this.subscription) return;
+
+    const turningOn = !this.configSettings.allow_doctor_time_clash;
+
+    if (turningOn) {
+      // Warn the user before enabling overlapping slots
+      const { default: Swal } = await import('sweetalert2');
+      const result = await Swal.fire({
+        title: 'Allow Time-Clash?',
+        html: `Enabling this will allow a doctor's availability slots to <strong>overlap across different clinics</strong>.<br><br>
+               Existing conflicts will no longer be flagged. Are you sure?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, allow it',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#148D9E',
+        cancelButtonColor: '#6c757d',
+      });
+      if (!result.isConfirmed) return; // user cancelled — leave toggle as-is
+    }
+
+    // Apply the new value
+    this.configSettings = { ...this.configSettings, allow_doctor_time_clash: turningOn };
+    this.cdr.detectChanges();
+
+    // Auto-save silently
+    if (!this.subscription) return;
+    try {
+      const existing = await this.configService.getSubscriptionConfig(this.subscription.id);
+      await this.configService.setSubscriptionConfig(this.subscription.id, {
+        ...existing,
+        multiClinic: { ...this.configSettings },
+        timeSlots: existing?.timeSlots ?? {},
+      });
+      this.showToast(
+        turningOn ? 'Time-clash allowed across clinics' : 'Time-clash restriction enabled',
+        'success'
+      );
+    } catch (e) {
+      console.error('[AdminDashboard] onTimeClashToggle save error:', e);
+      // Revert the toggle on error so UI stays consistent
+      this.configSettings = { ...this.configSettings, allow_doctor_time_clash: !turningOn };
+      this.showToast('Failed to save — please try again', 'error');
+    } finally {
+      this.cdr.detectChanges();
+    }
   }
 
   /** True when the staff member has doctor or admin in their global_roles */
@@ -807,10 +983,17 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   onAssignmentRoleChange(a: UserClinicAssignment): void {
     // Guard: if the newly selected role is already taken by another row for this clinic, revert
     if (this.isRoleDisabledForAssignment(a, a.role)) {
-      // Flip to the other role
       a.role = a.role === 'doctor' ? 'receptionist' : 'doctor';
       this.showToast(`That role is already assigned for this clinic. Switched to ${a.role}.`, 'error');
     }
+    if (a.role !== 'doctor') { a.availability = {}; a.timingOverrides = {}; a.dayBlockOverrides = {}; }
+    this.cdr.detectChanges();
+  }
+
+  /** Instantly selects a role for a clinic assignment — called directly from button (click). */
+  selectRole(a: UserClinicAssignment, role: 'doctor' | 'receptionist'): void {
+    if (this.isRoleDisabledForAssignment(a, role)) return; // already taken
+    a.role = role;
     if (a.role !== 'doctor') { a.availability = {}; a.timingOverrides = {}; a.dayBlockOverrides = {}; }
     this.cdr.detectChanges();
   }
@@ -1079,7 +1262,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }
 
     // Intra-form conflict check (time-range overlap between clinics)
+    // Only blocks saving when allow_doctor_time_clash is OFF.
+    // When ON the user is warned but can proceed.
     const doctorAssignments = this.userForm.assignments.filter(a => a.role === 'doctor');
+    const clashMessages: string[] = [];
     for (let i = 0; i < doctorAssignments.length; i++) {
       for (let j = i + 1; j < doctorAssignments.length; j++) {
         const a1 = doctorAssignments[i];
@@ -1105,15 +1291,40 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
               const e2 = this.timeToMinutes(t2.end);
               if (s1 < e2 && s2 < e1) {
                 const dayLabel = this.weekdayLabels[day] || day;
-                this.showToast(
-                  `${dayLabel}: "${c1.name}" (${b1} ${t1.start}–${t1.end}) and "${c2.name}" (${b2} ${t2.start}–${t2.end}) overlap — a doctor cannot be at two clinics simultaneously.`,
-                  'error'
+                clashMessages.push(
+                  `${dayLabel}: "${c1.name}" (${b1} ${t1.start}–${t1.end}) and "${c2.name}" (${b2} ${t2.start}–${t2.end}) overlap`
                 );
-                return;
               }
             }
           }
         }
+      }
+    }
+
+    if (clashMessages.length > 0) {
+      if (!this.configSettings.allow_doctor_time_clash) {
+        // Config is OFF — clash is not allowed → block save with error
+        this.showToast(
+          `${clashMessages[0]} — a doctor cannot be at two clinics simultaneously.`,
+          'error'
+        );
+        return;
+      } else {
+        // Config is ON — clash is allowed but warn the user and ask to confirm
+        const { default: Swal } = await import('sweetalert2');
+        const clashList = clashMessages.map(m => `<li>${m}</li>`).join('');
+        const result = await Swal.fire({
+          title: 'Time Overlap Detected',
+          html: `The following slots overlap across clinics:<br><ul style="text-align:left;margin-top:8px">${clashList}</ul><br>
+                 Since <strong>Allow time-clash</strong> is ON, you can still save. Proceed?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonText: 'Yes, save anyway',
+          cancelButtonText: 'Cancel',
+          confirmButtonColor: '#148D9E',
+          cancelButtonColor: '#6c757d',
+        });
+        if (!result.isConfirmed) return; // user cancelled
       }
     }
 
@@ -1230,10 +1441,33 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       }
 
       if (crossConflicts.length > 0) {
-        this.showToast('Cannot save: ' + crossConflicts[0], 'error');
-        this.isSaving = false;
-        this.cdr.detectChanges();
-        return;
+        if (!this.configSettings.allow_doctor_time_clash) {
+          this.showToast('Cannot save: ' + crossConflicts[0], 'error');
+          this.isSaving = false;
+          this.cdr.detectChanges();
+          return;
+        } else {
+          // Config is ON — warn but allow proceeding
+          const { default: Swal } = await import('sweetalert2');
+          const conflictList = crossConflicts.map(m => `<li>${m}</li>`).join('');
+          const result = await Swal.fire({
+            title: 'Cross-Clinic Conflict Detected',
+            html: `The following cross-clinic overlaps were found:<br>
+                   <ul style="text-align:left;margin-top:8px">${conflictList}</ul><br>
+                   Since <strong>Allow time-clash</strong> is ON, you can still save. Proceed?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Yes, save anyway',
+            cancelButtonText: 'Cancel',
+            confirmButtonColor: '#148D9E',
+            cancelButtonColor: '#6c757d',
+          });
+          if (!result.isConfirmed) {
+            this.isSaving = false;
+            this.cdr.detectChanges();
+            return;
+          }
+        }
       }
       // Sync clinic assignments
       // Only delete clinic_user records that were originally in the form but

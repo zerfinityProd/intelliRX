@@ -209,7 +209,7 @@
   align-items: center;
   gap: 6px;
   padding: 2px 4px;
-  color: #1a2333;
+  color: #ffffff;
   pointer-events: none;
   max-width: 220px;
   text-align: right;
@@ -250,4 +250,16 @@
 
 [data-theme="dark"] .navbar-clinic-pill {
   color: #ffffff !important;
+}
+
+/* ── SweetAlert2 select input — white text in dark mode ── */
+[data-theme="dark"] .swal2-select {
+  color: #ffffff !important;
+  background-color: #1a2a3a !important;
+  border-color: #2e4a5f !important;
+}
+
+[data-theme="dark"] .swal2-select option {
+  color: #ffffff !important;
+  background-color: #1a2a3a !important;
 }

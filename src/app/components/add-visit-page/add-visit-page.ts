@@ -12,7 +12,7 @@ import { FullbodyWidgetComponent } from '../widgets/fullbody-widget/fullbody-wid
 import { MuscularWidgetComponent } from '../widgets/muscular-widget/muscular-widget';
 import { AuthorizationService } from '../../services/authorizationService';
 import Swal from 'sweetalert2';
-import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { NotificationService } from '../../services/notificationService';
 
 

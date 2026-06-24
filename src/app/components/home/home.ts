@@ -22,7 +22,7 @@ import { SearchPanelComponent } from '../search-panel/search-panel';
 import { WidgetsPanelComponent } from '../widgets-panel/widgets-panel';
 import { FabMenuComponent } from '../fab-menu/fab-menu';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
-import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { formatTime as sharedFormatTime, formatSlotLabel as sharedFormatSlotLabel } from '../../utilities/date-helpers';

@@ -5,9 +5,9 @@ export type {
   SubscriptionConfig,
   ClinicConfig,
   DoctorConfig,
-} from '../config/systemSettings';
+} from '../config/userSettings';
 
-export { resolveEffectiveSettings } from '../config/systemSettings';
+export { resolveEffectiveSettings } from '../config/userSettings';
 
 /**
  * Wrapper for a config document stored in Firestore.

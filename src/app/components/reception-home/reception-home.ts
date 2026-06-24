@@ -14,7 +14,7 @@ import { AuthorizationService, UserPermissions } from '../../services/authorizat
 import { Appointment } from '../../models/appointment.model';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
-import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { todayLocalISO } from '../../utilities/local-date';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';

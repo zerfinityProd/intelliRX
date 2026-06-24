@@ -9,7 +9,7 @@ import {
   DoctorConfig,
   resolveEffectiveSettings,
   DEFAULT_SYSTEM_SETTINGS
-} from '../config/systemSettings';
+} from '../config/userSettings';
 
 /** Cache entry with TTL tracking */
 interface CacheEntry<T> {
@@ -21,12 +21,12 @@ interface CacheEntry<T> {
  * Service for reading/writing per-subscription, per-clinic, and per-doctor
  * configuration overlays from Firestore.
  *
- * Firestore paths:
- *   subscriptions/{subscriptionId}/config/settings
- *   clinics/{clinicId}/config/settings
- *   users/{userId}/config/settings
+ * Firestore paths (all under the top-level 'configurations' collection):
+ *   configurations/subscriptions/{subscriptionId}   ← subscription-level flags & slot interval
+ *   configurations/clinics/{clinicId}               ← per-clinic slot override
+ *   configurations/users/{userId}                   ← per-doctor preferences
  *
- * Each config document is a partial overlay of SystemSettings.
+ * Each config document is a partial overlay of userSettings.
  * Use `getEffectiveSettings()` to resolve the final merged settings.
  */
 @Injectable({ providedIn: 'root' })
@@ -45,7 +45,7 @@ export class ConfigService {
 
   /**
    * Read the subscription-level config overlay.
-   * Firestore path: subscriptions/{subscriptionId}/config/settings
+   * Firestore path: configurations/subscriptions/{subscriptionId}
    */
   async getSubscriptionConfig(subscriptionId: string): Promise<SubscriptionConfig | null> {
     if (!subscriptionId) return null;
@@ -55,8 +55,8 @@ export class ConfigService {
 
     try {
       const result = await this.api.getDocument(
-        `subscriptions/${subscriptionId}/config`,
-        'settings'
+        `configurations/subscriptions`,
+        subscriptionId
       );
       if (!result) return null;
 
@@ -81,8 +81,8 @@ export class ConfigService {
 
     const payload = this.buildPayload(config);
     await this.api.setDocument(
-      `subscriptions/${subscriptionId}/config`,
-      'settings',
+      `configurations/subscriptions`,
+      subscriptionId,
       payload
     );
     this.subscriptionCache.delete(subscriptionId);
@@ -92,7 +92,7 @@ export class ConfigService {
 
   /**
    * Read the clinic-level config overlay.
-   * Firestore path: clinics/{clinicId}/config/settings
+   * Firestore path: configurations/clinics/{clinicId}
    */
   async getClinicConfig(clinicId: string): Promise<ClinicConfig | null> {
     if (!clinicId) return null;
@@ -102,8 +102,8 @@ export class ConfigService {
 
     try {
       const result = await this.api.getDocument(
-        `clinics/${clinicId}/config`,
-        'settings'
+        `configurations/clinics`,
+        clinicId
       );
       if (!result) return null;
 
@@ -128,8 +128,8 @@ export class ConfigService {
 
     const payload = this.buildPayload(config);
     await this.api.setDocument(
-      `clinics/${clinicId}/config`,
-      'settings',
+      `configurations/clinics`,
+      clinicId,
       payload
     );
     this.clinicCache.delete(clinicId);
@@ -139,7 +139,7 @@ export class ConfigService {
 
   /**
    * Read the doctor-level config overlay.
-   * Firestore path: users/{userId}/config/settings
+   * Firestore path: configurations/users/{userId}
    */
   async getDoctorConfig(userId: string): Promise<DoctorConfig | null> {
     if (!userId) return null;
@@ -149,8 +149,8 @@ export class ConfigService {
 
     try {
       const result = await this.api.getDocument(
-        `users/${userId}/config`,
-        'settings'
+        `configurations/users`,
+        userId
       );
       if (!result) return null;
 
@@ -175,8 +175,8 @@ export class ConfigService {
 
     const payload = this.buildPayload(config);
     await this.api.setDocument(
-      `users/${userId}/config`,
-      'settings',
+      `configurations/users`,
+      userId,
       payload
     );
     this.doctorCache.delete(userId);

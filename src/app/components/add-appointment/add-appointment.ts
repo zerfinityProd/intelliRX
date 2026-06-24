@@ -11,7 +11,7 @@ import { Patient } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 
 import { normalizeEmail } from '../../utilities/normalize-email';
-import { DEFAULT_SYSTEM_SETTINGS } from '../../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicService } from '../../services/clinicService';

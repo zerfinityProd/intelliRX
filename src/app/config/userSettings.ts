@@ -30,6 +30,27 @@ export interface AddAppointmentConfig {
   maxDate: string; // YYYY-MM-DD
 }
 
+/**
+ * Subscription-level multi-clinic behaviour controls.
+ * These are owned by the admin and scoped to one subscription.
+ */
+export interface MultiClinicConfig {
+  /**
+   * When true, patients registered in any clinic under this subscription
+   * are visible across all clinics in the same subscription.
+   * When false (default), each clinic only sees its own patients.
+   */
+  share_patients_across_clinics: boolean;
+
+  /**
+   * When true, a doctor's availability slots can overlap across different
+   * clinics (time-clash is allowed). The admin can still enable/disable
+   * individual clinics based on this logic.
+   * When false (default), overlapping availability is blocked/warned.
+   */
+  allow_doctor_time_clash: boolean;
+}
+
 export interface SystemSettings {
   timeSlots: TimeSlotsConfig;
   autoCancelAt: AutoCancelConfig;
@@ -73,7 +94,15 @@ export interface SubscriptionConfig {
   ui?: Partial<UiDateFilterConfig>;
   patient?: Partial<PatientConfig>;
   addAppointment?: Partial<AddAppointmentConfig>;
+  /** Multi-clinic behavioural flags (subscription-scoped) */
+  multiClinic?: Partial<MultiClinicConfig>;
 }
+
+/** Default multi-clinic settings (conservative / opt-in) */
+export const DEFAULT_MULTI_CLINIC_CONFIG: MultiClinicConfig = {
+  share_patients_across_clinics: false,
+  allow_doctor_time_clash: false,
+};
 
 /** Clinic-level config overlay (all fields optional) */
 export interface ClinicConfig {

@@ -4,7 +4,7 @@
  * Extracted from PatientValidationService for better performance
  */
 
-import { DEFAULT_SYSTEM_SETTINGS } from '../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../config/userSettings';
 
 const PHONE_MAX_DIGITS = DEFAULT_SYSTEM_SETTINGS.patient.phoneMaxDigits;
 

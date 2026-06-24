@@ -6758,6 +6758,18 @@ main {
     background: rgba(0, 0, 0, 0.45) !important;
 }
 
+/* ── SweetAlert2 select input — white text in dark mode ── */
+[data-theme="dark"] .swal2-select {
+    color: #ffffff !important;
+    background-color: #0f1c2e !important;
+    border-color: #2e4a5f !important;
+}
+
+[data-theme="dark"] .swal2-select option {
+    color: #ffffff !important;
+    background-color: #0f1c2e !important;
+}
+
 /* ── Admin-Setup / Admin-Dashboard: Dual-range time slider (global scope for pseudo-elements) ── */
 .range-input::-webkit-slider-thumb,
 .wiz-range-input::-webkit-slider-thumb {

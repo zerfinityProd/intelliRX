@@ -1,4 +1,4 @@
-import { TimeSlotsConfig, DEFAULT_SYSTEM_SETTINGS } from '../config/systemSettings';
+import { TimeSlotsConfig, DEFAULT_SYSTEM_SETTINGS } from '../config/userSettings';
 import { ClinicTiming } from '../models/clinic.model';
 
 /**

@@ -80,7 +80,7 @@ svg g[id].selected:hover {
 [data-theme="dark"] svg polyline,
 [data-theme="dark"] svg polygon,
 [data-theme="dark"] svg rect {
-  stroke: #3A6A7C;
+  stroke: #7EC8D8 !important;
 }
 
 :host-context([data-theme="dark"]) svg text,

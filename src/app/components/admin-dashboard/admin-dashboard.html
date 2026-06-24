@@ -78,6 +78,21 @@
                 <svg class="ad-tile-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>
+            <div class="col-12">
+              <button class="ad-tile ad-tile--config" (click)="setSection('config')" id="tile-config">
+                <div class="ad-tile-icon ad-tile-icon--config">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </div>
+                <div class="ad-tile-body">
+                  <div class="ad-tile-title">Configuration</div>
+                  <div class="ad-tile-desc">Multi-clinic patient sharing &amp; doctor availability rules</div>
+                </div>
+                <svg class="ad-tile-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
           </div>
 
         </div>
@@ -310,28 +325,26 @@
                           </select>
 
                           <div class="ad-matrix-role-row">
-                            <label class="ad-matrix-role-chip-label"
+                            <button type="button"
+                              class="ad-matrix-role-chip-label"
                               [class.ad-matrix-role-active-doc]="a.role === 'doctor'"
                               [class.ad-matrix-role-chip--taken]="isRoleDisabledForAssignment(a, 'doctor')"
-                              [title]="isRoleDisabledForAssignment(a, 'doctor') ? 'Doctor role already assigned for this clinic' : '🩺 Doctor'">
-                              <input type="radio" [name]="'role-' + ai" value="doctor"
-                                [(ngModel)]="a.role"
-                                [disabled]="isRoleDisabledForAssignment(a, 'doctor')"
-                                (ngModelChange)="onAssignmentRoleChange(a)" />
+                              [disabled]="isRoleDisabledForAssignment(a, 'doctor')"
+                              [title]="isRoleDisabledForAssignment(a, 'doctor') ? 'Doctor role already assigned for this clinic' : '🩺 Doctor'"
+                              (click)="selectRole(a, 'doctor')">
                               🩺 Doctor
                               <span *ngIf="isRoleDisabledForAssignment(a, 'doctor')" class="ad-role-taken-badge">taken</span>
-                            </label>
-                            <label class="ad-matrix-role-chip-label"
+                            </button>
+                            <button type="button"
+                              class="ad-matrix-role-chip-label"
                               [class.ad-matrix-role-active-rec]="a.role === 'receptionist'"
                               [class.ad-matrix-role-chip--taken]="isRoleDisabledForAssignment(a, 'receptionist')"
-                              [title]="isRoleDisabledForAssignment(a, 'receptionist') ? 'Receptionist role already assigned for this clinic' : '🗂 Receptionist'">
-                              <input type="radio" [name]="'role-' + ai" value="receptionist"
-                                [(ngModel)]="a.role"
-                                [disabled]="isRoleDisabledForAssignment(a, 'receptionist')"
-                                (ngModelChange)="onAssignmentRoleChange(a)" />
+                              [disabled]="isRoleDisabledForAssignment(a, 'receptionist')"
+                              [title]="isRoleDisabledForAssignment(a, 'receptionist') ? 'Receptionist role already assigned for this clinic' : '🗂 Receptionist'"
+                              (click)="selectRole(a, 'receptionist')">
                               🗂 Receptionist
                               <span *ngIf="isRoleDisabledForAssignment(a, 'receptionist')" class="ad-role-taken-badge">taken</span>
-                            </label>
+                            </button>
                           </div>
 
                         </td>
@@ -498,6 +511,226 @@
               <div class="ad-empty-desc">Add doctors and receptionists to your clinics.</div>
               <button class="ad-btn-primary mt-3" (click)="openNewUserForm()">+ Add Staff</button>
             </div>
+          </div>
+        </div>
+
+        <!-- ══ CONFIG SECTION ══════════════════════════════════════════════════════ -->
+        <div *ngIf="activeSection === 'config'">
+          <div class="ad-page-header">
+            <div>
+              <h1 class="ad-page-title">Configuration</h1>
+              <p class="ad-page-sub">Control multi-clinic behaviour for this subscription</p>
+            </div>
+          </div>
+
+          <!-- Loading skeleton -->
+          <div *ngIf="configLoading" class="ad-config-loading">
+            <div class="ad-spinner"></div>
+            <span>Loading configuration…</span>
+          </div>
+
+          <div *ngIf="!configLoading" class="ad-config-panel">
+
+            <!-- ── Patient Sharing ── -->
+            <div class="ad-config-group">
+              <div class="ad-config-group-header">
+                <div class="ad-config-group-icon ad-config-group-icon--patients">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="ad-config-group-title">Patient Visibility</div>
+                  <div class="ad-config-group-sub">Control whether patient records are shared across clinics in this subscription</div>
+                </div>
+              </div>
+
+              <div class="ad-config-row" id="cfg-share-patients">
+                <div class="ad-config-row-info">
+                  <div class="ad-config-row-title">Share patients across clinics</div>
+                  <div class="ad-config-row-desc">
+                    When <strong>ON</strong>, a patient registered at any clinic under this subscription is visible
+                    to all other clinics. When <strong>OFF</strong>, each clinic only sees its own patients.
+                  </div>
+                  <div class="ad-config-impact" [class.ad-config-impact--warn]="configSettings.share_patients_across_clinics">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span *ngIf="configSettings.share_patients_across_clinics">
+                      All {{ stats.clinics }} clinic(s) will share patient records
+                    </span>
+                    <span *ngIf="!configSettings.share_patients_across_clinics">
+                      Each clinic maintains its own isolated patient list
+                    </span>
+                  </div>
+                </div>
+                <label class="ad-toggle" [class.ad-toggle--on]="configSettings.share_patients_across_clinics">
+                  <input type="checkbox" [(ngModel)]="configSettings.share_patients_across_clinics" id="toggle-share-patients" />
+                  <span class="ad-toggle-track">
+                    <span class="ad-toggle-thumb"></span>
+                  </span>
+                  <span class="ad-toggle-label">{{ configSettings.share_patients_across_clinics ? 'ON' : 'OFF' }}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- ── Doctor Time-Clash ── -->
+            <div class="ad-config-group">
+              <div class="ad-config-group-header">
+                <div class="ad-config-group-icon ad-config-group-icon--time">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="ad-config-group-title">Doctor Availability &amp; Time Clash</div>
+                  <div class="ad-config-group-sub">Define how overlapping availability is handled when a doctor is assigned to multiple clinics</div>
+                </div>
+              </div>
+
+              <div class="ad-config-row" id="cfg-time-clash">
+                <div class="ad-config-row-info">
+                  <div class="ad-config-row-title">Allow time-clash across clinics</div>
+                  <div class="ad-config-row-desc">
+                    When <strong>ON</strong>, a doctor&apos;s availability slots may overlap across different clinics (no conflict check).
+                    When <strong>OFF</strong>, overlapping time slots across clinics are flagged and the affected clinic can be
+                    automatically disabled.
+                  </div>
+                  <div class="ad-config-impact" [class.ad-config-impact--warn]="!configSettings.allow_doctor_time_clash">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span *ngIf="configSettings.allow_doctor_time_clash">
+                      Doctors may have overlapping slots across clinics
+                    </span>
+                    <span *ngIf="!configSettings.allow_doctor_time_clash">
+                      Overlapping slots will trigger a warning and may disable a clinic
+                    </span>
+                  </div>
+                </div>
+                <label class="ad-toggle" [class.ad-toggle--on]="configSettings.allow_doctor_time_clash"
+                  (click)="onTimeClashToggle($event)" style="cursor:pointer">
+                  <span class="ad-toggle-track">
+                    <span class="ad-toggle-thumb"></span>
+                  </span>
+                  <span class="ad-toggle-label">{{ configSettings.allow_doctor_time_clash ? 'ON' : 'OFF' }}</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- ── Appointment Slot Interval ── -->
+            <div class="ad-config-group">
+              <div class="ad-config-group-header">
+                <div class="ad-config-group-icon ad-config-group-icon--slot">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                    <line x1="8" y1="14" x2="8" y2="14" stroke-width="2.5"/><line x1="12" y1="14" x2="16" y2="14" stroke-width="1.5"/>
+                    <line x1="8" y1="18" x2="8" y2="18" stroke-width="2.5"/><line x1="12" y1="18" x2="14" y2="18" stroke-width="1.5"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="ad-config-group-title">Appointment Slot Interval</div>
+                  <div class="ad-config-group-sub">Set the duration of each doctor checkup / appointment slot — configurable per clinic</div>
+                </div>
+              </div>
+
+              <!-- Default (subscription-wide fallback) -->
+              <div class="ad-config-row ad-config-row--slot" id="cfg-slot-default">
+                <div class="ad-config-row-info">
+                  <div class="ad-config-row-title">
+                    🌐 Default (all clinics)
+                    <span class="ad-slot-default-hint">Used when a clinic has no custom interval set</span>
+                  </div>
+                  <div class="ad-slot-presets">
+                    <button *ngFor="let p of slotPresets" type="button"
+                      class="ad-slot-chip"
+                      [class.ad-slot-chip--active]="slotMinutes === p"
+                      (click)="slotMinutes = p"
+                      [id]="'slot-default-' + p">
+                      {{ p }} min
+                    </button>
+                  </div>
+                  <div class="ad-slot-custom">
+                    <label class="ad-slot-custom-label" for="slot-default-input">Custom (5–120 min):</label>
+                    <div class="ad-slot-custom-wrap">
+                      <button type="button" class="ad-slot-stepper" (click)="slotMinutes = slotMinutes > 5 ? slotMinutes - 5 : 5" aria-label="Decrease">−</button>
+                      <input type="number" id="slot-default-input" class="ad-slot-input"
+                        [(ngModel)]="slotMinutes" min="5" max="120" step="5" />
+                      <button type="button" class="ad-slot-stepper" (click)="slotMinutes = slotMinutes < 120 ? slotMinutes + 5 : 120" aria-label="Increase">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="ad-slot-badge-wrap">
+                  <div class="ad-slot-badge">
+                    <span class="ad-slot-badge-num">{{ slotMinutes }}</span>
+                    <span class="ad-slot-badge-unit">min</span>
+                  </div>
+                  <div class="ad-slot-badge-sub">per slot</div>
+                </div>
+              </div>
+
+              <!-- Per-clinic overrides -->
+              <div *ngFor="let clinic of clinics; let ci = index"
+                class="ad-config-row ad-config-row--slot ad-slot-clinic-row"
+                [id]="'cfg-slot-clinic-' + ci">
+                <div class="ad-config-row-info">
+                  <div class="ad-config-row-title">
+                    🏥 {{ clinic.name }}
+                    <span class="ad-slot-clinic-addr" *ngIf="clinic.address">{{ clinic.address }}</span>
+                  </div>
+                  <div class="ad-slot-presets">
+                    <button type="button" class="ad-slot-chip ad-slot-chip--default"
+                      [class.ad-slot-chip--active]="getClinicSlot(clinic.id) === null"
+                      (click)="setClinicSlot(clinic.id, null)"
+                      [id]="'slot-clinic-default-' + ci">
+                      Default ({{ slotMinutes }} min)
+                    </button>
+                    <button *ngFor="let p of slotPresets" type="button"
+                      class="ad-slot-chip"
+                      [class.ad-slot-chip--active]="getClinicSlot(clinic.id) === p"
+                      (click)="setClinicSlot(clinic.id, p)"
+                      [id]="'slot-clinic-' + ci + '-' + p">
+                      {{ p }} min
+                    </button>
+                  </div>
+                  <div class="ad-slot-custom" *ngIf="getClinicSlot(clinic.id) !== null">
+                    <label class="ad-slot-custom-label" [for]="'slot-clinic-custom-' + ci">Custom (5–120 min):</label>
+                    <div class="ad-slot-custom-wrap">
+                      <button type="button" class="ad-slot-stepper"
+                        (click)="setClinicSlot(clinic.id, (getClinicSlot(clinic.id) ?? 30) > 5 ? (getClinicSlot(clinic.id) ?? 30) - 5 : 5)"
+                        aria-label="Decrease">−</button>
+                      <input type="number" [id]="'slot-clinic-custom-' + ci" class="ad-slot-input"
+                        [value]="getClinicSlot(clinic.id) ?? slotMinutes"
+                        (change)="setClinicSlot(clinic.id, +$any($event.target).value)"
+                        min="5" max="120" step="5" />
+                      <button type="button" class="ad-slot-stepper"
+                        (click)="setClinicSlot(clinic.id, (getClinicSlot(clinic.id) ?? 30) < 120 ? (getClinicSlot(clinic.id) ?? 30) + 5 : 120)"
+                        aria-label="Increase">+</button>
+                    </div>
+                  </div>
+                </div>
+                <div class="ad-slot-badge-wrap">
+                  <div class="ad-slot-badge" [class.ad-slot-badge--override]="getClinicSlot(clinic.id) !== null">
+                    <span class="ad-slot-badge-num">{{ getClinicSlot(clinic.id) ?? slotMinutes }}</span>
+                    <span class="ad-slot-badge-unit">min</span>
+                  </div>
+                  <div class="ad-slot-badge-sub">{{ getClinicSlot(clinic.id) !== null ? 'custom' : 'default' }}</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- Save action -->
+            <div class="ad-config-actions">
+              <button class="ad-btn-ghost" (click)="loadConfig()" [disabled]="configSaving" id="btn-config-reset">Reset</button>
+              <button class="ad-btn-primary" (click)="saveConfig()" [disabled]="configSaving" id="btn-config-save">
+                <span *ngIf="configSaving" class="ad-spinner-sm"></span>
+                {{ configSaving ? 'Saving…' : 'Save Configuration' }}
+              </button>
+            </div>
+
+
           </div>
         </div>
 

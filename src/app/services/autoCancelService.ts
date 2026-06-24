@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppointmentService } from './appointmentService';
 import { PatientService } from './patient';
 import { Appointment } from '../models/appointment.model';
-import { DEFAULT_SYSTEM_SETTINGS } from '../config/systemSettings';
+import { DEFAULT_SYSTEM_SETTINGS } from '../config/userSettings';
 import { isSameLocalDay, normalizePhoneDigits } from '../utilities/date-helpers';
 
 /**
