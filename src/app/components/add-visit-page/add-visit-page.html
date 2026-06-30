@@ -357,9 +357,6 @@
             [initialSelected]="selectedMuscleIds"
             (selectionChange)="onMusclesSelectionChange($event)">
           </app-muscular-widget>
-          <p *ngIf="selectedMuscleIds.length > 0" class="avp-teeth-summary" style="margin-top: 10px;">
-            Selected Muscles: <strong>{{ getSelectedMuscleNames().join(', ') }}</strong>
-          </p>
         </div>
 
         <!-- Dental Chart -->
