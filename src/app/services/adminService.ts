@@ -288,7 +288,7 @@ export class AdminService {
   async createClinicUser(
     data: Omit<ClinicUser, 'id' | 'created_at' | 'updated_at'>
   ): Promise<string> {
-    const id = this.api.generateDocId();
+    const id = await this.api.getNextSequentialId('cln');
     const now = new Date().toISOString();
     const payload: any = {
       ...data,

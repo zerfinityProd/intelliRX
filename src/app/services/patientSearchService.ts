@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { PatientDataService } from './firebase';
 import { ClinicContextService } from './clinicContextService';
+import { ConfigService } from './configService';
 import { Patient } from '../models/patient.model';
 
 /**
@@ -36,7 +37,29 @@ export class PatientSearchService {
     public hasMoreResults: boolean = false;
     public isLoadingMore: boolean = false;
 
-    constructor(private firebaseService: PatientDataService, private clinicContextService: ClinicContextService) { }
+    constructor(
+        private firebaseService: PatientDataService,
+        private clinicContextService: ClinicContextService,
+        private configService: ConfigService
+    ) { }
+
+    /**
+     * Returns the effective clinic ID for search filtering.
+     * Returns undefined (= search across all clinics in subscription) when
+     * share_patients_across_clinics is enabled in the subscription config.
+     */
+    private async resolveSearchClinicId(): Promise<string | undefined> {
+        try {
+            const subId = this.clinicContextService.getSubscriptionId();
+            if (subId) {
+                const subConfig = await this.configService.getSubscriptionConfig(subId);
+                if (subConfig?.multiClinic?.share_patients_across_clinics) {
+                    return undefined; // search subscription-wide
+                }
+            }
+        } catch { /* fall through to clinic-scoped search */ }
+        return this.clinicContextService.getSelectedClinicId() || undefined;
+    }
 
     /**
      * Execute new search (resets pagination)
@@ -61,7 +84,9 @@ export class PatientSearchService {
             console.log('🔍 Searching for:', trimmedTerm);
 
             let allResults: Patient[] = [];
-            const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+            // Resolves to undefined when share_patients_across_clinics is ON
+            const clinicId = await this.resolveSearchClinicId();
+            console.log('🔍 Effective clinicId for search:', clinicId ?? '(all clinics)');
 
             // Only attempt direct patient ID lookup when the term matches YYYYMM##### format
             // to avoid unnecessary 404 HTTP requests for arbitrary search terms
@@ -134,9 +159,9 @@ export class PatientSearchService {
         try {
             this.isLoadingMore = true;
             let newResults: Patient[] = [];
+            const clinicId = await this.resolveSearchClinicId();
 
             if (this.currentIsNumeric) {
-                const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
                 const { results, lastCursor, hasMore } = await this.firebaseService.searchPatientByPhone(
                     this.currentSearchTerm,
                     this.paginationState.lastPhoneCursor,
@@ -146,7 +171,6 @@ export class PatientSearchService {
                 this.paginationState.lastPhoneCursor = lastCursor;
                 this.paginationState.hasMore = hasMore;
             } else {
-                const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
                 const { results, lastCursor, hasMore } = await this.firebaseService.searchPatientByName(
                     this.currentSearchTerm,
                     this.paginationState.lastNameCursor,
@@ -170,6 +194,7 @@ export class PatientSearchService {
             this.isLoadingMore = false;
         }
     }
+
 
     /**
      * Clear all search results and reset state

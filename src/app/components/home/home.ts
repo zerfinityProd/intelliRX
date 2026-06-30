@@ -13,6 +13,7 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { UserPermissions } from '../../services/authorizationService';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicService } from '../../services/clinicService';
+import { FirestoreApiService } from '../../services/firestore-api.service';
 import { Patient } from '../../models/patient.model';
 import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
@@ -116,6 +117,7 @@ export class HomeComponent implements OnInit {
     private authorizationService: AuthorizationService,
     private clinicContextService: ClinicContextService,
     private clinicService: ClinicService,
+    private firestoreApi: FirestoreApiService,
     private timeSlotService: TimeSlotService,
     private router: Router,
     private route: ActivatedRoute,
@@ -155,6 +157,11 @@ export class HomeComponent implements OnInit {
     // Restore pending patient success popup if page was refreshed mid-popup
     this.restorePendingPatientSuccess();
 
+    // React to clinic switches triggered from the navbar — reload data in place
+    this.clinicContextService.clinicSwitch$.subscribe(() => {
+      void this.reloadForClinicSwitch();
+    });
+
     // Ensure clinic/subscription context is resolved BEFORE loading appointments
     void this.initializeAndLoad();
   }
@@ -182,34 +189,133 @@ export class HomeComponent implements OnInit {
   }
 
   /**
+   * Reload all clinic-dependent data after a Switch Clinic action.
+   * Context is already updated in clinicContextService — no need to re-prompt.
+   */
+  private async reloadForClinicSwitch(): Promise<void> {
+    this.appointmentService.invalidateCache();
+    await this.initDashboardDoctorContext();
+    await this.loadAppointments();
+    const today = new Date();
+    this.selectedDate = today;
+    void this.loadSlotsForDate(today);
+    this.loadPatientCount();
+    this.clearSearch();
+    this.cdr.markForCheck();
+  }
+
+  /**
    * Ensure the doctor's clinic context is set so patients created
    * from Add-Patient modal are associated with the correct clinic
    * and visible to reception staff.
    */
   private async ensureClinicContext(): Promise<void> {
-    // Already set (from login or localStorage) — nothing to do.
+    // Already fully set (from login flow, in-memory only) — nothing to do.
     if (this.clinicContextService.getSelectedClinicId() && this.clinicContextService.getSubscriptionId()) return;
 
     // Wait for Firebase auth to resolve before reading user email
     await firstValueFrom(this.authService.authReady$.pipe(filter(ready => ready)));
 
-    // Re-check after auth is ready (authenticationService may have set it)
+    // Re-check after auth is ready
     if (this.clinicContextService.getSelectedClinicId() && this.clinicContextService.getSubscriptionId()) return;
 
     const email = this.authService.currentUserValue?.email;
     if (!email) return;
 
     try {
-      const clinicIds = await this.authorizationService.getUserClinicIds(email);
-      if (clinicIds.length > 0) {
+      const assignments = await this.authorizationService.getUserAssignments(email);
+
+      if (!assignments.length) {
+        // No assignments — resolve subscriptionId and store context as-is
         const subscriptionId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
-        this.clinicContextService.setClinicContext(clinicIds[0], subscriptionId);
-        // Load clinic-specific timings
-        await this.refreshTimeSlotsForClinic(clinicIds[0]);
+        this.clinicContextService.setClinicContext(
+          this.clinicContextService.getSelectedClinicId(),
+          subscriptionId
+        );
+        return;
       }
+
+      // Resolve subscription
+      const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
+      let chosenSubId: string;
+      if (subscriptionIds.length === 1) {
+        chosenSubId = subscriptionIds[0];
+      } else {
+        // Multiple subscriptions — prompt
+        chosenSubId = await this.promptSubscriptionSelection(subscriptionIds);
+      }
+
+      // Find clinics within chosen subscription
+      const clinicsInSub = assignments
+        .filter(a => a.subscriptionId === chosenSubId)
+        .map(a => a.clinicId);
+
+      let chosenClinicId: string;
+      if (clinicsInSub.length === 1) {
+        chosenClinicId = clinicsInSub[0];
+      } else {
+        // Multiple clinics — show selector dialog
+        chosenClinicId = await this.promptClinicSelection(clinicsInSub);
+      }
+
+      this.clinicContextService.setClinicContext(chosenClinicId, chosenSubId);
+      await this.refreshTimeSlotsForClinic(chosenClinicId);
     } catch {
       // Non-critical — proceed without clinic context.
     }
+  }
+
+  /** Prompt user to select a subscription (mirrors login logic) */
+  private async promptSubscriptionSelection(subscriptionIds: string[]): Promise<string> {
+    const { default: Swal } = await import('sweetalert2');
+    const options: Record<string, string> = {};
+    for (const id of subscriptionIds) {
+      try {
+        const doc = await this.firestoreApi.getDocument('subscriptions', id);
+        const name = doc?.data?.['entity_name'] || doc?.data?.['name'] || id;
+        options[id] = name;
+      } catch {
+        options[id] = id;
+      }
+    }
+    const result = await Swal.fire({
+      title: 'Select Organisation',
+      input: 'select',
+      inputOptions: options,
+      inputPlaceholder: 'Select an organisation',
+      showCancelButton: false,
+      confirmButtonText: 'Continue',
+      allowOutsideClick: false,
+      confirmButtonColor: '#148D9E'
+    });
+    return String(result.value ?? subscriptionIds[0]);
+  }
+
+  /** Prompt user to select a clinic (mirrors login logic) */
+  private async promptClinicSelection(clinicIds: string[]): Promise<string> {
+    const { default: Swal } = await import('sweetalert2');
+    const options: Record<string, string> = {};
+    for (const id of clinicIds) {
+      try {
+        const doc = await this.firestoreApi.getDocument('clinics', id);
+        const name = doc?.data?.['name'] || id;
+        const address = doc?.data?.['address'];
+        options[id] = address ? `${name} — ${address}` : name;
+      } catch {
+        options[id] = id;
+      }
+    }
+    const result = await Swal.fire({
+      title: 'Select Clinic',
+      input: 'select',
+      inputOptions: options,
+      inputPlaceholder: 'Select a clinic',
+      showCancelButton: false,
+      confirmButtonText: 'Continue',
+      allowOutsideClick: false,
+      confirmButtonColor: '#148D9E'
+    });
+    return String(result.value ?? clinicIds[0]);
   }
 
   // ── Dashboard doctor context ──

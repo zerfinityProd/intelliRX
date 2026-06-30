@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { AuthenticationService } from './authenticationService';
 import { AuthorizationService } from './authorizationService';
 import { ConfigService } from './configService';
+import { ClinicContextService } from './clinicContextService';
 
 /**
  * Manages application theme (light/dark mode).
@@ -20,6 +21,7 @@ export class ThemeService {
     private authService = inject(AuthenticationService);
     private authorizationService = inject(AuthorizationService);
     private configService = inject(ConfigService);
+    private clinicContext = inject(ClinicContextService);
 
     /** Cached user doc ID so we don't re-fetch on every toggle */
     private resolvedUserId: string | null = null;
@@ -66,8 +68,11 @@ export class ThemeService {
         const userId = await this.resolveUserId();
         if (!userId) return;
 
+        const subId = this.clinicContext.getSubscriptionId() ?? undefined;
+        const clinicId = this.clinicContext.getSelectedClinicId() ?? undefined;
+
         try {
-            const config = await this.configService.getDoctorConfig(userId);
+            const config = await this.configService.getDoctorConfig(userId, subId, clinicId);
 
             if (config?.preferences?.theme) {
                 const isDark = config.preferences.theme === 'dark';
@@ -138,14 +143,21 @@ export class ThemeService {
     }
 
     /**
-     * Write theme to: users/{userId}/config/settings → preferences.theme
+     * Write theme to:
+     * configurations/sub_{subId}/clinics/{clinicId}/users/{userId} → preferences.theme
      */
     private async saveThemeToConfig(theme: string): Promise<void> {
         const userId = await this.resolveUserId();
         if (!userId) return;
 
-        await this.configService.setDoctorConfig(userId, {
-            preferences: { theme: theme as 'light' | 'dark' }
-        });
+        const subId = this.clinicContext.getSubscriptionId() ?? undefined;
+        const clinicId = this.clinicContext.getSelectedClinicId() ?? undefined;
+
+        await this.configService.setDoctorConfig(
+            userId,
+            { preferences: { theme: theme as 'light' | 'dark' } },
+            subId,
+            clinicId
+        );
     }
 }

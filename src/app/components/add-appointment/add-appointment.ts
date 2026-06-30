@@ -93,6 +93,8 @@ export class AddAppointmentComponent implements OnInit {
 
   // Time slots
   allTimeSlots: string[] = generateTimeSlotsFromConfig(DEFAULT_SYSTEM_SETTINGS.timeSlots);
+  /** Slot duration in minutes — updated from per-clinic config after slots load. */
+  slotMinutes: number = DEFAULT_SYSTEM_SETTINGS.timeSlots.slotMinutes;
   bookedSlots: string[] = [];
   /** Slots booked by the same patient on the same day (shown with a distinct indicator) */
   samePatientBookedSlots: string[] = [];
@@ -403,6 +405,12 @@ export class AddAppointmentComponent implements OnInit {
     this.allTimeSlots = result.slots;
     this.doctorLeaveInfo = result.leaveInfo;
     this.leaveBlockedSlots = result.leaveBlockedSlots;
+    // Derive slotMinutes from the generated slots (gap between first two consecutive slots)
+    if (result.slots.length >= 2) {
+      const [h0, m0] = result.slots[0].split(':').map(Number);
+      const [h1, m1] = result.slots[1].split(':').map(Number);
+      this.slotMinutes = (h1 * 60 + m1) - (h0 * 60 + m0);
+    }
   }
 
   /** True when the slot is blocked by an approved doctor leave */
@@ -412,13 +420,15 @@ export class AddAppointmentComponent implements OnInit {
 
   formatSlotLabel(time: string): string {
     const [h, m] = time.split(':').map(Number);
+    const startTotal = h * 60 + m;
+    const endTotal = startTotal + this.slotMinutes;
+    const endH = Math.floor(endTotal / 60) % 24;
+    const endM = endTotal % 60;
     const period = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
-    const endH = m === 30 ? (h + 1) : h;
-    const endM = m === 30 ? '00' : '30';
     const endPeriod = endH >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
     const endH12 = endH % 12 || 12;
-    return `${h12}:${m.toString().padStart(2, '0')} ${period} – ${endH12}:${endM} ${endPeriod}`;
+    return `${h12}:${m.toString().padStart(2, '0')} ${period} – ${endH12}:${endM.toString().padStart(2, '0')} ${endPeriod}`;
   }
 
   /** True when the slot is in the past for today's date */

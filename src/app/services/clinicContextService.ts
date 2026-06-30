@@ -1,23 +1,37 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 type ClinicContext = {
   clinicId: string | null;
   subscriptionId: string | null;
 };
 
-const LS_CLINIC_ID = 'intellirx.selectedClinicId';
-const LS_SUBSCRIPTION_ID = 'intellirx.subscriptionId';
+// Session-scoped keys — survive page refresh within the same tab,
+// cleared automatically when the tab/browser is closed.
+// Nothing is written to localStorage.
+const SS_CLINIC_ID = 'irx.c';
+const SS_SUB_ID = 'irx.s';
 
 @Injectable({ providedIn: 'root' })
 export class ClinicContextService {
   private readonly contextSubject: BehaviorSubject<ClinicContext>;
   public readonly context$: Observable<ClinicContext>;
 
+  /** Emits the new clinicId whenever the user explicitly switches clinic */
+  public readonly clinicSwitch$ = new Subject<string>();
+
   constructor() {
+    // Clean up any legacy localStorage keys from previous versions
+    try {
+      localStorage.removeItem('intellirx.selectedClinicId');
+      localStorage.removeItem('intellirx.subscriptionId');
+    } catch { /* ignore */ }
+
+    // Restore from sessionStorage so the clinic selector is not re-shown
+    // on a simple page refresh, while still prompting on fresh login.
     this.contextSubject = new BehaviorSubject<ClinicContext>({
-      clinicId: this.readStoredClinicId(),
-      subscriptionId: null  // Always resolved fresh from Firestore on login/page load
+      clinicId: this.readSession(SS_CLINIC_ID),
+      subscriptionId: this.readSession(SS_SUB_ID)
     });
     this.context$ = this.contextSubject.asObservable();
   }
@@ -51,27 +65,31 @@ export class ClinicContextService {
     return `subscriptions/${subId}/${subcollection}`;
   }
 
-  setClinicContext(clinicId: string | null, subscriptionId: string | null): void {
-    const next: ClinicContext = { clinicId, subscriptionId };
-    this.contextSubject.next(next);
-
-    if (clinicId) localStorage.setItem(LS_CLINIC_ID, clinicId);
-    else localStorage.removeItem(LS_CLINIC_ID);
-
-    // subscriptionId is kept in-memory only — not persisted to localStorage
-  }
-
-  clear(): void {
-    this.setClinicContext(null, null);
-    localStorage.removeItem(LS_SUBSCRIPTION_ID); // Clean up any legacy stored value
-  }
-
-  private readStoredClinicId(): string | null {
-    try {
-      return localStorage.getItem(LS_CLINIC_ID);
-    } catch {
-      return null;
+  setClinicContext(clinicId: string | null, subscriptionId: string | null, emitSwitch = false): void {
+    this.contextSubject.next({ clinicId, subscriptionId });
+    this.writeSession(SS_CLINIC_ID, clinicId);
+    this.writeSession(SS_SUB_ID, subscriptionId);
+    if (emitSwitch && clinicId) {
+      this.clinicSwitch$.next(clinicId);
     }
   }
 
+  clear(): void {
+    this.contextSubject.next({ clinicId: null, subscriptionId: null });
+    try {
+      sessionStorage.removeItem(SS_CLINIC_ID);
+      sessionStorage.removeItem(SS_SUB_ID);
+    } catch { /* ignore */ }
+  }
+
+  private readSession(key: string): string | null {
+    try { return sessionStorage.getItem(key); } catch { return null; }
+  }
+
+  private writeSession(key: string, value: string | null): void {
+    try {
+      if (value) sessionStorage.setItem(key, value);
+      else sessionStorage.removeItem(key);
+    } catch { /* ignore */ }
+  }
 }

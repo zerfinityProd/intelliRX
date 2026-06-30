@@ -362,4 +362,21 @@ export class FirestoreApiService {
     }
     return id;
   }
+
+  /**
+   * Generate a sequential document ID like `cln_1`, `cln_2`, `app_1`, `app_2`.
+   * Reads a counter from the `counters/{prefix}` document and increments it.
+   * Safe for low-concurrency environments (clinic management apps).
+   *
+   * @param prefix  e.g. 'cln' → produces 'cln_1', 'cln_2', …
+   *                     'app' → produces 'app_1', 'app_2', …
+   */
+  async getNextSequentialId(prefix: string): Promise<string> {
+    const counterDocId = prefix;
+    const existing = await this.getDocument('counters', counterDocId);
+    const current: number = (existing?.data?.['count'] as number) ?? 0;
+    const next = current + 1;
+    await this.setDocument('counters', counterDocId, { count: next });
+    return `${prefix}_${next}`;
+  }
 }

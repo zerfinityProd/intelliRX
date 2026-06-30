@@ -97,17 +97,6 @@ export class AuthenticationService {
                     // Fetch role and set subscription/clinic context
                     const role = await this.authorizationService.getUserRole(email);
                     const dbName = await this.authorizationService.getUserName(email);
-                    const assignments = await this.authorizationService.getUserAssignments(email);
-                    // Restore clinic context from localStorage (for page refreshes only).
-                    if (assignments.length > 0) {
-                        const currentClinic = this.clinicContextService.getSelectedClinicId();
-                        const matching = currentClinic
-                            ? assignments.find(a => a.clinicId === currentClinic)
-                            : null;
-                        if (matching) {
-                            this.clinicContextService.setClinicContext(matching.clinicId, matching.subscriptionId);
-                        }
-                    }
                     const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                     if (dbName) user.name = dbName;
                     this.setCurrentUser(user);

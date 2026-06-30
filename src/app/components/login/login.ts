@@ -105,8 +105,8 @@ export class LoginComponent implements OnInit {
 
         if (isAdmin && hasClinicalRole) {
             // Admin + Doctor/Receptionist → clinical home (they can access admin dashboard from navbar)
-            await this.ensureClinicSelected(email);
             this.router.navigate(['/home']);
+            await this.ensureClinicSelected(email);
             return;
         }
 
@@ -118,15 +118,15 @@ export class LoginComponent implements OnInit {
 
         // Subscription owner without 'admin' in global_roles (legacy)
         if (role === 'subscription_owner') {
-            await this.ensureClinicSelected(email);
             this.router.navigate(['/home']);
+            await this.ensureClinicSelected(email);
             return;
         }
 
         // Doctor/Receptionist → clinical home
         if (role === 'doctor' || role === 'receptionist') {
-            await this.ensureClinicSelected(email);
             this.router.navigate(['/home']);
+            await this.ensureClinicSelected(email);
             return;
         }
 
@@ -143,13 +143,8 @@ export class LoginComponent implements OnInit {
     private async ensureClinicSelected(userEmail: string): Promise<void> {
         const assignments = await this.authorizationService.getUserAssignments(userEmail);
 
-        console.log('[Login] ensureClinicSelected — total assignments:', assignments.length);
-        assignments.forEach((a, i) =>
-            console.log(`[Login]   assignment[${i}]: subscriptionId="${a.subscriptionId}"  clinicId="${a.clinicId}"`)
-        );
-
         if (!assignments.length) {
-            // No assignments — keep whatever context is stored (or null)
+            // No assignments — resolve subscriptionId from Firestore
             const subId = await this.authorizationService.getUserSubscriptionId(userEmail);
             this.clinicContextService.setClinicContext(
                 this.clinicContextService.getSelectedClinicId(),
@@ -158,7 +153,7 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        // Single assignment — auto-select
+        // Single assignment — auto-select without prompting
         if (assignments.length === 1) {
             this.clinicContextService.setClinicContext(
                 assignments[0].clinicId,
@@ -169,24 +164,20 @@ export class LoginComponent implements OnInit {
 
         // Multiple assignments — check how many subscriptions
         const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
-        console.log('[Login] unique subscriptionIds:', subscriptionIds);
 
         let chosenSubId: string;
         if (subscriptionIds.length === 1) {
-            // Single subscription, multiple clinics
-            console.log('[Login] → single subscription, skipping subscription prompt');
+            // Single subscription, multiple clinics — skip subscription prompt
             chosenSubId = subscriptionIds[0];
         } else {
             // Multiple subscriptions — prompt user to pick one
-            console.log('[Login] → multiple subscriptions, showing subscription prompt');
             chosenSubId = await this.promptSubscriptionSelection(subscriptionIds);
         }
 
-        // Now find clinics within the chosen subscription
+        // Find clinics within the chosen subscription
         const clinicsInSub = assignments
             .filter(a => a.subscriptionId === chosenSubId)
             .map(a => a.clinicId);
-        console.log('[Login] clinics in chosen subscription:', clinicsInSub);
 
         let chosenClinicId: string;
         if (clinicsInSub.length === 1) {
@@ -245,7 +236,6 @@ export class LoginComponent implements OnInit {
 
         const result = await Swal.fire({
             title: 'Select Clinic',
-            text: 'Which clinic do you want to login for?',
             input: 'select',
             inputOptions: options,
             inputPlaceholder: 'Select a clinic',

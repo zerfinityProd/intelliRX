@@ -238,15 +238,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Apply context and reload
-    this.clinicContextService.setClinicContext(chosenClinicId, chosenSubId);
-    // Invalidate caches so fresh data loads
+    // Apply new context and broadcast a clinic-switch event.
+    // HomeComponent subscribes to clinicSwitch$ and reloads its data in place —
+    // no full page reload or navigation needed.
+    this.clinicContextService.setClinicContext(chosenClinicId, chosenSubId, true);
     this.authorizationService.invalidateRolesCache();
-    // Navigate to home to re-initialize with new context
-    if (this.router.url === '/home') {
-      window.location.reload();
-    } else {
-      this.router.navigate(['/home']);
-    }
   }
 }

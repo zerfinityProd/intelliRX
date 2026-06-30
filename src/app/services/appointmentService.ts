@@ -78,7 +78,7 @@ export class AppointmentService {
     data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
     try {
-      const id = this.api.generateDocId();
+      const id = await this.api.getNextSequentialId('app');
       const now = new Date();
 
       const clinicId = data.clinic_id || this.clinicContextService.getSelectedClinicId() || '';
@@ -107,7 +107,6 @@ export class AppointmentService {
 
       await this.api.setDocument('appointments', id, payload);
       this.invalidateCache();
-      console.log('✓ Appointment booked with ID:', id);
       return id;
 
     } catch (error) {

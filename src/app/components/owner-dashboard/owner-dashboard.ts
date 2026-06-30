@@ -162,7 +162,7 @@ export class OwnerDashboardComponent implements OnInit {
       });
 
       // Create clinic_users doc
-      const cuId = this.api.generateDocId();
+      const cuId = await this.api.getNextSequentialId('cln');
       await this.api.setDocument('clinic_users', cuId, {
         user_id: userId,
         clinic_id: this.inviteForm.clinicId,

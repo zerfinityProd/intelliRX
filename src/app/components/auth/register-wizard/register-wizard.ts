@@ -137,7 +137,7 @@ export class RegisterWizardComponent implements OnInit {
       });
 
       // 5. Create clinic_users entry (no clinic yet — admin will set up clinics later)
-      const cuId = this.api.generateDocId();
+      const cuId = await this.api.getNextSequentialId('cln');
       await this.api.setDocument('clinic_users', cuId, {
         user_id: userDocId,
         subscription_id: subscriptionId,

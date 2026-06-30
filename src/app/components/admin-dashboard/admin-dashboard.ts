@@ -553,7 +553,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.clinicSlotMinutes.clear();
       await Promise.all(this.clinics.map(async clinic => {
         try {
-          const clinicCfg = await this.configService.getClinicConfig(clinic.id);
+          const clinicCfg = await this.configService.getClinicConfig(clinic.id, this.subscription!.id);
           const override = clinicCfg?.timeSlots?.slotMinutes ?? null;
           this.clinicSlotMinutes.set(clinic.id, override);
         } catch {
@@ -580,6 +580,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }
     this.configSaving = true;
     this.cdr.detectChanges();
+    console.log('[saveConfig] subscription.id =', this.subscription.id);
+    console.log('[saveConfig] clinics =', this.clinics.map(c => c.id));
+    console.log('[saveConfig] clinicSlotMinutes =', [...this.clinicSlotMinutes.entries()]);
     try {
       // Save subscription-level config
       const existing = await this.configService.getSubscriptionConfig(this.subscription.id);
@@ -588,24 +591,28 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         multiClinic: { ...this.configSettings },
         timeSlots: { ...(existing?.timeSlots ?? {}), slotMinutes: mins },
       });
+      console.log('[saveConfig] Subscription config saved OK');
 
       // Save per-clinic slot overrides in parallel
       await Promise.all(this.clinics.map(async clinic => {
         const override = this.clinicSlotMinutes.get(clinic.id) ?? null;
+        console.log(`[saveConfig] clinic=${clinic.id} override=${override}`);
         try {
-          const existingCfg = await this.configService.getClinicConfig(clinic.id) ?? {};
+          const existingCfg = await this.configService.getClinicConfig(clinic.id, this.subscription!.id) ?? {};
           if (override !== null) {
             await this.configService.setClinicConfig(clinic.id, {
               ...existingCfg,
               timeSlots: { ...(existingCfg.timeSlots ?? {}), slotMinutes: override },
-            });
+            }, this.subscription!.id);
+            console.log(`[saveConfig] clinic=${clinic.id} saved slotMinutes=${override}`);
           } else {
             // Remove clinic-level override — keep existing config but clear slotMinutes
             const { timeSlots, ...rest } = existingCfg as any;
-            await this.configService.setClinicConfig(clinic.id, { ...rest });
+            await this.configService.setClinicConfig(clinic.id, { ...rest }, this.subscription!.id);
+            console.log(`[saveConfig] clinic=${clinic.id} cleared slot override`);
           }
         } catch (e) {
-          console.warn(`[AdminDashboard] Could not save slot for clinic ${clinic.id}:`, e);
+          console.error(`[saveConfig] FAILED for clinic ${clinic.id}:`, e);
         }
       }));
 

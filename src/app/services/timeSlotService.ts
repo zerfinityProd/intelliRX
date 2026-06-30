@@ -4,6 +4,7 @@ import { ClinicService } from './clinicService';
 import { AuthorizationService } from './authorizationService';
 import { ClinicContextService } from './clinicContextService';
 import { LeaveService } from './leave';
+import { ConfigService } from './configService';
 import { Leave } from '../models/leave.model';
 import { DEFAULT_SYSTEM_SETTINGS } from '../config/userSettings';
 import {
@@ -49,6 +50,24 @@ export class TimeSlotService {
     private authorizationService = inject(AuthorizationService);
     private clinicContextService = inject(ClinicContextService);
     private leaveService = inject(LeaveService);
+    private configService = inject(ConfigService);
+
+    /**
+     * Resolve the slot duration (in minutes) for a given clinic.
+     * Priority: clinic-level override → subscription default → system default (30 min).
+     */
+    private async resolveSlotMinutes(clinicId: string): Promise<number> {
+        try {
+            const subId = this.clinicContextService.getSubscriptionId() ?? undefined;
+            const clinicCfg = await this.configService.getClinicConfig(clinicId, subId);
+            if (clinicCfg?.timeSlots?.slotMinutes) return clinicCfg.timeSlots.slotMinutes;
+            if (subId) {
+                const subCfg = await this.configService.getSubscriptionConfig(subId);
+                if (subCfg?.timeSlots?.slotMinutes) return subCfg.timeSlots.slotMinutes;
+            }
+        } catch { /* fall through */ }
+        return DEFAULT_SYSTEM_SETTINGS.timeSlots.slotMinutes;
+    }
 
     /**
      * Generate time slots AND leave context for a clinic on a given date.
@@ -73,6 +92,10 @@ export class TimeSlotService {
             if (invalidateCache) {
                 this.clinicService.invalidateCache();
             }
+
+            // Resolve the per-clinic slot duration (clinic override → sub default → 30 min)
+            const slotMinutes = await this.resolveSlotMinutes(id);
+            console.log('[TimeSlotsService] slotMinutes for', id, '=', slotMinutes);
 
             const clinic = await this.clinicService.getClinicById(id);
             let timings = clinic?.schedule?.timings;
@@ -155,7 +178,7 @@ export class TimeSlotService {
 
                         if (leaveResult.leaveType === 'All Day') {
                             // Full-day leave: all slots blocked but still shown disabled
-                            const allSlots = generateTimeSlotsFromClinicTimings(timings);
+                            const allSlots = generateTimeSlotsFromClinicTimings(timings, slotMinutes);
                             return { slots: allSlots, leaveInfo, leaveBlockedSlots: allSlots };
                         }
 
@@ -168,7 +191,7 @@ export class TimeSlotService {
                                     );
                                     leaveBlockedSlots = [
                                         ...leaveBlockedSlots,
-                                        ...generateTimeSlotsFromClinicTimings(blockedTimings)
+                                        ...generateTimeSlotsFromClinicTimings(blockedTimings, slotMinutes)
                                     ];
                                 }
                             }
@@ -183,7 +206,7 @@ export class TimeSlotService {
             }
 
             return {
-                slots: generateTimeSlotsFromClinicTimings(timings),
+                slots: generateTimeSlotsFromClinicTimings(timings, slotMinutes),
                 leaveInfo,
                 leaveBlockedSlots
             };
