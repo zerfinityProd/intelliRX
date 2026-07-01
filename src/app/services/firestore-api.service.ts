@@ -353,7 +353,8 @@ export class FirestoreApiService {
     return paths;
   }
 
-  /** Generate a 20-char random document ID (same charset as Firestore) */
+
+  /** Generate a 20-char random document ID (same charset as Firestore auto-IDs). */
   generateDocId(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let id = '';
@@ -364,19 +365,47 @@ export class FirestoreApiService {
   }
 
   /**
-   * Generate a sequential document ID like `cln_1`, `cln_2`, `app_1`, `app_2`.
-   * Reads a counter from the `counters/{prefix}` document and increments it.
-   * Safe for low-concurrency environments (clinic management apps).
+   * Generate a sequential document ID by scanning the target collection for
+   * the highest existing numeric suffix — no `counters` collection involved.
    *
-   * @param prefix  e.g. 'cln' → produces 'cln_1', 'cln_2', …
-   *                     'app' → produces 'app_1', 'app_2', …
+   * Mapping of prefix → Firestore collection:
+   *   'cln'  → 'clinic_users'   (e.g. cln_1, cln_2 …)
+   *   'app'  → 'appointments'   (e.g. app_1, app_2 …)
+   *   'sub'  → 'subscriptions'  (e.g. sub_01, sub_02 …)
+   *   'clnc' → 'clinics'        (e.g. clnc_1, clnc_2 …)
+   *
+   * Falls back to a random suffix if the collection cannot be listed.
    */
   async getNextSequentialId(prefix: string): Promise<string> {
-    const counterDocId = prefix;
-    const existing = await this.getDocument('counters', counterDocId);
-    const current: number = (existing?.data?.['count'] as number) ?? 0;
-    const next = current + 1;
-    await this.setDocument('counters', counterDocId, { count: next });
-    return `${prefix}_${next}`;
+    const collectionMap: Record<string, string> = {
+      cln:  'clinic_users',
+      app:  'appointments',
+      sub:  'subscriptions',
+      clnc: 'clinics',
+    };
+    const collection = collectionMap[prefix] ?? prefix;
+    try {
+      const docs = await this.listDocuments(collection, 2000);
+      const max = docs.reduce((m, d) => {
+        const match = d.id.match(new RegExp(`^${prefix}_(\\d+)$`));
+        return match ? Math.max(m, parseInt(match[1], 10)) : m;
+      }, 0);
+      return `${prefix}_${max + 1}`;
+    } catch {
+      // Fallback: timestamp-based suffix — still no counters collection
+      return `${prefix}_${Date.now()}`;
+    }
+  }
+
+  /**
+   * Synchronous variant — compute the next ID from an already-fetched list of IDs.
+   * Use this when you have a cached collection list to avoid any network call.
+   */
+  computeNextId(prefix: string, existingIds: string[]): string {
+    const max = existingIds.reduce((m, id) => {
+      const match = id.match(new RegExp(`^${prefix}_(\\d+)$`));
+      return match ? Math.max(m, parseInt(match[1], 10)) : m;
+    }, 0);
+    return `${prefix}_${max + 1}`;
   }
 }

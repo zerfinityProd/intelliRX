@@ -93,9 +93,19 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        // Z-Admin → super admin dashboard
+        // Z-Admin → super admin dashboard (bypasses subscription expiry check)
         if (role === 'z_admin') {
             this.router.navigate(['/admin']);
+            return;
+        }
+
+        // ── Gate: subscription expiry check (blocks all non-z_admin users) ──
+        const expiryStatus = await this.authorizationService.checkSubscriptionExpiry(email);
+        if (expiryStatus === 'expired') {
+            await this.authService.logout();
+            this.isLoading = false;
+            this.cdr.detectChanges();
+            this.router.navigate(['/subscription-expired']);
             return;
         }
 

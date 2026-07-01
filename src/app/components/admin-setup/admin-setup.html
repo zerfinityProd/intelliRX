@@ -141,14 +141,16 @@
               *ngIf="subHasData(sub)"
               class="sub-card"
               [class.selected]="$any(selectedSubscription)?.id === sub.id"
+              [class.sub-card-expired]="sub.valid_until && isSubExpired(sub.valid_until)"
               (click)="selectSubscription(sub)"
             >
               <div class="sub-card-header">
                 <div class="sub-avatar">{{ subInitial(sub) }}</div>
                 <div class="sub-meta">
                   <div class="sub-name">{{ sub.entity_name }}</div>
-                  <div class="sub-plan badge" [class.badge-premium]="sub.plan.name === 'premium'">
-                    {{ (sub.plan.name || 'basic') | uppercase }}
+                  <div class="sub-badges-row">
+                    <div class="sub-plan badge">{{ (sub.plan.name || 'unknown') | uppercase }}</div>
+                    <div class="badge badge-expired" *ngIf="sub.valid_until && isSubExpired(sub.valid_until)">EXPIRED</div>
                   </div>
                 </div>
                 <div class="sub-status badge" [class.badge-active]="sub.status === 'active'">
@@ -162,6 +164,12 @@
                   <span>
                     {{ sub.plan.limits.max_clinics }} clinics
                     · {{ sub.plan.limits.max_doctors }} doctors
+                  </span>
+                </div>
+                <div class="info-row" *ngIf="sub.valid_until">
+                  <span class="info-label">Expires</span>
+                  <span [class.text-danger]="isSubExpired(sub.valid_until)">
+                    {{ sub.valid_until | date:'dd MMM yyyy' }}
                   </span>
                 </div>
               </div>
@@ -211,10 +219,17 @@
             </div>
             <div class="form-group">
               <label>Plan</label>
-              <select [(ngModel)]="newSub.plan_name">
-                <option value="basic">Basic</option>
-                <option value="premium">Premium</option>
+              <select [(ngModel)]="newSub.plan_name" [disabled]="plansLoading">
+                <option *ngIf="plansLoading" value="">Loading plans…</option>
+                <option *ngFor="let p of planOptions" [value]="p.key">
+                  {{ p.label }} ({{ p.days }} days)
+                </option>
               </select>
+              <!-- Live expiry preview -->
+              <div class="expiry-hint" *ngIf="newSubExpiryPreview">
+                <span class="expiry-icon">📅</span>
+                Subscription expires on <strong>{{ newSubExpiryPreview }}</strong>
+              </div>
             </div>
             <div class="form-group">
               <label>Max Clinics</label>
@@ -253,11 +268,17 @@
             <div class="ssb-info">
               <div class="ssb-name">{{ selectedSubscription.entity_name }}</div>
               <div class="ssb-meta">
-                <span class="badge" [class.badge-premium]="selectedSubscription.plan.name === 'premium'">
-                  {{ (selectedSubscription.plan.name || 'basic') | uppercase }}
-                </span>
+                <span class="badge">{{ (selectedSubscription.plan.name || 'unknown') | uppercase }}</span>
                 <span class="badge" [class.badge-active]="selectedSubscription.status === 'active'">
                   {{ selectedSubscription.status || 'active' }}
+                </span>
+                <span class="badge badge-expired" *ngIf="selectedSubscription.valid_until && isSubExpired(selectedSubscription.valid_until)">EXPIRED</span>
+              </div>
+              <div class="ssb-expiry" *ngIf="selectedSubscription.valid_until">
+                <span class="expiry-icon">📅</span>
+                <span [class.text-danger]="isSubExpired(selectedSubscription.valid_until)">
+                  {{ isSubExpired(selectedSubscription.valid_until) ? 'Expired on' : 'Valid until' }}
+                  {{ selectedSubscription.valid_until | date:'dd MMM yyyy' }}
                 </span>
               </div>
             </div>

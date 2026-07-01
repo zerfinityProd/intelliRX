@@ -1,0 +1,64 @@
+﻿<!-- src/app/components/subscription-expired/subscription-expired.html -->
+<div class="expired-page">
+  <div class="expired-card">
+
+    <!-- Animated lock icon -->
+    <div class="expired-icon-wrap">
+      <div class="expired-ring"></div>
+      <div class="expired-icon">🔒</div>
+    </div>
+
+    <h1 class="expired-title">Subscription Expired</h1>
+
+    <!-- Admin message -->
+    <ng-container *ngIf="isAdmin; else staffMsg">
+      <p class="expired-subtitle">
+        Your IntelliRX subscription has expired. All users linked to your account have
+        been logged out until the subscription is renewed.
+      </p>
+      <div class="expired-info-box">
+        <div class="info-row">
+          <span class="info-icon">📋</span>
+          <span>Your plan period has ended. Please contact IntelliRX support to renew.</span>
+        </div>
+        <div class="info-row">
+          <span class="info-icon">👥</span>
+          <span>Doctors and receptionists will regain access automatically once renewed.</span>
+        </div>
+        <div class="info-row">
+          <span class="info-icon">💾</span>
+          <span>All your data is safe and preserved.</span>
+        </div>
+      </div>
+      <a href="mailto:support@intellirx.com" class="btn-renew">
+        <span>📧</span> Contact Support to Renew
+      </a>
+    </ng-container>
+
+    <!-- Doctor / Receptionist message -->
+    <ng-template #staffMsg>
+      <p class="expired-subtitle">
+        Access to IntelliRX has been temporarily suspended for your clinic.
+        Your administrator's subscription has expired.
+      </p>
+      <div class="expired-info-box">
+        <div class="info-row">
+          <span class="info-icon">📞</span>
+          <span>Please contact your clinic administrator to renew the subscription.</span>
+        </div>
+        <div class="info-row">
+          <span class="info-icon">💾</span>
+          <span>Your work and patient data are safe — no data has been lost.</span>
+        </div>
+      </div>
+    </ng-template>
+
+    <button class="btn-back-login" (click)="goToLogin()">
+      ← Back to Login
+    </button>
+  </div>
+
+  <!-- Background decoration -->
+  <div class="expired-bg-circle circle-1"></div>
+  <div class="expired-bg-circle circle-2"></div>
+</div>

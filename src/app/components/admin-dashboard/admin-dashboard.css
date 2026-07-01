@@ -474,6 +474,83 @@
 [data-theme="dark"] .ad-plan-badge--premium { background: rgba(217,119,6,0.15); border-color: rgba(217,119,6,0.3); color: #fbbf24; }
 [data-theme="dark"] .ad-sub-limit { border-left-color: var(--dk-border); }
 
+/* ── Expiry pill ─────────────────────────────────────────────────────── */
+.ad-expiry-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 99px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border: 1px solid transparent;
+  transition: background 0.2s;
+}
+.ad-expiry-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ok: green */
+.ad-expiry-pill--none {
+  background: rgba(100,116,139,0.08);
+  color: #64748b;
+  border-color: rgba(100,116,139,0.2);
+}
+.ad-expiry-pill--none .ad-expiry-dot { background: #94a3b8; }
+
+/* ok: green */
+.ad-expiry-pill--ok {
+  background: rgba(22,163,74,0.10);
+  color: #15803d;
+  border-color: rgba(22,163,74,0.25);
+}
+.ad-expiry-pill--ok .ad-expiry-dot { background: #16a34a; }
+
+/* warning: amber */
+.ad-expiry-pill--warning {
+  background: rgba(234,179,8,0.10);
+  color: #a16207;
+  border-color: rgba(234,179,8,0.3);
+}
+.ad-expiry-pill--warning .ad-expiry-dot { background: #ca8a04; }
+
+/* critical: red — dot pulses */
+.ad-expiry-pill--critical {
+  background: rgba(239,68,68,0.10);
+  color: #b91c1c;
+  border-color: rgba(239,68,68,0.3);
+}
+.ad-expiry-pill--critical .ad-expiry-dot {
+  background: #dc2626;
+  animation: expiry-pulse 1.4s ease-in-out infinite;
+}
+
+/* expired: solid red */
+.ad-expiry-pill--expired {
+  background: rgba(239,68,68,0.14);
+  color: #dc2626;
+  border-color: rgba(239,68,68,0.4);
+}
+.ad-expiry-pill--expired .ad-expiry-dot {
+  background: #dc2626;
+  animation: expiry-pulse 1s ease-in-out infinite;
+}
+
+@keyframes expiry-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* dark mode tweaks */
+[data-theme="dark"] .ad-expiry-pill--none    { background: rgba(100,116,139,0.12); color: #94a3b8; }
+[data-theme="dark"] .ad-expiry-pill--ok      { background: rgba(22,163,74,0.15);   color: #4ade80; }
+[data-theme="dark"] .ad-expiry-pill--warning { background: rgba(234,179,8,0.12);   color: #fbbf24; }
+[data-theme="dark"] .ad-expiry-pill--critical { background: rgba(239,68,68,0.15);  color: #f87171; }
+[data-theme="dark"] .ad-expiry-pill--expired  { background: rgba(239,68,68,0.18);  color: #f87171; }
+
 /* ── Page header ─────────────────────────────────────────────────────── */
 .ad-page-header {
   display: flex; align-items: flex-start; justify-content: space-between;

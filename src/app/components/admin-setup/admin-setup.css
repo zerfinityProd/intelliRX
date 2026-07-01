@@ -538,6 +538,57 @@
 }
 [data-theme="dark"] .badge-premium { color: var(--ad-recept); }
 
+.badge-expired {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+[data-theme="dark"] .badge-expired { color: #f87171; }
+
+/* Card red-border for expired subscriptions */
+.sub-card-expired {
+  border-color: rgba(239, 68, 68, 0.4) !important;
+}
+.sub-card-expired:hover {
+  border-color: #dc2626 !important;
+}
+
+/* Row of badges (plan + expired) */
+.sub-badges-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+/* Expiry date hint below the plan dropdown in creation form */
+.expiry-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ad-primary);
+  background: rgba(20, 141, 158, 0.08);
+  border: 1px solid rgba(20, 141, 158, 0.2);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+.expiry-icon { font-size: 14px; }
+
+/* Expiry line in selected-sub-banner */
+.ssb-expiry {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--ad-muted);
+}
+
+.text-danger { color: #dc2626 !important; }
+[data-theme="dark"] .text-danger { color: #f87171 !important; }
+
 /* Add card */
 .add-card {
   display: flex;

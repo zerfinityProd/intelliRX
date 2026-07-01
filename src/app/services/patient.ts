@@ -4,6 +4,7 @@ import { PatientDataService } from './firebase';
 import { AuthenticationService } from './authenticationService';
 import { PatientSearchService } from './patientSearchService';
 import { ClinicContextService } from './clinicContextService';
+import { ConfigService } from './configService';
 import { Patient, Visit } from '../models/patient.model';
 import {
   isValidPhone,
@@ -45,7 +46,8 @@ export class PatientService {
     private firebaseService: PatientDataService,
     private authService: AuthenticationService,
     private searchService: PatientSearchService,
-    private clinicContextService: ClinicContextService
+    private clinicContextService: ClinicContextService,
+    private configService: ConfigService
   ) { }
 
   /**
@@ -59,6 +61,24 @@ export class PatientService {
 
   /** Get the active clinic context */
   private getClinicId(): string | undefined {
+    return this.clinicContextService.getSelectedClinicId() || undefined;
+  }
+
+  /**
+   * Resolve the effective clinicId for patient queries.
+   * Returns undefined (= subscription-wide) when share_patients_across_clinics is ON.
+   * Returns the current clinicId when sharing is OFF, enforcing clinic isolation.
+   */
+  private async resolveClinicId(): Promise<string | undefined> {
+    try {
+      const subId = this.clinicContextService.getSubscriptionId();
+      if (subId) {
+        const subConfig = await this.configService.getSubscriptionConfig(subId);
+        if (subConfig?.multiClinic?.share_patients_across_clinics) {
+          return undefined; // sharing ON → search subscription-wide
+        }
+      }
+    } catch { /* fall through to clinic-scoped */ }
     return this.clinicContextService.getSelectedClinicId() || undefined;
   }
 
@@ -307,13 +327,14 @@ export class PatientService {
 
   /**
    * Find a patient by phone number alone (returns first match or null).
+   * Respects share_patients_across_clinics: when OFF, only searches within the current clinic.
    */
   async findPatientByPhone(phone: string): Promise<Patient | null> {
     const normalizedPhone = phone.trim();
     if (!normalizedPhone) return null;
-    const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+    const clinicId = await this.resolveClinicId();
 
-    // Strategy 1: indexed phone search scoped by clinicId
+    // Strategy 1: indexed phone search
     try {
       const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, clinicId);
       const exact = results.filter(p => p.phone.trim() === normalizedPhone);
@@ -329,17 +350,6 @@ export class PatientService {
       if (exact.length > 0) return exact[0];
     } catch {
       // fall through
-    }
-
-    // Strategy 3: search without clinicId
-    if (clinicId) {
-      try {
-        const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, undefined);
-        const exact = results.filter(p => p.phone.trim() === normalizedPhone);
-        if (exact.length > 0) return exact[0];
-      } catch {
-        // fall through
-      }
     }
 
     return null;
@@ -370,9 +380,11 @@ export class PatientService {
     const normalizedPhone = phone.trim();
     if (!normalizedName || !normalizedPhone) return null;
 
-    const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+    // Use resolveClinicId so that when sharing is OFF, we only match patients
+    // belonging to the current clinic — not those from other clinics.
+    const clinicId = await this.resolveClinicId();
 
-    // Strategy 1: indexed phone search scoped by clinicId
+    // Strategy 1: indexed phone search
     try {
       const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, clinicId);
       const match = results.find(p => p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName);
@@ -388,17 +400,6 @@ export class PatientService {
       if (match) return match;
     } catch {
       // fall through
-    }
-
-    // Strategy 3: search without clinicId
-    if (clinicId) {
-      try {
-        const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, undefined);
-        const match = results.find(p => p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName);
-        if (match) return match;
-      } catch {
-        // fall through
-      }
     }
 
     return null;

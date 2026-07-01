@@ -156,7 +156,28 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   get subscriptionPlanLabel(): string {
-    return (this.subscription?.plan?.name || 'basic').toUpperCase();
+    return (this.subscription?.plan?.name || 'unknown').toUpperCase();
+  }
+
+  /**
+   * Returns the number of whole days until the subscription expires.
+   * Negative = already expired. Null = no valid_until set.
+   */
+  get daysUntilExpiry(): number | null {
+    const v = this.subscription?.valid_until;
+    if (!v) return null;
+    const msLeft = new Date(v).getTime() - Date.now();
+    return Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  }
+
+  /** 'expired' | 'critical' (<=7d) | 'warning' (<=30d) | 'ok' | 'none' (no date set) */
+  get expiryUrgency(): 'expired' | 'critical' | 'warning' | 'ok' | 'none' {
+    const d = this.daysUntilExpiry;
+    if (d === null) return 'none';
+    if (d <= 0) return 'expired';
+    if (d <= 7) return 'critical';
+    if (d <= 30) return 'warning';
+    return 'ok';
   }
 
   /** True when the clinic count has reached or exceeded the plan limit */
@@ -428,6 +449,31 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       // Ensure limits object always exists
       if (!this.subscription.plan?.limits) {
         this.subscription.plan.limits = { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 };
+      }
+
+      // ── Backfill valid_until if missing ─────────────────────────────────
+      // Existing subscriptions created before the valid_until feature won't have
+      // this field. Compute it from created_at + plan validity days and write it
+      // back to Firestore so it's permanently set.
+      if (!this.subscription.valid_until) {
+        try {
+          const planName = this.subscription.plan?.name || '';
+          const validityDays = planName
+            ? await this.configService.getPlanValidityDays(planName)
+            : 30;
+          const baseDate = this.subscription.created_at
+            ? new Date(this.subscription.created_at)
+            : new Date();
+          const expiryDate = new Date(baseDate);
+          expiryDate.setDate(expiryDate.getDate() + validityDays);
+          const valid_until = expiryDate.toISOString();
+          // Write back to Firestore so this doesn't repeat
+          await this.api.updateDocument('subscriptions', this.subscription.id, { valid_until });
+          this.subscription.valid_until = valid_until;
+          console.log('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, '(', validityDays, 'days from created_at)');
+        } catch (backfillErr) {
+          console.warn('[AdminDashboard] Could not backfill valid_until:', backfillErr);
+        }
       }
     } catch (e: any) {
       console.error('[AdminDashboard] loadSubscription error:', e);

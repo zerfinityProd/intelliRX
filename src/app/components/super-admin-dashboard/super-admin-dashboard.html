@@ -226,10 +226,15 @@
             </div>
             <div class="col-md-6">
               <label class="sa-label">Plan</label>
-              <select class="sa-input" [(ngModel)]="subForm.plan_name" id="sub-plan">
-                <option value="basic">Basic</option>
-                <option value="premium">Premium</option>
+              <select class="sa-input" [(ngModel)]="subForm.plan_name" id="sub-plan" [disabled]="plansLoading">
+                <option *ngIf="plansLoading" value="">Loading plans…</option>
+                <option *ngFor="let p of planOptions" [value]="p.key">
+                  {{ p.label }} ({{ p.days }} days)
+                </option>
               </select>
+              <div class="sa-expiry-hint" *ngIf="subFormExpiryPreview">
+                📅 Expires on <strong>{{ subFormExpiryPreview }}</strong>
+              </div>
             </div>
             <div class="col-md-6">
               <label class="sa-label">Status</label>
@@ -269,7 +274,7 @@
           </div>
           <div class="row g-3">
             <div class="col-md-6 col-lg-4" *ngFor="let sub of filteredSubscriptions">
-              <div class="sa-sub-card">
+              <div class="sa-sub-card" [class.sa-sub-card-expired]="isSubExpired(sub.valid_until)">
                 <div class="sa-sub-card-header">
                   <div class="sa-av">{{ subInitial(sub) }}</div>
                   <div class="flex-grow-1 min-w-0">
@@ -277,13 +282,21 @@
                     <div class="sa-cell-sub">{{ sub.id }}</div>
                   </div>
                   <div class="d-flex flex-column gap-1 align-items-end">
-                    <span class="sa-plan-badge" [class.sa-plan-badge--premium]="sub.plan.name === 'premium'">{{ (sub.plan.name || 'basic') | uppercase }}</span>
+                    <span class="sa-plan-badge">{{ (sub.plan.name || 'unknown') | uppercase }}</span>
                     <span class="sa-status-badge" [ngClass]="getStatusClass(sub.status)">{{ sub.status }}</span>
+                    <span class="sa-plan-badge sa-badge-expired" *ngIf="isSubExpired(sub.valid_until)">EXPIRED</span>
                   </div>
                 </div>
                 <div class="sa-sub-detail-row">
                   <span class="sa-sub-detail-lbl">Owner</span>
                   <span class="sa-cell-muted">{{ sub.owner_email }}</span>
+                </div>
+                <div class="sa-sub-detail-row" *ngIf="sub.valid_until">
+                  <span class="sa-sub-detail-lbl">Valid Until</span>
+                  <span [class.sa-text-danger]="isSubExpired(sub.valid_until)" class="sa-cell-muted">
+                    {{ sub.valid_until | date:'dd MMM yyyy' }}
+                    <span *ngIf="isSubExpired(sub.valid_until)"> ⚠ Expired</span>
+                  </span>
                 </div>
                 <div class="sa-sub-limits">
                   <div class="sa-limit-chip"><span class="sa-limit-num">{{ sub.plan.limits.max_clinics }}</span><span>Clinics</span></div>

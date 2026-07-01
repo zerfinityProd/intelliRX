@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { FirestoreApiService, DELETE_FIELD } from './firestore-api.service';
 import { normalizeEmail } from '../utilities/normalize-email';
 import { ClinicUserAvailability } from '../models/clinic-user.model';
+import { ConfigService } from './configService';
 
 
 /** Strip non-printable / invisible characters from a string */
@@ -66,6 +67,7 @@ interface UserLookupResult {
 })
 export class AuthorizationService {
     private api = inject(FirestoreApiService);
+    private configService = inject(ConfigService);
 
     /** Per-email lookup cache */
     private lookupCache = new Map<string, UserLookupResult>();
@@ -908,5 +910,70 @@ export class AuthorizationService {
 
     async denyEmail(email: string): Promise<void> {
 
+    }
+
+    /**
+     * Check whether the subscription linked to a given email is still valid.
+     *
+     * Returns:
+     *   'valid'     — subscription exists and has not expired (or has no valid_until set)
+     *   'expired'   — valid_until is in the past
+     *   'not_found' — no subscription found for this user
+     *
+     * z_admin users should bypass this check at the call site.
+     */
+    async checkSubscriptionExpiry(email: string): Promise<'valid' | 'expired' | 'not_found'> {
+        try {
+            const subscriptionId = await this.getUserSubscriptionId(email);
+            if (!subscriptionId) {
+                // Admin-only users (no clinic assignment) — try via subscriptions.owner_email
+                const normalized = normalizeEmail(email);
+                const subDocs = await this.api.runQuery('', {
+                    collectionId: 'subscriptions',
+                    filters: [{ field: 'owner_email', op: '==', value: normalized }],
+                });
+                if (subDocs.length === 0) return 'not_found';
+                const sub = subDocs[0].data;
+                const validUntil = await this.resolveValidUntil(subDocs[0].id, sub);
+                if (!validUntil) return 'valid'; // fail-open when unable to determine
+                const isExpired = this.configService.isSubscriptionExpired(validUntil);
+                return isExpired ? 'expired' : 'valid';
+            }
+
+            const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
+            if (!subDoc) return 'not_found';
+
+            const validUntil = await this.resolveValidUntil(subDoc.id, subDoc.data);
+            if (!validUntil) return 'valid'; // fail-open when unable to determine
+            const isExpired = this.configService.isSubscriptionExpired(validUntil);
+            return isExpired ? 'expired' : 'valid';
+        } catch (error) {
+            console.warn('[AuthZ] checkSubscriptionExpiry failed for:', email, error);
+            return 'valid'; // fail-open: don't block login on check errors
+        }
+    }
+
+    /**
+     * Returns valid_until for a subscription document.
+     * If the field is missing (subscription predates the feature), computes it
+     * from created_at + plan validity days and writes it back to Firestore.
+     */
+    private async resolveValidUntil(subId: string, subData: Record<string, any>): Promise<string | null> {
+        if (subData['valid_until']) return subData['valid_until'] as string;
+        try {
+            const planName: string = (subData['plan']?.['name'] ?? subData['plan'] ?? '') as string;
+            const validityDays = planName ? await this.configService.getPlanValidityDays(planName) : 0;
+            if (!validityDays) return null;
+            const baseDate = subData['created_at'] ? new Date(subData['created_at'] as string) : new Date();
+            const expiry = new Date(baseDate);
+            expiry.setDate(expiry.getDate() + validityDays);
+            const valid_until = expiry.toISOString();
+            await this.api.updateDocument('subscriptions', subId, { valid_until });
+            console.log('[AuthZ] Backfilled valid_until:', valid_until, 'for sub:', subId);
+            return valid_until;
+        } catch (e) {
+            console.warn('[AuthZ] resolveValidUntil backfill failed for sub:', subId, e);
+            return null;
+        }
     }
 }

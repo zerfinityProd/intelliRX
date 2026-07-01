@@ -92,6 +92,11 @@ export const routes: Routes = [
         loadComponent: () => import('./components/appointments-list/appointments-list').then(m => m.AppointmentsListComponent),
         canActivate: [authGuard]
     },
+    // ── Subscription Expired (accessible without auth — user is logged out) ──
+    {
+        path: 'subscription-expired',
+        loadComponent: () => import('./components/subscription-expired/subscription-expired').then(m => m.SubscriptionExpiredComponent),
+    },
     // ── Fallback ─────────────────────────────────────────────────────────────
     {
         path: '**',

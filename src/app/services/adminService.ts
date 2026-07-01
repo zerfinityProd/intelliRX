@@ -89,12 +89,23 @@ export class AdminService {
 
   async createSubscription(
     data: Omit<Subscription, 'id' | 'created_at' | 'updated_at'>,
-    explicitId?: string
+    explicitId?: string,
+    validityDays?: number
   ): Promise<string> {
     const id = explicitId ?? this.api.generateDocId();
     const now = new Date().toISOString();
+
+    // Compute valid_until if validityDays is provided
+    let valid_until: string | undefined;
+    if (validityDays && validityDays > 0) {
+      const expiry = new Date();
+      expiry.setDate(expiry.getDate() + validityDays);
+      valid_until = expiry.toISOString();
+    }
+
     await this.api.setDocument('subscriptions', id, {
       ...data,
+      ...(valid_until ? { valid_until } : {}),
       created_at: now,
       updated_at: now,
     });

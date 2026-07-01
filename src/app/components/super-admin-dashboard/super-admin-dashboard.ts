@@ -6,7 +6,9 @@ import { Router } from '@angular/router';
 import { filter, firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../services/authenticationService';
 import { SuperAdminService, SuperAdminUser, DashboardOverview } from '../../services/superAdminService';
+import { ConfigService } from '../../services/configService';
 import { Subscription } from '../../models/subscription.model';
+import { PlanOption } from '../../models/subscription.model';
 import { NavbarComponent } from '../navbar/navbar';
 
 export interface PermissionSet {
@@ -31,6 +33,7 @@ type ActiveTab = 'overview' | 'subscriptions' | 'admins' | 'permissions';
 export class SuperAdminDashboardComponent implements OnInit {
   private authService = inject(AuthenticationService);
   private superAdminService = inject(SuperAdminService);
+  private configService = inject(ConfigService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
 
@@ -51,6 +54,8 @@ export class SuperAdminDashboardComponent implements OnInit {
 
   // ── Subscriptions ─────────────────────────────────────────────────────
   subscriptions: (Subscription & { id: string })[] = [];
+  planOptions: PlanOption[] = [];
+  plansLoading = false;
   showSubForm = false;
   editingSub: (Subscription & { id: string }) | null = null;
   subForm = this.emptySubForm();
@@ -110,6 +115,11 @@ export class SuperAdminDashboardComponent implements OnInit {
     await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
     this.adminName = this.authService.currentUserValue?.name || 'Super Admin';
     this.adminEmail = this.authService.currentUserValue?.email || '';
+    // Load plan options from Firestore first (used by subscription form)
+    this.plansLoading = true;
+    try {
+      this.planOptions = await this.configService.getAvailablePlans();
+    } catch { /* non-blocking */ } finally { this.plansLoading = false; }
     await this.loadAll();
     this.isLoading = false;
     this.cdr.detectChanges();
@@ -271,9 +281,21 @@ export class SuperAdminDashboardComponent implements OnInit {
         this.showToast('Subscription updated successfully');
       } else {
         const newId = this.superAdminService.computeNextSubscriptionId(this.subscriptions.map(s => s.id));
-        await this.superAdminService.createSubscription(data, newId);
-        this.subscriptions.push({ ...data, id: newId, created_at: new Date().toISOString(), updated_at: new Date().toISOString() } as any);
-        this.showToast('Subscription created successfully');
+        // Fetch validity days for the chosen plan and compute valid_until
+        const validityDays = this.subForm.plan_name
+          ? await this.configService.getPlanValidityDays(this.subForm.plan_name)
+          : 30;
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + validityDays);
+        const valid_until = expiryDate.toISOString();
+
+        await this.superAdminService.createSubscription({ ...data, valid_until }, newId, validityDays);
+        this.subscriptions.push({
+          ...data, valid_until, id: newId,
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+        } as any);
+        const expiryStr = expiryDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        this.showToast(`Subscription created — valid until ${expiryStr}`);
       }
       this.overview.totalSubscriptions = this.subscriptions.length;
       this.overview.activeSubscriptions = this.subscriptions.filter(s => s.status === 'active').length;
@@ -299,10 +321,25 @@ export class SuperAdminDashboardComponent implements OnInit {
   private emptySubForm() {
     return {
       entity_name: '', owner_email: '', billing_email: '',
-      plan_name: 'basic' as 'basic' | 'premium',
+      plan_name: '' as string,   // populated from Firestore planOptions
       max_clinics: 5, max_doctors: 10, max_receptionists: 10, max_appointments_per_day: 50,
       status: 'active' as 'active' | 'inactive' | 'suspended',
     };
+  }
+
+  /** True when the given ISO valid_until date is in the past. */
+  isSubExpired(validUntil: string | undefined): boolean {
+    if (!validUntil) return false;
+    return new Date(validUntil) < new Date();
+  }
+
+  /** Computed expiry preview shown in the form before saving */
+  get subFormExpiryPreview(): string {
+    const plan = this.planOptions.find(p => p.key === this.subForm.plan_name);
+    if (!plan || this.editingSub) return '';
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + plan.days);
+    return expiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   // ── Admin User CRUD ───────────────────────────────────────────────────

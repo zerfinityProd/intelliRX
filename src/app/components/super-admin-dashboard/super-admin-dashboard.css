@@ -258,8 +258,30 @@
 .sa-plan-badge--premium {
   background: #fef3c7; color: #d97706; border-color: #fde68a;
 }
+.sa-badge-expired {
+  background: rgba(239,68,68,0.10); color: #dc2626; border-color: rgba(239,68,68,0.3);
+}
+[data-theme="dark"] .sa-badge-expired { color: #f87171; background: rgba(239,68,68,0.18); }
 [data-theme="dark"] .sa-plan-badge { background: var(--dk-bg3); border-color: var(--dk-border); }
 [data-theme="dark"] .sa-plan-badge--premium { background: rgba(217,119,6,0.15); border-color: rgba(217,119,6,0.3); color: #fbbf24; }
+
+/* Expired subscription card */
+.sa-sub-card-expired {
+  border-color: rgba(239,68,68,0.45) !important;
+}
+
+/* Expiry hint in subscription form */
+.sa-expiry-hint {
+  margin-top: 6px; padding: 5px 10px;
+  font-size: 12px; color: #0d7a8a;
+  background: rgba(20,141,158,0.08);
+  border: 1px solid rgba(20,141,158,0.2);
+  border-radius: 6px;
+}
+[data-theme="dark"] .sa-expiry-hint { color: #4dd6e8; }
+
+.sa-text-danger { color: #dc2626 !important; }
+[data-theme="dark"] .sa-text-danger { color: #f87171 !important; }
 
 .sa-status-badge {
   display: inline-block; padding: 3px 9px; border-radius: 99px;

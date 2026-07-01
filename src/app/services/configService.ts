@@ -10,6 +10,7 @@ import {
   resolveEffectiveSettings,
   DEFAULT_SYSTEM_SETTINGS
 } from '../config/userSettings';
+import { PlanOption, SystemConfig } from '../models/subscription.model';
 
 /** Cache entry with TTL tracking */
 interface CacheEntry<T> {
@@ -219,6 +220,104 @@ export class ConfigService {
     ]);
 
     return resolveEffectiveSettings(subConfig, clinicConfig, doctorConfig);
+  }
+
+  // ─── System Config ────────────────────────────────────────────────────────
+
+  private systemConfigCache: SystemConfig | null = null;
+  private systemConfigFetchTime = 0;
+  private readonly SYSTEM_CONFIG_TTL = 10 * 60 * 1000; // 10 minutes
+
+  /**
+   * Fetch the top-level configurations/system document.
+   * Cached for 10 minutes. Returns an empty object if not found.
+   */
+  async getSystemConfig(): Promise<SystemConfig> {
+    const now = Date.now();
+    if (this.systemConfigCache && (now - this.systemConfigFetchTime < this.SYSTEM_CONFIG_TTL)) {
+      return this.systemConfigCache;
+    }
+    try {
+      const result = await this.api.getDocument('configurations', 'system');
+      const data: SystemConfig = result ? (result.data as SystemConfig) : {};
+      this.systemConfigCache = data;
+      this.systemConfigFetchTime = now;
+      return data;
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Parse configurations/system to return available plan options.
+   *
+   * Reads all keys matching the pattern `<planKey>_plan_validity_days`.
+   * Example Firestore doc:
+   *   demo_plan_validity_days: 7
+   *   starter_plan_validity_days: 31
+   *   pro_plan_validity_days: 365
+   *
+   * Returns an array sorted ascending by validity days:
+   *   [{ key: 'demo', label: 'Demo', days: 7 }, { key: 'starter', ... }, ...]
+   */
+  async getAvailablePlans(): Promise<PlanOption[]> {
+    const config = await this.getSystemConfig();
+    const suffix = '_plan_validity_days';
+    const plans: PlanOption[] = [];
+
+    for (const rawKey of Object.keys(config)) {
+      if (rawKey.endsWith(suffix)) {
+        const days = Number(config[rawKey]);
+        if (!isNaN(days) && days > 0) {
+          const planKey = rawKey.slice(0, rawKey.length - suffix.length);
+          plans.push({
+            key: planKey,
+            label: planKey.charAt(0).toUpperCase() + planKey.slice(1),
+            days,
+          });
+        }
+      }
+    }
+
+    return plans.sort((a, b) => a.days - b.days);
+  }
+
+  /**
+   * Get validity days for a specific plan key.
+   * Falls back to 30 days if the key is not found in Firestore.
+   */
+  async getPlanValidityDays(planKey: string): Promise<number> {
+    const config = await this.getSystemConfig();
+    const field = `${planKey}_plan_validity_days`;
+    const val = Number(config[field]);
+    return !isNaN(val) && val > 0 ? val : 30;
+  }
+
+  /**
+   * Compute an ISO expiry date string for a given plan key.
+   * startDate defaults to today.
+   */
+  async computeValidUntil(planKey: string, startDate?: Date): Promise<string> {
+    const days = await this.getPlanValidityDays(planKey);
+    const base = startDate ?? new Date();
+    const expiry = new Date(base);
+    expiry.setDate(expiry.getDate() + days);
+    return expiry.toISOString();
+  }
+
+  /**
+   * Check whether a subscription's `valid_until` date has passed.
+   * Returns `true` when the subscription is expired.
+   * Returns `false` if `valid_until` is missing (no expiry set — treat as valid).
+   */
+  isSubscriptionExpired(validUntil: string | undefined): boolean {
+    if (!validUntil) return false; // no expiry set → treat as valid
+    return new Date(validUntil) < new Date();
+  }
+
+  /** Invalidate the system config cache (call after super-admin changes system settings). */
+  invalidateSystemConfigCache(): void {
+    this.systemConfigCache = null;
   }
 
   // ─── Cache helpers ────────────────────────────────────────────────────────

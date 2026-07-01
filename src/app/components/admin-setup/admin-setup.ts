@@ -6,7 +6,9 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { firstValueFrom, filter } from 'rxjs';
 import { AdminService, AdminUser } from '../../services/adminService';
 import { AuthenticationService } from '../../services/authenticationService';
+import { ConfigService } from '../../services/configService';
 import { Subscription } from '../../models/subscription.model';
+import { PlanOption } from '../../models/subscription.model';
 import { ClinicUserAvailability } from '../../models/clinic-user.model';
 import { NavbarComponent } from '../navbar/navbar';
 
@@ -74,6 +76,7 @@ export interface PermissionSet {
 export class AdminSetupComponent implements OnInit {
   private adminService = inject(AdminService);
   private authService = inject(AuthenticationService);
+  private configService = inject(ConfigService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
@@ -120,6 +123,10 @@ export class AdminSetupComponent implements OnInit {
 
   // ── Step 1: Subscription ─────────────────────────────────────────────────
 
+  /** Plan options loaded from Firestore configurations/system */
+  planOptions: PlanOption[] = [];
+  plansLoading = false;
+
   subscriptions: (Subscription & { id: string })[] = [];
   selectedSubscription: (Subscription & { id: string }) | null = null;
   isCreatingSubscription = false;
@@ -128,7 +135,7 @@ export class AdminSetupComponent implements OnInit {
     entity_name: '',
     owner_email: '',
     billing_email: '',
-    plan_name: 'basic' as 'basic' | 'premium',
+    plan_name: '' as string,         // set to first plan key once planOptions loads
     max_clinics: 5,
     max_doctors: 10,
     max_receptionists: 10,
@@ -192,6 +199,9 @@ export class AdminSetupComponent implements OnInit {
 
   async ngOnInit() {
     await firstValueFrom(this.authService.authReady$.pipe(filter(ready => ready)));
+
+    // Load plan options from Firestore before anything else
+    await this.loadPlanOptions();
 
     await this.loadSubscriptions();
 
@@ -307,6 +317,34 @@ export class AdminSetupComponent implements OnInit {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
+  //  Plan options (from Firestore)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async loadPlanOptions() {
+    this.plansLoading = true;
+    try {
+      this.planOptions = await this.configService.getAvailablePlans();
+      // Default new subscription to the first available plan
+      if (this.planOptions.length > 0 && !this.newSub.plan_name) {
+        this.newSub.plan_name = this.planOptions[0].key;
+      }
+    } catch (e) {
+      console.warn('[AdminSetup] Could not load plan options from Firestore:', e);
+    } finally {
+      this.plansLoading = false;
+    }
+  }
+
+  /** Computed expiry preview shown in the form before saving */
+  get newSubExpiryPreview(): string {
+    const plan = this.planOptions.find(p => p.key === this.newSub.plan_name);
+    if (!plan) return '';
+    const expiry = new Date();
+    expiry.setDate(expiry.getDate() + plan.days);
+    return expiry.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
   //  Step 1 – Subscriptions
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -355,7 +393,7 @@ export class AdminSetupComponent implements OnInit {
       entity_name: '',
       owner_email: this.authService.currentUserValue?.email || '',
       billing_email: '',
-      plan_name: 'basic',
+      plan_name: this.planOptions.length > 0 ? this.planOptions[0].key : '',
       max_clinics: 5,
       max_doctors: 10,
       max_receptionists: 10,
@@ -373,6 +411,17 @@ export class AdminSetupComponent implements OnInit {
     try {
       // Compute the next sequential ID from our local cache — no extra network call.
       const id = this.adminService.computeNextSubscriptionId(this.subscriptions.map(s => s.id));
+
+      // Fetch validity days for the chosen plan from Firestore
+      const validityDays = this.newSub.plan_name
+        ? await this.configService.getPlanValidityDays(this.newSub.plan_name)
+        : 30;
+
+      // Compute valid_until locally for immediate UI feedback
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + validityDays);
+      const valid_until = expiryDate.toISOString();
+
       const subData = {
         entity_name: this.newSub.entity_name.trim(),
         owner_email: this.newSub.owner_email.trim().toLowerCase(),
@@ -387,15 +436,17 @@ export class AdminSetupComponent implements OnInit {
           },
         },
         status: this.newSub.status,
+        valid_until,
       };
-      await this.adminService.createSubscription(subData, id);
+      await this.adminService.createSubscription(subData, id, validityDays);
       // Update local state immediately — avoids a second Firestore fetch.
       const now = new Date().toISOString();
       const created = { ...subData, id, created_at: now, updated_at: now } as Subscription & { id: string };
       this.subscriptions.push(created);
       this.selectSubscription(created);
       this.isCreatingSubscription = false;
-      this.successMessage = '✓ Subscription created successfully!';
+      const expiryStr = expiryDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      this.successMessage = `✓ Subscription created! Valid until ${expiryStr}.`;
     } catch (e: any) {
       this.errorMessage = 'Failed to create subscription: ' + e.message;
     } finally {
@@ -1215,5 +1266,10 @@ export class AdminSetupComponent implements OnInit {
    */
   subHasData(sub: Subscription & { id: string }): boolean {
     return !!sub.entity_name?.trim();
+  }
+
+  /** True when the given ISO valid_until date is in the past. */
+  isSubExpired(validUntil: string): boolean {
+    return new Date(validUntil) < new Date();
   }
 }

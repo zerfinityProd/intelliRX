@@ -38,9 +38,10 @@ export class SuperAdminService {
 
   async createSubscription(
     data: Omit<Subscription, 'id' | 'created_at' | 'updated_at'>,
-    explicitId?: string
+    explicitId?: string,
+    validityDays?: number
   ): Promise<string> {
-    return this.adminService.createSubscription(data, explicitId);
+    return this.adminService.createSubscription(data, explicitId, validityDays);
   }
 
   async updateSubscription(id: string, data: Partial<Subscription>): Promise<void> {
