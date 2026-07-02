@@ -951,7 +951,7 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     /** Check whether the form has been modified since it was loaded. */
-    private isFormDirty(): boolean {
+    isFormDirty(): boolean {
         return this.getFormStateSnapshot() !== this.originalFormState;
     }
 

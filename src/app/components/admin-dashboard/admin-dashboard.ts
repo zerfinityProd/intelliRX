@@ -10,6 +10,7 @@ import { AdminService } from '../../services/adminService';
 import { FirestoreApiService } from '../../services/firestore-api.service';
 import { ConfigService } from '../../services/configService';
 import { Subscription } from '../../models/subscription.model';
+import { PlanOption } from '../../models/subscription.model';
 import { ClinicUserAvailability } from '../../models/clinic-user.model';
 import { MultiClinicConfig, DEFAULT_MULTI_CLINIC_CONFIG } from '../../config/userSettings';
 import { NavbarComponent } from '../navbar/navbar';
@@ -51,7 +52,7 @@ export interface AdminUserState {
   assignments: UserClinicAssignment[];
 }
 
-type ActiveSection = 'clinics' | 'users' | 'config' | null;
+type ActiveSection = 'clinics' | 'users' | 'config' | 'upgrade' | null;
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -94,6 +95,13 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   readonly slotPresets = [5, 10, 15, 20, 30, 45, 60];
   configLoading = false;
   configSaving = false;
+
+  // ── Upgrade Plan ──────────────────────────────────────────────────────────
+  availablePlans: PlanOption[] = [];
+  selectedPlanKey = '';
+  upgradeSaving = false;
+  upgradeLoading = false;
+  planDetails: Record<string, { max_clinics: number; max_doctors: number; max_receptionists: number }> = {};
 
   // ── Clinics ───────────────────────────────────────────────────────────────
   clinics: AdminClinicState[] = [];
@@ -562,6 +570,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.location.replaceState(url, s ? `section=${s}` : '');
     // Load config settings when navigating to the config panel
     if (s === 'config') { this.loadConfig(); }
+    // Load available plans when navigating to upgrade panel
+    if (s === 'upgrade') { this.loadUpgradePlans(); }
     this.cdr.detectChanges();
   }
 
@@ -573,6 +583,101 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     const url = this.location.path().split('?')[0];
     this.location.replaceState(url);
     this.cdr.detectChanges();
+  }
+
+  // ── Upgrade Plan helpers ──────────────────────────────────────────────────
+
+  async loadUpgradePlans(): Promise<void> {
+    if (!this.subscription) return;
+    this.upgradeLoading = true;
+    this.cdr.detectChanges();
+    try {
+      // Load available plans from system config
+      this.availablePlans = await this.configService.getAvailablePlans();
+      // Set currently selected plan to current subscription plan
+      this.selectedPlanKey = this.subscription.plan?.name || '';
+
+      // Load plan limits from 'plans' collection for each plan
+      this.planDetails = {};
+      await Promise.all(this.availablePlans.map(async p => {
+        try {
+          const planDoc = await this.api.getDocument('plans', p.key);
+          if (planDoc?.data) {
+            this.planDetails[p.key] = {
+              max_clinics: planDoc.data['max_clinics'] ?? planDoc.data['max_clinincs'] ?? 0,
+              max_doctors: planDoc.data['max_doctors'] ?? 0,
+              max_receptionists: planDoc.data['max_receptionists'] ?? planDoc.data['max_receptionist'] ?? 0,
+            };
+          } else {
+            // Fall back to PLAN_DEFAULTS if available
+            const def = this.PLAN_DEFAULTS[p.key];
+            if (def) this.planDetails[p.key] = def;
+          }
+        } catch {
+          const def = this.PLAN_DEFAULTS[p.key];
+          if (def) this.planDetails[p.key] = def;
+        }
+      }));
+    } catch (e) {
+      console.error('[AdminDashboard] loadUpgradePlans error:', e);
+      this.showToast('Failed to load plans', 'error');
+    } finally {
+      this.upgradeLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async saveUpgradePlan(): Promise<void> {
+    if (!this.subscription || !this.selectedPlanKey) return;
+    if (this.selectedPlanKey === this.subscription.plan?.name) {
+      this.showToast('Already on this plan', 'error');
+      return;
+    }
+    this.upgradeSaving = true;
+    this.cdr.detectChanges();
+    try {
+      // Compute plan limits
+      const planDoc = await this.api.getDocument('plans', this.selectedPlanKey);
+      let limits = { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 };
+      if (planDoc?.data) {
+        limits = {
+          max_clinics: planDoc.data['max_clinics'] ?? planDoc.data['max_clinincs'] ?? 0,
+          max_doctors: planDoc.data['max_doctors'] ?? 0,
+          max_receptionists: planDoc.data['max_receptionists'] ?? planDoc.data['max_receptionist'] ?? 0,
+          max_appointments_per_day: planDoc.data['max_appointments_per_day'] ?? 0,
+        };
+      } else {
+        const def = this.PLAN_DEFAULTS[this.selectedPlanKey];
+        if (def) limits = { ...def, max_appointments_per_day: 0 };
+      }
+
+      // Compute new valid_until based on plan validity days
+      const validityDays = await this.configService.getPlanValidityDays(this.selectedPlanKey);
+      const expiry = new Date();
+      expiry.setDate(expiry.getDate() + validityDays);
+      const valid_until = expiry.toISOString();
+
+      // Update subscription in Firestore
+      const newPlan = { name: this.selectedPlanKey, limits };
+      await this.adminService.updateSubscription(this.subscription.id, {
+        plan: newPlan,
+        valid_until,
+        updated_at: new Date().toISOString(),
+      });
+
+      // Update local state
+      this.subscription = { ...this.subscription, plan: newPlan, valid_until };
+
+      this.showToast(`Plan upgraded to ${this.selectedPlanKey.charAt(0).toUpperCase() + this.selectedPlanKey.slice(1)} successfully!`);
+      // Navigate back to tiles
+      this.clearSection();
+    } catch (e: any) {
+      console.error('[AdminDashboard] saveUpgradePlan error:', e);
+      this.showToast('Failed to upgrade plan: ' + e.message, 'error');
+    } finally {
+      this.upgradeSaving = false;
+      this.cdr.detectChanges();
+    }
   }
 
   // ── Config helpers ────────────────────────────────────────────────────────

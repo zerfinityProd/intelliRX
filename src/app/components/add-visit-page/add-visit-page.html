@@ -300,11 +300,12 @@
               (click)="onPrint()" [disabled]="isSubmitting" aria-label="Print visit">
               Print
             </button>
-            <button type="button" class="btn btn-outline-secondary fw-semibold px-4"
+            <button *ngIf="!isEditMode" type="button" class="btn btn-outline-secondary fw-semibold px-4"
               (click)="onSaveAndPrint()" [disabled]="isSubmitting" aria-label="Save and print visit">
               Save &amp; Print
             </button>
-            <button type="submit" class="btn btn-primary fw-semibold px-4" [disabled]="isSubmitting"
+            <button type="submit" class="btn btn-primary fw-semibold px-4"
+              [disabled]="isSubmitting || (isEditMode && !isFormDirty())"
               aria-label="Save visit">
               <span *ngIf="!isSubmitting">{{ isEditMode ? 'Update' : 'Save' }}</span>
               <span *ngIf="isSubmitting" class="loading-content" aria-live="polite">

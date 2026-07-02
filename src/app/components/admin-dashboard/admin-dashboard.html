@@ -92,10 +92,10 @@
                 <svg class="ad-tile-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>
-            <div class="col-12">
+            <div class="col-sm-6">
               <button class="ad-tile ad-tile--config" (click)="setSection('config')" id="tile-config">
                 <div class="ad-tile-icon ad-tile-icon--config">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#148D9E" stroke-width="2" stroke-linecap="round">
                     <circle cx="12" cy="12" r="3"/>
                     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
                   </svg>
@@ -104,6 +104,22 @@
                   <div class="ad-tile-title">Configuration</div>
                   <div class="ad-tile-desc">Multi-clinic patient sharing &amp; doctor availability rules</div>
                 </div>
+                <svg class="ad-tile-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+            <div class="col-sm-6">
+              <button class="ad-tile ad-tile--upgrade" (click)="setSection('upgrade')" id="tile-upgrade">
+                <div class="ad-tile-icon ad-tile-icon--upgrade">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                    <polyline points="17 6 23 6 23 12"/>
+                  </svg>
+                </div>
+                <div class="ad-tile-body">
+                  <div class="ad-tile-title">Upgrade Plan</div>
+                  <div class="ad-tile-desc">Switch your subscription plan — current: <strong>{{ subscriptionPlanLabel }}</strong></div>
+                </div>
+                <div class="ad-upgrade-tile-badge">{{ subscriptionPlanLabel }}</div>
                 <svg class="ad-tile-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
               </button>
             </div>
@@ -744,6 +760,96 @@
               </button>
             </div>
 
+
+          </div>
+        </div>
+
+        <!-- ══ UPGRADE PLAN SECTION ══════════════════════════════════════════════ -->
+        <div *ngIf="activeSection === 'upgrade'" class="up-shell">
+
+          <!-- Header -->
+          <div class="up-hdr">
+            <div class="up-hdr-text">
+              <h1 class="up-hdr-title">Choose Your Plan</h1>
+              <p class="up-hdr-sub">Upgrade or switch your subscription — changes take effect immediately</p>
+            </div>
+          </div>
+
+          <!-- Loading -->
+          <div *ngIf="upgradeLoading" class="up-loading">
+            <div class="ad-spinner"></div>
+            <span>Loading plans…</span>
+          </div>
+
+          <!-- Plans -->
+          <div *ngIf="!upgradeLoading" class="up-body">
+
+            <!-- Empty -->
+            <div *ngIf="availablePlans.length === 0" class="up-empty">
+              <span class="up-empty-icon">📋</span>
+              <p>No plans configured yet. Contact your super admin.</p>
+            </div>
+
+            <!-- Card row -->
+            <div *ngIf="availablePlans.length > 0" class="up-cards">
+              <div *ngFor="let plan of availablePlans"
+                class="up-card"
+                [class.up-card--active]="selectedPlanKey === plan.key"
+                [class.up-card--current]="subscription.plan.name === plan.key"
+                (click)="selectedPlanKey = plan.key"
+                [id]="'plan-card-' + plan.key">
+
+                <!-- Current plan ribbon -->
+                <div class="up-ribbon" *ngIf="subscription.plan.name === plan.key">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Current Plan
+                </div>
+
+                <!-- Plan name -->
+                <div class="up-card-name">{{ plan.label }}</div>
+                <div class="up-card-validity">{{ plan.days }}-day validity</div>
+
+                <!-- Divider -->
+                <div class="up-card-div"></div>
+
+                <!-- Feature list — fully dynamic from Firestore -->
+                <ul class="up-feats" *ngIf="planDetails[plan.key]">
+                  <li class="up-feat">
+                    <svg class="up-feat-chk" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Up to <strong>{{ planDetails[plan.key]?.max_clinics || 0 }}</strong> Clinic{{ (planDetails[plan.key]?.max_clinics || 0) !== 1 ? 's' : '' }}
+                  </li>
+                  <li class="up-feat">
+                    <svg class="up-feat-chk" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Up to <strong>{{ planDetails[plan.key]?.max_doctors || 0 }}</strong> Doctor{{ (planDetails[plan.key]?.max_doctors || 0) !== 1 ? 's' : '' }}
+                  </li>
+                  <li class="up-feat">
+                    <svg class="up-feat-chk" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Up to <strong>{{ planDetails[plan.key]?.max_receptionists || 0 }}</strong> Receptionist{{ (planDetails[plan.key]?.max_receptionists || 0) !== 1 ? 's' : '' }}
+                  </li>
+                </ul>
+                <div class="up-feats-na" *ngIf="!planDetails[plan.key]">Limits not configured</div>
+
+                <!-- CTA button -->
+                <button class="up-cta"
+                  [class.up-cta--on]="selectedPlanKey === plan.key"
+                  type="button">
+                  <svg *ngIf="selectedPlanKey === plan.key" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {{ selectedPlanKey === plan.key ? 'Selected' : 'Select Plan' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Footer actions -->
+            <div class="up-footer" *ngIf="availablePlans.length > 0">
+              <button class="up-cancel" (click)="clearSection()" [disabled]="upgradeSaving" id="btn-upgrade-cancel">Cancel</button>
+              <button class="up-confirm" (click)="saveUpgradePlan()"
+                [disabled]="upgradeSaving || selectedPlanKey === subscription.plan.name"
+                id="btn-upgrade-save">
+                <span *ngIf="upgradeSaving" class="ad-spinner-sm"></span>
+                <svg *ngIf="!upgradeSaving" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                {{ upgradeSaving ? 'Saving…' : 'Confirm Plan Change' }}
+              </button>
+            </div>
 
           </div>
         </div>

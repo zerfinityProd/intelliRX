@@ -70,24 +70,14 @@
 [data-theme="dark"] .ad-tile-icon--clinics { background: rgba(20,141,158,0.15); }
 [data-theme="dark"] .ad-tile-icon--staff   { background: rgba(37,99,235,0.15); color: #60a5fa; }
 
-/* ── Config tile variant ──────────────────────────────────────────────── */
-.ad-tile--config {
-  border-color: rgba(20,141,158,0.2);
-}
-.ad-tile--config:hover {
-  border-color: #148D9E;
-  box-shadow: 0 8px 24px rgba(20,141,158,0.12);
-}
+/* ── Config tile variant — matches clinics/staff style ───────────────── */
 .ad-tile-icon--config {
-  background: rgba(20,141,158,0.1);
+  background: linear-gradient(135deg, rgba(20,141,158,0.12), rgba(28,181,201,0.12));
   color: #148D9E;
 }
-[data-theme="dark"] .ad-tile--config {
-  background: var(--dk-bg2);
-  border-color: var(--dk-border);
-}
-[data-theme="dark"] .ad-tile--config:hover { border-color: #148D9E; box-shadow: 0 8px 24px rgba(20,141,158,0.18); }
+.ad-tile-icon--config svg { stroke: #148D9E; }
 [data-theme="dark"] .ad-tile-icon--config { background: rgba(20,141,158,0.15); color: #1CB5C9; }
+[data-theme="dark"] .ad-tile-icon--config svg { stroke: #1CB5C9; }
 
 /* ── Configuration panel ──────────────────────────────────────────────── */
 .ad-config-loading {
@@ -1488,3 +1478,345 @@
 [data-theme="dark"] .ad-matrix-add-btn { background: rgba(28,181,201,0.06); border-color: rgba(28,181,201,0.25); color: #1CB5C9; }
 [data-theme="dark"] .ad-matrix-add-btn:hover { background: rgba(28,181,201,0.12); border-color: #1CB5C9; box-shadow: 0 6px 20px rgba(28,181,201,0.2); }
 
+
+/* ══════════════════════════════════════════════════════════════════════════
+   UPGRADE PLAN — dark-themed, viewport-fit, matches app design system
+   Uses: --dk-bg1/2/3, --dk-border, --dk-text1/2, --clr-primary, --clr-bright-cyan
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Upgrade tile on the dashboard home ────────────────────────────────── */
+.ad-tile--upgrade {
+  border-color: rgba(20,141,158,0.3);
+  background: linear-gradient(135deg, rgba(20,141,158,0.04) 0%, rgba(28,181,201,0.06) 100%);
+}
+.ad-tile--upgrade:hover {
+  border-color: var(--clr-primary, #148D9E);
+  box-shadow: 0 8px 28px rgba(20,141,158,0.14);
+}
+.ad-tile-icon--upgrade {
+  background: linear-gradient(135deg, rgba(20,141,158,0.15), rgba(28,181,201,0.15));
+  color: var(--clr-primary, #148D9E);
+}
+.ad-upgrade-tile-badge {
+  flex-shrink: 0;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em;
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
+  color: #fff; border-radius: 20px; padding: 4px 13px;
+}
+[data-theme="dark"] .ad-tile--upgrade {
+  border-color: rgba(28,181,201,0.28);
+  background: rgba(20,141,158,0.08);
+}
+[data-theme="dark"] .ad-tile--upgrade:hover {
+  border-color: #1CB5C9;
+  box-shadow: 0 8px 28px rgba(28,181,201,0.18);
+}
+[data-theme="dark"] .ad-tile-icon--upgrade {
+  background: rgba(20,141,158,0.18);
+  color: #1CB5C9;
+}
+
+/* ── Full-page shell — fills remaining viewport, no scroll ─────────────── */
+.up-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 220px);
+  min-height: 420px;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.up-hdr {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-shrink: 0;
+}
+.up-hdr-title {
+  font-size: 22px; font-weight: 800;
+  color: var(--clr-text, #0A2540);
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+.up-hdr-sub {
+  font-size: 13px;
+  color: var(--clr-text-muted, #5A8A9C);
+  margin: 0;
+}
+
+/* ── Loading state ───────────────────────────────────────────────────────── */
+.up-loading {
+  display: flex; align-items: center; gap: 12px;
+  padding: 60px 0; color: var(--clr-text-muted, #5A8A9C);
+  font-size: 14px; flex-shrink: 0;
+}
+
+/* ── Body — takes all remaining flex height ──────────────────────────────── */
+.up-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────── */
+.up-empty {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; flex: 1; gap: 12px;
+  color: var(--clr-text-muted, #5A8A9C);
+}
+.up-empty-icon { font-size: 40px; }
+.up-empty p { font-size: 14px; margin: 0; }
+
+/* ── Card row — horizontal, fills space ─────────────────────────────────── */
+.up-cards {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+  align-items: stretch;
+}
+
+/* ── Individual plan card ────────────────────────────────────────────────── */
+.up-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  background: var(--clr-surface, #fff);
+  border: 1.5px solid var(--clr-border, #C8DDE3);
+  border-radius: 18px;
+  padding: 32px 24px 24px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  overflow: visible;
+}
+.up-card:hover {
+  border-color: var(--clr-primary, #148D9E);
+  box-shadow: 0 10px 32px rgba(20,141,158,0.14);
+  transform: translateY(-4px);
+}
+
+/* Active / selected card */
+.up-card--active {
+  border-color: var(--clr-primary, #148D9E) !important;
+  box-shadow: 0 0 0 3px rgba(20,141,158,0.2), 0 10px 32px rgba(20,141,158,0.16) !important;
+  transform: translateY(-4px);
+}
+
+/* Current plan card gets a subtle teal tint */
+.up-card--current {
+  border-color: var(--clr-primary, #148D9E);
+}
+
+/* ── Current plan ribbon ─────────────────────────────────────────────────── */
+.up-ribbon {
+  position: absolute;
+  top: -1px; left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 5px;
+  background: linear-gradient(90deg, #148D9E, #1CB5C9);
+  color: #fff;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  padding: 5px 16px;
+  border-radius: 0 0 12px 12px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(20,141,158,0.3);
+}
+
+/* ── Plan name & validity ────────────────────────────────────────────────── */
+.up-card-name {
+  font-size: 22px; font-weight: 800;
+  color: var(--clr-text, #0A2540);
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.up-card-validity {
+  display: inline-block;
+  font-size: 12px; font-weight: 600;
+  color: var(--clr-text-muted, #5A8A9C);
+  background: rgba(20,141,158,0.08);
+  border-radius: 20px;
+  padding: 3px 14px;
+  margin-bottom: 20px;
+  align-self: center;
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+.up-card-div {
+  width: 100%; height: 1px;
+  background: var(--clr-border, #C8DDE3);
+  margin-bottom: 18px;
+  flex-shrink: 0;
+}
+
+/* ── Feature list ────────────────────────────────────────────────────────── */
+.up-feats {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  flex: 1;
+}
+.up-feat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--clr-text, #0A2540);
+  font-weight: 500;
+}
+.up-feat strong {
+  font-weight: 800;
+  color: var(--clr-primary, #148D9E);
+}
+.up-feat-chk {
+  flex-shrink: 0;
+  color: var(--clr-primary, #148D9E);
+}
+.up-feats-na {
+  font-size: 12px;
+  color: var(--clr-text-muted, #5A8A9C);
+  font-style: italic;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Select / CTA button ─────────────────────────────────────────────────── */
+.up-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  padding: 11px 0;
+  border-radius: 12px;
+  font-size: 13px; font-weight: 700;
+  border: 1.5px solid var(--clr-border, #C8DDE3);
+  background: transparent;
+  color: var(--clr-text-muted, #5A8A9C);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  margin-top: auto;
+}
+.up-cta:hover {
+  border-color: var(--clr-primary, #148D9E);
+  color: var(--clr-primary, #148D9E);
+  background: rgba(20,141,158,0.05);
+}
+.up-cta--on {
+  border-color: var(--clr-primary, #148D9E) !important;
+  background: linear-gradient(135deg, #148D9E, #1CB5C9) !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(20,141,158,0.3);
+}
+
+/* ── Footer action bar ───────────────────────────────────────────────────── */
+.up-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  margin-top: 20px;
+  border-top: 1px solid var(--clr-border, #C8DDE3);
+  flex-shrink: 0;
+}
+
+/* Cancel ghost button */
+.up-cancel {
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px; font-weight: 600;
+  border: 1.5px solid var(--clr-border, #C8DDE3);
+  background: transparent;
+  color: var(--clr-text-muted, #5A8A9C);
+  cursor: pointer;
+  transition: all 0.18s;
+  font-family: inherit;
+}
+.up-cancel:hover:not(:disabled) {
+  border-color: var(--clr-primary, #148D9E);
+  color: var(--clr-primary, #148D9E);
+}
+.up-cancel:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Confirm button — teal, matching app primary */
+.up-confirm {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, #148D9E, #1CB5C9);
+  color: #fff;
+  border: none; border-radius: 10px;
+  padding: 10px 24px;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 14px rgba(20,141,158,0.3);
+}
+.up-confirm:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0E6877, #148D9E);
+  box-shadow: 0 8px 24px rgba(20,141,158,0.4);
+  transform: translateY(-2px);
+}
+.up-confirm:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ══ DARK MODE ═══════════════════════════════════════════════════════════ */
+[data-theme="dark"] .up-hdr-title { color: var(--dk-text1, #D8E8ED); }
+[data-theme="dark"] .up-card {
+  background: var(--dk-bg2, #0C1A2E);
+  border-color: var(--dk-border, #1A3352);
+}
+[data-theme="dark"] .up-card:hover {
+  border-color: #1CB5C9;
+  box-shadow: 0 10px 32px rgba(28,181,201,0.15);
+}
+[data-theme="dark"] .up-card--active {
+  border-color: #1CB5C9 !important;
+  background: linear-gradient(160deg, #0C1A2E 0%, #0E2840 100%) !important;
+  box-shadow: 0 0 0 3px rgba(28,181,201,0.2), 0 10px 32px rgba(28,181,201,0.16) !important;
+}
+[data-theme="dark"] .up-card-name { color: var(--dk-text1, #D8E8ED); }
+[data-theme="dark"] .up-card-validity {
+  background: rgba(28,181,201,0.1);
+  color: var(--dk-text2, #5A8A9C);
+}
+[data-theme="dark"] .up-card-div { background: var(--dk-border, #1A3352); }
+[data-theme="dark"] .up-feat { color: var(--dk-text1, #D8E8ED); }
+[data-theme="dark"] .up-feat strong { color: #1CB5C9; }
+[data-theme="dark"] .up-feat-chk { color: #1CB5C9; }
+[data-theme="dark"] .up-feats-na { color: var(--dk-text2, #5A8A9C); }
+[data-theme="dark"] .up-cta {
+  border-color: var(--dk-border, #1A3352);
+  background: transparent;
+  color: var(--dk-text2, #5A8A9C);
+}
+[data-theme="dark"] .up-cta:hover {
+  border-color: #1CB5C9;
+  color: #1CB5C9;
+  background: rgba(28,181,201,0.06);
+}
+[data-theme="dark"] .up-cta--on {
+  border-color: #148D9E !important;
+  background: linear-gradient(135deg, #148D9E, #1CB5C9) !important;
+  color: #fff !important;
+}
+[data-theme="dark"] .up-footer { border-top-color: var(--dk-border, #1A3352); }
+[data-theme="dark"] .up-cancel {
+  border-color: var(--dk-border, #1A3352);
+  color: var(--dk-text2, #5A8A9C);
+}
+[data-theme="dark"] .up-cancel:hover:not(:disabled) {
+  border-color: #1CB5C9;
+  color: #1CB5C9;
+}
