@@ -3,11 +3,12 @@ import {
     OnChanges, SimpleChanges, AfterViewInit, ElementRef, inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
     selector: 'app-dental-widget',
     standalone: true,
-    imports: [CommonModule],
+    imports: [CommonModule, FormsModule],
     templateUrl: './dental-widget.html',
     styleUrls: ['./dental-widget.css']
 })
@@ -15,14 +16,43 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
 
     /** Pre-selected tooth IDs (e.g. loaded from a saved visit) */
     @Input() initialSelected: number[] = [];
+    @Input() initialNotes: { [id: number]: string } = {};
 
     /** Emits the full array of currently selected tooth IDs whenever it changes */
     @Output() selectionChange = new EventEmitter<number[]>();
+    @Output() notesChange = new EventEmitter<{ [id: number]: string }>();
 
     private selectedTeeth: Set<number> = new Set();
     private viewInitialized = false;
 
+    /** Per-tooth notes */
+    toothNotes: { [id: number]: string } = {};
+
+    /** Current view mode */
+    currentMode: 'chart' | 'notes' = 'chart';
+
     private readonly el = inject(ElementRef);
+
+    get selectedTeethArray(): number[] {
+        return Array.from(this.selectedTeeth);
+    }
+
+    get selectedCount(): number {
+        return this.selectedTeeth.size;
+    }
+
+    setMode(mode: 'chart' | 'notes') {
+        this.currentMode = mode;
+    }
+
+    onNoteChange(toothId: number, note: string): void {
+        if (note.trim()) {
+            this.toothNotes[toothId] = note;
+        } else {
+            delete this.toothNotes[toothId];
+        }
+        this.notesChange.emit({ ...this.toothNotes });
+    }
 
     ngAfterViewInit(): void {
         this.viewInitialized = true;
@@ -38,6 +68,9 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
             if (this.initialSelected?.length) {
                 this.applyInitialSelection(this.initialSelected);
             }
+        }
+        if (changes['initialNotes'] && this.initialNotes) {
+            this.toothNotes = { ...this.initialNotes };
         }
     }
 
@@ -64,8 +97,19 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
         if (id !== null && this.selectedTeeth.has(id)) {
             this.selectedTeeth.delete(id);
             this.setGroupClass(id, false);
+            // Clear note when tooth deselected
+            delete this.toothNotes[id];
+            this.notesChange.emit({ ...this.toothNotes });
             this.selectionChange.emit(Array.from(this.selectedTeeth));
         }
+    }
+
+    clearSelection(): void {
+        this.selectedTeeth.clear();
+        this.clearAllSelectedClasses();
+        this.toothNotes = {};
+        this.selectionChange.emit([]);
+        this.notesChange.emit({});
     }
 
     // ── Helpers ───────────────────────────────────────────────
@@ -83,11 +127,10 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
     }
 
     private setGroupClass(toothId: number, selected: boolean): void {
-        // Use attribute selector — works for all numeric IDs including those starting with digits
         const group = this.el.nativeElement.querySelector(`g[id="${toothId}"]`) as HTMLElement | null;
         if (group) {
             if (selected) {
-                group.classList.remove('tooth-hover'); // clear hover when selecting
+                group.classList.remove('tooth-hover');
                 group.classList.add('selected');
             } else {
                 group.classList.remove('selected');
@@ -108,10 +151,6 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
     }
 
     // ── Mouse hover handlers ──────────────────────────────────────────
-    // Use CSS class 'tooth-hover' instead of inline styles to avoid being
-    // overridden by dark-mode !important stroke rules.
-
-    /** Find the nearest ancestor (or self) that is a <g> with a numeric id. */
     private findGroupFromTarget(target: any): HTMLElement | null {
         let el = target as HTMLElement | null;
         while (el && el.tagName?.toLowerCase() !== 'svg') {

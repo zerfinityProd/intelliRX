@@ -44,9 +44,12 @@ export class NavbarComponent implements OnInit, OnDestroy {
     this.uiState$ = this.uiStateService.getUIState();
   }
 
-  /** True when the current route is the admin dashboard */
+  /** True when the current route is the admin dashboard or any admin sub-page */
   get isOnAdminDashboard(): boolean {
-    return this.router.url.startsWith('/admin-dashboard');
+    const url = this.router.url;
+    return url.startsWith('/admin/dashboard')
+      || url.startsWith('/admin-dashboard')
+      || url.startsWith('/admin/subscription');
   }
 
   async ngOnInit(): Promise<void> {
@@ -97,7 +100,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   goToAdminDashboard(): void {
     this.uiStateService.toggleUserMenu(); // close menu
-    this.router.navigate(['/admin-dashboard']);
+    this.router.navigate(['/admin/dashboard']);
   }
 
   goToDoctorDashboard(): void {
@@ -110,7 +113,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
     if (this.isOnAdminDashboard) {
       this.router.navigate(['/home']);
     } else {
-      this.router.navigate(['/admin-dashboard']);
+      this.router.navigate(['/admin/dashboard']);
     }
   }
 

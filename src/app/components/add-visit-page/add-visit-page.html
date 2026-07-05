@@ -1,8 +1,7 @@
 <div class="avp-page">
 
   <!-- ── Navbar ── -->
-  <app-navbar [showBack]="true" [pageTitle]="isEditMode ? 'Edit Visit' : 'New Visit'"
-    (backClick)="onCancel()"></app-navbar>
+  <app-navbar [showBack]="true" (backClick)="onCancel()"></app-navbar>
 
   <!-- ── Loading ── -->
   <div *ngIf="isLoadingPatient" class="d-flex flex-column align-items-center justify-content-center avp-loading">
@@ -348,7 +347,9 @@
         <div class="anatomy-content" *ngIf="activeChartTab === 'skeletal'">
           <app-fullbody-widget
             [initialSelected]="selectedBoneIds"
-            (selectionChange)="onBonesSelectionChange($event)">
+            [initialNotes]="boneNotes"
+            (selectionChange)="onBonesSelectionChange($event)"
+            (notesChange)="onBoneNotesChange($event)">
           </app-fullbody-widget>
         </div>
 
@@ -356,20 +357,20 @@
         <div class="anatomy-content" *ngIf="activeChartTab === 'muscular'">
           <app-muscular-widget
             [initialSelected]="selectedMuscleIds"
-            (selectionChange)="onMusclesSelectionChange($event)">
+            [initialNotes]="muscleNotes"
+            (selectionChange)="onMusclesSelectionChange($event)"
+            (notesChange)="onMuscleNotesChange($event)">
           </app-muscular-widget>
         </div>
 
         <!-- Dental Chart -->
         <div class="anatomy-content" *ngIf="activeChartTab === 'dental'">
-          <p class="avp-teeth-hint">Click to select · Double-click to deselect</p>
           <app-dental-widget
             [initialSelected]="selectedTeethIds"
-            (selectionChange)="onTeethSelectionChange($event)">
+            [initialNotes]="toothNotes"
+            (selectionChange)="onTeethSelectionChange($event)"
+            (notesChange)="onToothNotesChange($event)">
           </app-dental-widget>
-          <p *ngIf="selectedTeethIds.length > 0" class="avp-teeth-summary">
-            Selected: <strong>{{ selectedTeethIds.join(', ') }}</strong>
-          </p>
         </div>
       </div>
 

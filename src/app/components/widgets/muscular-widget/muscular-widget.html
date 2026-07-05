@@ -7,7 +7,7 @@
         <button class="toggle-btn" [class.active]="currentView === 'FRONT'" (click)="setView('FRONT')">Anterior</button>
         <button class="toggle-btn" [class.active]="currentView === 'BACK'" (click)="setView('BACK')">Posterior</button>
         <button class="toggle-btn" [class.active]="currentView === 'SELECTED'" (click)="setView('SELECTED')">
-          Selected Muscles <span class="badge" *ngIf="selectedMuscles.length > 0">{{ selectedMuscles.length }}</span>
+          Selected Muscles <span class="badge" [style.visibility]="selectedMuscles.length > 0 ? 'visible' : 'hidden'">{{ selectedMuscles.length || 0 }}</span>
         </button>
         <!-- Clear All Button next to the view toggles -->
         <button class="toggle-btn clear-all-btn" [disabled]="selectedMuscles.length === 0" (click)="clearSelection()">
@@ -35,8 +35,17 @@
       </div>
       <div class="selected-list" *ngIf="selectedMuscles.length > 0">
         <div class="selected-item" *ngFor="let muscleId of selectedMuscles">
-          <span class="muscle-name">{{ formatName(muscleId) }}</span>
-          <button class="remove-btn" (click)="toggleSelection(muscleId)" aria-label="Remove">×</button>
+          <div class="selected-item__header">
+            <span class="muscle-name">{{ formatName(muscleId) }}</span>
+            <button class="remove-btn" (click)="toggleSelection(muscleId)" aria-label="Remove">×</button>
+          </div>
+          <textarea
+            class="muscle-note"
+            rows="2"
+            placeholder="Add notes"
+            [value]="muscleNotes[muscleId] || ''"
+            (input)="onNoteChange(muscleId, $any($event.target).value)"
+          ></textarea>
         </div>
       </div>
     </div>

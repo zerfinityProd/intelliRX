@@ -92,12 +92,15 @@ export class AddVisitPageComponent implements OnInit {
 
     // ── Dental chart selection ────────────────────────────────
     selectedTeethIds: number[] = [];
+    toothNotes: { [id: number]: string } = {};
 
     // ── Skeletal chart selection ──────────────────────────────
     selectedBoneIds: string[] = [];
+    boneNotes: { [id: string]: string } = {};
 
     // ── Muscular chart selection ──────────────────────────────
     selectedMuscleIds: string[] = [];
+    muscleNotes: { [id: string]: string } = {};
 
     // ── Widget toggle state & specialty ───────────────────────
     activeChartTab: 'dental' | 'skeletal' | 'muscular' = 'skeletal';
@@ -227,8 +230,11 @@ export class AddVisitPageComponent implements OnInit {
                 newExamResult: this.newExamResult,
                 newExamStatus: this.newExamStatus,
                 selectedTeethIds: this.selectedTeethIds,
+                toothNotes: this.toothNotes,
                 selectedBoneIds: this.selectedBoneIds,
+                boneNotes: this.boneNotes,
                 selectedMuscleIds: this.selectedMuscleIds,
+                muscleNotes: this.muscleNotes,
                 activeChartTab: this.activeChartTab,
                 timestamp: Date.now()
             };
@@ -264,8 +270,11 @@ export class AddVisitPageComponent implements OnInit {
             this.newExamResult = data.newExamResult || '';
             this.newExamStatus = data.newExamStatus || '';
             if (Array.isArray(data.selectedTeethIds)) this.selectedTeethIds = data.selectedTeethIds;
+            if (data.toothNotes && typeof data.toothNotes === 'object') this.toothNotes = data.toothNotes;
             if (Array.isArray(data.selectedBoneIds)) this.selectedBoneIds = data.selectedBoneIds;
+            if (data.boneNotes && typeof data.boneNotes === 'object') this.boneNotes = data.boneNotes;
             if (Array.isArray(data.selectedMuscleIds)) this.selectedMuscleIds = data.selectedMuscleIds;
+            if (data.muscleNotes && typeof data.muscleNotes === 'object') this.muscleNotes = data.muscleNotes;
             if (data.activeChartTab) this.activeChartTab = data.activeChartTab;
             this.cdr.detectChanges();
         } catch { /* silent */ }
@@ -324,12 +333,24 @@ export class AddVisitPageComponent implements OnInit {
         this.selectedTeethIds = ids;
     }
 
+    onToothNotesChange(notes: { [id: number]: string }): void {
+        this.toothNotes = notes;
+    }
+
     onBonesSelectionChange(ids: string[]): void {
         this.selectedBoneIds = ids;
     }
 
+    onBoneNotesChange(notes: { [id: string]: string }): void {
+        this.boneNotes = notes;
+    }
+
     onMusclesSelectionChange(ids: string[]): void {
         this.selectedMuscleIds = ids;
+    }
+
+    onMuscleNotesChange(notes: { [id: string]: string }): void {
+        this.muscleNotes = notes;
     }
 
     getSelectedMuscleNames(): string[] {
@@ -433,14 +454,29 @@ export class AddVisitPageComponent implements OnInit {
             this.selectedTeethIds = visit.selectedTeeth;
         }
 
+        // Restore per-tooth notes
+        if (visit.toothNotes && typeof visit.toothNotes === 'object') {
+            this.toothNotes = visit.toothNotes;
+        }
+
         // Restore selected bones
         if (Array.isArray(visit.selectedBones)) {
             this.selectedBoneIds = visit.selectedBones;
         }
 
+        // Restore per-bone notes
+        if (visit.boneNotes && typeof visit.boneNotes === 'object') {
+            this.boneNotes = visit.boneNotes;
+        }
+
         // Restore selected muscles
         if (Array.isArray(visit.selectedMuscles)) {
             this.selectedMuscleIds = visit.selectedMuscles;
+        }
+
+        // Restore per-muscle notes
+        if (visit.muscleNotes && typeof visit.muscleNotes === 'object') {
+            this.muscleNotes = visit.muscleNotes;
         }
 
         // Auto-select tab based on data saved
@@ -758,8 +794,11 @@ export class AddVisitPageComponent implements OnInit {
                 advice: this.advice.trim(),
                 doctor_id: currentEmail,
                 selectedTeeth: this.selectedTeethIds,
+                toothNotes: this.toothNotes,
                 selectedBones: this.selectedBoneIds,
+                boneNotes: this.boneNotes,
                 selectedMuscles: this.selectedMuscleIds,
+                muscleNotes: this.muscleNotes,
             };
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;
@@ -946,7 +985,9 @@ export class AddVisitPageComponent implements OnInit {
             medicines: this.medicines.map(m => `${m.name}|${m.dosage}|${m.frequency}|${m.durationDays}`),
             selectedTeeth: [...this.selectedTeethIds].sort(),
             selectedBones: [...this.selectedBoneIds].sort(),
+            boneNotes: JSON.stringify(this.boneNotes),
             selectedMuscles: [...this.selectedMuscleIds].sort(),
+            muscleNotes: JSON.stringify(this.muscleNotes),
         });
     }
 
@@ -1017,6 +1058,37 @@ export class AddVisitPageComponent implements OnInit {
             ? this.getSelectedMuscleNames().join(', ')
             : 'None';
 
+        // Build per-tooth notes block for print
+        const toothNoteLines = this.selectedTeethIds
+            .filter(id => this.toothNotes[id])
+            .map(id => `<div style="margin-bottom:4px"><span style="font-weight:600">Tooth ${id}:</span> ${this.toothNotes[id]}</div>`)
+            .join('');
+        const toothNotesBlock = toothNoteLines
+            ? `<div class="field"><span class="label">Tooth Notes</span><span class="value">${toothNoteLines}</span></div>`
+            : '';
+
+        // Build per-bone notes block for print
+        const boneNoteLines = this.selectedBoneIds
+            .filter(id => this.boneNotes[id])
+            .map(id => {
+                const name = id; // boneNames is on the widget; use raw id here (readable enough)
+                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.boneNotes[id]}</div>`;
+            }).join('');
+        const boneNotesBlock = boneNoteLines
+            ? `<div class="field"><span class="label">Bone Notes</span><span class="value">${boneNoteLines}</span></div>`
+            : '';
+
+        // Build per-muscle notes block for print
+        const muscleNoteLines = this.selectedMuscleIds
+            .filter(id => this.muscleNotes[id])
+            .map(id => {
+                const name = this.getSelectedMuscleNames()[this.selectedMuscleIds.indexOf(id)] || id;
+                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.muscleNotes[id]}</div>`;
+            }).join('');
+        const muscleNotesBlock = muscleNoteLines
+            ? `<div class="field"><span class="label">Muscle Notes</span><span class="value">${muscleNoteLines}</span></div>`
+            : '';
+
         const examRows = this.examinations.map(e =>
             `<tr><td>${e.testName}</td><td>${e.status || '-'}</td><td>${e.result || '-'}</td></tr>`
         ).join('');
@@ -1072,8 +1144,11 @@ export class AddVisitPageComponent implements OnInit {
     ${field('Treatment Plan', this.treatmentPlan)}
     ${field('Advice', this.advice)}
     ${this.selectedTeethIds.length > 0 ? field('Teeth Affected', teethStr) : ''}
+    ${toothNotesBlock}
     ${this.selectedBoneIds.length > 0 ? field('Bones Affected', bonesStr) : ''}
+    ${boneNotesBlock}
     ${this.selectedMuscleIds.length > 0 ? field('Muscles Affected', musclesStr) : ''}
+    ${muscleNotesBlock}
   </div>
 
   ${this.examinations.length > 0 ? `

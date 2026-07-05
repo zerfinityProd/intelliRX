@@ -1,3 +1,30 @@
+<div class="dental-widget-container">
+
+  <!-- ── Header ── -->
+  <div class="dental-widget-header">
+    <div class="header-left">
+      <span class="dental-hint" *ngIf="currentMode === 'chart'">Click to select · Double-click to deselect</span>
+    </div>
+    <div class="header-right">
+      <button class="mode-tab" [class.active]="currentMode === 'chart'" (click)="setMode('chart')">Chart</button>
+      <button class="mode-tab" [class.active]="currentMode === 'notes'" (click)="setMode('notes')">
+        Notes <span class="mode-badge" [style.visibility]="selectedCount > 0 ? 'visible' : 'hidden'">{{ selectedCount }}</span>
+      </button>
+      <div class="selection-counter">
+        <span class="badge">{{ selectedCount }}</span>
+        <span class="counter-label">selected</span>
+      </div>
+      <button class="clear-btn" (click)="clearSelection()" [disabled]="selectedCount === 0">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6L6 18M6 6l12 12"></path>
+        </svg>
+        Clear
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Chart View ── -->
+  <div class="dental-svg-wrapper" *ngIf="currentMode === 'chart'">
 <svg xmlns:svg="http://www.w3.org/2000/svg" xmlns="http://www.w3.org/2000/svg" version="1.1" width="289.61084"
     height="370.54398"
     (click)="onSvgClick($event)"
@@ -1075,3 +1102,28 @@
         <tspan x="12.515995" y="214.18651">48</tspan>
     </text>
 </svg>
+  </div><!-- end dental-svg-wrapper -->
+
+  <!-- ── Notes View ── -->
+  <div class="dental-notes-view" *ngIf="currentMode === 'notes'">
+    <div *ngIf="selectedCount === 0" class="notes-empty">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35">
+        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path>
+      </svg>
+      <span>Select teeth from the chart to add notes</span>
+    </div>
+    <div class="tooth-notes-list" *ngIf="selectedCount > 0">
+      <div class="tooth-note-item" *ngFor="let toothId of selectedTeethArray">
+        <label class="tooth-note-label">Tooth {{ toothId }}</label>
+        <textarea
+          class="tooth-note-input"
+          rows="2"
+          placeholder="Add notes"
+          [value]="toothNotes[toothId] || ''"
+          (input)="onNoteChange(toothId, $any($event.target).value)"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end dental-widget-container -->

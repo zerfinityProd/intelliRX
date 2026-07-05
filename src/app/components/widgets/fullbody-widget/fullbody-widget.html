@@ -16,6 +16,10 @@
       </div>
     </div>
     <div class="header-right">
+      <button class="mode-tab" [class.active]="currentMode === 'chart'" (click)="setMode('chart')">Chart</button>
+      <button class="mode-tab" [class.active]="currentMode === 'notes'" (click)="setMode('notes')">
+        Notes <span class="mode-badge" [style.visibility]="selectedBoneIds.length > 0 ? 'visible' : 'hidden'">{{ selectedBoneIds.length }}</span>
+      </button>
       <div class="selection-counter">
         <span class="badge">{{ selectedBoneIds.length }}</span>
         <span class="counter-label">selected</span>
@@ -29,7 +33,7 @@
     </div>
   </div>
 
-  <div class="skeleton-viewport">
+  <div class="skeleton-viewport" *ngIf="currentMode === 'chart'">
     
     <!-- ════════ FULL BODY VIEW ════════ -->
     <div class="svg-layer fade-in" *ngIf="currentView === 'full'">
@@ -603,9 +607,34 @@
     </div>
 
     <!-- ── Floating Tooltip ── -->
-    <div class="bone-tooltip" *ngIf="tooltipVisible" [style.left.px]="tooltipX" [style.top.px]="tooltipY">
+    <div class="bone-tooltip" *ngIf="tooltipVisible && currentMode === 'chart'" [style.left.px]="tooltipX" [style.top.px]="tooltipY">
       {{ tooltipText }}
     </div>
 
   </div>
+
+  <!-- ── Notes View ── -->
+  <div class="bone-notes-view" *ngIf="currentMode === 'notes'">
+    <div *ngIf="selectedBoneIds.length === 0" class="notes-empty">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.35">
+        <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path>
+      </svg>
+      <span>Select bones from the chart to add notes</span>
+    </div>
+    <div class="bone-notes-list" *ngIf="selectedBoneIds.length > 0">
+      <div class="bone-note-item" *ngFor="let boneId of selectedBoneIds">
+        <div class="bone-note-item__header">
+          <label class="bone-note-label">{{ boneNames[boneId] || boneId }}</label>
+        </div>
+        <textarea
+          class="bone-note-input"
+          rows="2"
+          placeholder="Add notes"
+          [value]="boneNotes[boneId] || ''"
+          (input)="onNoteChange(boneId, $any($event.target).value)"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+
 </div>

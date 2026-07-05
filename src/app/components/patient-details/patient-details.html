@@ -1,7 +1,7 @@
 <div class="details-page">
 
   <!-- ── Navbar ── -->
-  <app-navbar [showBack]="true" pageTitle="Patient Details"></app-navbar>
+  <app-navbar [showBack]="true"></app-navbar>
 
   <!-- ── Loading ── -->
   <div *ngIf="isLoadingPatient" class="d-flex flex-column align-items-center justify-content-center"
@@ -262,8 +262,8 @@
                     </div>
 
                     <div class="vg-cell vg-cell--date">
-                      <span class="vg-date-primary">{{ formatDateTime(visit.created_at) }}</span>
-                      <span *ngIf="visit.updated_at" class="vg-date-updated">Updated: {{ formatDateTime(visit.updated_at) }}</span>
+                      <span class="vg-date-primary">{{ formatShortDateTime(visit.created_at) }}</span>
+                      <span *ngIf="visit.updated_at" class="vg-date-updated">Upd. {{ formatShortDateTime(visit.updated_at) }}</span>
                     </div>
 
                     <div class="vg-cell vg-cell--complaints">

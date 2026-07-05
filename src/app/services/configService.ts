@@ -283,9 +283,20 @@ export class ConfigService {
 
   /**
    * Get validity days for a specific plan key.
-   * Falls back to 30 days if the key is not found in Firestore.
+   * Priority:
+   *   1. `validity_days` field on the plan document in the `plans` collection
+   *   2. `<planKey>_plan_validity_days` in configurations/system (legacy)
+   *   3. Falls back to 30 days if nothing is found.
    */
   async getPlanValidityDays(planKey: string): Promise<number> {
+    // 1. Read directly from the plans collection (primary source)
+    try {
+      const planDoc = await this.api.getDocument('plans', planKey);
+      const days = Number(planDoc?.data?.['validity_days'] || 0);
+      if (!isNaN(days) && days > 0) return days;
+    } catch { /* fall through */ }
+
+    // 2. Legacy: read from configurations/system
     const config = await this.getSystemConfig();
     const field = `${planKey}_plan_validity_days`;
     const val = Number(config[field]);

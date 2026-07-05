@@ -22,12 +22,19 @@ export class MuscularWidgetComponent implements OnInit, AfterViewInit, OnDestroy
   public tooltipStyle = { display: 'none', left: '0px', top: '0px' };
 
   @Input() initialSelected: string[] = [];
+  @Input() initialNotes: { [id: string]: string } = {};
   @Output() selectionChange = new EventEmitter<string[]>();
+  @Output() notesChange = new EventEmitter<{ [id: string]: string }>();
+
+  /** Per-muscle notes entered by the doctor */
+  muscleNotes: { [id: string]: string } = {};
 
   ngOnInit() {
     this.initialSelected.forEach(id => {
       this.bodyState[id] = { intensity: 0, selected: true };
     });
+    // Restore notes
+    this.muscleNotes = { ...this.initialNotes };
   }
 
   ngAfterViewInit() {
@@ -116,11 +123,17 @@ export class MuscularWidgetComponent implements OnInit, AfterViewInit, OnDestroy
     if (this.chart) {
       this.chart.update({ bodyState: this.bodyState });
     }
+    // Clear note if muscle was deselected
+    if (currentState.selected) {
+      delete this.muscleNotes[id];
+      this.notesChange.emit({ ...this.muscleNotes });
+    }
     this.selectionChange.emit(this.selectedMuscles);
   }
 
   clearSelection() {
     this.bodyState = {};
+    this.muscleNotes = {};
     if (this.activeMuscle) {
       this.activeMuscle.selected = false;
     }
@@ -128,5 +141,15 @@ export class MuscularWidgetComponent implements OnInit, AfterViewInit, OnDestroy
       this.chart.update({ bodyState: this.bodyState });
     }
     this.selectionChange.emit(this.selectedMuscles);
+    this.notesChange.emit({});
+  }
+
+  onNoteChange(muscleId: string, note: string): void {
+    if (note.trim()) {
+      this.muscleNotes[muscleId] = note;
+    } else {
+      delete this.muscleNotes[muscleId];
+    }
+    this.notesChange.emit({ ...this.muscleNotes });
   }
 }

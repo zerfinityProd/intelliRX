@@ -60,6 +60,11 @@ export const routes: Routes = [
         loadComponent: () => import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),
         canActivate: [adminGuard]
     },
+    {
+        path: 'admin/subscription',
+        loadComponent: () => import('./components/subscription-management/subscription-management').then(m => m.SubscriptionManagementComponent),
+        canActivate: [adminGuard]
+    },
 
     // ── App Shell (Doctor/Receptionist/Owner acting as clinical staff) ──
     {

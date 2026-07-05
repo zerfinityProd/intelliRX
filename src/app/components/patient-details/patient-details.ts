@@ -69,10 +69,18 @@ export class PatientDetailsComponent implements OnInit {
     const email = this.authService.currentUserValue?.email || '';
     this.permissions = await this.authorizationService.getUserPermissions(email);
 
-    // Check if navigation state specifies which tab to show (e.g. after adding a visit)
+    // Restore active tab from URL query param (survives refresh)
+    // Fall back to navigation state (e.g. redirect after adding a visit)
+    const queryTab = this.route.snapshot.queryParamMap.get('tab');
     const navState = history.state as { activeTab?: string } | undefined;
-    if (navState?.activeTab === 'visits') {
+    if (queryTab === 'visits' || navState?.activeTab === 'visits') {
       this.activeTab = 'visits';
+      // Ensure query param is set in URL
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: 'visits' },
+        replaceUrl: true
+      });
     }
 
     const patientId = this.route.snapshot.paramMap.get('id');
@@ -328,6 +336,13 @@ export class PatientDetailsComponent implements OnInit {
     return m.isValid() ? m.format('DD MMM YYYY, hh:mm A') : 'N/A';
   }
 
+  formatShortDateTime(date: Date | undefined | any): string {
+    if (!date) return '';
+    if (date && typeof date.toDate === 'function') date = date.toDate();
+    const m = moment(date);
+    return m.isValid() ? m.format('DD/MM/YY, HH:mm') : '';
+  }
+
   getInitials(name: string): string {
     if (!name) return '?';
     const parts = name.split(' ');
@@ -356,6 +371,12 @@ export class PatientDetailsComponent implements OnInit {
   setActiveTab(tab: 'info' | 'visits'): void {
     this.ngZone.run(() => {
       this.activeTab = tab;
+      // Persist tab in URL so refresh restores the same tab
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab },
+        replaceUrl: true
+      });
       this.cdr.detectChanges();
     });
   }

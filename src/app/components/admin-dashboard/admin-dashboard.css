@@ -1484,16 +1484,16 @@
    Uses: --dk-bg1/2/3, --dk-border, --dk-text1/2, --clr-primary, --clr-bright-cyan
    ══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Upgrade tile on the dashboard home ────────────────────────────────── */
-.ad-tile--upgrade {
+/* ── Subscription tile on the dashboard home ────────────────────────────── */
+.ad-tile--subscription {
   border-color: rgba(20,141,158,0.3);
   background: linear-gradient(135deg, rgba(20,141,158,0.04) 0%, rgba(28,181,201,0.06) 100%);
 }
-.ad-tile--upgrade:hover {
+.ad-tile--subscription:hover {
   border-color: var(--clr-primary, #148D9E);
   box-shadow: 0 8px 28px rgba(20,141,158,0.14);
 }
-.ad-tile-icon--upgrade {
+.ad-tile-icon--subscription {
   background: linear-gradient(135deg, rgba(20,141,158,0.15), rgba(28,181,201,0.15));
   color: var(--clr-primary, #148D9E);
 }
@@ -1503,15 +1503,15 @@
   background: linear-gradient(135deg, #148D9E, #1CB5C9);
   color: #fff; border-radius: 20px; padding: 4px 13px;
 }
-[data-theme="dark"] .ad-tile--upgrade {
+[data-theme="dark"] .ad-tile--subscription {
   border-color: rgba(28,181,201,0.28);
   background: rgba(20,141,158,0.08);
 }
-[data-theme="dark"] .ad-tile--upgrade:hover {
+[data-theme="dark"] .ad-tile--subscription:hover {
   border-color: #1CB5C9;
   box-shadow: 0 8px 28px rgba(28,181,201,0.18);
 }
-[data-theme="dark"] .ad-tile-icon--upgrade {
+[data-theme="dark"] .ad-tile-icon--subscription {
   background: rgba(20,141,158,0.18);
   color: #1CB5C9;
 }

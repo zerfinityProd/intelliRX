@@ -11,6 +11,9 @@ export interface SubscriptionPlan {
   limits: PlanLimits;
 }
 
+/** Billing cycle options available for plan selection */
+export type BillingCycle = 'monthly' | 'quarterly' | 'yearly';
+
 export interface Subscription {
   id?: string;
   entity_name: string;          // e.g. "City Health Group"
@@ -20,6 +23,8 @@ export interface Subscription {
   status: 'active' | 'inactive' | 'suspended';
   /** ISO date string — subscription blocks login after this date (e.g. "2026-08-01T00:00:00.000Z") */
   valid_until?: string;
+  /** Billing cycle selected when the plan was last changed */
+  billing_cycle?: BillingCycle;
   permissions?: Record<string, string[]>;  // role → permission overrides
   created_at?: string;          // ISO datetime
   updated_at?: string;          // ISO datetime
@@ -36,5 +41,24 @@ export interface PlanOption {
   key: string;    // e.g. "demo", "starter", "pro"
   label: string;  // e.g. "Demo", "Starter", "Pro"
   days: number;   // validity days
+}
+
+/**
+ * Full plan details fetched from the Firestore `plans` collection.
+ * Monthly/quarterly/yearly prices represent the per-month equivalent charge.
+ */
+export interface PlanDetail {
+  key: string;                  // Firestore document ID, e.g. "starter"
+  label: string;                // Display name, e.g. "Starter"
+  description?: string;         // Optional tagline
+  monthly_charges: number;      // Price billed monthly
+  quarterly_charges: number;    // Per-month equivalent when billed quarterly
+  yearly_charges: number;       // Per-month equivalent when billed yearly
+  max_clinics: number;
+  max_doctors: number;
+  max_receptionists: number;
+  max_patients: number;
+  validity_days: number;        // Plan's validity in days (from plans doc or system config)
+  features?: string[];          // Optional extra feature strings
 }
 

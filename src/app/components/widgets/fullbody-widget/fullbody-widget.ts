@@ -12,12 +12,16 @@ export type BoneView = 'full' | 'skull' | 'spine' | 'hand-left' | 'hand-right' |
 })
 export class FullbodyWidgetComponent implements OnInit {
   @Input() initialSelected: string[] = [];
+  @Input() initialNotes: { [id: string]: string } = {};
   selectedBoneIds: string[] = [];
+  boneNotes: { [id: string]: string } = {};
   @Output() selectionChange = new EventEmitter<string[]>();
+  @Output() notesChange = new EventEmitter<{ [id: string]: string }>();
 
   @ViewChild('widgetContainer') widgetContainer!: ElementRef;
 
   currentView: BoneView = 'full';
+  currentMode: 'chart' | 'notes' = 'chart';
   
   tooltipVisible: boolean = false;
   tooltipText: string = '';
@@ -28,6 +32,7 @@ export class FullbodyWidgetComponent implements OnInit {
     if (this.initialSelected && this.initialSelected.length > 0) {
       this.selectedBoneIds = [...this.initialSelected];
     }
+    this.boneNotes = { ...this.initialNotes };
   }
 
   // Dictionary of bone IDs to human-readable names for the tooltip
@@ -260,7 +265,17 @@ export class FullbodyWidgetComponent implements OnInit {
 
   setView(view: BoneView) {
     this.currentView = view;
+    this.currentMode = 'chart';
     this.hideTooltip();
+  }
+
+  setMode(mode: 'chart' | 'notes') {
+    this.currentMode = mode;
+    if (mode === 'chart') this.hideTooltip();
+  }
+
+  get notesCount(): number {
+    return Object.keys(this.boneNotes).length;
   }
 
   showTooltip(event: MouseEvent, boneId: string) {
@@ -308,6 +323,9 @@ export class FullbodyWidgetComponent implements OnInit {
       this.selectedBoneIds.push(boneId);
     } else {
       this.selectedBoneIds.splice(index, 1);
+      // Clear note when bone is deselected
+      delete this.boneNotes[boneId];
+      this.notesChange.emit({ ...this.boneNotes });
     }
     // create a new array ref so Angular detects changes
     this.selectedBoneIds = [...this.selectedBoneIds];
@@ -337,6 +355,17 @@ export class FullbodyWidgetComponent implements OnInit {
 
   clearSelection() {
     this.selectedBoneIds = [];
+    this.boneNotes = {};
     this.selectionChange.emit(this.selectedBoneIds);
+    this.notesChange.emit({});
+  }
+
+  onNoteChange(boneId: string, note: string): void {
+    if (note.trim()) {
+      this.boneNotes[boneId] = note;
+    } else {
+      delete this.boneNotes[boneId];
+    }
+    this.notesChange.emit({ ...this.boneNotes });
   }
 }

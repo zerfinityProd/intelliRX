@@ -118,7 +118,8 @@
   gap: 6px;
 }
 
-.anatomy-content:has(app-fullbody-widget) {
+.anatomy-content:has(app-fullbody-widget),
+.anatomy-content:has(app-muscular-widget) {
   padding: 0;
 }
 

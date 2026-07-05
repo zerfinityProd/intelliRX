@@ -1,4 +1,4 @@
-/* ── Navbar Back Button ─────────────────────────────────────────────────── */
+/* ── Navbar Back Button ───────────────────────────────────────────────────── */
 .navbar-back-btn {
   display: inline-flex;
   align-items: center;
@@ -6,10 +6,10 @@
   width: 34px;
   height: 34px;
   padding: 0;
-  background: transparent;
-  border: 1.5px solid rgba(0, 0, 0, 0.15);
+  background: #fff;
+  border: 1.5px solid rgba(0, 0, 0, 0.18);
   border-radius: 50%;
-  color: #444;
+  color: #1a2333;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
@@ -18,9 +18,9 @@
 }
 
 .navbar-back-btn:hover {
-  background: rgba(0, 0, 0, 0.06);
-  border-color: rgba(0, 0, 0, 0.3);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.28);
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
 }
 
 .navbar-back-btn:active {
@@ -29,16 +29,16 @@
 
 .navbar-back-btn svg {
   flex-shrink: 0;
-  color: #444;
+  color: #1a2333;
 }
 
 
-/* ── Vertical Divider ───────────────────────────────────────────────────── */
+/* ── Vertical Divider ──────────────────────────────────────────────────────────────── */
 .navbar-back-divider {
   display: inline-block;
   width: 1.5px;
   height: 20px;
-  background: rgba(0, 0, 0, 0.13);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 2px;
   flex-shrink: 0;
 }
@@ -60,31 +60,31 @@
 }
 
 /* ── Dark Mode ──────────────────────────────────────────────────────────── */
-[data-theme="dark"] .navbar-back-btn {
+:host-context([data-theme="dark"]) .navbar-back-btn {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
 }
 
-[data-theme="dark"] .navbar-back-btn svg {
+:host-context([data-theme="dark"]) .navbar-back-btn svg {
   color: #fff;
 }
 
-[data-theme="dark"] .navbar-back-btn:hover {
+:host-context([data-theme="dark"]) .navbar-back-btn:hover {
   background: rgba(255, 255, 255, 0.22);
   border-color: rgba(255, 255, 255, 0.5);
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.08);
 }
 
-[data-theme="dark"] .navbar-back-divider {
-  background: rgba(255, 255, 255, 0.12);
+:host-context([data-theme="dark"]) .navbar-back-divider {
+  background: rgba(255, 255, 255, 0.18);
 }
 
-[data-theme="dark"] .navbar-page-sep {
+:host-context([data-theme="dark"]) .navbar-page-sep {
   color: rgba(255, 255, 255, 0.2);
 }
 
-[data-theme="dark"] .navbar-page-title {
+:host-context([data-theme="dark"]) .navbar-page-title {
   color: #d8e8ed;
 }
 

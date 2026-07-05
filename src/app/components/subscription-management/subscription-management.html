@@ -1,0 +1,232 @@
+<!-- src/app/components/subscription-management/subscription-management.html -->
+<app-navbar [showBack]="true" (backClick)="goBack()"></app-navbar>
+
+<div class="sm-page">
+  <div class="sm-content">
+
+    <!-- Page header -->
+    <div class="sm-header">
+      <h1 class="sm-header-title">Manage Subscription</h1>
+      <p class="sm-header-sub">Choose the plan and billing cycle that best fits your practice.</p>
+    </div>
+
+    <!-- Current plan banner (shown when subscription is loaded) -->
+    <div class="sm-current-banner" *ngIf="subscription">
+      <div class="sm-current-banner-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+          <line x1="1" y1="10" x2="23" y2="10"/>
+        </svg>
+      </div>
+      <div class="sm-current-banner-info">
+        <div class="sm-current-banner-label">Current Plan</div>
+        <div class="sm-current-banner-name">{{ subscription.plan.name | titlecase }}</div>
+        <div class="sm-current-banner-cycle" *ngIf="subscription.billing_cycle">
+          Billed {{ subscription.billing_cycle | titlecase }}
+        </div>
+      </div>
+      <div class="sm-current-banner-expiry" *ngIf="subscription.valid_until">
+        <span>Expires on</span>
+        <strong>{{ subscription.valid_until | date:'mediumDate' }}</strong>
+      </div>
+    </div>
+
+    <!-- Loading state -->
+    <div class="sm-loading" *ngIf="isLoading">
+      <div class="sm-spinner"></div>
+      <span>Loading plans…</span>
+    </div>
+
+    <ng-container *ngIf="!isLoading">
+
+      <!-- Empty state -->
+      <div class="sm-empty" *ngIf="plans.length === 0">
+        <div class="sm-empty-icon">📋</div>
+        <p>No plans are currently available. Please contact support.</p>
+      </div>
+
+      <ng-container *ngIf="plans.length > 0">
+
+        <!-- ── Billing cycle toggle ── -->
+        <div class="sm-cycle-wrap">
+          <div class="sm-cycle-track" role="radiogroup" aria-label="Billing cycle">
+
+            <button class="sm-cycle-btn"
+              [class.sm-cycle-btn--active]="billingCycle === 'monthly'"
+              (click)="setBillingCycle('monthly')"
+              id="cycle-monthly" type="button" role="radio" [attr.aria-checked]="billingCycle === 'monthly'">
+              Monthly
+            </button>
+
+            <button class="sm-cycle-btn"
+              [class.sm-cycle-btn--active]="billingCycle === 'quarterly'"
+              (click)="setBillingCycle('quarterly')"
+              id="cycle-quarterly" type="button" role="radio" [attr.aria-checked]="billingCycle === 'quarterly'">
+              Quarterly
+              <span class="sm-cycle-badge" *ngIf="maxQuarterlySavings > 0">
+                Save {{ maxQuarterlySavings }}%
+              </span>
+            </button>
+
+            <button class="sm-cycle-btn"
+              [class.sm-cycle-btn--active]="billingCycle === 'yearly'"
+              (click)="setBillingCycle('yearly')"
+              id="cycle-yearly" type="button" role="radio" [attr.aria-checked]="billingCycle === 'yearly'">
+              Yearly
+              <span class="sm-cycle-badge" *ngIf="maxYearlySavings > 0">
+                Save {{ maxYearlySavings }}%
+              </span>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- ── Plan cards ── -->
+        <div class="sm-cards">
+
+          <div *ngFor="let plan of plans"
+            class="sm-card"
+            [class.sm-card--selected]="selectedPlanKey === plan.key"
+            [class.sm-card--pro]="plan.key === 'pro'"
+            (click)="selectPlan(plan.key)"
+            [id]="'sm-card-' + plan.key">
+
+            <!-- Current plan ribbon -->
+            <div class="sm-ribbon" *ngIf="isCurrentPlan(plan.key)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Current Plan
+            </div>
+
+            <!-- Plan head -->
+            <div class="sm-card-head">
+              <div class="sm-card-name">{{ plan.label }}</div>
+              <p class="sm-card-desc" *ngIf="plan.description">{{ plan.description }}</p>
+            </div>
+
+            <!-- Price block -->
+            <div class="sm-price-block">
+              <div class="sm-price-row">
+                <span class="sm-price-currency">₹</span>
+                <span class="sm-price-amount">{{ getPricePerMonth(plan) | number:'1.0-0' }}</span>
+                <span class="sm-price-period">/mo</span>
+                <span class="sm-savings-chip" *ngIf="getSavings(plan) > 0">
+                  🎉 Save {{ getSavings(plan) }}%
+                </span>
+              </div>
+              <div class="sm-price-billed" *ngIf="billingCycle !== 'monthly'">
+                Billed as
+                <span class="sm-price-total">₹{{ getTotalCharge(plan) | number:'1.0-0' }}</span>
+                {{ billingCycle === 'quarterly' ? '/ quarter' : '/ year' }}
+              </div>
+              <div class="sm-price-billed" *ngIf="billingCycle === 'monthly'">
+                Billed monthly
+              </div>
+            </div>
+
+            <div class="sm-divider"></div>
+
+            <!-- Feature list — dynamic from Firestore -->
+            <ul class="sm-features">
+              <li class="sm-feature">
+                <span class="sm-feature-icon">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </span>
+                Up to <strong>{{ plan.max_clinics }}</strong> Clinic{{ plan.max_clinics !== 1 ? 's' : '' }}
+              </li>
+              <li class="sm-feature">
+                <span class="sm-feature-icon">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </span>
+                Up to <strong>{{ plan.max_doctors }}</strong> Doctor{{ plan.max_doctors !== 1 ? 's' : '' }}
+              </li>
+              <li class="sm-feature">
+                <span class="sm-feature-icon">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </span>
+                Up to <strong>{{ plan.max_receptionists }}</strong> Receptionist{{ plan.max_receptionists !== 1 ? 's' : '' }}
+              </li>
+              <li class="sm-feature">
+                <span class="sm-feature-icon">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </span>
+                Up to <strong>{{ plan.max_patients }}</strong> Patients
+              </li>
+              <!-- Extra features from DB -->
+              <li class="sm-feature" *ngFor="let feat of (plan.features || [])">
+                <span class="sm-feature-icon">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </span>
+                {{ feat }}
+              </li>
+            </ul>
+
+            <!-- CTA button -->
+            <button class="sm-cta"
+              [class.sm-cta--current]="isCurrentPlanAndCycle(plan.key)"
+              [class.sm-cta--primary]="selectedPlanKey === plan.key && !isCurrentPlanAndCycle(plan.key)"
+              [disabled]="isSaving"
+              (click)="onCtaClick(plan, $event)"
+              [id]="'sm-cta-' + plan.key"
+              type="button">
+              <svg *ngIf="isCurrentPlanAndCycle(plan.key)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              {{ getCtaLabel(plan.key) }}
+            </button>
+
+          </div>
+        </div>
+
+      </ng-container>
+    </ng-container>
+
+  </div><!-- /sm-content -->
+</div><!-- /sm-page -->
+
+<!-- ── Confirm dialog ── -->
+<div class="sm-confirm-backdrop" *ngIf="confirmVisible" (click)="cancelConfirm()">
+  <div class="sm-confirm-dialog" (click)="$event.stopPropagation()">
+    <div class="sm-confirm-emoji">💳</div>
+    <div class="sm-confirm-title">Confirm Plan Change</div>
+    <div class="sm-confirm-msg">
+      Switch to <strong>{{ confirmPlan?.label }}</strong> plan billed
+      <strong>{{ billingCycle | titlecase }}</strong>?<br>
+      Your new billing will be
+      <strong>₹{{ confirmTotal | number:'1.0-0' }}
+        {{ billingCycle === 'quarterly' ? '/ quarter' : billingCycle === 'yearly' ? '/ year' : '/ month' }}
+      </strong>.
+    </div>
+    <div class="sm-confirm-actions">
+      <button class="sm-confirm-cancel" (click)="cancelConfirm()" [disabled]="isSaving" id="sm-confirm-no">
+        Cancel
+      </button>
+      <button class="sm-confirm-apply" (click)="applyPlanChange()" [disabled]="isSaving" id="sm-confirm-yes">
+        <span class="sm-spinner-sm" *ngIf="isSaving"></span>
+        <svg *ngIf="!isSaving" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        {{ isSaving ? 'Applying…' : 'Confirm' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="sm-toast"
+  [class.sm-toast--visible]="toastVisible"
+  [class.sm-toast--error]="toastType === 'error'"
+  [class.sm-toast--success]="toastType === 'success'">
+  <span>{{ toastType === 'success' ? '✓' : '⚠' }}</span>{{ toastMessage }}
+</div>
