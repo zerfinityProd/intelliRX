@@ -368,20 +368,26 @@ export class FirestoreApiService {
    * Generate a sequential document ID by scanning the target collection for
    * the highest existing numeric suffix — no `counters` collection involved.
    *
-   * Mapping of prefix → Firestore collection:
-   *   'cln'  → 'clinic_users'   (e.g. cln_1, cln_2 …)
-   *   'app'  → 'appointments'   (e.g. app_1, app_2 …)
-   *   'sub'  → 'subscriptions'  (e.g. sub_01, sub_02 …)
-   *   'clnc' → 'clinics'        (e.g. clnc_1, clnc_2 …)
+   * Mapping of prefix → Firestore collection (spreadsheet format):
+   *   'sub' → 'subscriptions'  (e.g. sub_1, sub_2 …)
+   *   'usr' → 'users'          (e.g. usr_1, usr_2 …)
+   *   'apt' → 'appointments'   (e.g. apt_1, apt_2 …)
+   *   'vst' → 'visits'         (e.g. vst_1, vst_2 …)
+   *   'cln' → 'clinics'        (e.g. cln_1, cln_2 …)
+   *   'pat' → 'patients'       (e.g. pat_1, pat_2 …)
+   *   'clu' → 'clinic_users'   (e.g. clu_1, clu_2 …)
    *
    * Falls back to a random suffix if the collection cannot be listed.
    */
   async getNextSequentialId(prefix: string): Promise<string> {
     const collectionMap: Record<string, string> = {
-      cln:  'clinic_users',
-      app:  'appointments',
-      sub:  'subscriptions',
-      clnc: 'clinics',
+      sub: 'subscriptions',
+      usr: 'users',
+      apt: 'appointments',
+      vst: 'visits',
+      cln: 'clinics',
+      pat: 'patients',
+      clu: 'clinic_users',
     };
     const collection = collectionMap[prefix] ?? prefix;
     try {

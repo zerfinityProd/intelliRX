@@ -78,7 +78,7 @@ export class AppointmentService {
     data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
     try {
-      const id = await this.api.getNextSequentialId('app');
+      const id = await this.api.getNextSequentialId('apt');
       const now = new Date();
 
       const clinicId = data.clinic_id || this.clinicContextService.getSelectedClinicId() || '';

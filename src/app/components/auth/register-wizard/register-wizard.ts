@@ -50,9 +50,6 @@ export class RegisterWizardComponent implements OnInit {
   async loadPlans() {
     try {
       this.plans = await this.api.listDocuments('plans');
-      if (!this.selectedPlan && this.plans.length > 0) {
-        this.selectedPlan = this.plans[0].id;
-      }
     } catch (error) {
       console.error('Failed to load plans:', error);
       this.plans = [
@@ -60,8 +57,19 @@ export class RegisterWizardComponent implements OnInit {
         { id: 'starter', data: { max_clinics: 1, max_doctors: 3, max_patients: 50, max_receptionist: 2 }, path: 'plans/starter' },
         { id: 'pro', data: { max_clinics: 3, max_doctors: 10, max_patients: 500, max_receptionist: 5 }, path: 'plans/pro' }
       ];
-      if (!this.selectedPlan) this.selectedPlan = 'demo';
+    } finally {
+      // The Firestore promise resolves outside Angular's zone, so change
+      // detection won't fire automatically — manually trigger it so the
+      // plan cards appear without requiring any user interaction.
+      this.cdr.detectChanges();
     }
+  }
+
+  selectPlan(planId: string) {
+    this.selectedPlan = planId;
+    // Same zone issue as loadPlans — manually trigger so the selected
+    // state (radio dot, border highlight) is reflected immediately.
+    this.cdr.detectChanges();
   }
 
   async completeSetup(event: Event) {
@@ -111,11 +119,9 @@ export class RegisterWizardComponent implements OnInit {
       // Small delay to let Firebase Auth state propagate and token become available
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 2. Generate sequential subscription ID (sub_01, sub_02, ...)
-      const existingSubs = await this.api.listDocuments('subscriptions');
-      const nextNum = existingSubs.length + 1;
-      const subscriptionId = `sub_${nextNum.toString().padStart(2, '0')}`;
-      const userDocId = this.api.generateDocId();
+      // 2. Generate sequential subscription ID (sub_1, sub_2, ...)
+      const subscriptionId = await this.api.getNextSequentialId('sub');
+      const userDocId = await this.api.getNextSequentialId('usr');
 
       // 3. Create Subscription Document
       await this.api.setDocument('subscriptions', subscriptionId, {
@@ -136,15 +142,7 @@ export class RegisterWizardComponent implements OnInit {
         created_at: new Date().toISOString()
       });
 
-      // 5. Create clinic_users entry (no clinic yet — admin will set up clinics later)
-      const cuId = await this.api.getNextSequentialId('cln');
-      await this.api.setDocument('clinic_users', cuId, {
-        user_id: userDocId,
-        subscription_id: subscriptionId,
-        status: 'active'
-      });
-
-      // 6. Set subscription context
+      // 5. Set subscription context
       this.clinicContext.setClinicContext(null, subscriptionId);
 
       // 7. Success → redirect to owner dashboard

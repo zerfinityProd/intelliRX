@@ -25,6 +25,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
   uiState$: Observable<any>;
   isAdmin = false;
   isDoctor = false;
+  isReceptionist = false;
   showSwitchClinic = false;
   currentClinicName = '';
   currentClinicAddress = '';
@@ -59,6 +60,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
       const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
       this.isAdmin = role === 'subscription_owner' || globalRoles.includes('admin');
       this.isDoctor = globalRoles.includes('doctor');
+      this.isReceptionist = globalRoles.includes('receptionist') || globalRoles.includes('recep');
 
       // Show "Switch Clinic" only if user has more than 1 clinic or subscription
       const assignments = await this.authorizationService.getUserAssignments(email);
@@ -104,6 +106,11 @@ export class NavbarComponent implements OnInit, OnDestroy {
   }
 
   goToDoctorDashboard(): void {
+    this.uiStateService.toggleUserMenu(); // close menu
+    this.router.navigate(['/home']);
+  }
+
+  goToReceptionDashboard(): void {
     this.uiStateService.toggleUserMenu(); // close menu
     this.router.navigate(['/home']);
   }

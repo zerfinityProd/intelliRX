@@ -1,0 +1,422 @@
+/* ── Heart Chart Widget ── */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ── Main Container ── */
+.hw-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--clr-surface, #fff);
+  overflow: hidden;
+}
+
+:host-context([data-theme="dark"]) .hw-container {
+  background: var(--surface-card, #1a2332);
+}
+
+/* ── Header ── */
+.hw-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.28rem 0.6rem;
+  border-bottom: 1px solid var(--clr-border, #C8DDE3);
+  background: var(--clr-bg, #E0F4F7);
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+:host-context([data-theme="dark"]) .hw-header {
+  background: rgba(255,255,255,0.03);
+  border-color: #2d3d52;
+}
+
+.hw-header-left  { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.hw-header-right { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+
+.hw-hint { font-size: 0.67rem; color: #64748b; }
+
+/* Mode tabs */
+.hw-mode-tab {
+  font-size: 0.7rem;
+  padding: 0.17rem 0.48rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.hw-mode-tab.active { background: #148D9E; border-color: #148D9E; color: #fff; }
+:host-context([data-theme="dark"]) .hw-mode-tab { border-color: #2d3d52; color: #94a3b8; }
+:host-context([data-theme="dark"]) .hw-mode-tab.active { background: #148D9E; border-color: #148D9E; color: #fff; }
+
+.hw-badge {
+  background: rgba(255,255,255,0.3);
+  border-radius: 8px;
+  padding: 0 4px;
+  font-size: 0.63rem;
+  font-weight: 700;
+}
+
+.hw-count-chip { font-size: 0.67rem; color: #64748b; white-space: nowrap; }
+
+.hw-clear-btn {
+  font-size: 0.68rem;
+  padding: 0.14rem 0.38rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s;
+  line-height: 1;
+}
+.hw-clear-btn:hover:not(:disabled) { background: #fee2e2; border-color: #fca5a5; color: #ef4444; }
+.hw-clear-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── SVG Wrapper ── */
+.hw-svg-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 6px 4px;
+  box-sizing: border-box;
+}
+
+.hw-svg {
+  width: 100%;
+  height: 100%;
+  min-width: 230px;
+  min-height: 360px;
+  cursor: pointer;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════
+   HEART ANATOMY STYLES — Neutral Medical Palette
+   No color coding; uniform warm gray-beige
+═══════════════════════════════════════════ */
+
+/* Pericardium outline (purely decorative) */
+.hw-pericardium {
+  fill: none;
+  stroke: #c4bab2;
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+}
+
+/* ── All interactive regions ── */
+.hw-region {
+  cursor: pointer;
+}
+
+/* Default fill for all chambers and vessels */
+.hw-region path,
+.hw-region rect,
+.hw-region ellipse {
+  fill: #f4f0eb;
+  stroke: #8a7a6e;
+  stroke-width: 1.5;
+  transition: fill 0.14s ease, stroke 0.14s ease, stroke-width 0.14s ease;
+}
+
+/* Valves — slightly darker, distinct appearance */
+.hw-valve path,
+.hw-valve rect,
+.hw-valve ellipse {
+  fill: #e8e2d8;
+  stroke: #8a7a6e;
+  stroke-width: 1.4;
+}
+
+/* ── Hover ── */
+.hw-region.hw-hover path,
+.hw-region.hw-hover rect,
+.hw-region.hw-hover ellipse {
+  fill: #e0d8ce;
+  stroke: #6a5a50;
+  stroke-width: 2;
+}
+
+/* ── Selected — app teal ── */
+.hw-region.hw-selected path,
+.hw-region.hw-selected rect,
+.hw-region.hw-selected ellipse {
+  fill: #148D9E;
+  stroke: #0e7080;
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 5px rgba(20,141,158,0.45));
+}
+
+/* ── Dark mode ── */
+:host-context([data-theme="dark"]) .hw-region path,
+:host-context([data-theme="dark"]) .hw-region rect,
+:host-context([data-theme="dark"]) .hw-region ellipse {
+  fill: #263344;
+  stroke: #4e6880;
+  stroke-width: 1.5;
+}
+
+:host-context([data-theme="dark"]) .hw-valve path,
+:host-context([data-theme="dark"]) .hw-valve rect,
+:host-context([data-theme="dark"]) .hw-valve ellipse {
+  fill: #1e2c3a;
+  stroke: #4e6880;
+}
+
+:host-context([data-theme="dark"]) .hw-region.hw-hover path,
+:host-context([data-theme="dark"]) .hw-region.hw-hover rect,
+:host-context([data-theme="dark"]) .hw-region.hw-hover ellipse {
+  fill: #304255;
+  stroke: #6a8eaa;
+  stroke-width: 2;
+}
+
+:host-context([data-theme="dark"]) .hw-region.hw-selected path,
+:host-context([data-theme="dark"]) .hw-region.hw-selected rect,
+:host-context([data-theme="dark"]) .hw-region.hw-selected ellipse {
+  fill: #148D9E;
+  stroke: #0e7080;
+}
+
+/* ── Fossa Ovalis (decorative oval in RA) ── */
+.hw-fossa {
+  fill: #ece6de;
+  stroke: #8a7a6e;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+:host-context([data-theme="dark"]) .hw-fossa {
+  fill: #1e2c3a;
+  stroke: #4e6880;
+}
+
+/* ── Valve Leaflet Lines ── */
+.hw-leaflet {
+  fill: none;
+  stroke: #7a6a5e;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+
+:host-context([data-theme="dark"]) .hw-leaflet { stroke: #4e6880; }
+
+/* Selected leaflets → white for contrast */
+.hw-region.hw-selected .hw-leaflet { stroke: rgba(255,255,255,0.6); }
+
+/* ── LV wall thickness indicators ── */
+.hw-wall-inner {
+  fill: none;
+  stroke: #c8bdb6;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.hw-wall-thick { stroke-width: 1.5; stroke: #bab0a8; }
+
+:host-context([data-theme="dark"]) .hw-wall-inner { stroke: #2e4158; }
+
+/* Hide wall indicators when region is selected (teal fill covers them) */
+.hw-region.hw-selected .hw-wall-inner { stroke: rgba(255,255,255,0.15); }
+
+/* ── SVG Text Labels ── */
+.hw-chamber-name {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #3d2e25;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hw-chamber-abbr {
+  font-size: 9.5px;
+  font-weight: 500;
+  fill: #6b5c52;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hw-vlabel {
+  font-size: 9px;
+  font-weight: 700;
+  fill: #3d2e25;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hw-vlabel-sub {
+  font-size: 7px;
+  fill: #6b5c52;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hw-valve-label {
+  font-size: 8px;
+  font-weight: 600;
+  fill: #3d2e25;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+.hw-micro-label {
+  font-size: 8.5px;
+  font-weight: 700;
+  fill: #3d2e25;
+  text-anchor: middle;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* White labels when selected (teal bg) */
+.hw-region.hw-selected .hw-chamber-name,
+.hw-region.hw-selected .hw-chamber-abbr,
+.hw-region.hw-selected .hw-vlabel,
+.hw-region.hw-selected .hw-vlabel-sub,
+.hw-region.hw-selected .hw-valve-label,
+.hw-region.hw-selected .hw-micro-label {
+  fill: #ffffff;
+}
+
+:host-context([data-theme="dark"]) .hw-chamber-name { fill: #d4c8bf; }
+:host-context([data-theme="dark"]) .hw-chamber-abbr { fill: #9a8e86; }
+:host-context([data-theme="dark"]) .hw-vlabel        { fill: #d4c8bf; }
+:host-context([data-theme="dark"]) .hw-vlabel-sub    { fill: #8a7e78; }
+:host-context([data-theme="dark"]) .hw-valve-label   { fill: #d4c8bf; }
+:host-context([data-theme="dark"]) .hw-micro-label   { fill: #d4c8bf; }
+
+/* ── Non-clickable structural elements ── */
+.hw-septum {
+  fill: none;
+  stroke: #a89a90;
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+
+:host-context([data-theme="dark"]) .hw-septum { stroke: #3e5268; }
+
+.hw-junction {
+  stroke: #c8bdb6;
+  stroke-width: 1;
+}
+
+:host-context([data-theme="dark"]) .hw-junction { stroke: #2d3d52; }
+
+/* ── Blood flow arrows ── */
+.hw-arrow { stroke: #b0a098; stroke-width: 1.4; fill: none; }
+.hw-arrowhead { fill: #b0a098; }
+
+:host-context([data-theme="dark"]) .hw-arrow { stroke: #3e5268; }
+:host-context([data-theme="dark"]) .hw-arrowhead { fill: #3e5268; }
+
+/* ── Notes View ── */
+.hw-notes-view {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.hw-notes-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  color: #94a3b8;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.hw-notes-empty svg { opacity: 0.3; }
+
+.hw-notes-empty p {
+  font-size: 0.78rem;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.hw-notes-empty span { font-size: 0.7rem; color: #64748b; }
+
+.hw-note-item {
+  background: #f8f5f1;
+  border: 1px solid #e8e0d8;
+  border-radius: 7px;
+  padding: 0.42rem 0.52rem;
+}
+
+:host-context([data-theme="dark"]) .hw-note-item {
+  background: #1a2332;
+  border-color: #2d3d52;
+}
+
+.hw-note-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #3d2e25;
+  margin-bottom: 0.28rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+:host-context([data-theme="dark"]) .hw-note-label { color: #d4c8bf; }
+
+.hw-note-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+  background: #148D9E;
+}
+
+.hw-note-input {
+  width: 100%;
+  font-size: 0.74rem;
+  border: 1px solid #e0d8d0;
+  border-radius: 5px;
+  padding: 0.28rem 0.42rem;
+  resize: vertical;
+  color: #3d2e25;
+  background: #fff;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+:host-context([data-theme="dark"]) .hw-note-input {
+  background: #263344;
+  border-color: #2d3d52;
+  color: #d4c8bf;
+}
+
+.hw-note-input:focus {
+  outline: none;
+  border-color: #148D9E;
+  box-shadow: 0 0 0 2px rgba(20,141,158,0.12);
+}

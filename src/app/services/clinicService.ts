@@ -150,7 +150,7 @@ export class ClinicService {
     clinicData: Omit<Clinic, 'id' | 'created_at' | 'updated_at'>
   ): Promise<string> {
     try {
-      const id = this.api.generateDocId();
+      const id = await this.api.getNextSequentialId('cln');
       const now = new Date().toISOString();
 
       const clinic: Clinic = {

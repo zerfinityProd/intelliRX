@@ -193,6 +193,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     return max > 0 && this.stats.doctors >= max;
   }
 
+  /** True when the receptionist count has reached or exceeded the plan limit */
+  get receptionistLimitReached(): boolean {
+    const max = this.subscription?.plan?.limits?.max_receptionists ?? 0;
+    return max > 0 && this.stats.receptionists >= max;
+  }
+
   get filteredClinics(): AdminClinicState[] {
     if (!this.clinicSearch.trim()) return this.clinics;
     const q = this.clinicSearch.toLowerCase();
@@ -200,9 +206,21 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   get filteredUsers(): AdminUserState[] {
-    if (!this.userSearch.trim()) return this.users;
+    // Exclude admin-only users — they are implicit and don't belong in the staff list.
+    // A user is shown only if they have at least one doctor/receptionist assignment
+    // or a non-admin role in global_roles.
+    const staff = this.users.filter(u => {
+      const hasClinicAssignment = u.assignments.some(
+        a => a.role === 'doctor' || a.role === 'receptionist'
+      );
+      const hasStaffRole = (u.global_roles || []).some(
+        r => r === 'doctor' || r === 'receptionist'
+      );
+      return hasClinicAssignment || hasStaffRole;
+    });
+    if (!this.userSearch.trim()) return staff;
     const q = this.userSearch.toLowerCase();
-    return this.users.filter(u =>
+    return staff.filter(u =>
       u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     );
   }
@@ -526,7 +544,11 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         // Derive role per-assignment from the clinic_user record, with fallback to global_roles
         const globalRoles = userDoc.global_roles || [];
         const fallbackRole: 'doctor' | 'receptionist' = globalRoles.includes('doctor') ? 'doctor' : 'receptionist';
-        const assignments: UserClinicAssignment[] = allCU.filter(cu => cu.user_id === userId).map(cu => {
+        // Build clinic assignments — skip entries with no clinic_id (e.g. admin-level
+        // clu records created at registration time with subscription_id only).
+        const assignments: UserClinicAssignment[] = allCU
+          .filter(cu => cu.user_id === userId && cu.clinic_id)
+          .map(cu => {
           const clinic = this.clinics.find(c => c.id === cu.clinic_id);
           const cuRole = (cu as any).role as string | undefined;
           const role: 'doctor' | 'receptionist' = (cuRole === 'doctor' || cuRole === 'receptionist') ? cuRole : fallbackRole;
@@ -1310,6 +1332,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Receptionist limit check — only block when adding a NEW receptionist
+    const hasRecepRole = this.userForm.assignments.some(a => a.role === 'receptionist');
+    if (!this.editingUser && hasRecepRole && this.receptionistLimitReached) {
+      const max = this.subscription?.plan?.limits?.max_receptionists ?? 0;
+      this.showToast(`Receptionist limit reached (${this.stats.receptionists}/${max}). Upgrade your plan to add more.`, 'error');
+      return;
+    }
+
     // Duplicate assignment check — same clinic + same role should not appear twice
     const assignmentKeys = this.userForm.assignments.map(a => `${a.clinicId}::${a.role}`);
     const dupeKey = assignmentKeys.find((k, i) => assignmentKeys.indexOf(k) !== i);
@@ -1460,13 +1490,24 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         // New user — search by email WITHOUT subscription filter to avoid duplicates
         const existing = await this.adminService.getUserByEmail(userPayload.email);
         if (existing) {
-          this.showToast(
-            `A staff member with email "${userPayload.email}" already exists (${existing.name}). Please use the Edit button to update their roles or assignments.`,
-            'error'
-          );
-          this.isSaving = false;
-          this.cdr.detectChanges();
-          return;
+          if (existing.subscription_id === this.subscription!.id) {
+            // User belongs to this subscription (e.g. the admin user).
+            // Allow assigning them additional roles (doctor/receptionist) instead of blocking.
+            userId = existing.id!;
+            const preservedRoles = (existing.global_roles || []).filter(
+              (r: string) => !['doctor', 'receptionist'].includes(r)
+            );
+            userPayload.global_roles = [...new Set([...preservedRoles, ...derivedAssignmentRoles])];
+            await this.adminService.updateUser(userId, userPayload);
+          } else {
+            this.showToast(
+              `A staff member with email "${userPayload.email}" already exists (${existing.name}). Please use the Edit button to update their roles or assignments.`,
+              'error'
+            );
+            this.isSaving = false;
+            this.cdr.detectChanges();
+            return;
+          }
         } else {
           userId = await this.adminService.createUser(userPayload);
         }

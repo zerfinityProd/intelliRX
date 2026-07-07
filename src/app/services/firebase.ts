@@ -32,7 +32,7 @@ export class PatientDataService {
   ): Promise<string> {
     try {
       const now = new Date().toISOString();
-      const id = await this.generatePatientId();
+      const id = await this.api.getNextSequentialId('pat');
 
       const patient: Omit<Patient, 'id'> & { nameLower: string; last_updated: string } = {
         ...patientData,
@@ -242,7 +242,7 @@ export class PatientDataService {
     visitData: Omit<Visit, 'id' | 'created_at'>,
   ): Promise<string> {
     try {
-      const id = this.api.generateDocId();
+      const id = await this.api.getNextSequentialId('vst');
       const visit: Visit = {
         ...visitData,
         id,
@@ -328,61 +328,6 @@ export class PatientDataService {
       filters.push({ field: 'clinic_ids', op: 'array-contains', value: clinicId });
     }
     return this.api.runCount('', { collectionId: 'patients', filters });
-  }
-
-  /**
-   * Generate a sequential patient ID in the format YYYYMM#####
-   * e.g. 20260500001, 20260500002, ...
-   *
-   * Queries existing patient documents to find the highest sequence number
-   * for the current year-month prefix, then increments from there.
-   * No external counter collection needed.
-   */
-  private async generatePatientId(maxRetries = 3): Promise<string> {
-    const now = new Date();
-    const yyyy = String(now.getFullYear());
-    const mm = String(now.getMonth() + 1).padStart(2, '0');
-    const currentPrefix = `${yyyy}${mm}`;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        // List patient documents and find the highest ID matching the prefix.
-        // We can still query by the 'id' field on legacy docs, but also check
-        // document IDs directly for new docs that no longer store 'id' in data.
-        const docs = await this.api.listDocuments('patients', 300);
-
-        let maxSeq = 0;
-        for (const doc of docs) {
-          const docId = doc.id;
-          if (docId.startsWith(currentPrefix)) {
-            const seqPart = docId.substring(currentPrefix.length);
-            const seq = parseInt(seqPart, 10);
-            if (!isNaN(seq) && seq > maxSeq) {
-              maxSeq = seq;
-            }
-          }
-        }
-
-        const nextSeq = maxSeq + 1;
-        const patientId = `${currentPrefix}${String(nextSeq).padStart(5, '0')}`;
-
-        // Verify no collision (race condition guard)
-        const existing = await this.api.getDocument('patients', patientId);
-        if (existing) {
-          // Someone else used this ID concurrently — retry
-          await new Promise(r => setTimeout(r, 100 + attempt * 150));
-          continue;
-        }
-
-        return patientId;
-      } catch (error) {
-        if (attempt === maxRetries - 1) throw error;
-        await new Promise(r => setTimeout(r, 200));
-      }
-    }
-
-    // Fallback — should never reach here
-    throw new Error('Failed to generate patient ID after retries');
   }
 
   // ── Cache ─────────────────────────────────────────────────

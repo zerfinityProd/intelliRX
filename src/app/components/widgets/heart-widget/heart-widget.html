@@ -1,0 +1,256 @@
+<div class="hw-container">
+
+  <!-- ── Header ── -->
+  <div class="hw-header">
+    <div class="hw-header-left">
+      <span class="hw-hint" *ngIf="currentMode === 'chart'">Click to select · Double-click to deselect</span>
+    </div>
+    <div class="hw-header-right">
+      <button class="hw-mode-tab" [class.active]="currentMode === 'chart'" (click)="setMode('chart')">Chart</button>
+      <button class="hw-mode-tab" [class.active]="currentMode === 'notes'" (click)="setMode('notes')">
+        Notes <span class="hw-badge" [style.visibility]="selectedCount > 0 ? 'visible' : 'hidden'">{{ selectedCount }}</span>
+      </button>
+      <span class="hw-count-chip">{{ selectedCount }} selected</span>
+      <button class="hw-clear-btn" (click)="clearSelection()" [disabled]="selectedCount === 0" title="Clear selection">✕</button>
+    </div>
+  </div>
+
+  <!-- ── Chart View ── -->
+  <div class="hw-svg-wrapper" *ngIf="currentMode === 'chart'">
+    <svg viewBox="0 0 415 548" class="hw-svg"
+      (click)="onSvgClick($event)"
+      (dblclick)="onSvgDblClick($event)"
+      (mouseover)="onMouseEnter($event.target)"
+      (mouseout)="onMouseLeave($event.target)"
+      role="img" aria-label="Heart anatomy diagram — click regions to select">
+
+      <defs>
+        <!-- Subtle texture for a more organic look -->
+        <filter id="hw-shadow" x="-5%" y="-5%" width="110%" height="110%">
+          <feDropShadow dx="1" dy="2" stdDeviation="3" flood-color="#00000022"/>
+        </filter>
+      </defs>
+
+      <!-- ══ HEART PERICARDIUM OUTLINE (decorative, not clickable) ══ -->
+      <path class="hw-pericardium"
+        d="M 82,96
+           C 60,84 34,90 20,116
+           C 10,140 12,178 14,220
+           C 16,265 16,305 18,348
+           C 22,400 44,442 88,464
+           C 128,484 172,484 212,482
+           C 248,480 274,478 296,468
+           C 336,448 364,418 372,386
+           C 378,364 374,338 372,308
+           L 372,140
+           C 368,100 348,90 322,88
+           L 82,88 Z"
+        pointer-events="none"/>
+
+      <!-- ══════════ TOP VESSELS ══════════ -->
+
+      <!-- Superior Vena Cava (SVC) — enters RA at top-left -->
+      <g id="superior-vena-cava" class="hw-region">
+        <path d="M 36,97 L 36,16 Q 36,12 44,12 L 76,12 Q 84,12 84,18 L 84,97 Z"/>
+        <text class="hw-vlabel"     x="60" y="44">SVC</text>
+        <text class="hw-vlabel-sub" x="60" y="57">Superior</text>
+        <text class="hw-vlabel-sub" x="60" y="68">Vena Cava</text>
+      </g>
+
+      <!-- Pulmonary Artery (PA) — exits RV upward -->
+      <g id="pulmonary-artery" class="hw-region">
+        <path d="M 100,97 L 100,20 Q 100,12 110,12 L 170,12 Q 180,12 180,20 L 180,97 Z"/>
+        <text class="hw-vlabel"     x="140" y="44">PA</text>
+        <text class="hw-vlabel-sub" x="140" y="57">Pulmonary</text>
+        <text class="hw-vlabel-sub" x="140" y="68">Artery</text>
+      </g>
+
+      <!-- Aorta — exits LV, arches rightward -->
+      <g id="aorta" class="hw-region">
+        <path d="M 196,110
+                 L 196,54
+                 Q 196,14 222,14
+                 L 260,14
+                 Q 286,14 290,40
+                 C 290,55 278,68 265,72
+                 L 250,72
+                 Q 235,66 228,110 Z"/>
+        <text class="hw-vlabel"     x="246" y="44">Aorta</text>
+      </g>
+
+      <!-- Pulmonary Veins (PV) — enter LA from right -->
+      <g id="pulmonary-veins" class="hw-region">
+        <rect x="336" y="106" width="52" height="30" rx="10"/>
+        <rect x="336" y="158" width="52" height="30" rx="10"/>
+        <text class="hw-vlabel"     x="362" y="125">PV</text>
+        <text class="hw-vlabel-sub" x="362" y="164">Pulm.</text>
+        <text class="hw-vlabel-sub" x="362" y="175">Veins</text>
+      </g>
+
+      <!-- ══════════ OUTLET VALVES ══════════ -->
+
+      <!-- Pulmonary Valve (PV) — at RV→PA junction -->
+      <g id="pulmonary-valve" class="hw-region hw-valve">
+        <ellipse cx="140" cy="104" rx="26" ry="12"/>
+        <!-- valve leaflets decorative lines -->
+        <path class="hw-leaflet" d="M 117,104 Q 129,97 140,104 Q 151,97 163,104" pointer-events="none"/>
+        <text class="hw-micro-label" x="140" y="108">P.Valve</text>
+      </g>
+
+      <!-- Aortic Valve (AV) — at LV→Aorta junction -->
+      <g id="aortic-valve" class="hw-region hw-valve">
+        <ellipse cx="215" cy="117" rx="26" ry="12"/>
+        <path class="hw-leaflet" d="M 192,117 Q 204,110 215,117 Q 226,110 238,117" pointer-events="none"/>
+        <text class="hw-micro-label" x="215" y="121">Ao.Valve</text>
+      </g>
+
+      <!-- ══════════ ATRIA ══════════ -->
+
+      <!-- RIGHT ATRIUM — organic curved outer wall -->
+      <g id="right-atrium" class="hw-region">
+        <path d="M 24,96
+                 C 18,100 14,125 14,160
+                 C 14,195 16,220 22,234
+                 L 188,234
+                 L 188,96 Z"/>
+        <!-- Fossa Ovalis decoration (not clickable) -->
+        <ellipse class="hw-fossa" cx="165" cy="165" rx="13" ry="18" pointer-events="none"/>
+        <text class="hw-chamber-name" x="101" y="152">Right</text>
+        <text class="hw-chamber-name" x="101" y="170">Atrium</text>
+        <text class="hw-chamber-abbr" x="101" y="190">(RA)</text>
+      </g>
+
+      <!-- LEFT ATRIUM — mirror organic shape -->
+      <g id="left-atrium" class="hw-region">
+        <path d="M 194,96
+                 L 340,96
+                 Q 372,96 372,120
+                 L 372,220
+                 Q 372,234 358,234
+                 L 194,234 Z"/>
+        <text class="hw-chamber-name" x="280" y="152">Left</text>
+        <text class="hw-chamber-name" x="280" y="170">Atrium</text>
+        <text class="hw-chamber-abbr" x="280" y="190">(LA)</text>
+      </g>
+
+      <!-- ══════════ AV VALVES ══════════ -->
+
+      <!-- Tricuspid Valve — between RA and RV -->
+      <g id="tricuspid-valve" class="hw-region hw-valve">
+        <ellipse cx="101" cy="247" rx="70" ry="14"/>
+        <path class="hw-leaflet" d="M 48,247 Q 75,238 101,247 Q 127,238 154,247" pointer-events="none"/>
+        <text class="hw-valve-label" x="101" y="270">Tricuspid Valve</text>
+      </g>
+
+      <!-- Mitral Valve — between LA and LV -->
+      <g id="mitral-valve" class="hw-region hw-valve">
+        <ellipse cx="280" cy="247" rx="70" ry="14"/>
+        <path class="hw-leaflet" d="M 227,247 Q 254,238 280,247 Q 306,238 333,247" pointer-events="none"/>
+        <text class="hw-valve-label" x="280" y="270">Mitral Valve</text>
+      </g>
+
+      <!-- ══════════ VENTRICLES ══════════ -->
+
+      <!-- RIGHT VENTRICLE — crescent/wedge, thinner outer wall -->
+      <g id="right-ventricle" class="hw-region">
+        <path d="M 14,262
+                 C 14,258 16,255 22,255
+                 L 188,255
+                 L 188,415
+                 Q 174,452 138,460
+                 Q 98,466 66,444
+                 Q 36,420 22,392
+                 C 16,370 14,340 14,305 Z"/>
+        <text class="hw-chamber-name" x="101" y="336">Right</text>
+        <text class="hw-chamber-name" x="101" y="354">Ventricle</text>
+        <text class="hw-chamber-abbr" x="101" y="374">(RV)</text>
+        <!-- RV wall thickness indicator -->
+        <path class="hw-wall-inner" d="M 24,262 C 22,290 22,335 24,374 Q 30,400 45,418" pointer-events="none"/>
+      </g>
+
+      <!-- LEFT VENTRICLE — dominant, bullet-shaped, thicker walls -->
+      <g id="left-ventricle" class="hw-region">
+        <path d="M 194,255
+                 L 370,255
+                 Q 374,262 372,300
+                 Q 368,360 346,405
+                 Q 322,448 296,466
+                 Q 278,478 262,478
+                 Q 246,478 230,466
+                 Q 206,448 198,420
+                 Q 194,398 194,362 Z"/>
+        <!-- LV wall thickness indicator (thicker than RV) -->
+        <path class="hw-wall-inner hw-wall-thick" d="M 210,258 Q 210,360 230,418 Q 244,448 262,458" pointer-events="none"/>
+        <path class="hw-wall-inner hw-wall-thick" d="M 358,258 Q 360,310 354,360 Q 342,408 322,438" pointer-events="none"/>
+        <text class="hw-chamber-name" x="282" y="336">Left</text>
+        <text class="hw-chamber-name" x="282" y="354">Ventricle</text>
+        <text class="hw-chamber-abbr" x="282" y="374">(LV)</text>
+      </g>
+
+      <!-- ══════════ BOTTOM VESSEL ══════════ -->
+
+      <!-- Inferior Vena Cava (IVC) — exits RA at bottom-left -->
+      <g id="inferior-vena-cava" class="hw-region">
+        <path d="M 36,450 L 84,450 L 84,528 Q 84,535 76,535 L 44,535 Q 36,535 36,528 Z"/>
+        <text class="hw-vlabel"     x="60" y="480">IVC</text>
+        <text class="hw-vlabel-sub" x="60" y="494">Inferior</text>
+        <text class="hw-vlabel-sub" x="60" y="505">Vena Cava</text>
+      </g>
+
+      <!-- ══════════ NON-CLICKABLE ANATOMY ══════════ -->
+
+      <!-- Interventricular septum — slightly curved, bows toward RV -->
+      <path class="hw-septum"
+        d="M 191,96 Q 186,175 191,255 Q 186,360 191,465"
+        pointer-events="none"/>
+
+      <!-- Atrio-ventricular groove lines -->
+      <line class="hw-junction" x1="14"  y1="255" x2="188" y2="255" pointer-events="none"/>
+      <line class="hw-junction" x1="194" y1="255" x2="374" y2="255" pointer-events="none"/>
+
+      <!-- Blood flow arrows (non-clickable) -->
+      <g pointer-events="none">
+        <!-- SVC → RA -->
+        <path class="hw-arrow" d="M 60,97 L 60,112"/>
+        <polygon class="hw-arrowhead" points="60,118 55,108 65,108"/>
+        <!-- IVC → RA -->
+        <path class="hw-arrow" d="M 60,448 L 60,432"/>
+        <polygon class="hw-arrowhead" points="60,425 55,436 65,436"/>
+        <!-- PA leaving RV -->
+        <path class="hw-arrow" d="M 140,92 L 140,78"/>
+        <polygon class="hw-arrowhead" points="140,72 135,82 145,82"/>
+        <!-- Aorta leaving LV -->
+        <path class="hw-arrow" d="M 213,105 L 213,88"/>
+        <polygon class="hw-arrowhead" points="213,82 208,92 218,92"/>
+        <!-- PV → LA -->
+        <path class="hw-arrow" d="M 334,121 L 318,121"/>
+        <polygon class="hw-arrowhead" points="312,121 322,116 322,126"/>
+        <path class="hw-arrow" d="M 334,173 L 318,173"/>
+        <polygon class="hw-arrowhead" points="312,173 322,168 322,178"/>
+      </g>
+
+    </svg>
+  </div>
+
+  <!-- ── Notes View ── -->
+  <div class="hw-notes-view" *ngIf="currentMode === 'notes'">
+    <div class="hw-notes-empty" *ngIf="selectedCount === 0">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+      <p>No regions selected.<br><span>Switch to Chart and click a region.</span></p>
+    </div>
+    <div class="hw-note-item" *ngFor="let id of selectedRegionsArray">
+      <div class="hw-note-label">
+        <span class="hw-note-dot"></span>
+        {{ getRegionName(id) }}
+      </div>
+      <textarea class="hw-note-input" rows="2"
+        [placeholder]="'Notes for ' + getRegionName(id) + '...'"
+        [value]="regionNotes[id] || ''"
+        (input)="onNoteChange(id, $any($event.target).value)">
+      </textarea>
+    </div>
+  </div>
+
+</div>

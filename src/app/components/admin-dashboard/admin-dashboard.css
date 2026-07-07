@@ -52,7 +52,13 @@
   font-size: 16px; font-weight: 700; color: var(--clr-text, #0A2540);
   margin-bottom: 4px;
 }
-.ad-tile-desc { font-size: 13px; color: var(--clr-text-muted, #5A8A9C); }
+.ad-tile-desc {
+  font-size: 13px;
+  color: var(--clr-text-muted, #5A8A9C);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .ad-tile-count {
   font-size: 28px; font-weight: 800; color: var(--clr-primary, #148D9E);
   line-height: 1; flex-shrink: 0; min-width: 36px; text-align: center;
@@ -1486,8 +1492,7 @@
 
 /* ── Subscription tile on the dashboard home ────────────────────────────── */
 .ad-tile--subscription {
-  border-color: rgba(20,141,158,0.3);
-  background: linear-gradient(135deg, rgba(20,141,158,0.04) 0%, rgba(28,181,201,0.06) 100%);
+  background: var(--clr-surface, #fff);
 }
 .ad-tile--subscription:hover {
   border-color: var(--clr-primary, #148D9E);

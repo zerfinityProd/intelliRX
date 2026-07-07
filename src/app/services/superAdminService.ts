@@ -78,7 +78,7 @@ export class SuperAdminService {
     name: string;
     subscription_id: string;
   }): Promise<string> {
-    const id = this.api.generateDocId();
+    const id = await this.api.getNextSequentialId('usr');
     const now = new Date().toISOString();
     await this.api.setDocument('users', id, {
       email: data.email.trim().toLowerCase(),

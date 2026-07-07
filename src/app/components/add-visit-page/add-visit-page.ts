@@ -8,6 +8,7 @@ import { AuthenticationService } from '../../services/authenticationService';
 import { Patient, Visit } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
 import { DentalWidgetComponent } from '../widgets/dental-widget/dental-widget';
+import { HeartWidgetComponent } from '../widgets/heart-widget/heart-widget';
 import { FullbodyWidgetComponent } from '../widgets/fullbody-widget/fullbody-widget';
 import { MuscularWidgetComponent } from '../widgets/muscular-widget/muscular-widget';
 import { AuthorizationService } from '../../services/authorizationService';
@@ -45,7 +46,7 @@ interface FrequencyState {
 @Component({
     selector: 'app-add-visit-page',
     standalone: true,
-    imports: [CommonModule, FormsModule, NavbarComponent, DentalWidgetComponent, FullbodyWidgetComponent, MuscularWidgetComponent],
+    imports: [CommonModule, FormsModule, NavbarComponent, DentalWidgetComponent, FullbodyWidgetComponent, MuscularWidgetComponent, HeartWidgetComponent],
     templateUrl: './add-visit-page.html',
     styleUrl: './add-visit-page.css'
 })
@@ -102,8 +103,12 @@ export class AddVisitPageComponent implements OnInit {
     selectedMuscleIds: string[] = [];
     muscleNotes: { [id: string]: string } = {};
 
+    // ── Cardiac (heart) chart selection ──────────────────────
+    selectedHeartRegionIds: string[] = [];
+    heartNotes: { [id: string]: string } = {};
+
     // ── Widget toggle state & specialty ───────────────────────
-    activeChartTab: 'dental' | 'skeletal' | 'muscular' = 'skeletal';
+    activeChartTab: 'dental' | 'skeletal' | 'muscular' | 'cardiac' = 'skeletal';
     doctorSpecialty: string = '';
 
     // ── Edit mode ─────────────────────────────────────────────
@@ -155,6 +160,8 @@ export class AddVisitPageComponent implements OnInit {
                     this.activeChartTab = 'dental';
                 } else if (specLower.includes('physio') || specLower.includes('therap')) {
                     this.activeChartTab = 'muscular';
+                } else if (specLower.includes('cardio') || specLower.includes('heart')) {
+                    this.activeChartTab = 'cardiac';
                 } else {
                     this.activeChartTab = 'skeletal';
                 }
@@ -235,6 +242,8 @@ export class AddVisitPageComponent implements OnInit {
                 boneNotes: this.boneNotes,
                 selectedMuscleIds: this.selectedMuscleIds,
                 muscleNotes: this.muscleNotes,
+                selectedHeartRegionIds: this.selectedHeartRegionIds,
+                heartNotes: this.heartNotes,
                 activeChartTab: this.activeChartTab,
                 timestamp: Date.now()
             };
@@ -275,6 +284,8 @@ export class AddVisitPageComponent implements OnInit {
             if (data.boneNotes && typeof data.boneNotes === 'object') this.boneNotes = data.boneNotes;
             if (Array.isArray(data.selectedMuscleIds)) this.selectedMuscleIds = data.selectedMuscleIds;
             if (data.muscleNotes && typeof data.muscleNotes === 'object') this.muscleNotes = data.muscleNotes;
+            if (Array.isArray(data.selectedHeartRegionIds)) this.selectedHeartRegionIds = data.selectedHeartRegionIds;
+            if (data.heartNotes && typeof data.heartNotes === 'object') this.heartNotes = data.heartNotes;
             if (data.activeChartTab) this.activeChartTab = data.activeChartTab;
             this.cdr.detectChanges();
         } catch { /* silent */ }
@@ -351,6 +362,15 @@ export class AddVisitPageComponent implements OnInit {
 
     onMuscleNotesChange(notes: { [id: string]: string }): void {
         this.muscleNotes = notes;
+    }
+
+    // ── Cardiac (heart) chart ─────────────────────────────────
+    onHeartSelectionChange(ids: string[]): void {
+        this.selectedHeartRegionIds = ids;
+    }
+
+    onHeartNotesChange(notes: { [id: string]: string }): void {
+        this.heartNotes = notes;
     }
 
     getSelectedMuscleNames(): string[] {
@@ -799,6 +819,8 @@ export class AddVisitPageComponent implements OnInit {
                 boneNotes: this.boneNotes,
                 selectedMuscles: this.selectedMuscleIds,
                 muscleNotes: this.muscleNotes,
+                selectedHeartRegions: this.selectedHeartRegionIds.length > 0 ? this.selectedHeartRegionIds : [],
+                heartRegionNotes: Object.keys(this.heartNotes).length > 0 ? this.heartNotes : {},
             };
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;

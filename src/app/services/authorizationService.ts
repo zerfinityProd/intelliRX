@@ -424,7 +424,7 @@ export class AuthorizationService {
 
         console.log('[AuthZ] Auto-provisioning Firestore user doc for:', normalized);
 
-        const userDocId = this.api.generateDocId();
+        const userDocId = await this.api.getNextSequentialId('usr');
         const defaultRole = 'doctor';
 
         await this.api.setDocument('users', userDocId, {

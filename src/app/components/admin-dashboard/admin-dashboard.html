@@ -108,7 +108,7 @@
               </button>
             </div>
             <div class="col-sm-6">
-              <button class="ad-tile" (click)="navigateToSubscription()" id="tile-subscription">
+              <button class="ad-tile ad-tile--subscription" (click)="navigateToSubscription()" id="tile-subscription">
                 <div class="ad-tile-icon ad-tile-icon--subscription">
                   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                     <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
@@ -117,7 +117,7 @@
                 </div>
                 <div class="ad-tile-body">
                   <div class="ad-tile-title">Manage Subscription</div>
-                  <div class="ad-tile-desc">Change plan, billing cycle &amp; view pricing — current: <strong>{{ subscriptionPlanLabel }}</strong></div>
+                  <div class="ad-tile-desc">Change plan, billing cycle &amp; view pricing</div>
                 </div>
                 <div class="ad-upgrade-tile-badge">{{ subscriptionPlanLabel }}</div>
                 <svg class="ad-tile-arrow" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -262,7 +262,6 @@
                   <div class="ad-empty-icon">🏥</div>
                   <div class="ad-empty-title">No clinics yet</div>
                   <div class="ad-empty-desc">Add your first clinic to get started.</div>
-                  <button class="ad-btn-primary mt-3" (click)="openNewClinicForm()">+ Add Clinic</button>
                 </div>
               </div>
             </div>
@@ -276,13 +275,17 @@
               <h1 class="ad-page-title">Staff Management</h1>
               <p class="ad-page-sub">Add and manage doctors and receptionists</p>
             </div>
-            <button class="ad-btn-primary" (click)="openNewUserForm()" *ngIf="!showUserForm" [disabled]="doctorLimitReached" id="btn-add-user">
+            <button class="ad-btn-primary" (click)="openNewUserForm()" *ngIf="!showUserForm"
+              [disabled]="doctorLimitReached && receptionistLimitReached" id="btn-add-user">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Staff
             </button>
           </div>
           <div class="ad-limit-msg" *ngIf="doctorLimitReached && !showUserForm">
             ⚠ Doctor limit reached ({{ stats.doctors }}/{{ subscription!.plan.limits.max_doctors }}). Upgrade your plan to add more doctors.
+          </div>
+          <div class="ad-limit-msg" *ngIf="receptionistLimitReached && !showUserForm">
+            ⚠ Receptionist limit reached ({{ stats.receptionists }}/{{ subscription!.plan.limits.max_receptionists }}). Upgrade your plan to add more receptionists.
           </div>
 
           <!-- User Form -->
@@ -512,7 +515,7 @@
                             <span class="ad-role-tag-addr" *ngIf="a.clinicAddress">{{ a.clinicAddress }}</span>
                           </span>
                         </ng-container>
-                        <!-- Show extra global roles that aren't already represented by an assignment -->
+                        <!-- Show extra global roles not already represented by an assignment -->
                         <ng-container *ngFor="let r of user.global_roles">
                           <span class="ad-role-tag"
                             *ngIf="(r === 'doctor' || r === 'receptionist') && !hasAssignmentWithRole(user, r)"
@@ -539,7 +542,6 @@
               <div class="ad-empty-icon">👥</div>
               <div class="ad-empty-title">No staff added yet</div>
               <div class="ad-empty-desc">Add doctors and receptionists to your clinics.</div>
-              <button class="ad-btn-primary mt-3" (click)="openNewUserForm()">+ Add Staff</button>
             </div>
           </div>
         </div>

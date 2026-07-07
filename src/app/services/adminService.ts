@@ -45,7 +45,7 @@ export class AdminService {
       const match = id.match(/^sub_(\d+)$/);
       return match ? Math.max(m, parseInt(match[1], 10)) : m;
     }, 0);
-    return `sub_${String(max + 1).padStart(2, '0')}`;
+    return `sub_${max + 1}`;
   }
 
   /**
@@ -57,10 +57,10 @@ export class AdminService {
     const allDocs = await this.api.listDocuments('clinics', 500);
     const allIds = allDocs.map(d => d.id);
     const max = allIds.reduce((m, id) => {
-      const match = id.match(/^clinic_(\d+)$/);
+      const match = id.match(/^cln_(\d+)$/);
       return match ? Math.max(m, parseInt(match[1], 10)) : m;
     }, 0);
-    return `clinic_${String(max + 1).padStart(2, '0')}`;
+    return `cln_${max + 1}`;
   }
 
   // ── Subscriptions ──────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ export class AdminService {
     explicitId?: string,
     validityDays?: number
   ): Promise<string> {
-    const id = explicitId ?? this.api.generateDocId();
+    const id = explicitId ?? await this.api.getNextSequentialId('sub');
     const now = new Date().toISOString();
 
     // Compute valid_until if validityDays is provided
@@ -139,7 +139,7 @@ export class AdminService {
     data: Omit<Clinic, 'id' | 'created_at' | 'updated_at'>,
     explicitId?: string
   ): Promise<string> {
-    const id = explicitId ?? this.api.generateDocId();
+    const id = explicitId ?? await this.api.getNextSequentialId('cln');
     const now = new Date().toISOString();
     const { schedule, ...rest } = data;
     await this.api.setDocument('clinics', id, {
@@ -222,7 +222,7 @@ export class AdminService {
   async createUser(
     data: Omit<AdminUser, 'id' | 'created_at' | 'updated_at'>
   ): Promise<string> {
-    const id = this.api.generateDocId();
+    const id = await this.api.getNextSequentialId('usr');
     const now = new Date().toISOString();
     await this.api.setDocument('users', id, {
       ...data,
@@ -250,17 +250,17 @@ export class AdminService {
    * from the clinics collection, then querying clinic_users by clinic_id.
    */
   async getClinicUsers(subscriptionId: string): Promise<(ClinicUser & { id: string })[]> {
+    const allResults: (ClinicUser & { id: string })[] = [];
+    const seenIds = new Set<string>();
+
     // Step 1: Get all clinic IDs for this subscription
     const clinicDocs = await this.api.runQuery('', {
       collectionId: 'clinics',
       filters: [{ field: 'subscription_id', op: '==', value: subscriptionId }],
     });
     const clinicIds = clinicDocs.map(d => d.id);
-    if (clinicIds.length === 0) return [];
 
-    // Step 2: Fetch clinic_users for each clinic
-    const allResults: (ClinicUser & { id: string })[] = [];
-    const seenIds = new Set<string>();
+    // Step 2: Fetch clinic_users by clinic_id (doctors/receptionists assigned to specific clinics)
     for (const clinicId of clinicIds) {
       const docs = await this.api.runQuery('', {
         collectionId: 'clinic_users',
@@ -273,6 +273,7 @@ export class AdminService {
         }
       }
     }
+
     return allResults;
   }
 
@@ -299,7 +300,7 @@ export class AdminService {
   async createClinicUser(
     data: Omit<ClinicUser, 'id' | 'created_at' | 'updated_at'>
   ): Promise<string> {
-    const id = await this.api.getNextSequentialId('cln');
+    const id = await this.api.getNextSequentialId('clu');
     const now = new Date().toISOString();
     const payload: any = {
       ...data,

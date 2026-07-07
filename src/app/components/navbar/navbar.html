@@ -17,13 +17,9 @@
       <!-- Brand -->
       <span
         class="navbar-brand p-0 brand-hover-wrap"
-        [style.cursor]="isAdmin ? 'pointer' : 'default'"
-        [attr.role]="isAdmin ? 'button' : 'img'"
-        [attr.tabindex]="isAdmin ? 0 : null"
-        [attr.aria-label]="isAdmin ? (isOnAdminDashboard ? 'Switch to Doctor Dashboard' : 'Switch to Admin Dashboard') : 'IntelliRx logo'"
-        (click)="isAdmin && toggleDashboard()"
-        (keydown.enter)="isAdmin && toggleDashboard()"
-        (keydown.space)="isAdmin && toggleDashboard()">
+        style="cursor: default"
+        role="img"
+        aria-label="IntelliRx logo">
         <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
           <circle cx="25" cy="25" r="23" stroke="#148D9E" stroke-width="3" />
           <path d="M18 25 L23 30 L33 20" stroke="#148D9E" stroke-width="3" stroke-linecap="round"
@@ -147,6 +143,19 @@
             </svg>
           </span>
           Doctor Dashboard
+        </button>
+
+        <!-- Reception Dashboard (for receptionist users) -->
+        <button *ngIf="isReceptionist && (isOnAdminDashboard || !isAdmin)" class="user-dropdown__item" role="menuitem" aria-label="Reception Dashboard"
+          (click)="goToReceptionDashboard(); $event.stopPropagation()">
+          <span class="user-dropdown__item-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+          </span>
+          Reception Dashboard
         </button>
 
         <!-- Logout -->

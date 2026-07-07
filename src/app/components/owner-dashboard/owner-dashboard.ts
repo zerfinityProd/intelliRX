@@ -151,7 +151,7 @@ export class OwnerDashboardComponent implements OnInit {
       }
 
       // No existing user — create a new user doc
-      const userId = this.api.generateDocId();
+      const userId = await this.api.getNextSequentialId('usr');
       await this.api.setDocument('users', userId, {
         email: normalizedEmail,
         name: this.inviteForm.name,
@@ -162,7 +162,7 @@ export class OwnerDashboardComponent implements OnInit {
       });
 
       // Create clinic_users doc
-      const cuId = await this.api.getNextSequentialId('cln');
+      const cuId = await this.api.getNextSequentialId('clu');
       await this.api.setDocument('clinic_users', cuId, {
         user_id: userId,
         clinic_id: this.inviteForm.clinicId,

@@ -30,7 +30,7 @@
                 class="plan-card"
                 *ngFor="let plan of plans"
                 [class.selected]="selectedPlan === plan.id"
-                (click)="selectedPlan = plan.id"
+                (click)="selectPlan(plan.id)"
               >
                 <div class="plan-card-radio">
                   <span class="radio-dot" [class.active]="selectedPlan === plan.id"></span>

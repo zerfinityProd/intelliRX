@@ -72,25 +72,27 @@
 
 .anatomy-tabs {
   display: flex;
+  flex-wrap: wrap;
   background: var(--clr-bg, #E0F4F7);
   border-bottom: 1px solid var(--clr-border, #C8DDE3);
-  padding: 8px 12px 0;
-  gap: 8px;
+  padding: 6px 8px 0;
+  gap: 4px;
 }
 
 .anatomy-tab {
   background: transparent;
   border: none;
-  padding: 8px 16px;
-  font-size: 13px;
+  padding: 5px 10px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--clr-text-muted, #5A8A9C);
   cursor: pointer;
   border-bottom: 2px solid transparent;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
 .anatomy-tab:hover {
@@ -119,8 +121,18 @@
 }
 
 .anatomy-content:has(app-fullbody-widget),
-.anatomy-content:has(app-muscular-widget) {
+.anatomy-content:has(app-muscular-widget),
+.anatomy-content:has(app-heart-widget) {
   padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.anatomy-content:has(app-heart-widget) app-heart-widget {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .avp-teeth-hint {
