@@ -16,32 +16,45 @@ export class LeaveService {
   ) {}
 
   /**
-   * Leaves are stored as: clinics/{clinicId}/leaves/{leaveId}
-   * Covered by existing Firestore rule:
-   *   match /clinics/{clinicId}/{document=**} { allow read, write: if request.auth != null; }
+   * Leaves are stored in the top-level `leaves` collection.
+   * Document ID format: lv_1, lv_2, lv_3 … (consistent with
+   * sub_1, usr_1, apt_1, vst_1, cln_1, pat_1, clu_1).
+   *
+   * Each document contains:
+   *   id        — lv_N
+   *   user_id   — normalized email of the doctor/staff
+   *   clinic_id — the clinic ID (e.g. cln_1)
+   *   date      — YYYY-MM-DD
+   *   timing    — 'All Day' | 'FH' | 'SH'
+   *   status    — 'approved' | 'pending' | 'rejected'
+   *   created_at — ISO datetime
+   *
+   * Firestore rule required (add in Firebase Console):
+   *   match /leaves/{leaveId} {
+   *     allow read, write: if request.auth != null;
+   *   }
    */
-  /** Parent document path — used as parentPath in runQuery */
-  private clinicDocPath(clinicId: string): string {
-    return `clinics/${clinicId}`;
-  }
-  /** Full collection path — used in createDocument and deleteDocument */
-  private leavesColPath(clinicId: string): string {
-    return `clinics/${clinicId}/leaves`;
-  }
 
   /**
-   * Get all leaves for the currently logged-in doctor at their selected clinic.
-   * user_id is stored as normalized email — consistent with all lookup paths.
+   * Get all leaves for the currently logged-in user at their selected clinic.
+   * Filters by normalized email (user_id) + clinic_id.
    */
   async getMyLeaves(): Promise<Leave[]> {
-    const userEmail = normalizeEmail(this.auth.currentUserValue?.email || '');
+    // Use currentUserValue email first (full user object), fall back to
+    // Firebase Auth's currentUser.email which is available immediately
+    // from cache — before the Firestore role-lookup pipeline completes.
+    const rawEmail = this.auth.currentUserValue?.email
+                  || this.auth.getFirebaseUserEmail()
+                  || '';
+    const userEmail = normalizeEmail(rawEmail);
     const clinicId = this.clinicContext.getSelectedClinicId();
     if (!userEmail || !clinicId) return [];
 
-    const result = await this.api.runQuery(this.clinicDocPath(clinicId), {
+    const result = await this.api.runQuery('', {
       collectionId: 'leaves',
       filters: [
-        { field: 'user_id', op: '==', value: userEmail }
+        { field: 'user_id',   op: '==', value: userEmail },
+        { field: 'clinic_id', op: '==', value: clinicId }
       ]
     });
 
@@ -52,15 +65,16 @@ export class LeaveService {
   }
 
   /**
-   * Get all leaves for a specific doctor on a specific date.
-   * Used by timeSlotService for slot filtering.
+   * Get all leaves for a specific doctor on a specific date at a clinic.
+   * Used by TimeSlotService for slot-level leave filtering.
    */
   async getDoctorLeaves(doctorId: string, clinicId: string, date: string): Promise<Leave[]> {
-    const result = await this.api.runQuery(this.clinicDocPath(clinicId), {
+    const result = await this.api.runQuery('', {
       collectionId: 'leaves',
       filters: [
-        { field: 'user_id', op: '==', value: doctorId },
-        { field: 'date', op: '==', value: date }
+        { field: 'user_id',   op: '==', value: doctorId },
+        { field: 'clinic_id', op: '==', value: clinicId },
+        { field: 'date',      op: '==', value: date }
       ]
     });
 
@@ -71,16 +85,16 @@ export class LeaveService {
   }
 
   /**
-   * Create a leave record under clinics/{clinicId}/leaves/
+   * Create a leave record in the top-level `leaves` collection.
+   * Uses the next sequential lv_N ID.
    */
   async addLeave(leave: Omit<Leave, 'id' | 'created_at'>): Promise<string> {
-    const id = await this.api.createDocument(
-      this.leavesColPath(leave.clinic_id),
-      {
-        ...leave,
-        created_at: new Date().toISOString()
-      }
-    );
+    const id = await this.api.getNextSequentialId('lv');
+    await this.api.setDocument('leaves', id, {
+      ...leave,
+      id,
+      created_at: new Date().toISOString()
+    });
     return id;
   }
 
@@ -96,6 +110,7 @@ export class LeaveService {
 
   /**
    * Check whether a doctor is on approved leave for a given date and optional timing.
+   * Returns null if the doctor has no approved leave on that date.
    */
   async isDoctorOnLeave(
     doctorId: string, clinicId: string, date: string, timingLabel?: string
@@ -103,13 +118,13 @@ export class LeaveService {
     const approved = await this.getApprovedLeavesForDate(doctorId, clinicId, date);
     if (approved.length === 0) return null;
 
-    // Check for All Day leave first (blocks everything)
+    // All Day leave blocks every slot
     const allDayLeave = approved.find(l => l.timing === 'All Day');
     if (allDayLeave) {
       return { onLeave: true, leaveType: 'All Day', leaves: approved };
     }
 
-    // If a specific timing label was requested, check for a matching half-day leave
+    // Half-day: check if the requested timing slot is blocked
     if (timingLabel) {
       const matchingLeave = approved.find(
         l => l.timing.toUpperCase() === timingLabel.toUpperCase()
@@ -120,7 +135,7 @@ export class LeaveService {
       return null;
     }
 
-    // No specific timing — return info about all approved leaves
+    // No specific timing requested — return info about all approved leaves
     const leaveTypes = [...new Set(approved.map(l => l.timing))];
     return {
       onLeave: true,
@@ -129,8 +144,10 @@ export class LeaveService {
     };
   }
 
-  async deleteLeave(id: string, clinicId?: string): Promise<void> {
-    const cid = clinicId || this.clinicContext.getSelectedClinicId() || '';
-    await this.api.deleteDocument(this.leavesColPath(cid), id);
+  /**
+   * Delete a leave document from the top-level `leaves` collection.
+   */
+  async deleteLeave(id: string): Promise<void> {
+    await this.api.deleteDocument('leaves', id);
   }
 }

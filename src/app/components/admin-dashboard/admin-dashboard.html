@@ -44,7 +44,7 @@
                 >
                   <span class="ad-expiry-dot"></span>
                   <span *ngIf="expiryUrgency === 'none'">No expiry set</span>
-                  <span *ngIf="expiryUrgency === 'ok' || expiryUrgency === 'warning' || expiryUrgency === 'critical'">{{ daysUntilExpiry }}d left</span>
+                  <span *ngIf="expiryUrgency === 'ok' || expiryUrgency === 'warning' || expiryUrgency === 'critical'">Days Left: {{ daysUntilExpiry }}</span>
                   <span *ngIf="expiryUrgency === 'expired'">Expired</span>
                 </span>
               </div>

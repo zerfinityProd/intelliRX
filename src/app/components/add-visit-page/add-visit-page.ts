@@ -129,6 +129,7 @@ export class AddVisitPageComponent implements OnInit {
     // ── Navigation origin ─────────────────────────────────────
     private origin: 'home' | 'patient' | 'appointments' = 'home';
     private routeAppointmentId: string = '';
+    private routeAppointmentDatetime: string = '';
     private originalAllergies: string[] = [];
     private originalAilments: string[] = [];
 
@@ -146,9 +147,10 @@ export class AddVisitPageComponent implements OnInit {
     private readonly authorizationService = inject(AuthorizationService);
 
     async ngOnInit(): Promise<void> {
-        const state = history.state as { origin?: string; appointmentId?: string; editVisitId?: string; editVisitData?: any } | undefined;
+        const state = history.state as { origin?: string; appointmentId?: string; appointmentDatetime?: string; editVisitId?: string; editVisitData?: any } | undefined;
         this.origin = (state?.origin === 'patient') ? 'patient' : (state?.origin === 'appointments') ? 'appointments' : 'home';
         this.routeAppointmentId = (state?.appointmentId || '').trim();
+        this.routeAppointmentDatetime = (state?.appointmentDatetime || '').trim();
 
         // ── Fetch doctor specialty ──
         const currentUser = this.authService.currentUserValue;
@@ -196,7 +198,15 @@ export class AddVisitPageComponent implements OnInit {
         }
 
         // ── Restore saved form data from sessionStorage ──
-        this.restoreFormFromSession(patientId);
+        // IMPORTANT: For a fresh "New Visit" (not edit mode), always clear stale
+        // session data first so the previous visit's clinical fields never bleed
+        // into the new form. Patient-level data (allergies, ailments, blood group)
+        // is loaded from the patient profile in loadPatient(), not from session.
+        if (!this.isEditMode) {
+            this.clearFormSession();
+        } else {
+            this.restoreFormFromSession(patientId);
+        }
 
         // Snapshot the form state after initialization for dirty-checking
         this.originalFormState = this.getFormStateSnapshot();
@@ -305,6 +315,7 @@ export class AddVisitPageComponent implements OnInit {
             sessionStorage.setItem(this.SESSION_NAV_KEY, JSON.stringify({
                 origin: this.origin,
                 routeAppointmentId: this.routeAppointmentId,
+                routeAppointmentDatetime: this.routeAppointmentDatetime,
                 isEditMode: this.isEditMode,
                 editVisitId: this.editVisitId
             }));
@@ -319,6 +330,7 @@ export class AddVisitPageComponent implements OnInit {
             // Only overwrite defaults (from history.state) if history.state was empty (i.e. a refresh)
             if (this.origin === 'home' && nav.origin) this.origin = nav.origin;
             if (!this.routeAppointmentId && nav.routeAppointmentId) this.routeAppointmentId = nav.routeAppointmentId;
+            if (!this.routeAppointmentDatetime && nav.routeAppointmentDatetime) this.routeAppointmentDatetime = nav.routeAppointmentDatetime;
             if (!this.isEditMode && nav.isEditMode) {
                 this.isEditMode = nav.isEditMode;
                 this.editVisitId = nav.editVisitId || '';
@@ -547,14 +559,23 @@ export class AddVisitPageComponent implements OnInit {
             this.cdr.detectChanges();
         });
         try {
-            this.patient = await this.patientService.getPatient(patientId);
+            // Race against a 10-second timeout so the spinner never hangs forever
+            // (e.g. if Firestore auth token isn't ready yet on a direct URL load)
+            const timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Patient load timed out')), 10_000)
+            );
+            this.patient = await Promise.race([
+                this.patientService.getPatient(patientId),
+                timeoutPromise
+            ]);
             this.ngZone.run(() => {
+                this.isLoadingPatient = false;
                 if (!this.patient) {
+                    this.cdr.detectChanges();
                     this.router.navigate(['/home']);
                     return;
                 }
                 this.initializePatientFields();
-                this.isLoadingPatient = false;
                 this.cdr.detectChanges();
                 this.loadVisits();
             });
@@ -866,7 +887,7 @@ export class AddVisitPageComponent implements OnInit {
 
                 // ── Appointment–Visit linking logic ──
                 // Rules:
-                //   1. Explicit navigation (routeAppointmentId) → always link
+                //   1. Explicit navigation (routeAppointmentId) → ask user via popup
                 //   2. Same-day, within time slot → auto-link silently
                 //   3. Same-day, before or after slot → popup "Link to appointment?"
                 //   4. Different day → never link (walk-in)
@@ -874,8 +895,17 @@ export class AddVisitPageComponent implements OnInit {
                 let shouldLinkAppointment = false;
 
                 if (this.routeAppointmentId) {
-                    // Explicitly navigated from an appointment card — always link
-                    shouldLinkAppointment = true;
+                    // Navigated from an appointment card — ask user whether to link
+                    const apptForPopup = this.routeAppointmentDatetime
+                        ? { id: this.routeAppointmentId, datetime: this.routeAppointmentDatetime }
+                        : { id: this.routeAppointmentId, datetime: new Date().toISOString() };
+                    const linkResult = await this.askLinkToAppointment(apptForPopup);
+                    if (linkResult === 'cancel') {
+                        // User closed the popup — abort save, go back to form
+                        this.isSubmitting = false;
+                        return;
+                    }
+                    shouldLinkAppointment = linkResult === 'link';
                 } else {
                     try {
                         const allAppts = await this.appointmentService.getAppointments();

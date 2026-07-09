@@ -18,6 +18,7 @@ import { normalizeEmail } from '../../../utilities/normalize-email';
 })
 export class MyLeavesComponent implements OnInit {
   leaves: Leave[] = [];
+  isLoading = true;   // true by default → spinner visible immediately
   isSubmitting = false;
 
   newLeave = {
@@ -42,8 +43,11 @@ export class MyLeavesComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
+    // Firebase Auth restores the session from local cache synchronously,
+    // so getFirebaseUserEmail() is available here without any extra wait.
     await this.loadLeaves();
   }
+
 
   onDateChange(): void {
     this.dateError = '';
@@ -59,9 +63,23 @@ export class MyLeavesComponent implements OnInit {
   }
 
   async loadLeaves() {
-    this.leaves = await this.leaveService.getMyLeaves();
-    // sort by date descending
-    this.leaves.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    this.isLoading = true;
+    try {
+      this.leaves = await this.leaveService.getMyLeaves();
+      // Sort by date descending (most recent first)
+      this.leaves.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch (e: any) {
+      console.error('Failed to load leaves:', e);
+      const { default: Swal } = await import('sweetalert2');
+      Swal.fire({
+        icon: 'error',
+        title: 'Could Not Load Leaves',
+        text: e?.message || 'Please check your connection and try again.',
+        confirmButtonColor: '#148D9E'
+      });
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   async applyLeave() {
@@ -70,50 +88,74 @@ export class MyLeavesComponent implements OnInit {
     // Guard: reject past dates (browser [min] can be bypassed by typing)
     if (this.newLeave.date < this.minDate) {
       const { default: Swal } = await import('sweetalert2');
-      Swal.fire({ icon: 'error', title: 'Invalid Date', text: 'You cannot apply leave for a past date.', confirmButtonColor: '#148D9E' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Date',
+        text: 'You cannot apply leave for a past date.',
+        confirmButtonColor: '#148D9E'
+      });
       this.newLeave.date = '';
       return;
     }
-    // Guard: reject dates too far in the future
+
     if (this.newLeave.date > this.maxDate) {
       const { default: Swal } = await import('sweetalert2');
-      Swal.fire({ icon: 'error', title: 'Invalid Date', text: 'Leave can only be applied up to 1 year in advance.', confirmButtonColor: '#148D9E' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Date',
+        text: 'Leave can only be applied up to 1 year in advance.',
+        confirmButtonColor: '#148D9E'
+      });
       this.newLeave.date = '';
       return;
     }
-    // Use normalized email as user_id — consistent with how timeSlotService
-    // and add-appointment look up leaves (both sides use email as the key).
-    const userEmail = normalizeEmail(this.auth.currentUserValue?.email || '');
+
+    // Use normalized email as user_id — consistent with timeSlotService leave checks.
+    // Fall back to Firebase Auth email (available from cache immediately).
+    const rawEmail = this.auth.currentUserValue?.email
+                  || this.auth.getFirebaseUserEmail()
+                  || '';
+    const userEmail = normalizeEmail(rawEmail);
     const clinicId = this.clinicContext.getSelectedClinicId();
 
     if (!userEmail || !clinicId) {
       const { default: Swal } = await import('sweetalert2');
-      Swal.fire({ icon: 'error', title: 'Missing Context', text: 'Could not determine user or clinic. Please try logging out and back in.', confirmButtonColor: '#148D9E' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Missing Context',
+        text: 'Could not determine user or clinic. Please try logging out and back in.',
+        confirmButtonColor: '#148D9E'
+      });
       return;
     }
 
     this.isSubmitting = true;
     try {
-      // Check for duplicate leave using already-loaded local data (no extra query needed)
+      // Check for duplicate leave using already-loaded local data (no extra Firestore query)
       const duplicate = this.leaves.find(l =>
         l.date === this.newLeave.date &&
         (l.timing === this.newLeave.timing || l.timing === 'All Day' || this.newLeave.timing === 'All Day')
       );
       if (duplicate) {
         const { default: Swal } = await import('sweetalert2');
-        Swal.fire({ icon: 'warning', title: 'Already Applied', text: `You already have a ${duplicate.timing} leave on this date.`, confirmButtonColor: '#148D9E' });
+        Swal.fire({
+          icon: 'warning',
+          title: 'Already Applied',
+          text: `You already have a ${duplicate.timing} leave on this date.`,
+          confirmButtonColor: '#148D9E'
+        });
         this.isSubmitting = false;
         return;
       }
 
       await this.leaveService.addLeave({
-        user_id: userEmail,
+        user_id:  userEmail,
         clinic_id: clinicId,
-        date: this.newLeave.date,
-        timing: this.newLeave.timing,
-        status: 'approved'
+        date:     this.newLeave.date,
+        timing:   this.newLeave.timing,
+        status:   'approved'
       });
-      
+
       this.newLeave.date = '';
       this.newLeave.timing = 'All Day';
       await this.loadLeaves();
@@ -123,7 +165,7 @@ export class MyLeavesComponent implements OnInit {
       Swal.fire({
         icon: 'success',
         title: 'Leave Applied!',
-        text: 'Your leave has been recorded and appointments will be blocked accordingly.',
+        text: 'Your leave has been recorded and appointment bookings will be blocked accordingly.',
         confirmButtonColor: '#148D9E',
         background: isDark ? '#1f1f1f' : '#ffffff',
         color: isDark ? '#e0e0e0' : '#1e293b',
@@ -131,7 +173,12 @@ export class MyLeavesComponent implements OnInit {
     } catch (e: any) {
       console.error('Leave apply error:', e);
       const { default: Swal } = await import('sweetalert2');
-      Swal.fire({ icon: 'error', title: 'Failed to Apply Leave', text: e?.message || 'An unexpected error occurred. Please try again.', confirmButtonColor: '#148D9E' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed to Apply Leave',
+        text: e?.message || 'An unexpected error occurred. Please try again.',
+        confirmButtonColor: '#148D9E'
+      });
     } finally {
       this.isSubmitting = false;
     }
@@ -156,9 +203,21 @@ export class MyLeavesComponent implements OnInit {
     try {
       await this.leaveService.deleteLeave(id);
       await this.loadLeaves();
-      Swal.fire({ icon: 'success', title: 'Leave Cancelled', timer: 1500, showConfirmButton: false, background: isDark ? '#1f1f1f' : '#ffffff', color: isDark ? '#e0e0e0' : '#1e293b' });
+      Swal.fire({
+        icon: 'success',
+        title: 'Leave Cancelled',
+        timer: 1500,
+        showConfirmButton: false,
+        background: isDark ? '#1f1f1f' : '#ffffff',
+        color: isDark ? '#e0e0e0' : '#1e293b'
+      });
     } catch (e) {
-      Swal.fire({ icon: 'error', title: 'Failed', text: 'Could not cancel the leave. Please try again.', confirmButtonColor: '#148D9E' });
+      Swal.fire({
+        icon: 'error',
+        title: 'Failed',
+        text: 'Could not cancel the leave. Please try again.',
+        confirmButtonColor: '#148D9E'
+      });
     }
   }
 

@@ -1,10 +1,9 @@
 export interface Leave {
-  id?: string;
-  subscription_id?: string; // Optional — path is already scoped to clinic
-  user_id: string;          // ID of the doctor/receptionist
-  clinic_id: string;        // ID of the clinic
+  id?: string;             // Sequential ID — format: lv_1, lv_2, ...
+  user_id: string;         // Normalized email of the doctor/staff
+  clinic_id: string;       // ID of the clinic (e.g. cln_1)
   date: string;            // ISO date string (YYYY-MM-DD)
-  timing: 'All Day' | 'FH' | 'SH'; // Type of leave
+  timing: 'All Day' | 'FH' | 'SH'; // Leave type
   status: 'approved' | 'pending' | 'rejected';
-  created_at?: string;
+  created_at?: string;     // ISO datetime string
 }

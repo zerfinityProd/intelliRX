@@ -698,21 +698,21 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   async openVisitFromAppointment(appt: Appointment): Promise<void> {
     const directPatientId = (appt.patient_id || '').trim();
     if (directPatientId) {
+      // Fire patient field syncs in the background — don't await them so
+      // navigation happens immediately and the button feels instant.
       if (appt.ailments && appt.ailments.trim()) {
-        try {
-          await this.patientService.updatePatient(directPatientId, { ailments: appt.ailments });
-        } catch {
-          // Don't block navigation if the update fails.
-        }
+        this.patientService.updatePatient(directPatientId, { ailments: appt.ailments }).catch(() => {});
       }
       if (appt.bloodGroup && appt.bloodGroup.trim()) {
-        try {
-          await this.patientService.updatePatient(directPatientId, { bloodGroup: appt.bloodGroup });
-        } catch {
-          // Don't block navigation if the update fails.
-        }
+        this.patientService.updatePatient(directPatientId, { bloodGroup: appt.bloodGroup }).catch(() => {});
       }
-      this.router.navigate(['/patient', directPatientId, 'add-visit'], { state: { origin: 'appointments' } });
+      // Convert datetime to ISO string for safe History API serialization
+      const datetimeStr = appt.datetime instanceof Date
+        ? appt.datetime.toISOString()
+        : (appt.datetime ? String(appt.datetime) : '');
+      this.router.navigate(['/patient', directPatientId, 'add-visit'], {
+        state: { origin: 'appointments', appointmentId: appt.id || '', appointmentDatetime: datetimeStr }
+      });
       return;
     }
 

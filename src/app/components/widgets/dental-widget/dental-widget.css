@@ -257,6 +257,13 @@ svg {
 svg g[id] {
   cursor: pointer;
   transition: filter 0.15s ease;
+  pointer-events: bounding-box;  /* entire bounding rect is clickable, not just strokes */
+}
+
+/* Make the interior of every parent path capture clicks (fill:none blocks events by default) */
+svg g[id] [class*="-parent"] {
+  pointer-events: fill;
+  fill: transparent;  /* visually invisible but hit-testable */
 }
 
 /* ── Hover on unselected tooth (filter glow only) ── */

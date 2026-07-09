@@ -87,28 +87,13 @@
               </select>
             </div>
           </div>
-
-          <!-- Selected doctor pill -->
-          <div *ngIf="selectedDoctor" class="appt-doctor-pill mb-3">
-            <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
-            <div class="appt-doctor-pill__info">
-              <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
-              <span class="appt-doctor-pill__spec">{{ selectedDoctor.specialty }}</span>
-            </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
-              stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-          </div>
-        </div>
-
-
+        </div><!-- end canChooseDoctor section -->
 
         <!-- Phone input row -->
         <div class="row g-3 mb-3">
           <div class="col-md-6">
             <label for="phoneInput" class="form-label fw-semibold" style="font-size:12px">
-              Mobile Number <span class="required">*</span>
+              Patient's Mobile Number <span class="required">*</span>
             </label>
             <div class="appt-phone-row">
               <div class="appt-input-icon-wrap appt-phone-input-wrap">
@@ -331,31 +316,7 @@
           </div>
         </div>
 
-        <!-- Selected doctor pill (doctor role - auto-locked) -->
-        <div *ngIf="doctorContextReady && !canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-2">
-          <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
-          <div class="appt-doctor-pill__info">
-            <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
-            <span class="appt-doctor-pill__spec">{{ selectedDoctor.specialty }}</span>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        </div>
-
         <!-- Selected clinic & doctor summary (receptionist - chosen in step 1) -->
-        <div *ngIf="canChooseDoctor && selectedDoctor" class="appt-doctor-pill mb-2">
-          <div class="appt-doctor-pill__avatar">{{ selectedDoctor.avatar }}</div>
-          <div class="appt-doctor-pill__info">
-            <span class="appt-doctor-pill__name">{{ selectedDoctor.name }}</span>
-            <span class="appt-doctor-pill__spec">{{ selectedDoctor.specialty }}</span>
-          </div>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-        </div>
 
 
 

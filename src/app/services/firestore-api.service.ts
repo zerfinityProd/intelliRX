@@ -388,6 +388,7 @@ export class FirestoreApiService {
       cln: 'clinics',
       pat: 'patients',
       clu: 'clinic_users',
+      lv:  'leaves',
     };
     const collection = collectionMap[prefix] ?? prefix;
     try {

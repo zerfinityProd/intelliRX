@@ -100,15 +100,21 @@
           <span class="lv-count-badge" *ngIf="leaves.length > 0">{{ leaves.length }}</span>
         </div>
 
+        <!-- Loading state -->
+        <div class="lv-empty" *ngIf="isLoading">
+          <div class="lv-spinner lv-spinner--large"></div>
+          <div class="lv-empty__desc">Loading your leaves…</div>
+        </div>
+
         <!-- Empty state -->
-        <div class="lv-empty" *ngIf="leaves.length === 0">
+        <div class="lv-empty" *ngIf="!isLoading && leaves.length === 0">
           <div class="lv-empty__icon">📋</div>
           <div class="lv-empty__title">No leaves yet</div>
           <div class="lv-empty__desc">Your leave requests will appear here once you apply.</div>
         </div>
 
         <!-- Leave list (card-based, not table) -->
-        <div class="lv-list" *ngIf="leaves.length > 0">
+        <div class="lv-list" *ngIf="!isLoading && leaves.length > 0">
           <div class="lv-item" *ngFor="let leave of leaves" [class.lv-item--approved]="leave.status === 'approved'"
             [class.lv-item--pending]="leave.status === 'pending'" [class.lv-item--rejected]="leave.status === 'rejected'">
             <div class="lv-item__left">

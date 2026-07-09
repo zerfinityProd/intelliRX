@@ -191,6 +191,8 @@ export class AuthenticationService {
 
     async login(email: string, password: string): Promise<User> {
         this._loggingIn = true;
+        // Wipe any stale session data from a previous login before starting fresh.
+        sessionStorage.clear();
         try {
             // Check Firestore FIRST — if email is not in the users collection,
             // reject immediately without touching Firebase Auth at all.
@@ -222,6 +224,8 @@ export class AuthenticationService {
      */
     async loginWithGoogle(): Promise<User | void> {
         this._loggingIn = true;
+        // Wipe any stale session data from a previous login before starting fresh.
+        sessionStorage.clear();
         try {
             const result = await signInWithPopup(this.auth, this.googleProvider);
             const email = result.user.email || '';
@@ -331,6 +335,10 @@ export class AuthenticationService {
             // fresh assignments from Firestore (avoids stale-cache bug where
             // only the cached subscription is returned, hiding others).
             this.authorizationService.invalidateRolesCache();
+            // Clear ALL session-persisted app state (search terms, form drafts,
+            // visit data, day-view dates, etc.) so no previous user's data leaks
+            // into the next session after a fresh login.
+            sessionStorage.clear();
         } catch (error) {
             console.error('Logout error:', error);
             throw error;
@@ -375,5 +383,15 @@ export class AuthenticationService {
 
     getCurrentUserId(): string | null {
         return this.auth.currentUser?.uid || null;
+    }
+
+    /**
+     * Returns the signed-in user's email directly from Firebase Auth.
+     * This is available immediately from the local credential cache —
+     * no Firestore lookup required. Use this when you need the email
+     * before the full auth pipeline (role/name fetching) has finished.
+     */
+    getFirebaseUserEmail(): string | null {
+        return this.auth.currentUser?.email ?? null;
     }
 }
