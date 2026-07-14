@@ -7,7 +7,7 @@
       </div>
 
       <!-- Registration Form -->
-      <div class="wizard-body" *ngIf="!isSuccess">
+      <div class="wizard-body" *ngIf="!isVerifying && !isSuccess">
         <form (submit)="completeSetup($event)">
           <div class="form-group">
             <label>Full Name</label>
@@ -65,6 +65,16 @@
             {{ isProcessing ? 'Setting up...' : 'Complete Setup' }}
           </button>
         </form>
+      </div>
+
+      <!-- Verification Pending -->
+      <div class="wizard-body verification-state" *ngIf="isVerifying && !isSuccess">
+        <div class="verification-icon">✉️</div>
+        <h3>Verify your email</h3>
+        <p class="verification-text">We've sent a verification link to <strong>{{ account.email }}</strong>. Please check your inbox and click the link to verify your email address.</p>
+        <button type="button" class="btn btn-primary btn-full" (click)="checkVerification()" [disabled]="isProcessing">
+          {{ isProcessing ? 'Checking...' : 'I have verified my email' }}
+        </button>
       </div>
 
       <!-- Success -->

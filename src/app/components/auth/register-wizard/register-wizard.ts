@@ -18,6 +18,7 @@ import { ClinicContextService } from '../../../services/clinicContextService';
 export class RegisterWizardComponent implements OnInit {
   selectedPlan = '';
   isProcessing = false;
+  isVerifying = false;
   isSuccess = false;
   errorMessage = '';
 
@@ -39,7 +40,7 @@ export class RegisterWizardComponent implements OnInit {
     private clinicContext: ClinicContextService,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
@@ -102,7 +103,7 @@ export class RegisterWizardComponent implements OnInit {
         // If email was already registered (e.g. from a previous failed attempt),
         // the Firebase Auth user exists but Firestore docs might be missing.
         if (authErr.message?.includes('already registered') ||
-            authErr.message?.includes('email-already-in-use')) {
+          authErr.message?.includes('email-already-in-use')) {
           console.log('[Register] Email already in auth — sending password reset email');
           // Send a password reset email so the user can set a known password
           try {
@@ -123,8 +124,60 @@ export class RegisterWizardComponent implements OnInit {
       // Small delay to let Firebase Auth state propagate and token become available
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 2. Create Subscription Document
-      const subscriptionId = await this.subscriptionRepo.createSubscription({
+      // Send verification email and pause here
+      await this.authService.sendVerificationEmail();
+
+      this.ngZone.run(() => {
+        this.isVerifying = true;
+        this.isProcessing = false;
+        this.cdr.detectChanges();
+      });
+
+    } catch (error: any) {
+      console.error('[Register] Setup failed:', error);
+      // Use NgZone.run to ensure Angular picks up the state changes,
+      // because Firebase promise rejections can resolve outside the zone.
+      this.ngZone.run(() => {
+        this.errorMessage = error.message || 'An error occurred during setup.';
+        this.isProcessing = false;
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  async checkVerification() {
+    this.errorMessage = '';
+    this.isProcessing = true;
+    try {
+      const isVerified = await this.authService.reloadCurrentUser();
+      if (!isVerified) {
+        this.ngZone.run(() => {
+          this.errorMessage = 'Email not verified yet. Please check your inbox and click the verification link.';
+          this.isProcessing = false;
+          this.cdr.detectChanges();
+        });
+        return;
+      }
+
+      await this.finalizeSetup();
+    } catch (error: any) {
+      console.error('[Verify] Verification check failed:', error);
+      this.ngZone.run(() => {
+        this.errorMessage = error.message || 'An error occurred while checking verification.';
+        this.isProcessing = false;
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  private async finalizeSetup() {
+    try {
+      // 2. Generate sequential subscription ID (sub_1, sub_2, ...)
+      const subscriptionId = await this.api.getNextSequentialId('sub');
+      const userDocId = await this.api.getNextSequentialId('usr');
+
+      // 3. Create Subscription Document
+      await this.api.setDocument('subscriptions', subscriptionId, {
         entity_name: this.account.clinicName,
         owner_email: this.account.email.trim().toLowerCase(),
         plan: this.selectedPlan,
@@ -146,6 +199,7 @@ export class RegisterWizardComponent implements OnInit {
       // 7. Success → redirect to owner dashboard
       this.ngZone.run(() => {
         this.isSuccess = true;
+        this.isVerifying = false;
         this.isProcessing = false;
         this.cdr.detectChanges();
       });
@@ -154,11 +208,9 @@ export class RegisterWizardComponent implements OnInit {
       }, 2000);
 
     } catch (error: any) {
-      console.error('[Register] Setup failed:', error);
-      // Use NgZone.run to ensure Angular picks up the state changes,
-      // because Firebase promise rejections can resolve outside the zone.
+      console.error('[Finalize] Setup failed:', error);
       this.ngZone.run(() => {
-        this.errorMessage = error.message || 'An error occurred during setup.';
+        this.errorMessage = error.message || 'An error occurred during final setup.';
         this.isProcessing = false;
         this.cdr.detectChanges();
       });

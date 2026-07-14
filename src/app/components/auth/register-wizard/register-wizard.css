@@ -214,6 +214,36 @@ input:focus {
   cursor: not-allowed;
 }
 
+/* ── Verification State ────────────────────────────── */
+
+.verification-state {
+  text-align: center;
+  padding: 2rem 1.5rem;
+}
+
+.verification-icon {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.verification-state h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.verification-text {
+  color: #94a3b8;
+  line-height: 1.5;
+  margin-bottom: 2rem;
+}
+
 /* ── Success State ─────────────────────────────────── */
 
 .success-state {
