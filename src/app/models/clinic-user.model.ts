@@ -6,8 +6,9 @@ export interface ClinicUser {
   id?: string;
   clinic_id: string;
   user_id: string;
+  role?: 'doctor' | 'receptionist' | 'admin';
   availability?: ClinicUserAvailability;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'deleted';
   created_at?: string;                    // ISO datetime
   updated_at?: string;                    // ISO datetime
 }

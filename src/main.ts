@@ -5,16 +5,13 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 import { AppComponent } from './app/app';
 
-// Suppress known harmless console noise:
-// 1. Firebase Auth SDK's internal Cross-Origin-Opener-Policy warnings
-// 2. Angular Fire's "Calling Firebase APIs outside of an Injection context" warning
+// Suppress known harmless console noise from auth provider SDK internals.
 const originalError = console.error;
 const originalWarn = console.warn;
 const suppressionPatterns = [
   'Cross-Origin-Opener-Policy',
   'cross-origin-opener-policy',
   'window.closed',
-  'Calling Firebase APIs outside of an Injection context',
 ];
 const shouldSuppress = (args: any[]): boolean => {
   const combined = args.map(a => {

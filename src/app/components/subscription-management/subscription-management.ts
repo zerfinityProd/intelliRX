@@ -8,7 +8,8 @@ import { filter, firstValueFrom } from 'rxjs';
 
 import { AuthenticationService } from '../../services/authenticationService';
 import { AdminService } from '../../services/adminService';
-import { FirestoreApiService } from '../../services/firestore-api.service';
+import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
+import { PlanRepository } from '../../repositories/interfaces/plan.repository';
 import { ConfigService } from '../../services/configService';
 import { PlanService } from '../../services/planService';
 
@@ -28,7 +29,8 @@ export class SubscriptionManagementComponent implements OnInit {
   // ── DI ────────────────────────────────────────────────────────────────────
   private auth        = inject(AuthenticationService);
   private adminService = inject(AdminService);
-  private api          = inject(FirestoreApiService);
+  private subscriptionRepo = inject(SubscriptionRepository);
+  private planRepo     = inject(PlanRepository);
   private configService = inject(ConfigService);
   private planService  = inject(PlanService);
   private router       = inject(Router);
@@ -91,41 +93,37 @@ export class SubscriptionManagementComponent implements OnInit {
   private async loadSubscription(email: string): Promise<void> {
     try {
       // Query users by email to get subscription_id
-      const userDocs = await this.api.runQuery('', {
-        collectionId: 'users',
-        filters: [{ field: 'email', op: '==', value: email }],
-      });
-      const userDoc = userDocs[0] ?? null;
-      if (!userDoc) return;
+      const user = await this.adminService.getUserByEmail(email);
+      if (!user) return;
 
-      const subscriptionId: string = userDoc.data['subscription_id'] || '';
+      const subscriptionId: string = (user as any).subscription_id || '';
       if (!subscriptionId) return;
 
-      const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
-      if (!subDoc) return;
+      const sub = await this.subscriptionRepo.getSubscriptionById(subscriptionId);
+      if (!sub) return;
 
-      this.subscription = { ...(subDoc.data as Subscription), id: subDoc.id };
+      this.subscription = { ...(sub as any), id: sub.id } as any;
 
       // Normalize plan field
-      const rawPlan = this.subscription.plan as any;
+      const rawPlan = this.subscription!.plan as any;
       if (typeof rawPlan === 'string') {
-        this.subscription.plan = {
+        this.subscription!.plan = {
           name: rawPlan,
           limits: { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 },
         };
       }
 
       // Pre-select the current plan
-      this.selectedPlanKey = this.subscription.plan?.name || '';
+      this.selectedPlanKey = this.subscription!.plan?.name || '';
       // Restore saved billing cycle or default to monthly
-      this.billingCycle = this.subscription.billing_cycle || 'monthly';
+      this.billingCycle = this.subscription!.billing_cycle || 'monthly';
     } catch (e) {
       console.error('[SubscriptionManagement] loadSubscription error:', e);
     }
   }
 
   private async loadPlans(): Promise<void> {
-    this.plans = await this.planService.getPlans();
+    this.plans = await this.planRepo.listPlans();
   }
 
   // ── UI actions ────────────────────────────────────────────────────────────
@@ -173,13 +171,13 @@ export class SubscriptionManagementComponent implements OnInit {
     try {
       const planKey = this.confirmPlan.key;
 
-      // Fetch fresh plan doc to get limits
-      const planDoc = await this.api.getDocument('plans', planKey);
+      // Fetch fresh plan limits from plan repository
+      const planDetails = await this.planRepo.getPlanByKey(planKey);
       const limits = {
-        max_clinics:             Number(planDoc?.data['max_clinics'] ?? planDoc?.data['max_clinincs'] ?? 0),
-        max_doctors:             Number(planDoc?.data['max_doctors'] ?? 0),
-        max_receptionists:       Number(planDoc?.data['max_receptionists'] ?? planDoc?.data['max_receptionist'] ?? 0),
-        max_appointments_per_day: Number(planDoc?.data['max_appointments_per_day'] ?? 0),
+        max_clinics:             Number((planDetails as any)?.['max_clinics'] ?? (planDetails as any)?.['max_clinincs'] ?? 0),
+        max_doctors:             Number((planDetails as any)?.['max_doctors'] ?? 0),
+        max_receptionists:       Number((planDetails as any)?.['max_receptionists'] ?? (planDetails as any)?.['max_receptionist'] ?? 0),
+        max_appointments_per_day: Number((planDetails as any)?.['max_appointments_per_day'] ?? 0),
       };
 
       // Compute new expiry based on billing cycle duration

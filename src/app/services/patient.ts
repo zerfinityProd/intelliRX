@@ -1,6 +1,7 @@
+// src/app/services/patient.ts
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { PatientDataService } from './firebase';
+import { PatientRepository } from '../repositories/interfaces/patient.repository';
 import { AuthenticationService } from './authenticationService';
 import { PatientSearchService } from './patientSearchService';
 import { ClinicContextService } from './clinicContextService';
@@ -13,13 +14,10 @@ import {
 } from '../utilities/patientValidation';
 
 /**
- * Orchestrates patient operations
+ * Orchestrates patient operations.
  *
- * Responsibilities:
- * - Patient CRUD operations
- * - Visit management
- * - Patient data validation
- * - Search and pagination coordination
+ * Depends on PatientRepository (abstract) — never on a concrete Firebase class.
+ * To switch databases, only the provider binding in app.config.ts changes.
  */
 @Injectable({
   providedIn: 'root'
@@ -28,12 +26,10 @@ export class PatientService {
   private readonly selectedPatientSubject = new BehaviorSubject<Patient | null>(null);
   public readonly selectedPatient$ = this.selectedPatientSubject.asObservable();
 
-  // Expose search results from search service
   get searchResults$(): Observable<Patient[]> {
     return this.searchService.searchResults$;
   }
 
-  // Expose pagination state from search service
   get hasMoreResults(): boolean {
     return this.searchService.hasMoreResults;
   }
@@ -43,39 +39,30 @@ export class PatientService {
   }
 
   constructor(
-    private firebaseService: PatientDataService,
+    private patientRepo: PatientRepository,
     private authService: AuthenticationService,
     private searchService: PatientSearchService,
     private clinicContextService: ClinicContextService,
     private configService: ConfigService
   ) { }
 
-  /**
-   * Get current authenticated user ID
-   */
   private getCurrentUserId(): string {
     const userId = this.authService.getCurrentUserId();
     if (!userId) throw new Error('User not authenticated');
     return userId;
   }
 
-  /** Get the active clinic context */
   private getClinicId(): string | undefined {
     return this.clinicContextService.getSelectedClinicId() || undefined;
   }
 
-  /**
-   * Resolve the effective clinicId for patient queries.
-   * Returns undefined (= subscription-wide) when share_patients_across_clinics is ON.
-   * Returns the current clinicId when sharing is OFF, enforcing clinic isolation.
-   */
   private async resolveClinicId(): Promise<string | undefined> {
     try {
       const subId = this.clinicContextService.getSubscriptionId();
       if (subId) {
         const subConfig = await this.configService.getSubscriptionConfig(subId);
         if (subConfig?.multiClinic?.share_patients_across_clinics) {
-          return undefined; // sharing ON → search subscription-wide
+          return undefined;
         }
       }
     } catch { /* fall through to clinic-scoped */ }
@@ -84,38 +71,24 @@ export class PatientService {
 
   // ──── SEARCH & PAGINATION ────
 
-  /**
-   * Search for patients by term (resets pagination)
-   */
   async searchPatients(searchTerm: string): Promise<void> {
     await this.searchService.search(searchTerm);
   }
 
-  /**
-   * Load next page of search results
-   */
   async loadMorePatients(): Promise<void> {
     await this.searchService.loadMore();
   }
 
-  /**
-   * Clear search results and reset state
-   */
   clearSearchResults(): void {
     this.searchService.clear();
   }
 
   // ──── CRUD OPERATIONS ────
 
-  /**
-   * Fetch a patient by ID
-   */
   async getPatient(patientId: string): Promise<Patient | null> {
     try {
-      const patient = await this.firebaseService.getPatientById(patientId);
-      if (patient) {
-        this.selectedPatientSubject.next(patient);
-      }
+      const patient = await this.patientRepo.getPatientById(patientId);
+      if (patient) this.selectedPatientSubject.next(patient);
       return patient;
     } catch (error) {
       console.error('❌ Error fetching patient:', error);
@@ -123,18 +96,9 @@ export class PatientService {
     }
   }
 
-  /**
-   * Create a new patient or update existing
-   */
-  async createPatient(
-    patientData: Omit<Patient, 'id' | 'last_updated'>
-  ): Promise<string> {
+  async createPatient(patientData: Omit<Patient, 'id' | 'last_updated'>): Promise<string> {
     try {
-      const existingPatient = await this.findExistingPatient(
-        patientData.name,
-        patientData.phone
-      );
-
+      const existingPatient = await this.findExistingPatient(patientData.name, patientData.phone);
       if (existingPatient) {
         console.log('✓ Found existing patient, updating:', existingPatient.id);
         const updateData: Partial<Patient> = {
@@ -162,7 +126,7 @@ export class PatientService {
         clinic_ids
       };
 
-      const patientId = await this.firebaseService.addPatient(fullPatientData);
+      const patientId = await this.patientRepo.addPatient(fullPatientData);
       console.log('✓ Patient created:', patientId);
       return patientId;
     } catch (error) {
@@ -171,56 +135,34 @@ export class PatientService {
     }
   }
 
-  /**
-   * Update an existing patient
-   */
   async updatePatient(patientId: string, patientData: Partial<Patient>): Promise<void> {
     try {
-      await this.firebaseService.updatePatient(patientId, patientData);
-      console.log('✓ Patient updated successfully');
+      await this.patientRepo.updatePatient(patientId, patientData);
     } catch (error) {
       console.error('❌ Error updating patient:', error);
       throw error;
     }
   }
 
-  /**
-   * Delete a patient
-   */
   async deletePatient(patientId: string): Promise<void> {
     try {
-      await this.firebaseService.deletePatient(patientId);
+      await this.patientRepo.deletePatient(patientId);
       this.selectedPatientSubject.next(null);
-      console.log('✓ Patient deleted successfully');
     } catch (error) {
       console.error('❌ Error deleting patient:', error);
       throw error;
     }
   }
 
-  /**
-   * Select a patient for context
-   */
   selectPatient(patient: Patient | null): void {
     this.selectedPatientSubject.next(patient);
   }
 
   // ──── VISIT MANAGEMENT ────
 
-  /**
-   * Add a visit for a patient
-   */
-  async addVisit(
-    patientId: string,
-    visitData: Omit<Visit, 'id' | 'created_at'>
-  ): Promise<string> {
+  async addVisit(patientId: string, visitData: Omit<Visit, 'id' | 'created_at'>): Promise<string> {
     try {
-      const visitWithPatient = {
-        ...visitData,
-        patient_id: patientId,
-      };
-      const visitId = await this.firebaseService.addVisit(visitWithPatient);
-      console.log('✓ Visit added successfully:', visitId);
+      const visitId = await this.patientRepo.addVisit({ ...visitData, patient_id: patientId });
       return visitId;
     } catch (error) {
       console.error('❌ Error adding visit:', error);
@@ -228,39 +170,27 @@ export class PatientService {
     }
   }
 
-  /**
-   * Get all visits for a patient
-   */
   async getPatientVisits(patientId: string): Promise<Visit[]> {
     try {
-      const visits = await this.firebaseService.getPatientVisits(patientId);
-      return visits;
+      return await this.patientRepo.getPatientVisits(patientId);
     } catch (error) {
       console.error('❌ Error fetching visits:', error);
       return [];
     }
   }
 
-  /**
-   * Update an existing visit
-   */
   async updateVisit(patientId: string, visitId: string, visitData: Partial<Visit>): Promise<void> {
     try {
-      await this.firebaseService.updateVisit(visitId, visitData);
-      console.log('✓ Visit updated successfully');
+      await this.patientRepo.updateVisit(visitId, visitData);
     } catch (error) {
       console.error('❌ Error updating visit:', error);
       throw error;
     }
   }
 
-  /**
-   * Delete a visit
-   */
   async deleteVisit(patientId: string, visitId: string): Promise<void> {
     try {
-      await this.firebaseService.deleteVisit(visitId);
-      console.log('✓ Visit deleted successfully');
+      await this.patientRepo.deleteVisit(visitId);
     } catch (error) {
       console.error('❌ Error deleting visit:', error);
       throw error;
@@ -269,13 +199,8 @@ export class PatientService {
 
   // ──── VALIDATION ────
 
-  isValidPhone(phone: string): boolean {
-    return isValidPhone(phone);
-  }
-
-  isValidEmail(email: string): boolean {
-    return isValidEmail(email);
-  }
+  isValidPhone(phone: string): boolean { return isValidPhone(phone); }
+  isValidEmail(email: string): boolean { return isValidEmail(email); }
 
   validatePatientData(data: {
     name?: string;
@@ -289,129 +214,74 @@ export class PatientService {
 
   // ──── PHONE SEARCH (parallel prefix + contains) ────
 
-  /**
-   * Search for patients by phone number (prefix + contains, deduplicated).
-   * Combines results from `searchPatientByPhone()` and `searchPatientsContaining()`
-   * in a single reusable call. Used by components that need to find patients by phone.
-   *
-   * @param digits  The phone digits to search for (partial or full)
-   * @param clinicId  Optional clinic scoping
-   * @returns Merged, deduplicated array of matching patients
-   */
-  async searchPatientsByPhoneNumber(
-    digits: string,
-    clinicId?: string
-  ): Promise<Patient[]> {
+  async searchPatientsByPhoneNumber(digits: string, clinicId?: string): Promise<Patient[]> {
     const [prefixSettled, containsSettled] = await Promise.allSettled([
-      this.firebaseService.searchPatientByPhone(digits, null, clinicId),
-      this.firebaseService.searchPatientsContaining(digits, clinicId)
+      this.patientRepo.searchPatientByPhone(digits, null, clinicId),
+      this.patientRepo.searchPatientsContaining(digits, clinicId)
     ]);
-
     const prefixResults = prefixSettled.status === 'fulfilled' ? prefixSettled.value.results : [];
     const containsResults = containsSettled.status === 'fulfilled' ? containsSettled.value.results : [];
 
-    // Merge and deduplicate by patient id
     const seen = new Set<string>();
     const merged: Patient[] = [];
     for (const p of [...prefixResults, ...containsResults]) {
       const key = p.id || p.phone;
-      if (!seen.has(key)) {
-        seen.add(key);
-        merged.push(p);
-      }
+      if (!seen.has(key)) { seen.add(key); merged.push(p); }
     }
     return merged;
   }
 
   // ──── EXISTENCE CHECKS ────
 
-  /**
-   * Find a patient by phone number alone (returns first match or null).
-   * Respects share_patients_across_clinics: when OFF, only searches within the current clinic.
-   */
   async findPatientByPhone(phone: string): Promise<Patient | null> {
     const normalizedPhone = phone.trim();
     if (!normalizedPhone) return null;
     const clinicId = await this.resolveClinicId();
-
-    // Strategy 1: indexed phone search
     try {
-      const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, clinicId);
+      const { results } = await this.patientRepo.searchPatientByPhone(normalizedPhone, null, clinicId);
       const exact = results.filter(p => p.phone.trim() === normalizedPhone);
       if (exact.length > 0) return exact[0];
-    } catch {
-      // fall through
-    }
-
-    // Strategy 2: client-side contains search
+    } catch { /* fall through */ }
     try {
-      const { results } = await this.firebaseService.searchPatientsContaining(normalizedPhone, clinicId);
+      const { results } = await this.patientRepo.searchPatientsContaining(normalizedPhone, clinicId);
       const exact = results.filter(p => p.phone.trim() === normalizedPhone);
       if (exact.length > 0) return exact[0];
-    } catch {
-      // fall through
-    }
-
+    } catch { /* fall through */ }
     return null;
   }
 
-  /**
-   * Check if a patient exists with name+phone combo
-   */
   async checkPatientExists(name: string, phone: string): Promise<boolean> {
     try {
       if (!name.trim() || !phone.trim()) return false;
-      const existingPatient = await this.findExistingPatient(name, phone);
-      return !!existingPatient;
-    } catch (error) {
-      console.error('❌ Error checking patient:', error);
-      return false;
-    }
+      return !!(await this.findExistingPatient(name, phone));
+    } catch { return false; }
   }
 
-  /**
-   * Private: Find existing patient by name and phone (uses multiple fallback strategies)
-   */
-  private async findExistingPatient(
-    name: string,
-    phone: string
-  ): Promise<Patient | null> {
+  private async findExistingPatient(name: string, phone: string): Promise<Patient | null> {
     const normalizedName = name.trim().toLowerCase();
     const normalizedPhone = phone.trim();
     if (!normalizedName || !normalizedPhone) return null;
-
-    // Use resolveClinicId so that when sharing is OFF, we only match patients
-    // belonging to the current clinic — not those from other clinics.
     const clinicId = await this.resolveClinicId();
-
-    // Strategy 1: indexed phone search
     try {
-      const { results } = await this.firebaseService.searchPatientByPhone(normalizedPhone, null, clinicId);
-      const match = results.find(p => p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName);
+      const { results } = await this.patientRepo.searchPatientByPhone(normalizedPhone, null, clinicId);
+      const match = results.find(p =>
+        p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName
+      );
       if (match) return match;
-    } catch {
-      // fall through
-    }
-
-    // Strategy 2: client-side contains search
+    } catch { /* fall through */ }
     try {
-      const { results } = await this.firebaseService.searchPatientsContaining(normalizedPhone, clinicId);
-      const match = results.find(p => p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName);
+      const { results } = await this.patientRepo.searchPatientsContaining(normalizedPhone, clinicId);
+      const match = results.find(p =>
+        p.phone.trim() === normalizedPhone && p.name.trim().toLowerCase() === normalizedName
+      );
       if (match) return match;
-    } catch {
-      // fall through
-    }
-
+    } catch { /* fall through */ }
     return null;
   }
 
   // ──── PATIENT COUNT ────
 
-  /**
-   * Get the count of patients matching subscription (and optional clinic).
-   * Centralised here so components don't need to import PatientDataService directly.
-   */
   async getPatientCount(subscriptionId: string, clinicId?: string | null): Promise<number> {
-    return this.firebaseService.getPatientCount(subscriptionId, clinicId);
+    return this.patientRepo.getPatientCount(subscriptionId, clinicId);
   }
 }

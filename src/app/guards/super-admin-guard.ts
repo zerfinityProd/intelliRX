@@ -2,7 +2,7 @@
 import { inject } from '@angular/core';
 import { Router, CanActivateFn } from '@angular/router';
 import { AuthenticationService } from '../services/authenticationService';
-import { FirestoreApiService } from '../services/firestore-api.service';
+import { AuthorizationService } from '../services/authorizationService';
 import { filter, take, switchMap, from, of } from 'rxjs';
 
 /**
@@ -11,10 +11,12 @@ import { filter, take, switchMap, from, of } from 'rxjs';
  *
  * Redirects unauthenticated users to /login.
  * Redirects non-super-admins to /admin-dashboard (if admin) or /home.
+ *
+ * Uses AuthorizationService (repository-backed) instead of FirestoreApiService directly.
  */
 export const superAdminGuard: CanActivateFn = () => {
     const authService = inject(AuthenticationService);
-    const api = inject(FirestoreApiService);
+    const authzService = inject(AuthorizationService);
     const router = inject(Router);
 
     return authService.authReady$.pipe(
@@ -29,15 +31,7 @@ export const superAdminGuard: CanActivateFn = () => {
             const email = (authService.currentUserValue?.email || '').toLowerCase().trim();
 
             return from(
-                api.runQuery('', {
-                    collectionId: 'users',
-                    filters: [{ field: 'email', op: '==', value: email }],
-                }).then(docs => {
-                    if (docs.length === 0) {
-                        router.navigate(['/home']);
-                        return false;
-                    }
-                    const globalRoles: string[] = docs[0].data['global_roles'] || [];
+                authzService.getUserGlobalRoles(email).then(globalRoles => {
                     if (!globalRoles.includes('z_admin')) {
                         // If they are a regular admin, send to admin dashboard
                         if (globalRoles.includes('admin')) {

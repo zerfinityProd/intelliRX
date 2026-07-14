@@ -1,35 +1,40 @@
+// src/app/repositories/firebase/firebase-patient.repository.ts
+//
+// THE ONLY FILE THAT MAY IMPORT FirestoreApiService FOR PATIENT/VISIT DATA.
+// All components and services must inject PatientRepository (the abstract class).
+//
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService, DocumentResult } from './firestore-api.service';
-import { Patient, Visit } from '../models/patient.model';
-import { ClinicContextService } from './clinicContextService';
+import { FirestoreApiService } from './firestore-api.service';
+import { ClinicContextService } from '../../services/clinicContextService';
+import { PatientRepository, PagedResult } from '../interfaces/patient.repository';
+import { Patient, Visit } from '../../models/patient.model';
 
-export interface PagedResult {
-  results: Patient[];
-  /** Opaque cursor for the next page (pass back to search methods) */
-  lastCursor: any;
-  hasMore: boolean;
-}
-
-@Injectable({
-  providedIn: 'root'
-})
-export class PatientDataService {
+@Injectable()
+export class FirebasePatientRepository extends PatientRepository {
   private api = inject(FirestoreApiService);
   private clinicContext = inject(ClinicContextService);
 
   private patientCache: Map<string, { patient: Patient; timestamp: number }> = new Map();
   private readonly CACHE_DURATION = 5 * 60 * 1000;
-  public readonly PAGE_SIZE = 25;
+  override readonly PAGE_SIZE = 25;
 
   private getSubscriptionId(): string {
     return this.clinicContext.requireSubscriptionId();
   }
 
+  private removeUndefinedFields(obj: any): any {
+    const cleaned: any = {};
+    for (const key in obj) {
+      if (obj[key] !== undefined) {
+        cleaned[key] = obj[key];
+      }
+    }
+    return cleaned;
+  }
+
   // ── Patient CRUD ──────────────────────────────────────────
 
-  async addPatient(
-    patientData: Omit<Patient, 'id' | 'last_updated'>,
-  ): Promise<string> {
+  async addPatient(patientData: Omit<Patient, 'id' | 'last_updated'>): Promise<string> {
     try {
       const now = new Date().toISOString();
       const id = await this.api.getNextSequentialId('pat');
@@ -53,19 +58,6 @@ export class PatientDataService {
     }
   }
 
-  private removeUndefinedFields(obj: any): any {
-    const cleaned: any = {};
-    for (const key in obj) {
-      if (obj[key] !== undefined) {
-        cleaned[key] = obj[key];
-      }
-    }
-    return cleaned;
-  }
-
-  /**
-   * Search by phone number — paginated
-   */
   async searchPatientByPhone(
     phone: string,
     lastCursor: any = null,
@@ -98,14 +90,9 @@ export class PatientDataService {
       const results = resultDocs.map(d => ({ ...d.data, id: d.id } as Patient));
       results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
 
-      const newCursor = resultDocs.length > 0
-        ? resultDocs[resultDocs.length - 1].data.phone
-        : null;
-
-      console.log(`Phone search: ${results.length} result(s), hasMore=${hasMore}`);
+      const newCursor = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1].data.phone : null;
       return { results, lastCursor: newCursor, hasMore };
     } catch (error: any) {
-      // Gracefully handle query failures (e.g. missing index, permission errors)
       if (error?.status !== 400 && error?.status !== 404) {
         console.warn('Phone search unavailable:', error?.message || error);
       }
@@ -113,9 +100,6 @@ export class PatientDataService {
     }
   }
 
-  /**
-   * Search by name prefix — paginated
-   */
   async searchPatientByName(
     name: string,
     lastCursor: any = null,
@@ -148,40 +132,23 @@ export class PatientDataService {
       const results = resultDocs.map(d => ({ ...d.data, id: d.id } as Patient));
       results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
 
-      const newCursor = resultDocs.length > 0
-        ? resultDocs[resultDocs.length - 1].data.nameLower
-        : null;
-
-      console.log(`Name search: ${results.length} result(s), hasMore=${hasMore}`);
+      const newCursor = resultDocs.length > 0 ? resultDocs[resultDocs.length - 1].data.nameLower : null;
       return { results, lastCursor: newCursor, hasMore };
     } catch {
-      // Index may be pending — silently fall back to contains search
       return { results: [], lastCursor: null, hasMore: false };
     }
   }
 
-  /**
-   * Fetch patients within the subscription and filter client-side for "contains" matching
-   */
-  async searchPatientsContaining(
-    term: string,
-    clinicId?: string
-  ): Promise<PagedResult> {
+  async searchPatientsContaining(term: string, clinicId?: string): Promise<PagedResult> {
     try {
       const subId = this.getSubscriptionId();
       const lowerTerm = term.toLowerCase().trim();
-      const filters: any[] = [
-        { field: 'subscription_id', op: '==', value: subId },
-      ];
+      const filters: any[] = [{ field: 'subscription_id', op: '==', value: subId }];
       if (clinicId) {
         filters.push({ field: 'clinic_ids', op: 'array-contains', value: clinicId });
       }
 
-      const docs = await this.api.runQuery('', {
-        collectionId: 'patients',
-        filters,
-        limit: 500,
-      });
+      const docs = await this.api.runQuery('', { collectionId: 'patients', filters, limit: 500 });
 
       const allPatients = docs.map(d => ({ ...d.data, id: d.id } as Patient));
       const results = allPatients.filter((p: Patient) => {
@@ -192,7 +159,6 @@ export class PatientDataService {
       });
 
       results.forEach((p: Patient) => { if (p.id) this.addToCache(p.id, p); });
-      console.log(`Contains search "${term}": ${results.length} result(s)`);
       return { results, lastCursor: null, hasMore: false };
     } catch (error) {
       console.error('Error in contains search:', error);
@@ -213,7 +179,6 @@ export class PatientDataService {
       }
       return null;
     } catch (error: any) {
-      // 404 is expected when searching by term that isn't a valid document ID
       if (error?.status === 404) return null;
       console.warn('Error getting patient:', error?.message || error);
       return null;
@@ -236,11 +201,31 @@ export class PatientDataService {
     }
   }
 
-  // ── Visit CRUD ────────────────────────────────────────────
+  async deletePatient(patientId: string): Promise<void> {
+    const subId = this.getSubscriptionId();
+    const visitDocs = await this.api.runQuery('', {
+      collectionId: 'visits',
+      filters: [
+        { field: 'subscription_id', op: '==', value: subId },
+        { field: 'patient_id', op: '==', value: patientId },
+      ],
+    });
+    await Promise.all(visitDocs.map(d => this.api.deleteDocument('visits', d.id)));
+    await this.api.deleteDocument('patients', patientId);
+    this.patientCache.delete(patientId);
+  }
 
-  async addVisit(
-    visitData: Omit<Visit, 'id' | 'created_at'>,
-  ): Promise<string> {
+  async getPatientCount(subscriptionId: string, clinicId?: string | null): Promise<number> {
+    const filters: any[] = [{ field: 'subscription_id', op: '==', value: subscriptionId }];
+    if (clinicId) {
+      filters.push({ field: 'clinic_ids', op: 'array-contains', value: clinicId });
+    }
+    return this.api.runCount('', { collectionId: 'patients', filters });
+  }
+
+  // ── Visits ──────────────────────────────────────────────────
+
+  async addVisit(visitData: Omit<Visit, 'id' | 'created_at'>): Promise<string> {
     try {
       const id = await this.api.getNextSequentialId('vst');
       const visit: Visit = {
@@ -269,11 +254,10 @@ export class PatientDataService {
         ],
       });
       const visits = docs.map(d => d.data as Visit);
-      // Sort client-side to avoid requiring a composite index
       visits.sort((a, b) => {
         const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
         const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return dateB - dateA; // descending
+        return dateB - dateA;
       });
       return visits;
     } catch (error) {
@@ -297,39 +281,6 @@ export class PatientDataService {
     await this.api.deleteDocument('visits', visitId);
   }
 
-  async deletePatient(patientId: string): Promise<void> {
-    // Delete all visits for this patient first
-    const subId = this.getSubscriptionId();
-    const visitDocs = await this.api.runQuery('', {
-      collectionId: 'visits',
-      filters: [
-        { field: 'subscription_id', op: '==', value: subId },
-        { field: 'patient_id', op: '==', value: patientId },
-      ],
-    });
-    const deletePromises = visitDocs.map(d => this.api.deleteDocument('visits', d.id));
-    await Promise.all(deletePromises);
-    // Delete patient document
-    await this.api.deleteDocument('patients', patientId);
-    this.patientCache.delete(patientId);
-  }
-
-  // ── Aggregation ───────────────────────────────────────────
-
-  /**
-   * Get the count of patients matching subscription (and optional clinic).
-   * Replaces direct getCountFromServer usage in components.
-   */
-  async getPatientCount(subscriptionId: string, clinicId?: string | null): Promise<number> {
-    const filters: any[] = [
-      { field: 'subscription_id', op: '==', value: subscriptionId },
-    ];
-    if (clinicId) {
-      filters.push({ field: 'clinic_ids', op: 'array-contains', value: clinicId });
-    }
-    return this.api.runCount('', { collectionId: 'patients', filters });
-  }
-
   // ── Cache ─────────────────────────────────────────────────
 
   private addToCache(id: string, patient: Patient): void {
@@ -339,8 +290,10 @@ export class PatientDataService {
   private getFromCache(id: string): Patient | null {
     const cached = this.patientCache.get(id);
     if (!cached) return null;
-    const isExpired = Date.now() - cached.timestamp > this.CACHE_DURATION;
-    if (isExpired) { this.patientCache.delete(id); return null; }
+    if (Date.now() - cached.timestamp > this.CACHE_DURATION) {
+      this.patientCache.delete(id);
+      return null;
+    }
     return cached.patient;
   }
 
@@ -348,7 +301,8 @@ export class PatientDataService {
     this.patientCache.delete(id);
   }
 
-  public clearCache(): void {
+  clearCache(): void {
     this.patientCache.clear();
   }
 }
+

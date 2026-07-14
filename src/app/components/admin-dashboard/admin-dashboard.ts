@@ -7,7 +7,8 @@ import { Location } from '@angular/common';
 import { filter, firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AdminService } from '../../services/adminService';
-import { FirestoreApiService } from '../../services/firestore-api.service';
+import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
+import { PlanRepository } from '../../repositories/interfaces/plan.repository';
 import { ConfigService } from '../../services/configService';
 import { Subscription } from '../../models/subscription.model';
 import { ClinicUserAvailability } from '../../models/clinic-user.model';
@@ -63,7 +64,8 @@ type ActiveSection = 'clinics' | 'users' | 'config' | null;
 export class AdminDashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthenticationService);
   private adminService = inject(AdminService);
-  private api = inject(FirestoreApiService);
+  private subscriptionRepo = inject(SubscriptionRepository);
+  private planRepo = inject(PlanRepository);
   private configService = inject(ConfigService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -335,36 +337,30 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     try {
       const email = this.adminEmail.toLowerCase().trim();
       console.log('[AdminDashboard] loadSubscription — querying users by email:', email);
-      const userDocs = await this.api.runQuery('', {
-        collectionId: 'users',
-        filters: [{ field: 'email', op: '==', value: email }],
-      });
-      console.log('[AdminDashboard] User query returned', userDocs.length, 'docs');
+      let userDoc = await this.adminService.getUserByEmail(email);
 
-      // If direct query fails, try client-side fallback (handles invisible chars in email field)
-      let matchedDoc = userDocs.length > 0 ? userDocs[0] : null;
-      if (!matchedDoc) {
+      // If direct query fails, try client-side fallback
+      if (!userDoc) {
         console.warn('[AdminDashboard] Direct email query returned 0 — trying client-side fallback');
-        const allUsers = await this.api.listDocuments('users', 300);
-        matchedDoc = allUsers.find(d => {
-          for (const key of Object.keys(d.data)) {
-            if (typeof d.data[key] !== 'string') continue;
-            const cleanVal = d.data[key].replace(/[^\x20-\x7E]/g, '').trim().toLowerCase();
+        const allUsers = await this.adminService.getAllUsers(300);
+        userDoc = allUsers.find((d: any) => {
+          for (const key of Object.keys(d)) {
+            if (typeof (d as any)[key] !== 'string') continue;
+            const cleanVal = (d as any)[key].replace(/[^\x20-\x7E]/g, '').trim().toLowerCase();
             if (cleanVal === email) return true;
           }
           return false;
-        }) || null;
-        if (matchedDoc) {
-          console.log('[AdminDashboard] Found user via fallback:', matchedDoc.id);
+        }) ?? null;
+        if (userDoc) {
+          console.log('[AdminDashboard] Found user via fallback:', (userDoc as any).id);
         } else {
           console.warn('[AdminDashboard] User not found even with fallback — no subscription to load');
           return;
         }
       }
 
-      const userDoc = matchedDoc;
-      this.userDocId = userDoc.id;
-      let subscriptionId: string = userDoc.data['subscription_id'] || '';
+      this.userDocId = (userDoc as any).id;
+      let subscriptionId: string = (userDoc as any).subscription_id || '';
       console.log('[AdminDashboard] userDocId=', this.userDocId, 'subscription_id=', subscriptionId);
 
       // Fallback: if the user doc doesn't have subscription_id,
@@ -372,15 +368,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       if (!subscriptionId) {
         console.log('[AdminDashboard] No subscription_id on user doc — trying subscriptions query by owner_email');
         try {
-          const subDocs = await this.api.runQuery('', {
-            collectionId: 'subscriptions',
-            filters: [{ field: 'owner_email', op: '==', value: email }],
-          });
-          if (subDocs.length > 0) {
-            subscriptionId = subDocs[0].id;
+          const allSubs = await this.subscriptionRepo.getSubscriptions();
+          const ownerSub = allSubs.find(s => (s as any)['owner_email'] === email);
+          if (ownerSub) {
+            subscriptionId = ownerSub.id!;
             console.log('[AdminDashboard] Found subscription via owner_email:', subscriptionId);
-            // Also update the user doc so this lookup isn't needed next time
-            await this.api.updateDocument('users', this.userDocId, { subscription_id: subscriptionId });
+            await this.adminService.updateUser(this.userDocId, { subscription_id: subscriptionId } as any);
           } else {
             console.warn('[AdminDashboard] No subscriptions found for owner_email:', email);
           }
@@ -396,50 +389,51 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       }
 
       console.log('[AdminDashboard] Fetching subscription document:', subscriptionId);
-      const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
-      if (!subDoc) {
+      const sub = await this.subscriptionRepo.getSubscriptionById(subscriptionId);
+      if (!sub) {
         console.warn('[AdminDashboard] Subscription document not found:', subscriptionId);
         return;
       }
 
-      console.log('[AdminDashboard] Subscription doc loaded:', subDoc.id, subDoc.data);
-      this.subscription = { ...(subDoc.data as Subscription), id: subDoc.id };
+      console.log('[AdminDashboard] Subscription doc loaded:', sub.id, sub);
+      // Cast to a non-null local so the compiler can track narrowing through async callbacks
+      const subData = sub as (import('../../models/subscription.model').Subscription & { id: string });
+      this.subscription = { ...subData, id: subData.id };
 
       // Normalize plan: Firestore may store it as a plain string (e.g. "starter")
       // but the model expects { name: string, limits: PlanLimits }
-      const rawPlan = this.subscription.plan as any;
+      const rawPlan = this.subscription!.plan as any;
       if (typeof rawPlan === 'string') {
-        this.subscription.plan = {
+        this.subscription!.plan = {
           name: rawPlan,
           limits: { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 }
         };
       } else if (!rawPlan) {
-        this.subscription.plan = {
+        this.subscription!.plan = {
           name: 'basic',
           limits: { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 }
         };
       }
 
       // Check if plan.limits is already populated with real values
-      const hasLimits = this.subscription.plan?.limits
-        && (this.subscription.plan.limits.max_clinics > 0 || this.subscription.plan.limits.max_doctors > 0);
+      const hasLimits = this.subscription!.plan?.limits
+        && (this.subscription!.plan.limits.max_clinics > 0 || this.subscription!.plan.limits.max_doctors > 0);
 
       if (!hasLimits) {
-        const planName = (this.subscription.plan?.name || '').toLowerCase();
+        const planName = (this.subscription!.plan?.name || '').toLowerCase();
 
         // Try fetching from the 'plans' collection first
         let resolved = false;
         if (planName) {
           try {
-            const planDoc = await this.api.getDocument('plans', planName);
-            console.log('[AdminDashboard] Plan doc data:', planDoc?.data);
-            if (planDoc?.data) {
-              // Handle potential field name variations/typos
-              const maxClinics = planDoc.data['max_clinics'] ?? planDoc.data['max_clinincs'] ?? 0;
-              const maxDoctors = planDoc.data['max_doctors'] ?? 0;
-              const maxReceptionists = planDoc.data['max_receptionists'] ?? planDoc.data['max_receptionist'] ?? 0;
+            const planDetails = await this.planRepo.getPlanByKey(planName);
+            console.log('[AdminDashboard] Plan doc data:', planDetails);
+            if (planDetails) {
+              const maxClinics = (planDetails as any)['max_clinics'] ?? (planDetails as any)['max_clinincs'] ?? 0;
+              const maxDoctors = (planDetails as any)['max_doctors'] ?? 0;
+              const maxReceptionists = (planDetails as any)['max_receptionists'] ?? (planDetails as any)['max_receptionist'] ?? 0;
               if (maxClinics || maxDoctors) {
-                this.subscription.plan.limits = {
+                this.subscription!.plan!.limits = {
                   max_clinics: maxClinics,
                   max_doctors: maxDoctors,
                   max_receptionists: maxReceptionists,
@@ -456,7 +450,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         // Fall back to known defaults if plans collection was unreachable
         if (!resolved && planName && this.PLAN_DEFAULTS[planName]) {
           const defaults = this.PLAN_DEFAULTS[planName];
-          this.subscription.plan.limits = {
+          this.subscription!.plan!.limits = {
             max_clinics: defaults.max_clinics,
             max_doctors: defaults.max_doctors,
             max_receptionists: defaults.max_receptionists,
@@ -466,29 +460,29 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       }
 
       // Ensure limits object always exists
-      if (!this.subscription.plan?.limits) {
-        this.subscription.plan.limits = { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 };
+      if (!this.subscription!.plan?.limits) {
+        this.subscription!.plan!.limits = { max_clinics: 0, max_doctors: 0, max_receptionists: 0, max_appointments_per_day: 0 };
       }
 
       // ── Backfill valid_until if missing ─────────────────────────────────
       // Existing subscriptions created before the valid_until feature won't have
       // this field. Compute it from created_at + plan validity days and write it
       // back to Firestore so it's permanently set.
-      if (!this.subscription.valid_until) {
+      if (!this.subscription!.valid_until) {
         try {
-          const planName = this.subscription.plan?.name || '';
+          const planName = this.subscription!.plan?.name || '';
           const validityDays = planName
             ? await this.configService.getPlanValidityDays(planName)
             : 30;
-          const baseDate = this.subscription.created_at
-            ? new Date(this.subscription.created_at)
+          const baseDate = this.subscription!.created_at
+            ? new Date(this.subscription!.created_at)
             : new Date();
           const expiryDate = new Date(baseDate);
           expiryDate.setDate(expiryDate.getDate() + validityDays);
           const valid_until = expiryDate.toISOString();
           // Write back to Firestore so this doesn't repeat
-          await this.api.updateDocument('subscriptions', this.subscription.id, { valid_until });
-          this.subscription.valid_until = valid_until;
+          await this.subscriptionRepo.updateSubscription(this.subscription!.id, { valid_until } as any);
+          this.subscription!.valid_until = valid_until;
           console.log('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, '(', validityDays, 'days from created_at)');
         } catch (backfillErr) {
           console.warn('[AdminDashboard] Could not backfill valid_until:', backfillErr);

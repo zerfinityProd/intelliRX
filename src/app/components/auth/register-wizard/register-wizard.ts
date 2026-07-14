@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthenticationService } from '../../../services/authenticationService';
-import { FirestoreApiService, DocumentResult } from '../../../services/firestore-api.service';
+import { AdminService } from '../../../services/adminService';
+import { SubscriptionRepository } from '../../../repositories/interfaces/subscription.repository';
+import { PlanRepository } from '../../../repositories/interfaces/plan.repository';
 import { ClinicContextService } from '../../../services/clinicContextService';
 
 @Component({
@@ -19,7 +21,7 @@ export class RegisterWizardComponent implements OnInit {
   isSuccess = false;
   errorMessage = '';
 
-  plans: DocumentResult[] = [];
+  plans: any[] = [];
 
   account = {
     name: '',
@@ -31,7 +33,9 @@ export class RegisterWizardComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private authService: AuthenticationService,
-    private api: FirestoreApiService,
+    private adminService: AdminService,
+    private subscriptionRepo: SubscriptionRepository,
+    private planRepo: PlanRepository,
     private clinicContext: ClinicContextService,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef
@@ -49,7 +53,7 @@ export class RegisterWizardComponent implements OnInit {
 
   async loadPlans() {
     try {
-      this.plans = await this.api.listDocuments('plans');
+      this.plans = await this.planRepo.listPlans() as any[];
     } catch (error) {
       console.error('Failed to load plans:', error);
       this.plans = [
@@ -119,30 +123,24 @@ export class RegisterWizardComponent implements OnInit {
       // Small delay to let Firebase Auth state propagate and token become available
       await new Promise(resolve => setTimeout(resolve, 800));
 
-      // 2. Generate sequential subscription ID (sub_1, sub_2, ...)
-      const subscriptionId = await this.api.getNextSequentialId('sub');
-      const userDocId = await this.api.getNextSequentialId('usr');
-
-      // 3. Create Subscription Document
-      await this.api.setDocument('subscriptions', subscriptionId, {
+      // 2. Create Subscription Document
+      const subscriptionId = await this.subscriptionRepo.createSubscription({
         entity_name: this.account.clinicName,
         owner_email: this.account.email.trim().toLowerCase(),
         plan: this.selectedPlan,
         status: 'active',
-        created_at: new Date().toISOString()
-      });
+      } as any);
 
-      // 4. Create User Document
-      await this.api.setDocument('users', userDocId, {
+      // 3. Create User Document
+      await this.adminService.createUser({
         name: this.account.name,
         email: this.account.email.trim().toLowerCase(),
         global_roles: ['admin'],
         subscription_id: subscriptionId,
         status: 'active',
-        created_at: new Date().toISOString()
-      });
+      } as any);
 
-      // 5. Set subscription context
+      // 4. Set subscription context
       this.clinicContext.setClinicContext(null, subscriptionId);
 
       // 7. Success → redirect to owner dashboard

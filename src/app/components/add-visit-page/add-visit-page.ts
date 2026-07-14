@@ -12,6 +12,7 @@ import { HeartWidgetComponent } from '../widgets/heart-widget/heart-widget';
 import { FullbodyWidgetComponent } from '../widgets/fullbody-widget/fullbody-widget';
 import { MuscularWidgetComponent } from '../widgets/muscular-widget/muscular-widget';
 import { AuthorizationService } from '../../services/authorizationService';
+import { PatientContextService } from '../../services/patientContextService';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { NotificationService } from '../../services/notificationService';
@@ -41,7 +42,7 @@ interface FrequencyState {
 /**
  * AddVisitPageComponent: Full-page version of the Add Visit form.
  * Shows the visit form on the left and visit history on the right.
- * Route: /patient/:id/add-visit
+ * Route: /patient/add-visit
  */
 @Component({
     selector: 'app-add-visit-page',
@@ -145,6 +146,7 @@ export class AddVisitPageComponent implements OnInit {
     private readonly ngZone = inject(NgZone);
     private readonly notificationService = inject(NotificationService);
     private readonly authorizationService = inject(AuthorizationService);
+    private readonly patientContextService = inject(PatientContextService);
 
     async ngOnInit(): Promise<void> {
         const state = history.state as { origin?: string; appointmentId?: string; appointmentDatetime?: string; editVisitId?: string; editVisitData?: any } | undefined;
@@ -185,7 +187,10 @@ export class AddVisitPageComponent implements OnInit {
         // ── Persist nav state so it survives the next refresh ──
         this.saveNavState();
 
-        const patientId = this.route.snapshot.paramMap.get('id');
+        // Read patient ID from PatientContextService.
+        // The ID is never in the URL — patientContextGuard sets it from history.state
+        // or restores it from sessionStorage on a browser refresh.
+        const patientId = this.patientContextService.getPatientId();
         if (!patientId) {
             this.router.navigate(['/home']);
             return;
@@ -222,7 +227,8 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     private getSessionKey(): string {
-        const patientId = this.route.snapshot.paramMap.get('id') || '';
+        // Use patient ID from context service — never from the URL param.
+        const patientId = this.patientContextService.getPatientId() || 'unknown';
         return `${this.SESSION_KEY}_${patientId}`;
     }
 
@@ -881,7 +887,7 @@ export class AddVisitPageComponent implements OnInit {
                 }
 
                 this.clearFormSession();
-                this.router.navigate(['/patient', patientId], { state: { activeTab: 'visits' } });
+                this.router.navigate(['/patient/view'], { state: { patientId, activeTab: 'visits' } });
             } else {
                 // ── CREATE new visit ──
 
@@ -1000,7 +1006,7 @@ export class AddVisitPageComponent implements OnInit {
                 } else if (this.origin === 'home') {
                     this.router.navigate(['/home']);
                 } else {
-                    this.router.navigate(['/patient', patientId], { state: { activeTab: 'visits' } });
+                    this.router.navigate(['/patient/view'], { state: { patientId, activeTab: 'visits' } });
                 }
             }
         } catch (error: any) {
@@ -1017,7 +1023,7 @@ export class AddVisitPageComponent implements OnInit {
         } else if (this.origin === 'appointments') {
             this.router.navigate(['/appointments']);
         } else if (this.origin === 'patient' && this.patient) {
-            this.router.navigate(['/patient', this.patient.id]);
+            this.router.navigate(['/patient/view'], { state: { patientId: this.patient.id } });
         } else {
             this.router.navigate(['/home']);
         }

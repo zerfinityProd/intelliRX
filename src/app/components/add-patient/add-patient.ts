@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { PatientService } from '../../services/patient';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { NotificationService } from '../../services/notificationService';
+import { PatientContextService } from '../../services/patientContextService';
 import { todayLocalISO } from '../../utilities/local-date';
 
 // SweetAlert2 is NOT imported at the top level.
@@ -59,6 +60,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   private readonly patientService = inject(PatientService);
   private readonly clinicContextService = inject(ClinicContextService);
   private readonly notificationService = inject(NotificationService);
+  private readonly patientContextService = inject(PatientContextService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -375,7 +377,8 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       sessionStorage.removeItem('pendingPatientSuccess');
 
       if (result.isConfirmed) {
-        this.router.navigate(['/patient', patientId, 'add-visit'], { state: { origin: 'home' } });
+        this.patientContextService.setPatient(patientId);
+        this.router.navigate(['/patient/add-visit'], { state: { origin: 'home', patientId } });
       }
     } catch (error: any) {
       console.error('Error in onSubmit:', error);

@@ -1,8 +1,9 @@
 // src/app/services/superAdminService.ts
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService } from './firestore-api.service';
-import { Subscription } from '../models/subscription.model';
+import { UserRepository } from '../repositories/interfaces/user.repository';
+import { ClinicRepository } from '../repositories/interfaces/clinic.repository';
 import { AdminService } from './adminService';
+import { Subscription } from '../models/subscription.model';
 
 export interface SuperAdminUser {
   id?: string;
@@ -25,9 +26,14 @@ export interface DashboardOverview {
   totalUsers: number;
 }
 
+/**
+ * SuperAdminService — orchestration over UserRepository and AdminService.
+ * Never imports FirestoreApiService or any Firebase class.
+ */
 @Injectable({ providedIn: 'root' })
 export class SuperAdminService {
-  private api = inject(FirestoreApiService);
+  private userRepo = inject(UserRepository);
+  private clinicRepo = inject(ClinicRepository);
   private adminService = inject(AdminService);
 
   // ── Subscriptions ──────────────────────────────────────────────────────────
@@ -52,68 +58,52 @@ export class SuperAdminService {
     return this.adminService.deleteSubscription(id);
   }
 
+  async updateSubscriptionStatus(id: string, status: string): Promise<void> {
+    return this.adminService.updateSubscription(id, { status } as any);
+  }
+
   computeNextSubscriptionId(existingIds: string[]): string {
     return this.adminService.computeNextSubscriptionId(existingIds);
   }
 
   // ── Admin Users ────────────────────────────────────────────────────────────
 
-  /** Fetch all users who have 'admin' in global_roles */
   async getAdminUsers(): Promise<SuperAdminUser[]> {
-    const docs = await this.api.listDocuments('users', 500);
-    return docs
-      .map(d => ({ ...d.data, id: d.id } as SuperAdminUser))
+    const allUsers = await this.userRepo.getAllUsers(500);
+    return allUsers
+      .map(u => u as SuperAdminUser)
       .filter(u => (u.global_roles || []).includes('admin'));
   }
 
-  /** Fetch all users (for overview stats) */
   async getAllUsers(): Promise<SuperAdminUser[]> {
-    const docs = await this.api.listDocuments('users', 500);
-    return docs.map(d => ({ ...d.data, id: d.id } as SuperAdminUser));
+    const allUsers = await this.userRepo.getAllUsers(500);
+    return allUsers.map(u => u as SuperAdminUser);
   }
 
-  /** Create a new admin user with a subscription pre-assigned */
   async createAdminUser(data: {
     email: string;
     name: string;
     subscription_id: string;
   }): Promise<string> {
-    const id = await this.api.getNextSequentialId('usr');
-    const now = new Date().toISOString();
-    await this.api.setDocument('users', id, {
+    return this.userRepo.createUser({
       email: data.email.trim().toLowerCase(),
       name: data.name.trim(),
       global_roles: ['admin'],
       subscription_id: data.subscription_id,
       status: 'active',
-      created_at: now,
-      updated_at: now,
     });
-    return id;
   }
 
-  /** Update admin user fields */
   async updateAdminUser(id: string, data: Partial<SuperAdminUser>): Promise<void> {
-    await this.api.updateDocument('users', id, {
-      ...data,
-      updated_at: new Date().toISOString(),
-    });
+    return this.userRepo.updateUser(id, data as any);
   }
 
-  /** Delete a user document */
   async deleteAdminUser(id: string): Promise<void> {
-    await this.api.deleteDocument('users', id);
+    return this.userRepo.deleteUser(id);
   }
 
-  /**
-   * Assign a subscription to an admin user.
-   * Sets the subscription_id field on their user doc.
-   */
   async assignSubscriptionToAdmin(userId: string, subscriptionId: string): Promise<void> {
-    await this.api.updateDocument('users', userId, {
-      subscription_id: subscriptionId,
-      updated_at: new Date().toISOString(),
-    });
+    return this.userRepo.updateUser(userId, { subscription_id: subscriptionId } as any);
   }
 
   // ── Role Permissions ────────────────────────────────────────────────────────
@@ -129,13 +119,13 @@ export class SuperAdminService {
   // ── Dashboard Overview ────────────────────────────────────────────────────
 
   async getDashboardOverview(): Promise<DashboardOverview> {
-    const [allSubs, allUsers, clinicDocs] = await Promise.all([
+    const [allSubs, allUsers, allClinics] = await Promise.all([
       this.getAllSubscriptions(),
       this.getAllUsers(),
-      this.api.listDocuments('clinics', 500),
+      this.clinicRepo.getClinics(''),
     ]);
 
-    const activeSubscriptions = allSubs.filter(s => s.status === 'active').length;
+    const activeSubscriptions = allSubs.filter(s => (s as any).status === 'active').length;
     const totalAdmins = allUsers.filter(u => (u.global_roles || []).includes('admin')).length;
     const totalDoctors = allUsers.filter(u => (u.global_roles || []).includes('doctor')).length;
     const totalReceptionists = allUsers.filter(u =>
@@ -148,7 +138,7 @@ export class SuperAdminService {
       totalAdmins,
       totalDoctors,
       totalReceptionists,
-      totalClinics: clinicDocs.length,
+      totalClinics: allClinics.length,
       totalUsers: allUsers.length,
     };
   }

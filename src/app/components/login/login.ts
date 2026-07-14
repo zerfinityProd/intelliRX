@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
-import { FirestoreApiService } from '../../services/firestore-api.service';
+import { ClinicRepository } from '../../repositories/interfaces/clinic.repository';
+import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
 import { ThemeService } from '../../services/themeService';
 import { NotificationService } from '../../services/notificationService';
 import { ClinicContextService } from '../../services/clinicContextService';
@@ -28,7 +29,8 @@ export class LoginComponent implements OnInit {
 
     private readonly authService = inject(AuthenticationService);
     private readonly authorizationService = inject(AuthorizationService);
-    private readonly firestoreApi = inject(FirestoreApiService);
+    private readonly clinicRepo = inject(ClinicRepository);
+    private readonly subscriptionRepo = inject(SubscriptionRepository);
     private readonly router = inject(Router);
 
     private readonly cdr = inject(ChangeDetectorRef);
@@ -206,9 +208,8 @@ export class LoginComponent implements OnInit {
         const options: Record<string, string> = {};
         for (const id of subscriptionIds) {
             try {
-                const doc = await this.firestoreApi.getDocument('subscriptions', id);
-                const name = doc?.data?.['entity_name'] || doc?.data?.['name'] || id;
-                options[id] = name;
+                const summary = await this.subscriptionRepo.getSubscriptionSummary(id);
+                options[id] = summary?.name || id;
             } catch {
                 options[id] = id;
             }
@@ -235,9 +236,9 @@ export class LoginComponent implements OnInit {
         const options: Record<string, string> = {};
         for (const id of clinicIds) {
             try {
-                const doc = await this.firestoreApi.getDocument('clinics', id);
-                const name = doc?.data?.['name'] || id;
-                const address = doc?.data?.['address'];
+                const summary = await this.clinicRepo.getClinicSummary(id);
+                const name = summary?.name || id;
+                const address = summary?.address;
                 options[id] = address ? `${name} — ${address}` : name;
             } catch {
                 options[id] = id;

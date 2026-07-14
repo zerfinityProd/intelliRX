@@ -9,7 +9,7 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { PatientService } from '../../services/patient';
 import { Patient } from '../../models/patient.model';
 import { NavbarComponent } from '../navbar/navbar';
-
+import { PatientContextService } from '../../services/patientContextService';
 import { normalizeEmail } from '../../utilities/normalize-email';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { generateTimeSlotsFromConfig } from '../../utilities/timeSlotUtils';
@@ -120,6 +120,7 @@ export class AddAppointmentComponent implements OnInit {
   private timeSlotService = inject(TimeSlotService);
   private leaveService = inject(LeaveService);
   private notificationService = inject(NotificationService);
+  private patientContextService = inject(PatientContextService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
@@ -1076,7 +1077,9 @@ export class AddAppointmentComponent implements OnInit {
     if (this.step === 'appointment-details') {
       if (this.openedFromPatientId) {
         this.clearFormSession();
-        this.router.navigate(['/patient', this.openedFromPatientId]);
+        // Navigate to patient view using context service — no ID in URL
+        this.patientContextService.setPatient(this.openedFromPatientId);
+        this.router.navigate(['/patient/view'], { state: { patientId: this.openedFromPatientId } });
         return;
       }
       this.step = 'new-patient-info';

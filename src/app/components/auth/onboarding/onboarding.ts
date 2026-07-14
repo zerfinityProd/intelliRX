@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ClinicService } from '../../../services/clinicService';
 import { ClinicContextService } from '../../../services/clinicContextService';
-import { FirestoreApiService } from '../../../services/firestore-api.service';
+import { AdminService } from '../../../services/adminService';
 import { AuthenticationService } from '../../../services/authenticationService';
 
 @Component({
@@ -28,7 +28,7 @@ export class OnboardingComponent {
     private router: Router,
     private clinicService: ClinicService,
     private clinicContext: ClinicContextService,
-    private api: FirestoreApiService,
+    private adminService: AdminService,
     private auth: AuthenticationService
   ) {}
 
@@ -60,17 +60,9 @@ export class OnboardingComponent {
       // Fetch the owner's clinic_users doc
       const userId = this.auth.getCurrentUserId();
       if (userId) {
-        const cuDocs = await this.api.runQuery('', {
-          collectionId: 'clinic_users',
-          filters: [
-            { field: 'user_id', op: '==', value: userId }
-          ]
-        });
-        if (cuDocs.length > 0) {
-          // Just update the first one since they just registered
-          await this.api.updateDocument('clinic_users', cuDocs[0].id, {
-            clinic_id: clinicId
-          });
+        const cuEntries = await this.adminService.getClinicUsersByUser(userId);
+        if (cuEntries.length > 0) {
+          await this.adminService.updateClinicUser(cuEntries[0].id!, { clinic_id: clinicId } as any);
         }
       }
 

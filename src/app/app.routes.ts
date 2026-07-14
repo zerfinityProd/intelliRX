@@ -3,6 +3,7 @@ import { Routes } from '@angular/router';
 import { authGuard, doctorGuard } from './guards/auth-guard';
 import { adminGuard } from './guards/admin-guard';
 import { superAdminGuard } from './guards/super-admin-guard';
+import { patientContextGuard } from './guards/patient-context.guard';
 
 export const routes: Routes = [
     // ── Public Routes (Website) ──
@@ -73,14 +74,17 @@ export const routes: Routes = [
         canActivate: [authGuard]
     },
     {
-        path: 'patient/:id',
+        // Secure route: patient ID is passed via history.state / PatientContextService,
+        // never exposed in the URL — prevents IDOR enumeration attacks.
+        path: 'patient/view',
         loadComponent: () => import('./components/patient-details/patient-details').then(m => m.PatientDetailsComponent),
-        canActivate: [doctorGuard]
+        canActivate: [patientContextGuard]
     },
     {
-        path: 'patient/:id/add-visit',
+        // Secure route: patient ID is passed via history.state / PatientContextService.
+        path: 'patient/add-visit',
         loadComponent: () => import('./components/add-visit-page/add-visit-page').then(m => m.AddVisitPageComponent),
-        canActivate: [doctorGuard]
+        canActivate: [patientContextGuard]
     },
     {
         path: 'add-appointment',

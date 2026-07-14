@@ -3,16 +3,18 @@ import { TestBed } from '@angular/core/testing';
 import { PatientService } from './patient';
 import { PatientSearchService } from './patientSearchService';
 import { AuthenticationService } from './authenticationService';
-import { PatientDataService } from './firebase';
+import { PatientRepository } from '../repositories/interfaces/patient.repository';
 import { ClinicContextService } from './clinicContextService';
+import { ConfigService } from './configService';
 import { Patient } from '../models/patient.model';
 
 describe('PatientService (Orchestrator)', () => {
   let service: PatientService;
   let searchService: any;
-  let firebaseService: any;
+  let patientRepo: any;
   let authService: any;
   let clinicContextService: any;
+  let configService: any;
 
   const mockPatient: Patient = {
     id: 'pat-123',
@@ -36,7 +38,7 @@ describe('PatientService (Orchestrator)', () => {
       clear: vi.fn()
     };
 
-    firebaseService = {
+    patientRepo = {
       getPatientById: vi.fn().mockResolvedValue(mockPatient),
       addPatient: vi.fn().mockResolvedValue('pat-new'),
       updatePatient: vi.fn().mockResolvedValue(undefined),
@@ -46,6 +48,8 @@ describe('PatientService (Orchestrator)', () => {
       deleteVisit: vi.fn().mockResolvedValue(undefined),
       searchPatientByPhone: vi.fn().mockResolvedValue({ results: [] }),
       searchPatientsContaining: vi.fn().mockResolvedValue({ results: [] }),
+      clearCache: vi.fn(),
+      PAGE_SIZE: 25,
     };
 
     authService = {
@@ -59,13 +63,18 @@ describe('PatientService (Orchestrator)', () => {
       requireSubscriptionId: vi.fn(() => 'sub_01'),
     };
 
+    configService = {
+      getSubscriptionConfig: vi.fn().mockResolvedValue(null),
+    };
+
     TestBed.configureTestingModule({
       providers: [
         PatientService,
         { provide: PatientSearchService, useValue: searchService },
-        { provide: PatientDataService, useValue: firebaseService },
+        { provide: PatientRepository, useValue: patientRepo },
         { provide: AuthenticationService, useValue: authService },
-        { provide: ClinicContextService, useValue: clinicContextService }
+        { provide: ClinicContextService, useValue: clinicContextService },
+        { provide: ConfigService, useValue: configService },
       ]
     });
 
@@ -99,12 +108,12 @@ describe('PatientService (Orchestrator)', () => {
   describe('CRUD Operations', () => {
     it('should fetch patient by ID', async () => {
       const result = await service.getPatient('pat-123');
-      expect(firebaseService.getPatientById).toHaveBeenCalledWith('pat-123');
+      expect(patientRepo.getPatientById).toHaveBeenCalledWith('pat-123');
       expect(result).toEqual(mockPatient);
     });
 
     it('should create new patient when no existing match', async () => {
-      firebaseService.searchPatientByPhone.mockResolvedValue({ results: [] });
+      patientRepo.searchPatientByPhone.mockResolvedValue({ results: [] });
 
       const patientData = {
         subscription_id: 'sub_01',
@@ -115,12 +124,12 @@ describe('PatientService (Orchestrator)', () => {
       } as Omit<Patient, 'id' | 'last_updated'>;
 
       const id = await service.createPatient(patientData);
-      expect(firebaseService.addPatient).toHaveBeenCalled();
+      expect(patientRepo.addPatient).toHaveBeenCalled();
       expect(id).toBe('pat-new');
     });
 
     it('should update existing patient when match found via createPatient', async () => {
-      firebaseService.searchPatientByPhone.mockResolvedValue({
+      patientRepo.searchPatientByPhone.mockResolvedValue({
         results: [{ ...mockPatient, name: 'John Doe', phone: '5551234567' }]
       });
 
@@ -134,7 +143,7 @@ describe('PatientService (Orchestrator)', () => {
       });
 
       expect(id).toBe('pat-123');
-      expect(firebaseService.updatePatient).toHaveBeenCalledWith(
+      expect(patientRepo.updatePatient).toHaveBeenCalledWith(
         'pat-123',
         expect.objectContaining({ ailments: 'cough, fever' })
       );
@@ -143,12 +152,12 @@ describe('PatientService (Orchestrator)', () => {
     it('should update existing patient', async () => {
       const updateData = { name: 'John Updated' };
       await service.updatePatient('pat-123', updateData);
-      expect(firebaseService.updatePatient).toHaveBeenCalledWith('pat-123', updateData);
+      expect(patientRepo.updatePatient).toHaveBeenCalledWith('pat-123', updateData);
     });
 
     it('should delete patient', async () => {
       await service.deletePatient('pat-123');
-      expect(firebaseService.deletePatient).toHaveBeenCalledWith('pat-123');
+      expect(patientRepo.deletePatient).toHaveBeenCalledWith('pat-123');
     });
 
     it('should select and expose patient via selectedPatient$', () => {
@@ -176,18 +185,18 @@ describe('PatientService (Orchestrator)', () => {
       };
 
       const visitId = await service.addVisit('pat-123', visitData);
-      expect(firebaseService.addVisit).toHaveBeenCalledWith(visitData);
+      expect(patientRepo.addVisit).toHaveBeenCalledWith(visitData);
       expect(visitId).toBe('visit-123');
     });
 
     it('should fetch patient visits', async () => {
       await service.getPatientVisits('pat-123');
-      expect(firebaseService.getPatientVisits).toHaveBeenCalledWith('pat-123');
+      expect(patientRepo.getPatientVisits).toHaveBeenCalledWith('pat-123');
     });
 
     it('should delete visit', async () => {
       await service.deleteVisit('pat-123', 'visit-456');
-      expect(firebaseService.deleteVisit).toHaveBeenCalledWith('visit-456');
+      expect(patientRepo.deleteVisit).toHaveBeenCalledWith('visit-456');
     });
   });
 
@@ -227,13 +236,13 @@ describe('PatientService (Orchestrator)', () => {
   // ──── EXISTENCE CHECKS ────
   describe('Existence Checks', () => {
     it('should check patient existence by name+phone', async () => {
-      firebaseService.searchPatientByPhone.mockResolvedValue({ results: [] });
+      patientRepo.searchPatientByPhone.mockResolvedValue({ results: [] });
       const exists = await service.checkPatientExists('John Doe', '5551234567');
       expect(exists).toBe(false);
     });
 
     it('should find existing patient by phone', async () => {
-      firebaseService.searchPatientByPhone.mockResolvedValue({
+      patientRepo.searchPatientByPhone.mockResolvedValue({
         results: [mockPatient]
       });
       const found = await service.findPatientByPhone('5551234567');
@@ -241,8 +250,8 @@ describe('PatientService (Orchestrator)', () => {
     });
 
     it('should return null when no patient found by phone', async () => {
-      firebaseService.searchPatientByPhone.mockResolvedValue({ results: [] });
-      firebaseService.searchPatientsContaining.mockResolvedValue({ results: [] });
+      patientRepo.searchPatientByPhone.mockResolvedValue({ results: [] });
+      patientRepo.searchPatientsContaining.mockResolvedValue({ results: [] });
       const found = await service.findPatientByPhone('0000000000');
       expect(found).toBeNull();
     });
@@ -284,13 +293,13 @@ describe('PatientService (Orchestrator)', () => {
   // ──── ERROR HANDLING ────
   describe('Error Handling', () => {
     it('should handle getPatient errors gracefully', async () => {
-      firebaseService.getPatientById.mockRejectedValue(new Error('Fetch failed'));
+      patientRepo.getPatientById.mockRejectedValue(new Error('Fetch failed'));
       await expect(service.getPatient('pat-123')).rejects.toThrow('Fetch failed');
     });
 
     it('should handle createPatient errors', async () => {
-      firebaseService.searchPatientByPhone.mockResolvedValue({ results: [] });
-      firebaseService.addPatient.mockRejectedValue(new Error('Create failed'));
+      patientRepo.searchPatientByPhone.mockResolvedValue({ results: [] });
+      patientRepo.addPatient.mockRejectedValue(new Error('Create failed'));
 
       await expect(
         service.createPatient({
@@ -303,7 +312,7 @@ describe('PatientService (Orchestrator)', () => {
     });
 
     it('should return empty array when getPatientVisits fails', async () => {
-      firebaseService.getPatientVisits.mockRejectedValue(new Error('Fetch failed'));
+      patientRepo.getPatientVisits.mockRejectedValue(new Error('Fetch failed'));
       const visits = await service.getPatientVisits('pat-123');
       expect(visits).toEqual([]);
     });

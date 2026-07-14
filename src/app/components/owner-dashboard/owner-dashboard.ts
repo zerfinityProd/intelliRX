@@ -5,7 +5,7 @@ import { Router } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
 import { ClinicService } from '../../services/clinicService';
 import { ClinicContextService } from '../../services/clinicContextService';
-import { FirestoreApiService } from '../../services/firestore-api.service';
+import { AdminService } from '../../services/adminService';
 import { ClinicConfigModalComponent } from './clinic-config-modal/clinic-config-modal';
 import { StaffConfigModalComponent } from './staff-config-modal/staff-config-modal';
 
@@ -47,7 +47,7 @@ export class OwnerDashboardComponent implements OnInit {
     private auth: AuthenticationService,
     private clinicService: ClinicService,
     private clinicContext: ClinicContextService,
-    private api: FirestoreApiService
+    private adminService: AdminService
   ) {}
 
   async ngOnInit() {
@@ -63,24 +63,21 @@ export class OwnerDashboardComponent implements OnInit {
     
     // Fetch subscription details
     const subId = this.clinicContext.requireSubscriptionId();
-    const subDoc = await this.api.getDocument('subscriptions', subId);
-    if (subDoc) {
-      this.subscription = { id: subDoc.id, ...subDoc.data };
-      this.selectedPlan = this.subscription.plan || 'Pro';
+    const sub = await this.adminService.getSubscription(subId);
+    if (sub) {
+      this.subscription = sub as any;
+      this.selectedPlan = (this.subscription as any).plan || 'Pro';
     }
 
     const staffMap = new Map();
     for (const clinic of this.clinics) {
-      const cuDocs = await this.api.runQuery('', {
-        collectionId: 'clinic_users',
-        filters: [{ field: 'clinic_id', op: '==', value: clinic.id }]
-      });
+      const cuEntries = await this.adminService.getClinicUsersForClinic(clinic.id);
 
-      for (const doc of cuDocs) {
-        const data = doc.data;
-        if (data['status'] === 'deleted') continue; // Skip deleted staff
+      for (const cu of cuEntries) {
+        const data = cu as any;
+        if (data['status'] === 'deleted') continue;
         
-        const userId = data['user_id'];
+        const userId = cu.user_id;
         if (!userId) continue;
 
         // Fetch user doc to get role and name
@@ -88,10 +85,10 @@ export class OwnerDashboardComponent implements OnInit {
         let userRole = 'doctor';
         let isOwner = false;
         try {
-          const userDoc = await this.api.getDocument('users', userId);
-          if (userDoc) {
-            userName = userDoc.data['name'] || 'Staff User';
-            const globalRoles: string[] = userDoc.data['global_roles'] || [];
+          const user = await this.adminService.getUserById(userId);
+          if (user) {
+            userName = (user as any).name || 'Staff User';
+            const globalRoles: string[] = (user as any).global_roles || [];
             isOwner = globalRoles.includes('subscription_owner');
             if (globalRoles.includes('receptionist') || globalRoles.includes('recep')) {
               userRole = 'receptionist';
@@ -110,10 +107,10 @@ export class OwnerDashboardComponent implements OnInit {
         if (!staffMap.has(userId)) {
           staffMap.set(userId, { 
             id: userId, 
-            clinicUserId: doc.id,
+            clinicUserId: cu.id || (data as any)['id'],
             name: userName, 
             role: userRole, 
-            clinics: [data['clinic_id']],
+          clinics: [data['clinic_id']],
             status: data['status'] || 'active',
             availability: data['availability'] || {}
           });
@@ -138,37 +135,33 @@ export class OwnerDashboardComponent implements OnInit {
       const newRole = this.inviteForm.role;
 
       // Check if a user with this email already exists
-      const existingDocs = await this.api.runQuery('', {
-        collectionId: 'users',
-        filters: [{ field: 'email', op: '==', value: normalizedEmail }],
-      });
+      const existingUser = await this.adminService.getUserByEmail(normalizedEmail);
 
-      if (existingDocs.length > 0) {
-        const existingName = existingDocs[0].data['name'] || normalizedEmail;
+      if (existingUser) {
+        const existingName = (existingUser as any).name || normalizedEmail;
         alert(`A staff member with email "${normalizedEmail}" already exists (${existingName}). Please use the Edit button to update their roles or assignments.`);
         this.isInviting = false;
         return;
       }
 
       // No existing user — create a new user doc
-      const userId = await this.api.getNextSequentialId('usr');
-      await this.api.setDocument('users', userId, {
+      await this.adminService.createUser({
         email: normalizedEmail,
         name: this.inviteForm.name,
         global_roles: [newRole],
         status: 'active',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      });
+      } as any);
 
-      // Create clinic_users doc
-      const cuId = await this.api.getNextSequentialId('clu');
-      await this.api.setDocument('clinic_users', cuId, {
-        user_id: userId,
-        clinic_id: this.inviteForm.clinicId,
-        role: newRole,
-        status: 'active'
-      });
+      // Create clinic_users doc for the new user's clinic assignment
+      const createdUser = await this.adminService.getUserByEmail(normalizedEmail);
+      if (createdUser) {
+        await this.adminService.createClinicUser({
+          user_id: createdUser.id!,
+          clinic_id: this.inviteForm.clinicId,
+          role: newRole as any,
+          status: 'active' as any,
+        });
+      }
 
       this.showInviteModal = false;
       this.inviteForm = { email: '', name: '', role: 'doctor', clinicId: this.clinics[0]?.id || '' };
@@ -203,7 +196,7 @@ export class OwnerDashboardComponent implements OnInit {
   async deleteStaff(staff: any) {
     if (!confirm('Are you sure you want to deactivate this staff member?')) return;
     try {
-      await this.api.updateDocument('clinic_users', staff.clinicUserId, { status: 'deleted' });
+      await this.adminService.updateClinicUser(staff.clinicUserId, { status: 'deleted' as any });
       await this.loadData();
     } catch (e) {
       alert('Failed to delete staff member');
@@ -214,7 +207,7 @@ export class OwnerDashboardComponent implements OnInit {
     if (!confirm('Are you sure you want to delete this clinic?')) return;
     try {
       // Soft delete clinic by updating status flag
-      await this.api.updateDocument('clinics', clinic.id, { status: 'deleted' });
+      await this.adminService.deleteClinic(clinic.id);
       await this.loadData();
     } catch (e) {
       alert('Failed to delete clinic');
@@ -225,10 +218,7 @@ export class OwnerDashboardComponent implements OnInit {
     if (!this.subscription?.id || !this.selectedPlan) return;
     this.isChangingPlan = true;
     try {
-      await this.api.updateDocument('subscriptions', this.subscription.id, {
-        plan: this.selectedPlan,
-        updated_at: new Date().toISOString()
-      });
+      await this.adminService.updateSubscription(this.subscription.id, { plan: this.selectedPlan } as any);
       this.showPlanModal = false;
       await this.loadData();
     } catch (e) {

@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClinicUserAvailability } from '../../../models/clinic-user.model';
-import { FirestoreApiService } from '../../../services/firestore-api.service';
+import { AdminService } from '../../../services/adminService';
 
 @Component({
   selector: 'app-staff-config-modal',
@@ -32,7 +32,7 @@ export class StaffConfigModalComponent {
 
   availability: ClinicUserAvailability = {};
 
-  constructor(private api: FirestoreApiService) {}
+  constructor(private adminService: AdminService) {}
 
   ngOnChanges() {
     if (this.show && this.staff) {
@@ -73,10 +73,9 @@ export class StaffConfigModalComponent {
     this.isSaving = true;
 
     try {
-      await this.api.updateDocument('clinic_users', this.staff.clinicUserId, {
-        status: this.status,
-        availability: this.availability,
-        updated_at: new Date().toISOString()
+      await this.adminService.updateClinicUser(this.staff.clinicUserId, {
+        status: this.status as any,
+        availability: this.availability
       });
       this.savedEvent.emit();
     } catch (e) {

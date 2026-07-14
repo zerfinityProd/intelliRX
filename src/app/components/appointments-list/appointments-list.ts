@@ -25,6 +25,7 @@ import { DoctorCacheService } from '../../services/doctorCacheService';
 import { AutoCancelService } from '../../services/autoCancelService';
 import { formatTime as sharedFormatTime, formatDate as sharedFormatDate, formatSlotLabel as sharedFormatSlotLabel, formatLocalDate as sharedFormatLocalDate, normalizePhoneDigits, isSameLocalDay, isToday as sharedIsToday, isFuture as sharedIsFuture } from '../../utilities/date-helpers';
 import { BoardColumn } from '../../interfaces/board-column';
+import { PatientContextService } from '../../services/patientContextService';
 
 @Component({
   selector: 'app-appointments-list',
@@ -99,6 +100,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private timeSlotService = inject(TimeSlotService);
   private doctorCacheService = inject(DoctorCacheService);
   private autoCancelService = inject(AutoCancelService);
+  private patientContextService = inject(PatientContextService);
 
   private refreshTimer: ReturnType<typeof setInterval> | null = null;
   private autoCancelCleanup: (() => void) | null = null;
@@ -710,8 +712,9 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       const datetimeStr = appt.datetime instanceof Date
         ? appt.datetime.toISOString()
         : (appt.datetime ? String(appt.datetime) : '');
-      this.router.navigate(['/patient', directPatientId, 'add-visit'], {
-        state: { origin: 'appointments', appointmentId: appt.id || '', appointmentDatetime: datetimeStr }
+      this.patientContextService.setPatient(directPatientId);
+      this.router.navigate(['/patient/add-visit'], {
+        state: { origin: 'appointments', patientId: directPatientId, appointmentId: appt.id || '', appointmentDatetime: datetimeStr }
       });
       return;
     }

@@ -7,6 +7,7 @@ import { Patient, Visit } from '../../models/patient.model';
 import { PatientService } from '../../services/patient';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AuthorizationService, UserPermissions } from '../../services/authorizationService';
+import { PatientContextService } from '../../services/patientContextService';
 import { PatientStatsComponent } from '../patient-stats/patient-stats';
 import { EditPatientInfoComponent } from '../edit-patient-info/edit-patient-info';
 import { NavbarComponent } from '../navbar/navbar';
@@ -61,6 +62,7 @@ export class PatientDetailsComponent implements OnInit {
   private readonly patientService = inject(PatientService);
   private readonly authService = inject(AuthenticationService);
   private readonly authorizationService = inject(AuthorizationService);
+  private readonly patientContextService = inject(PatientContextService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
 
@@ -83,13 +85,15 @@ export class PatientDetailsComponent implements OnInit {
       });
     }
 
-    const patientId = this.route.snapshot.paramMap.get('id');
+    // Read patient ID from PatientContextService (set by the guard or navigator).
+    // This never touches the URL, preventing IDOR exposure.
+    const patientId = this.patientContextService.getPatientId();
 
-    console.log('🔍 Patient Details - Loading patient:', patientId);
+    console.log('🔍 Patient Details - Loading patient:', patientId ? '[REDACTED]' : 'null');
 
     if (!patientId) {
       this.ngZone.run(() => {
-        this.errorMessage = 'Invalid patient ID';
+        this.errorMessage = 'Invalid patient context';
         this.isLoadingPatient = false;
         this.cdr.detectChanges();
       });
@@ -176,7 +180,8 @@ export class PatientDetailsComponent implements OnInit {
   // Navigate to the dedicated Add Visit page
   openAddVisitForm(): void {
     if (this.patient) {
-      this.router.navigate(['/patient', this.patient.id, 'add-visit'], { state: { origin: 'patient' } });
+      this.patientContextService.setPatient(this.patient.id!);
+      this.router.navigate(['/patient/add-visit'], { state: { origin: 'patient', patientId: this.patient.id } });
     }
   }
 
@@ -278,9 +283,11 @@ export class PatientDetailsComponent implements OnInit {
   // ── Edit Visit ──
   startEditVisit(visit: Visit): void {
     if (!this.patient) return;
-    this.router.navigate(['/patient', this.patient.id, 'add-visit'], {
+    this.patientContextService.setPatient(this.patient.id!);
+    this.router.navigate(['/patient/add-visit'], {
       state: {
         origin: 'patient',
+        patientId: this.patient.id,
         editVisitId: visit.id,
         editVisitData: visit
       }

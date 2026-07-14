@@ -1,5 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService, DELETE_FIELD } from './firestore-api.service';
+import { UserRepository, UserRecord } from '../repositories/interfaces/user.repository';
+import { ClinicRepository } from '../repositories/interfaces/clinic.repository';
+import { SubscriptionRepository } from '../repositories/interfaces/subscription.repository';
 import { normalizeEmail } from '../utilities/normalize-email';
 import { ClinicUserAvailability } from '../models/clinic-user.model';
 import { ConfigService } from './configService';
@@ -66,7 +68,9 @@ interface UserLookupResult {
     providedIn: 'root'
 })
 export class AuthorizationService {
-    private api = inject(FirestoreApiService);
+    private userRepo = inject(UserRepository);
+    private clinicRepo = inject(ClinicRepository);
+    private subscriptionRepo = inject(SubscriptionRepository);
     private configService = inject(ConfigService);
 
     /** Per-email lookup cache */
@@ -100,82 +104,53 @@ export class AuthorizationService {
 
         try {
             // Step 1: Find user in top-level users collection by email
-            let userDocs = await this.api.runQuery('', {
-                collectionId: 'users',
-                filters: [
-                    { field: 'email', op: '==', value: normalized }
-                ],
-            });
+            let userDocs: UserRecord[] = [];
+            const userByEmail = await this.userRepo.getUserByEmail(normalized);
+            if (userByEmail) {
+                userDocs = [userByEmail];
+            } else {
+                // Keep userDocs empty — fallback will run
+            }
+            // Convert to { id, data } shape for compatibility with rest of logic
+            let rawUserDocs: Array<{ id: string; data: any }> = userDocs.map(u => ({ id: u.id!, data: u }));
 
             // Fallback: if where-query returned 0 docs, fetch all and match client-side.
-            // This handles cases where Firestore field keys have invisible characters,
-            // security rules silently block the query, or field name casing differs.
-            let corruptedKey: string | null = null;
-            if (userDocs.length === 0) {
+            // This handles cases where Firestore field keys have invisible characters.
+            if (rawUserDocs.length === 0) {
                 console.warn('[AuthZ] where-query returned 0 docs for', normalized, '— trying client-side fallback');
-                const allUsers = await this.api.listDocuments('users', 300);
+                const allUsers = await this.userRepo.getAllUsers(300);
                 console.log('[AuthZ] Fetched', allUsers.length, 'docs from users collection for fallback');
 
-                const matchedDoc = allUsers.find(d => {
-                    const data = d.data;
-                    for (const key of Object.keys(data)) {
-                        if (typeof data[key] !== 'string') continue;
-                        // Compare after stripping invisible chars from BOTH the stored value and the search email
-                        const cleanValue = stripInvisible(data[key]).toLowerCase();
+                const matchedUser = allUsers.find(u => {
+                    for (const key of Object.keys(u)) {
+                        const val = (u as any)[key];
+                        if (typeof val !== 'string') continue;
+                        const cleanValue = stripInvisible(val).toLowerCase();
                         if (cleanValue === normalized) {
-                            // Track which key held the email so we can auto-fix it
-                            const cleanKey = stripInvisible(key).toLowerCase();
-                            if (cleanKey === 'email' && key !== 'email') {
-                                corruptedKey = key;
-                            }
-                            console.log('[AuthZ] Fallback matched doc', d.id, 'via key', JSON.stringify(key));
+                            console.log('[AuthZ] Fallback matched doc', u.id, 'via key', JSON.stringify(key));
                             return true;
                         }
                     }
                     return false;
                 });
 
-                if (!matchedDoc) {
-                    // Log detailed diagnostics for debugging
+                if (!matchedUser) {
                     console.warn('[AuthZ] User not found in users collection (even with fallback):', normalized);
-                    allUsers.forEach(d => {
-                        const data = d.data;
-                        const keys = Object.keys(data);
-                        const emailLikeValues = keys
-                            .filter(k => typeof data[k] === 'string' && data[k].includes('@'))
-                            .map(k => `${JSON.stringify(k)}=${JSON.stringify(data[k])}`);
-                        console.warn('[AuthZ]   doc', d.id, 'email-like fields:', emailLikeValues.join(', ') || '(none)');
-                    });
                     return null;
                 }
 
-                // Auto-fix corrupted field key (e.g. "email\t" → "email")
-                if (corruptedKey) {
-                    try {
-                        await this.api.updateDocument('users', matchedDoc.id, {
-                            'email': matchedDoc.data[corruptedKey],
-                            [corruptedKey]: DELETE_FIELD
-                        });
-                        console.log('[AuthZ] Auto-fixed corrupted field', JSON.stringify(corruptedKey),
-                            '→ "email" on doc', matchedDoc.id);
-                    } catch (fixErr) {
-                        console.warn('[AuthZ] Could not auto-fix corrupted field:', fixErr);
-                    }
-                }
-
-                console.log('[AuthZ] Found user via client-side fallback:', matchedDoc.id);
-                userDocs = [matchedDoc];
+                console.log('[AuthZ] Found user via client-side fallback:', matchedUser.id);
+                rawUserDocs = [{ id: matchedUser.id!, data: matchedUser }];
             }
 
-            // Handle multiple user documents: aggregate clinic_users from ALL docs
-            // so that assignments across different subscriptions are all visible.
-            let userDoc = userDocs[0];
-            if (userDocs.length > 1) {
-                console.warn('[AuthZ] Found', userDocs.length, 'user docs for email:', normalized,
-                    '— IDs:', userDocs.map(d => d.id).join(', '), '— aggregating assignments from all');
+            // Handle multiple user documents: aggregate clinic_users from ALL docs.
+            let rawUserDoc = rawUserDocs[0];
+            if (rawUserDocs.length > 1) {
+                console.warn('[AuthZ] Found', rawUserDocs.length, 'user docs for email:', normalized,
+                    '— IDs:', rawUserDocs.map(d => d.id).join(', '), '— aggregating assignments from all');
             }
-            const userData = userDoc.data;
-            const userId = userDoc.id;
+            const userData = rawUserDoc.data;
+            const userId = rawUserDoc.id;
 
             // Helper: get a field value by name, tolerating invisible chars in keys
             const getField = (data: any, fieldName: string): any => {
@@ -222,25 +197,18 @@ export class AuthorizationService {
             // Any permissions fields on user docs are ignored.
 
             // Step 2: Find clinic_users entries for ALL user docs (not just one).
-            // This aggregates assignments across different subscriptions.
             const allCuDocs: Array<{ id: string; data: any }> = [];
-            for (const doc of userDocs) {
-                const cuDocs = await this.api.runQuery('', {
-                    collectionId: 'clinic_users',
-                    filters: [
-                        { field: 'user_id', op: '==', value: doc.id }
-                    ],
-                });
-                console.log(`[AuthZ] clinic_users query for user_id="${doc.id}" returned ${cuDocs.length} docs`);
-                cuDocs.forEach((d, i) => {
-                    const cd = d.data;
-                    console.log(`[AuthZ]   clinic_users[${i}] id=${d.id}`,
-                        `clinic_id="${cd['clinic_id']}"`,
-                        `status="${cd['status'] ?? '(missing→active)'}"`,
-                        `user_id="${cd['user_id']}"`
+            for (const doc of rawUserDocs) {
+                const cuEntries = await this.userRepo.getClinicUsersByUserId(doc.id);
+                console.log(`[AuthZ] clinic_users query for user_id="${doc.id}" returned ${cuEntries.length} docs`);
+                cuEntries.forEach((cu, i) => {
+                    console.log(`[AuthZ]   clinic_users[${i}] id=${cu.id}`,
+                        `clinic_id="${cu.clinic_id}"`,
+                        `status="${(cu as any)['status'] ?? '(missing→active)'}"`,
+                        `user_id="${cu.user_id}"`
                     );
                 });
-                allCuDocs.push(...cuDocs);
+                allCuDocs.push(...cuEntries.map(cu => ({ id: cu.id!, data: cu })));
             }
 
             if (allCuDocs.length === 0) {
@@ -268,9 +236,9 @@ export class AuthorizationService {
             const clinicSubMap = new Map<string, string>();
             for (const cId of activeClinicIds) {
                 try {
-                    const clinicDoc = await this.api.getDocument('clinics', cId);
-                    if (clinicDoc) {
-                        clinicSubMap.set(cId, clinicDoc.data['subscription_id'] || '');
+                    const clinic = await this.clinicRepo.getClinicById(cId);
+                    if (clinic) {
+                        clinicSubMap.set(cId, clinic.subscription_id || '');
                     }
                 } catch {
                     console.warn(`[AuthZ] Could not fetch clinic doc for clinic_id=${cId}`);
@@ -338,36 +306,14 @@ export class AuthorizationService {
      * Reads: roles/{roleName} → permissions array (e.g. ["VIEW_APPOINTMENT", "WRITE_PRESCRIPTION"])
      */
     private async loadRoleDefaults(roleName: string): Promise<string[]> {
-        // Check cache
         if (this.roleDefaultsCache.has(roleName)) {
             return this.roleDefaultsCache.get(roleName)!;
         }
-
         try {
-            const result = await this.api.getDocument('roles', roleName);
-
-            let permissions: string[] = [];
-            if (result) {
-                const data = result.data;
-                // The roles collection stores permissions as an array value
-                // e.g. roles/doctor: ["VIEW_APPOINTMENT", "WRITE_PRESCRIPTION"]
-                // or as a permissions field
-                if (Array.isArray(data)) {
-                    permissions = data;
-                } else if (data['permissions'] && Array.isArray(data['permissions'])) {
-                    permissions = data['permissions'];
-                } else {
-                    // The document value itself may be the permission list
-                    // Try to extract from the document fields
-                    const keys = Object.keys(data);
-                    if (keys.length > 0 && Array.isArray(data[keys[0]])) {
-                        permissions = data[keys[0]];
-                    }
-                }
-            } else {
+            const permissions = await this.userRepo.getRolePermissions(roleName);
+            if (!permissions.length) {
                 console.warn(`No global role defaults for: roles/${roleName}`);
             }
-
             this.roleDefaultsCache.set(roleName, permissions);
             return permissions;
         } catch (error) {
@@ -422,24 +368,20 @@ export class AuthorizationService {
             return existing.role;
         }
 
-        console.log('[AuthZ] Auto-provisioning Firestore user doc for:', normalized);
+        console.log('[AuthZ] Auto-provisioning user doc for:', normalized);
 
-        const userDocId = await this.api.getNextSequentialId('usr');
         const defaultRole = 'doctor';
-
-        await this.api.setDocument('users', userDocId, {
+        await this.userRepo.createUser({
             name: displayName || normalized.split('@')[0] || 'User',
             email: normalized,
             global_roles: [defaultRole],
             status: 'active',
-            created_at: new Date().toISOString(),
-            auto_provisioned: true
-        });
+            auto_provisioned: true,
+        } as any);
 
-        // Invalidate cache so subsequent lookups find the new doc
         this.lookupCache.delete(normalized);
 
-        console.log('[AuthZ] Auto-provisioned user doc:', userDocId, 'for:', normalized);
+        console.log('[AuthZ] Auto-provisioned user doc for:', normalized);
         return defaultRole;
     }
 
@@ -556,13 +498,11 @@ export class AuthorizationService {
             console.warn('[AuthZ] getUserSubscriptionId: no assignments from lookupUser for', normalized,
                 '— falling back to subscriptions query by owner_email');
             try {
-                const subDocs = await this.api.runQuery('', {
-                    collectionId: 'subscriptions',
-                    filters: [{ field: 'owner_email', op: '==', value: normalized }],
-                });
-                if (subDocs.length > 0) {
-                    console.log('[AuthZ] Fallback subscription found via owner_email:', subDocs[0].id);
-                    return subDocs[0].id;
+                const allSubs = await this.subscriptionRepo.getSubscriptions();
+                const ownerSub = allSubs.find(s => (s as any)['owner_email'] === normalized);
+                if (ownerSub) {
+                    console.log('[AuthZ] Fallback subscription found via owner_email:', ownerSub.id);
+                    return ownerSub.id;
                 }
             } catch (fallbackErr) {
                 console.warn('[AuthZ] Fallback subscriptions query failed:', fallbackErr);
@@ -690,40 +630,32 @@ export class AuthorizationService {
 
             // Single-field query then client-side clinic_id match — more robust than
             // a compound query which silently returns 0 rows on user_id mismatch.
-            const cuDocs = await this.api.runQuery('', {
-                collectionId: 'clinic_users',
-                filters: [
-                    { field: 'user_id', op: '==', value: result.userId }
-                ],
-            });
+            const cuEntries = await this.userRepo.getClinicUsersByUserId(result.userId);
 
-            console.log('[Avail] clinic_users for userId', result.userId, '→', cuDocs.length, 'docs',
-                cuDocs.map(d =>
-                    `id=${d.id} clinic_id=${d.data['clinic_id']} status=${d.data['status']} avail_keys=${Object.keys(d.data['availability'] || {}).join(',') || 'none'}`
+            console.log('[Avail] clinic_users for userId', result.userId, '→', cuEntries.length, 'docs',
+                cuEntries.map(cu =>
+                    `id=${cu.id} clinic_id=${cu.clinic_id} status=${(cu as any)['status']} avail_keys=${Object.keys(cu.availability || {}).join(',') || 'none'}`
                 ).join(' | '));
 
             // Find the doc matching this clinic.
-            // NOTE: We do NOT filter by status here — a doctor marked 'inactive' in one context
-            // may still have their availability schedule stored. We pick the doc that has the
-            // availability map; if multiple exist we prefer the one with a non-empty map.
-            const allMatchingDocs = cuDocs.filter(d => d.data['clinic_id'] === clinicId);
+            const allMatchingDocs = cuEntries.filter(cu => cu.clinic_id === clinicId);
 
             if (allMatchingDocs.length === 0) {
                 console.warn('[Avail] No clinic_users doc for clinicId:', clinicId,
-                    '— found clinic_ids:', cuDocs.map(d => d.data['clinic_id']));
+                    '— found clinic_ids:', cuEntries.map(cu => cu.clinic_id));
                 return null;
             }
 
             // Prefer a doc that has a populated availability map
             const matchingDoc =
-                allMatchingDocs.find(d => {
-                    const av = d.data['availability'];
+                allMatchingDocs.find(cu => {
+                    const av = cu.availability;
                     return av && typeof av === 'object' && !Array.isArray(av) && Object.keys(av).length > 0;
                 }) ?? allMatchingDocs[0];
 
-            const availability = matchingDoc.data['availability'];
+            const availability = matchingDoc.availability;
             console.log('[Avail] matched doc', matchingDoc.id,
-                'status=', matchingDoc.data['status'],
+                'status=', (matchingDoc as any)['status'],
                 'availability=', JSON.stringify(availability));
 
             if (!availability || typeof availability !== 'object' || Array.isArray(availability)) {
@@ -747,51 +679,35 @@ export class AuthorizationService {
     async getDoctorsForClinic(clinicId: string): Promise<Array<{ id: string; name: string; specialty: string; avatar: string; email: string }>> {
         if (!clinicId) return [];
         try {
-            const cuDocs = await this.api.runQuery('', {
-                collectionId: 'clinic_users',
-                filters: [
-                    { field: 'clinic_id', op: '==', value: clinicId }
-                ],
-            });
+            const cuEntries = await this.userRepo.getClinicUsersByClinic(clinicId);
 
             const doctors: Array<{ id: string; name: string; specialty: string; avatar: string; email: string }> = [];
             const seenUserIds = new Set<string>();
 
-            for (const cuDoc of cuDocs) {
-                const cuData = cuDoc.data;
-                const status = cuData['status'] || 'active';
+            for (const cu of cuEntries) {
+                const status = (cu as any)['status'] || 'active';
                 if (status !== 'active') continue;
 
-                const userId = cuData['user_id'];
+                const userId = cu.user_id;
                 if (!userId || seenUserIds.has(userId)) continue;
                 seenUserIds.add(userId);
 
-                // Fetch user document for name/email/role
                 try {
-                    const userResult = await this.api.getDocument('users', userId);
-                    if (!userResult) continue;
+                    const user = await this.userRepo.getUserById(userId);
+                    if (!user) continue;
 
-                    const userData = userResult.data;
-
-                    // Check if user has 'doctor' role in global_roles
-                    const globalRoles: string[] = userData['global_roles'] || [];
+                    const globalRoles: string[] = (user as any).global_roles || [];
                     const isDoctor = globalRoles.some((r: string) => r === 'doctor');
                     if (!isDoctor) continue;
 
-                    const email = (userData['email'] || '').trim().toLowerCase();
-                    const name = userData['name'] || email.split('@')[0] || 'Doctor';
-                    const specialty = userData['specialization'] || userData['specialty'] || '';
+                    const email = ((user as any).email || '').trim().toLowerCase();
+                    const name = (user as any).name || email.split('@')[0] || 'Doctor';
+                    const specialty = (user as any).specialization || (user as any).specialty || '';
                     const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
 
-                    doctors.push({
-                        id: `dr_${userId}`,
-                        name,
-                        specialty,
-                        avatar: initials,
-                        email
-                    });
+                    doctors.push({ id: `dr_${userId}`, name, specialty, avatar: initials, email });
                 } catch {
-                    // Skip this doctor if user doc fails
+                    // Skip
                 }
             }
 
@@ -810,60 +726,38 @@ export class AuthorizationService {
     async getDoctorsForSubscription(subscriptionId: string): Promise<Array<{ id: string; name: string; specialty: string; avatar: string; email: string }>> {
         if (!subscriptionId) return [];
         try {
-            // First, fetch all clinics for this subscription
-            const clinicDocs = await this.api.runQuery('', {
-                collectionId: 'clinics',
-                filters: [
-                    { field: 'subscription_id', op: '==', value: subscriptionId }
-                ],
-            });
-            const clinicIds = clinicDocs.map(d => d.id);
+            const clinics = await this.clinicRepo.getClinics(subscriptionId);
+            const clinicIds = clinics.map(c => c.id!);
             if (clinicIds.length === 0) return [];
 
-            // Fetch clinic_users for each clinic
             const doctors: Array<{ id: string; name: string; specialty: string; avatar: string; email: string }> = [];
             const seenUserIds = new Set<string>();
 
             for (const clinicId of clinicIds) {
-                const cuDocs = await this.api.runQuery('', {
-                    collectionId: 'clinic_users',
-                    filters: [
-                        { field: 'clinic_id', op: '==', value: clinicId }
-                    ],
-                });
+                const cuEntries = await this.userRepo.getClinicUsersByClinic(clinicId);
 
-                for (const cuDoc of cuDocs) {
-                    const cuData = cuDoc.data;
-                    const status = cuData['status'] || 'active';
+                for (const cu of cuEntries) {
+                    const status = (cu as any)['status'] || 'active';
                     if (status !== 'active') continue;
 
-                    const userId = cuData['user_id'];
+                    const userId = cu.user_id;
                     if (!userId || seenUserIds.has(userId)) continue;
                     seenUserIds.add(userId);
 
                     try {
-                        const userResult = await this.api.getDocument('users', userId);
-                        if (!userResult) continue;
+                        const user = await this.userRepo.getUserById(userId);
+                        if (!user) continue;
 
-                        const userData = userResult.data;
-
-                        // Check if user has 'doctor' role in global_roles
-                        const globalRoles: string[] = userData['global_roles'] || [];
+                        const globalRoles: string[] = (user as any).global_roles || [];
                         const isDoctor = globalRoles.some((r: string) => r === 'doctor');
                         if (!isDoctor) continue;
 
-                        const email = (userData['email'] || '').trim().toLowerCase();
-                        const name = userData['name'] || email.split('@')[0] || 'Doctor';
-                        const specialty = userData['specialization'] || userData['specialty'] || '';
+                        const email = ((user as any).email || '').trim().toLowerCase();
+                        const name = (user as any).name || email.split('@')[0] || 'Doctor';
+                        const specialty = (user as any).specialization || (user as any).specialty || '';
                         const initials = name.split(' ').filter(Boolean).map((w: string) => w[0]?.toUpperCase() || '').join('').slice(0, 2);
 
-                        doctors.push({
-                            id: `dr_${userId}`,
-                            name,
-                            specialty,
-                            avatar: initials,
-                            email
-                        });
+                        doctors.push({ id: `dr_${userId}`, name, specialty, avatar: initials, email });
                     } catch {
                         // Skip
                     }
@@ -886,18 +780,10 @@ export class AuthorizationService {
     async getAllClinicsForSubscription(subscriptionId: string): Promise<Array<{ id: string; name: string }>> {
         if (!subscriptionId) return [];
         try {
-            const clinicDocs = await this.api.runQuery('', {
-                collectionId: 'clinics',
-                filters: [
-                    { field: 'subscription_id', op: '==', value: subscriptionId }
-                ],
-            });
-            return clinicDocs
-                .filter(d => (d.data['status'] || 'active') === 'active')
-                .map(d => ({
-                    id: d.id,
-                    name: d.data['name'] || d.id
-                }));
+            const clinics = await this.clinicRepo.getClinics(subscriptionId);
+            return clinics
+                .filter(c => (c.status || 'active') === 'active')
+                .map(c => ({ id: c.id!, name: c.name || c.id! }));
         } catch (error) {
             console.error('getAllClinicsForSubscription failed:', subscriptionId, error);
             return [];
@@ -928,28 +814,23 @@ export class AuthorizationService {
             if (!subscriptionId) {
                 // Admin-only users (no clinic assignment) — try via subscriptions.owner_email
                 const normalized = normalizeEmail(email);
-                const subDocs = await this.api.runQuery('', {
-                    collectionId: 'subscriptions',
-                    filters: [{ field: 'owner_email', op: '==', value: normalized }],
-                });
-                if (subDocs.length === 0) return 'not_found';
-                const sub = subDocs[0].data;
-                const validUntil = await this.resolveValidUntil(subDocs[0].id, sub);
-                if (!validUntil) return 'valid'; // fail-open when unable to determine
-                const isExpired = this.configService.isSubscriptionExpired(validUntil);
-                return isExpired ? 'expired' : 'valid';
+                const allSubs = await this.subscriptionRepo.getSubscriptions();
+                const ownerSub = allSubs.find(s => (s as any)['owner_email'] === normalized);
+                if (!ownerSub) return 'not_found';
+                const validUntil = await this.resolveValidUntil(ownerSub.id, ownerSub as any);
+                if (!validUntil) return 'valid';
+                return this.configService.isSubscriptionExpired(validUntil) ? 'expired' : 'valid';
             }
 
-            const subDoc = await this.api.getDocument('subscriptions', subscriptionId);
-            if (!subDoc) return 'not_found';
+            const sub = await this.subscriptionRepo.getSubscriptionById(subscriptionId);
+            if (!sub) return 'not_found';
 
-            const validUntil = await this.resolveValidUntil(subDoc.id, subDoc.data);
-            if (!validUntil) return 'valid'; // fail-open when unable to determine
-            const isExpired = this.configService.isSubscriptionExpired(validUntil);
-            return isExpired ? 'expired' : 'valid';
+            const validUntil = await this.resolveValidUntil(sub.id, sub as any);
+            if (!validUntil) return 'valid';
+            return this.configService.isSubscriptionExpired(validUntil) ? 'expired' : 'valid';
         } catch (error) {
             console.warn('[AuthZ] checkSubscriptionExpiry failed for:', email, error);
-            return 'valid'; // fail-open: don't block login on check errors
+            return 'valid';
         }
     }
 
@@ -968,7 +849,7 @@ export class AuthorizationService {
             const expiry = new Date(baseDate);
             expiry.setDate(expiry.getDate() + validityDays);
             const valid_until = expiry.toISOString();
-            await this.api.updateDocument('subscriptions', subId, { valid_until });
+            await this.subscriptionRepo.updateSubscription(subId, { valid_until } as any);
             console.log('[AuthZ] Backfilled valid_until:', valid_until, 'for sub:', subId);
             return valid_until;
         } catch (e) {

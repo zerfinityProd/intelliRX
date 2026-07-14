@@ -1,8 +1,20 @@
+// src/app/repositories/firebase/firestore-api.service.ts
+//
+// ─── FIRESTORE REST API CLIENT ────────────────────────────────────────────────
+//
+// A thin HTTP wrapper over the Firestore REST API. This file has NO dependency
+// on the Firestore JS SDK (@angular/fire/firestore). It only needs an auth
+// token (via AuthTokenProvider) and the project ID from the environment.
+//
+// This file belongs in repositories/firebase/ because it is a Firebase-specific
+// infrastructure component — it is only meaningful when Firebase is the chosen
+// database backend.
+//
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { AuthTokenService } from './auth-token.service';
-import { environment } from '../../environments/environment';
+import { AuthTokenProvider } from '../../services/auth/auth-token.provider';
+import { environment } from '../../../environments/environment';
 
 // ─── Public types ─────────────────────────────────────────────
 
@@ -54,7 +66,7 @@ const OP_MAP: Record<string, string> = {
 @Injectable({ providedIn: 'root' })
 export class FirestoreApiService {
   private http = inject(HttpClient);
-  private authToken = inject(AuthTokenService);
+  private authToken = inject(AuthTokenProvider);
 
   private readonly projectId = environment.firebase.projectId;
   private readonly BASE =

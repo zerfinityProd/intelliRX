@@ -20,6 +20,7 @@ const hoisted = vi.hoisted(() => {
     };
 });
 
+// Mock @angular/fire/auth — confined to FirebaseAuthService (the only file that imports it)
 vi.mock('@angular/fire/auth', () => ({
     Auth: class { },
     signInWithEmailAndPassword: (a: any, b: any, c: any) => hoisted.mockSignIn(a, b, c),
@@ -32,16 +33,18 @@ vi.mock('@angular/fire/auth', () => ({
     GoogleAuthProvider: hoisted.MockGoogleAuthProvider,
 }));
 
-vi.mock('./authorizationService', () => ({
+vi.mock('../../services/authorizationService', () => ({
     AuthorizationService: class {
         isEmailAllowed = () => hoisted.mockIsEmailAllowed();
         getUserRole = () => hoisted.mockGetUserRole();
         getUserSubscriptionId = () => hoisted.mockGetUserSubscriptionId();
         getUserClinicIds = () => hoisted.mockGetUserClinicIds();
+        getUserName = () => Promise.resolve('');
+        invalidateRolesCache = vi.fn();
     },
 }));
 
-vi.mock('./clinicContextService', () => ({
+vi.mock('../../services/clinicContextService', () => ({
     ClinicContextService: class {
         getSelectedClinicId = () => 'clinic_01';
         getSubscriptionId = () => 'sub_01';
@@ -62,7 +65,10 @@ vi.mock('@angular/core', () => ({
     }),
 }));
 
-import { AuthenticationService } from './authenticationService';
+// Import the concrete Firebase implementation (the only place Firebase types live)
+import { FirebaseAuthService } from '../../repositories/firebase/firebase-auth.service';
+// AuthenticationService is now the abstract shim — we test the concrete impl directly
+import { AuthService as AuthenticationService } from '../../services/auth/auth.service';
 
 function mockLocalStorage() {
     const store: Record<string, string> = {};
@@ -76,13 +82,29 @@ function mockLocalStorage() {
     return store;
 }
 
+function mockSessionStorage() {
+    const store: Record<string, string> = {};
+    const mock = {
+        getItem: (k: string) => store[k] ?? null,
+        setItem: (k: string, v: string) => { store[k] = v; },
+        removeItem: (k: string) => { delete store[k]; },
+        clear: () => { Object.keys(store).forEach(k => delete store[k]); },
+    };
+    Object.defineProperty(global, 'sessionStorage', { value: mock, writable: true });
+    return store;
+}
+
 function makeService() {
     mockLocalStorage();
+    mockSessionStorage();
     // Use TestBed for proper Angular dependency injection
     TestBed.configureTestingModule({
-        providers: [AuthenticationService],
+        providers: [
+            { provide: AuthenticationService, useClass: FirebaseAuthService },
+            FirebaseAuthService,
+        ],
     });
-    return TestBed.inject(AuthenticationService);
+    return TestBed.inject(FirebaseAuthService);
 }
 
 function makeFirebaseUser(overrides = {}) {
@@ -96,11 +118,11 @@ function makeFirebaseUser(overrides = {}) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════════
-// AUTHENTICATION SERVICE TESTS
+// FIREBASE AUTH SERVICE TESTS
 // ═════════════════════════════════════════════════════════════════════════════════
 
-describe('AuthenticationService', () => {
-    let service: AuthenticationService;
+describe('FirebaseAuthService', () => {
+    let service: FirebaseAuthService;
 
     beforeEach(() => {
         vi.clearAllMocks();

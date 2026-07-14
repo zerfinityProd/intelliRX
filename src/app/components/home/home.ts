@@ -13,7 +13,9 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { UserPermissions } from '../../services/authorizationService';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicService } from '../../services/clinicService';
-import { FirestoreApiService } from '../../services/firestore-api.service';
+import { ClinicRepository } from '../../repositories/interfaces/clinic.repository';
+import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
+import { PatientContextService } from '../../services/patientContextService';
 import { Patient } from '../../models/patient.model';
 import { Appointment } from '../../models/appointment.model';
 import { AddPatientComponent } from '../add-patient/add-patient';
@@ -117,11 +119,13 @@ export class HomeComponent implements OnInit {
     private authorizationService: AuthorizationService,
     private clinicContextService: ClinicContextService,
     private clinicService: ClinicService,
-    private firestoreApi: FirestoreApiService,
+    private clinicRepo: ClinicRepository,
+    private subscriptionRepo: SubscriptionRepository,
     private timeSlotService: TimeSlotService,
     private router: Router,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private patientContextService: PatientContextService
   ) {
     this.uiState$ = this.uiStateService.getUIState();
     this.searchResults$ = this.patientService.searchResults$;
@@ -271,9 +275,8 @@ export class HomeComponent implements OnInit {
     const options: Record<string, string> = {};
     for (const id of subscriptionIds) {
       try {
-        const doc = await this.firestoreApi.getDocument('subscriptions', id);
-        const name = doc?.data?.['entity_name'] || doc?.data?.['name'] || id;
-        options[id] = name;
+        const summary = await this.subscriptionRepo.getSubscriptionSummary(id);
+        options[id] = summary?.name || id;
       } catch {
         options[id] = id;
       }
@@ -297,9 +300,9 @@ export class HomeComponent implements OnInit {
     const options: Record<string, string> = {};
     for (const id of clinicIds) {
       try {
-        const doc = await this.firestoreApi.getDocument('clinics', id);
-        const name = doc?.data?.['name'] || id;
-        const address = doc?.data?.['address'];
+        const summary = await this.clinicRepo.getClinicSummary(id);
+        const name = summary?.name || id;
+        const address = summary?.address;
         options[id] = address ? `${name} — ${address}` : name;
       } catch {
         options[id] = id;
@@ -872,7 +875,8 @@ export class HomeComponent implements OnInit {
     if (this.searchTerm.trim()) {
       sessionStorage.setItem('home_searchTerm', this.searchTerm.trim());
     }
-    this.router.navigate(['/patient', patient.id, 'add-visit'], { state: { origin: 'home' } });
+    this.patientContextService.setPatient(patient.id!);
+    this.router.navigate(['/patient/add-visit'], { state: { origin: 'home', patientId: patient.id } });
   }
 
   closeAddVisitForm(): void { this.uiStateService.closeAddVisitForm(); }
@@ -885,7 +889,8 @@ export class HomeComponent implements OnInit {
 
   viewPatientDetails(patient: Patient): void {
     this.clearSearch();
-    this.router.navigate(['/patient', patient.id]);
+    this.patientContextService.setPatient(patient.id!);
+    this.router.navigate(['/patient/view'], { state: { patientId: patient.id } });
   }
 
   async loadMoreResults(): Promise<void> { await this.patientService.loadMorePatients(); }
@@ -996,7 +1001,8 @@ export class HomeComponent implements OnInit {
     sessionStorage.removeItem('pendingPatientSuccess');
 
     if (result.isConfirmed) {
-      this.router.navigate(['/patient', patientId, 'add-visit'], { state: { origin: 'home' } });
+      this.patientContextService.setPatient(patientId);
+      this.router.navigate(['/patient/add-visit'], { state: { origin: 'home', patientId } });
     }
   }
 
@@ -1010,8 +1016,9 @@ export class HomeComponent implements OnInit {
     this.closeDayView();
     const directPatientId = (appt.patient_id || '').trim();
     if (directPatientId) {
-      this.router.navigate(['/patient', directPatientId, 'add-visit'], {
-        state: { origin: 'home', appointmentId: appt.id || '' }
+      this.patientContextService.setPatient(directPatientId);
+      this.router.navigate(['/patient/add-visit'], {
+        state: { origin: 'home', patientId: directPatientId, appointmentId: appt.id || '' }
       });
     } else {
       this.router.navigate(['/home'], {

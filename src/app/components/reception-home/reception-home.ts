@@ -24,6 +24,7 @@ import { TimeSlotService } from '../../services/timeSlotService';
 import { DoctorCacheService, CachedDoctor } from '../../services/doctorCacheService';
 import { AutoCancelService } from '../../services/autoCancelService';
 import { formatTime as sharedFormatTime, formatSlotLabel as sharedFormatSlotLabel, formatDate as sharedFormatDate, normalizePhoneDigits, isSameLocalDay } from '../../utilities/date-helpers';
+import { PatientContextService } from '../../services/patientContextService';
 
 
 @Component({
@@ -124,6 +125,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
     private autoCancelService = inject(AutoCancelService);
     private router = inject(Router);
     private cdr = inject(ChangeDetectorRef);
+    private patientContextService = inject(PatientContextService);
 
     private autoCancelTimer: ReturnType<typeof setTimeout> | null = null;
     private refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -509,8 +511,9 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             const datetimeStr = appt.datetime instanceof Date
                 ? appt.datetime.toISOString()
                 : (appt.datetime ? String(appt.datetime) : '');
-            this.router.navigate(['/patient', directPatientId, 'add-visit'], {
-                state: { origin: 'home', appointmentId: appt.id || '', appointmentDatetime: datetimeStr }
+            this.patientContextService.setPatient(directPatientId);
+            this.router.navigate(['/patient/add-visit'], {
+                state: { origin: 'home', patientId: directPatientId, appointmentId: appt.id || '', appointmentDatetime: datetimeStr }
             });
             return;
         }

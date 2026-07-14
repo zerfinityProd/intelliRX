@@ -7,7 +7,8 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { ThemeService } from '../../services/themeService';
 import { UIStateService } from '../../services/uiStateService';
 import { ClinicContextService } from '../../services/clinicContextService';
-import { FirestoreApiService } from '../../services/firestore-api.service';
+import { ClinicRepository } from '../../repositories/interfaces/clinic.repository';
+import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
 
 @Component({
   selector: 'app-navbar',
@@ -37,7 +38,8 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private themeService: ThemeService,
     private uiStateService: UIStateService,
     private clinicContextService: ClinicContextService,
-    private firestoreApi: FirestoreApiService,
+    private clinicRepo: ClinicRepository,
+    private subscriptionRepo: SubscriptionRepository,
     private router: Router
   ) {
     this.currentUser$ = this.authService.currentUser$;
@@ -73,9 +75,9 @@ export class NavbarComponent implements OnInit, OnDestroy {
     this.contextSub = this.clinicContextService.context$.subscribe(async ctx => {
       if (ctx.clinicId) {
         try {
-          const doc = await this.firestoreApi.getDocument('clinics', ctx.clinicId);
-          this.currentClinicName = doc?.data?.['name'] || '';
-          this.currentClinicAddress = doc?.data?.['address'] || '';
+          const summary = await this.clinicRepo.getClinicSummary(ctx.clinicId);
+          this.currentClinicName = summary?.name || '';
+          this.currentClinicAddress = summary?.address || '';
         } catch {
           this.currentClinicName = '';
           this.currentClinicAddress = '';
@@ -179,8 +181,8 @@ export class NavbarComponent implements OnInit, OnDestroy {
       const subOptions: Record<string, string> = {};
       for (const id of subscriptionIds) {
         try {
-          const doc = await this.firestoreApi.getDocument('subscriptions', id);
-          subOptions[id] = doc?.data?.['entity_name'] || doc?.data?.['name'] || id;
+          const summary = await this.subscriptionRepo.getSubscriptionSummary(id);
+          subOptions[id] = summary?.name || id;
         } catch {
           subOptions[id] = id;
         }
@@ -216,9 +218,9 @@ export class NavbarComponent implements OnInit, OnDestroy {
       const clinicOptions: Record<string, string> = {};
       for (const id of clinicsInSub) {
         try {
-          const doc = await this.firestoreApi.getDocument('clinics', id);
-          const name = doc?.data?.['name'] || id;
-          const addr = doc?.data?.['address'];
+          const summary = await this.clinicRepo.getClinicSummary(id);
+          const name = summary?.name || id;
+          const addr = summary?.address;
           clinicOptions[id] = addr ? `${name} — ${addr}` : name;
         } catch {
           clinicOptions[id] = id;

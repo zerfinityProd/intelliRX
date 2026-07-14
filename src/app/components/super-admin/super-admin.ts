@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { FirestoreApiService } from '../../services/firestore-api.service';
+import { SuperAdminService } from '../../services/superAdminService';
 import { AuthenticationService } from '../../services/authenticationService';
 
 @Component({
@@ -16,7 +16,7 @@ export class SuperAdminComponent implements OnInit {
 
   constructor(
     private router: Router,
-    private api: FirestoreApiService,
+    private superAdminService: SuperAdminService,
     private auth: AuthenticationService
   ) {}
 
@@ -27,13 +27,8 @@ export class SuperAdminComponent implements OnInit {
   async loadSubscriptions() {
     try {
       // Just fetch all subscriptions since we are Super Admin
-      const docs = await this.api.runQuery('', {
-        collectionId: 'subscriptions'
-      });
-      this.subscriptions = docs.map((d: any) => ({
-        id: d.id,
-        ...d.data
-      }));
+      const subs = await this.superAdminService.getAllSubscriptions();
+      this.subscriptions = subs.map((s: any) => ({ id: s.id, ...s }));
     } catch (e) {
       console.error('Failed to load subscriptions', e);
     }
@@ -42,7 +37,7 @@ export class SuperAdminComponent implements OnInit {
   async updateSubscriptionStatus(subId: string, status: string) {
     if (!confirm(`Are you sure you want to change status to ${status}?`)) return;
     try {
-      await this.api.updateDocument('subscriptions', subId, { status, updated_at: new Date().toISOString() });
+      await this.superAdminService.updateSubscriptionStatus(subId, status);
       await this.loadSubscriptions();
     } catch (e) {
       alert('Failed to update subscription status');

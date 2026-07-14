@@ -2,7 +2,7 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Clinic, ClinicSchedule } from '../../../models/clinic.model';
-import { FirestoreApiService } from '../../../services/firestore-api.service';
+import { ClinicRepository } from '../../../repositories/interfaces/clinic.repository';
 
 @Component({
   selector: 'app-clinic-config-modal',
@@ -39,7 +39,7 @@ export class ClinicConfigModalComponent {
   shStart = '17:00';
   shEnd = '21:00';
 
-  constructor(private api: FirestoreApiService) {}
+  constructor(private clinicRepo: ClinicRepository) {}
 
   ngOnChanges() {
     if (this.show && this.clinic) {
@@ -85,10 +85,7 @@ export class ClinicConfigModalComponent {
     ];
 
     try {
-      await this.api.updateDocument('clinics', this.clinic.id, {
-        schedule: this.schedule,
-        updated_at: new Date().toISOString()
-      });
+      await this.clinicRepo.updateClinic(this.clinic.id, { schedule: this.schedule });
       this.savedEvent.emit();
     } catch (e) {
       console.error(e);

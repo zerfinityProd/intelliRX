@@ -1,168 +1,55 @@
 // src/app/services/clinicService.ts
 import { Injectable, inject } from '@angular/core';
-import { FirestoreApiService } from './firestore-api.service';
+import { ClinicRepository } from '../repositories/interfaces/clinic.repository';
 import { ClinicContextService } from './clinicContextService';
 import { Clinic, ClinicSchedule } from '../models/clinic.model';
 
+/**
+ * ClinicService — thin orchestration layer over ClinicRepository.
+ * Never imports FirestoreApiService or any Firebase class.
+ */
 @Injectable({ providedIn: 'root' })
 export class ClinicService {
 
-  private api = inject(FirestoreApiService);
+  private clinicRepo = inject(ClinicRepository);
   private clinicContext = inject(ClinicContextService);
-
-  /** In-memory cache: clinicId → Clinic */
-  private cache = new Map<string, { clinic: Clinic; timestamp: number }>();
-  private readonly CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
   private getSubscriptionId(): string {
     return this.clinicContext.requireSubscriptionId();
   }
 
-  // ─── Schedule subcollection helper ───
-
-  /**
-   * Fetch schedule data from the `clinics/{clinicId}/schedule` subcollection.
-   * Returns the first schedule document's data, or a default empty schedule.
-   *
-   * Firestore structure:
-   *   clinics/{clinicId}/schedule/{scheduleDocId}
-   *     → { weekdays: ["M","T","W","Th","F"], timings: [{label,start,end},...] }
-   */
-  private async fetchScheduleSubcollection(clinicId: string): Promise<ClinicSchedule> {
-    const defaultSchedule: ClinicSchedule = { weekdays: [], timings: [] };
-    try {
-      // Directly fetch the known schedule document at clinics/{clinicId}/schedule/schedule
-      const result = await this.api.getDocument(`clinics/${clinicId}/schedule`, 'schedule');
-      if (!result) {
-        console.warn(`📅 No schedule document found for clinic ${clinicId}`);
-        return defaultSchedule;
-      }
-
-      const data = result.data;
-      const weekdays: string[] = Array.isArray(data['weekdays']) ? data['weekdays'] : [];
-      const rawTimings = Array.isArray(data['timings']) ? data['timings'] : [];
-      const timings = rawTimings.map((t: any) => ({
-        label: t['label'] || '',
-        start: t['start'] || '',
-        end: t['end'] || ''
-      }));
-
-      console.log(`📅 Schedule loaded for clinic ${clinicId}: weekdays=${JSON.stringify(weekdays)}, timings=${timings.length} block(s)`);
-      return { weekdays, timings };
-    } catch (error) {
-      console.warn('Error fetching schedule for clinic:', clinicId, error);
-      return defaultSchedule;
-    }
-  }
-
-  /**
-   * Transform raw document data into a Clinic object.
-   */
-  private async transformToClinic(data: any, id: string, subId: string): Promise<Clinic> {
-    // Try document-level schedule field first, then fetch subcollection
-    let schedule: ClinicSchedule = data['schedule'] || { weekdays: [], timings: [] };
-    if (!schedule.weekdays?.length && !schedule.timings?.length) {
-      schedule = await this.fetchScheduleSubcollection(id);
-    }
-
-    return {
-      id,
-      subscription_id: data['subscription_id'] || subId,
-      name: data['name'] || '',
-      address: data['address'],
-      phone: data['phone'],
-      email: data['email'],
-      schedule,
-      doctor_ids: data['doctor_ids'] || [],
-      status: data['status'] || 'active',
-      created_at: data['created_at'],
-      updated_at: data['updated_at']
-    };
-  }
-
   // ─── READ ───
 
-  /**
-   * Fetch all clinics for the current subscription.
-   */
   async getClinics(): Promise<Clinic[]> {
     try {
       const subId = this.getSubscriptionId();
-      const docs = await this.api.runQuery('', {
-        collectionId: 'clinics',
-        filters: [
-          { field: 'subscription_id', op: '==', value: subId }
-        ],
-      });
-
-      const clinics: Clinic[] = [];
-      for (const d of docs) {
-        const clinic = await this.transformToClinic(d.data, d.id, subId);
-        this.addToCache(clinic);
-        clinics.push(clinic);
-      }
-
-      console.log(`Loaded ${clinics.length} clinic(s) for subscription ${subId}`);
-      return clinics;
+      return await this.clinicRepo.getClinics(subId);
     } catch (error) {
       console.error('Error fetching clinics:', error);
       throw error;
     }
   }
 
-  /**
-   * Fetch a single clinic by ID.
-   * Returns from cache if available.
-   */
   async getClinicById(clinicId: string): Promise<Clinic | null> {
-    // Check cache first
-    const cached = this.getFromCache(clinicId);
-    if (cached) return cached;
-
     try {
-      const result = await this.api.getDocument('clinics', clinicId);
-      if (!result) return null;
-
-      const clinic = await this.transformToClinic(result.data, result.id, '');
-      this.addToCache(clinic);
-      return clinic;
+      return await this.clinicRepo.getClinicById(clinicId);
     } catch (error) {
       console.error('Error fetching clinic by ID:', error);
       throw error;
     }
   }
 
-  /**
-   * Get clinic name by ID (for denormalization).
-   * Returns the cached name or fetches from Firestore.
-   */
   async getClinicName(clinicId: string): Promise<string> {
-    const clinic = await this.getClinicById(clinicId);
-    return clinic?.name || clinicId;
+    return this.clinicRepo.getClinicName(clinicId);
   }
 
   // ─── CREATE ───
 
-  /**
-   * Create a new clinic within the current subscription.
-   */
   async createClinic(
     clinicData: Omit<Clinic, 'id' | 'created_at' | 'updated_at'>
   ): Promise<string> {
     try {
-      const id = await this.api.getNextSequentialId('cln');
-      const now = new Date().toISOString();
-
-      const clinic: Clinic = {
-        ...clinicData,
-        id,
-        subscription_id: clinicData.subscription_id || this.getSubscriptionId(),
-        created_at: now,
-        updated_at: now
-      };
-
-      await this.api.setDocument('clinics', id, this.removeUndefined(clinic));
-      this.addToCache(clinic);
+      const id = await this.clinicRepo.createClinic(clinicData);
       console.log('✓ Clinic created:', id);
       return id;
     } catch (error) {
@@ -173,18 +60,9 @@ export class ClinicService {
 
   // ─── UPDATE ───
 
-  /**
-   * Update an existing clinic's data.
-   */
   async updateClinic(clinicId: string, updates: Partial<Clinic>): Promise<void> {
     try {
-      const { id: _, ...dataWithoutId } = updates as any;
-      const updatePayload = {
-        ...dataWithoutId,
-        updated_at: new Date().toISOString()
-      };
-      await this.api.updateDocument('clinics', clinicId, this.removeUndefined(updatePayload));
-      this.removeFromCache(clinicId);
+      await this.clinicRepo.updateClinic(clinicId, updates);
       console.log('✓ Clinic updated:', clinicId);
     } catch (error) {
       console.error('Error updating clinic:', error);
@@ -192,41 +70,17 @@ export class ClinicService {
     }
   }
 
-  // ─── CACHE ───
+  // ─── SCHEDULE ───
 
-  private addToCache(clinic: Clinic): void {
-    if (clinic.id) {
-      this.cache.set(clinic.id, { clinic, timestamp: Date.now() });
-    }
+  async getClinicSchedule(clinicId: string): Promise<ClinicSchedule | null> {
+    return this.clinicRepo.getClinicSchedule(clinicId);
   }
 
-  private getFromCache(clinicId: string): Clinic | null {
-    const cached = this.cache.get(clinicId);
-    if (!cached) return null;
-    if (Date.now() - cached.timestamp > this.CACHE_TTL) {
-      this.cache.delete(clinicId);
-      return null;
-    }
-    return cached.clinic;
-  }
-
-  private removeFromCache(clinicId: string): void {
-    this.cache.delete(clinicId);
+  async setClinicSchedule(clinicId: string, schedule: ClinicSchedule): Promise<void> {
+    return this.clinicRepo.setClinicSchedule(clinicId, schedule);
   }
 
   invalidateCache(): void {
-    this.cache.clear();
-  }
-
-  // ─── UTIL ───
-
-  private removeUndefined(obj: any): any {
-    const cleaned: any = {};
-    for (const key in obj) {
-      if (obj[key] !== undefined) {
-        cleaned[key] = obj[key];
-      }
-    }
-    return cleaned;
+    this.clinicRepo.invalidateCache();
   }
 }
