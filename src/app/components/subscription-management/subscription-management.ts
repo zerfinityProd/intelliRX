@@ -123,7 +123,9 @@ export class SubscriptionManagementComponent implements OnInit {
   }
 
   private async loadPlans(): Promise<void> {
-    this.plans = await this.planRepo.listPlans();
+    const all = await this.planRepo.listPlans();
+    // Demo is only shown in the registration wizard, not in the manage-subscription UI
+    this.plans = all.filter(p => p.key !== 'demo');
   }
 
   // ── UI actions ────────────────────────────────────────────────────────────

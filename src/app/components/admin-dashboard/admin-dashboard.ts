@@ -14,6 +14,7 @@ import { Subscription } from '../../models/subscription.model';
 import { ClinicUserAvailability } from '../../models/clinic-user.model';
 import { MultiClinicConfig, DEFAULT_MULTI_CLINIC_CONFIG } from '../../config/userSettings';
 import { NavbarComponent } from '../navbar/navbar';
+import { ClinicContextService } from '../../services/clinicContextService';
 
 // ── Local interfaces ──────────────────────────────────────────────────────────
 
@@ -71,6 +72,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private location = inject(Location);
   private cdr = inject(ChangeDetectorRef);
+  private clinicContext = inject(ClinicContextService);
 
   // ── State ─────────────────────────────────────────────────────────────────
   isLoading = true;
@@ -172,6 +174,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     const msLeft = new Date(v).getTime() - Date.now();
     return Math.ceil(msLeft / (1000 * 60 * 60 * 24));
   }
+
+  /** True when the user form has at least one clinic assignment with role = 'doctor'. */
+  get userFormHasDoctorRole(): boolean {
+    return this.userForm.assignments?.some(a => a.role === 'doctor') ?? false;
+  }
+
 
   /** 'expired' | 'critical' (<=7d) | 'warning' (<=30d) | 'ok' | 'none' (no date set) */
   get expiryUrgency(): 'expired' | 'critical' | 'warning' | 'ok' | 'none' {
@@ -383,6 +391,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       }
 
       this.assignedSubscriptionId = subscriptionId;
+
+      // Push subscriptionId into ClinicContextService so the navbar's
+      // subscription-expiry banner check has a subscriptionId to evaluate.
+      // Admin-only users have no clinic, so clinicId stays null.
+      if (subscriptionId && !this.clinicContext.getSubscriptionId()) {
+        this.clinicContext.setClinicContext(null, subscriptionId);
+      }
+
       if (!subscriptionId) {
         console.warn('[AdminDashboard] No subscription_id resolved — nothing to load');
         return;

@@ -306,15 +306,15 @@
                 <input class="ad-input" type="text" [(ngModel)]="userForm.name" placeholder="Dr. Priya Sharma" id="user-name" />
               </div>
               <div class="col-md-6">
-                <label class="ad-label">Specialization</label>
-                <input class="ad-input" type="text" [(ngModel)]="userForm.specialization" placeholder="e.g. Cardiologist" id="user-spec" />
-              </div>
-              <div class="col-md-6">
                 <label class="ad-label">Status</label>
                 <select class="ad-input" [(ngModel)]="userForm.status" id="user-status">
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                 </select>
+              </div>
+              <div class="col-md-6" *ngIf="userFormHasDoctorRole">
+                <label class="ad-label">Specialization</label>
+                <input class="ad-input" type="text" [(ngModel)]="userForm.specialization" placeholder="e.g. Cardiologist" id="user-spec" />
               </div>
             </div>
 

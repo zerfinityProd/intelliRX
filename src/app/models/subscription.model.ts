@@ -60,5 +60,11 @@ export interface PlanDetail {
   max_patients: number;
   validity_days: number;        // Plan's validity in days (from plans doc or system config)
   features?: string[];          // Optional extra feature strings
+  /**
+   * Number of days before the plan expiry date when the subscription-expiring
+   * in-app notification should start appearing.
+   * Absent for demo plans — demo users see the notification every day.
+   */
+  plan_ending_nf?: number;
 }
 

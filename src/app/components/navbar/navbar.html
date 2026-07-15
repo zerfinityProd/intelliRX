@@ -176,3 +176,10 @@
     </div><!-- /navbar-right-group -->
   </div><!-- /container-fluid -->
 </nav>
+
+<!-- Subscription expiry warning banner — shown when the plan is approaching its expiry date -->
+<app-subscription-expiry-banner
+  *ngIf="showExpiryBanner"
+  [daysRemaining]="expiryDaysRemaining"
+  (dismissed)="onExpiryBannerDismissed()"
+></app-subscription-expiry-banner>

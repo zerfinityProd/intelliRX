@@ -57,12 +57,17 @@ export class RegisterWizardComponent implements OnInit {
       this.plans = await this.planRepo.listPlans() as any[];
     } catch (error) {
       console.error('Failed to load plans:', error);
+      // Fallback uses PlanDetail shape (key, label, max_* flat fields)
       this.plans = [
-        { id: 'demo', data: { max_clinics: 1, max_doctors: 1, max_patients: 5, max_receptionist: 1 }, path: 'plans/demo' },
-        { id: 'starter', data: { max_clinics: 1, max_doctors: 3, max_patients: 50, max_receptionist: 2 }, path: 'plans/starter' },
-        { id: 'pro', data: { max_clinics: 3, max_doctors: 10, max_patients: 500, max_receptionist: 5 }, path: 'plans/pro' }
+        { key: 'demo',    label: 'Demo',    max_clinics: 1, max_doctors: 1,  max_patients: 5,   max_receptionists: 1 },
+        { key: 'starter', label: 'Starter', max_clinics: 1, max_doctors: 3,  max_patients: 50,  max_receptionists: 2 },
+        { key: 'pro',     label: 'Pro',     max_clinics: 3, max_doctors: 10, max_patients: 500, max_receptionists: 5 },
       ];
     } finally {
+      // Auto-select the first plan when no plan was pre-selected via query param
+      if (!this.selectedPlan && this.plans.length > 0) {
+        this.selectedPlan = this.plans[0].key;
+      }
       // The Firestore promise resolves outside Angular's zone, so change
       // detection won't fire automatically — manually trigger it so the
       // plan cards appear without requiring any user interaction.

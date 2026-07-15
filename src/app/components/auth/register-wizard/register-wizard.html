@@ -29,23 +29,23 @@
               <div
                 class="plan-card"
                 *ngFor="let plan of plans"
-                [class.selected]="selectedPlan === plan.id"
-                (click)="selectPlan(plan.id)"
+                [class.selected]="selectedPlan === plan.key"
+                (click)="selectPlan(plan.key)"
               >
                 <div class="plan-card-radio">
-                  <span class="radio-dot" [class.active]="selectedPlan === plan.id"></span>
+                  <span class="radio-dot" [class.active]="selectedPlan === plan.key"></span>
                 </div>
                 <div class="plan-card-info">
-                  <div class="plan-card-name">{{ plan.id | titlecase }}</div>
+                  <div class="plan-card-name">{{ plan.label }}</div>
                   <div class="plan-card-details">
-                    <span>{{ plan.data.max_clinics }} clinic{{ plan.data.max_clinics > 1 ? 's' : '' }}</span>
+                    <span>{{ plan.max_clinics }} clinic{{ plan.max_clinics > 1 ? 's' : '' }}</span>
                     <span class="dot-sep">·</span>
-                    <span>{{ plan.data.max_doctors }} doctor{{ plan.data.max_doctors > 1 ? 's' : '' }}</span>
+                    <span>{{ plan.max_doctors }} doctor{{ plan.max_doctors > 1 ? 's' : '' }}</span>
                     <span class="dot-sep">·</span>
-                    <span>{{ plan.data.max_patients }} patients</span>
+                    <span>{{ plan.max_patients }} patients</span>
                   </div>
                 </div>
-                <div class="plan-card-badge" *ngIf="plan.id === 'pro'">Popular</div>
+                <div class="plan-card-badge" *ngIf="plan.key === 'pro'">Popular</div>
               </div>
             </div>
             <ng-template #loadingPlans>

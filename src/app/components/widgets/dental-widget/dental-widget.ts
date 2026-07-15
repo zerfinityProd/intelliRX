@@ -25,6 +25,9 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
     private selectedTeeth: Set<number> = new Set();
     private viewInitialized = false;
 
+    /** Timer used to debounce single-click so double-click can cancel it */
+    private clickTimer: ReturnType<typeof setTimeout> | null = null;
+
     /** Per-tooth notes */
     toothNotes: { [id: number]: string } = {};
 
@@ -76,23 +79,40 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
 
     // ── Event delegation on the SVG root ──────────────────────
 
-    /** Single click → select the tooth (if not already selected) */
+    /** Single click → select the tooth after a short delay.
+     *  The delay is cancelled when a double-click follows within the window,
+     *  preventing the first click of a dblclick from racing with deselection. */
     onSvgClick(event: MouseEvent): void {
-        // dblclick fires a click first; skip when detail === 2
-        if (event.detail >= 2) return;
         const id = this.getToothIdFromEvent(event);
-        if (id !== null) {
+        if (id === null) return;
+
+        // Cancel any pending single-click action
+        if (this.clickTimer !== null) {
+            clearTimeout(this.clickTimer);
+            this.clickTimer = null;
+        }
+
+        // Schedule the select action — will be cancelled if dblclick fires first
+        this.clickTimer = setTimeout(() => {
+            this.clickTimer = null;
             if (!this.selectedTeeth.has(id)) {
                 this.selectedTeeth.add(id);
                 this.setGroupClass(id, true);
                 this.selectionChange.emit(Array.from(this.selectedTeeth));
             }
-        }
+        }, 220);
     }
 
-    /** Double click → deselect the tooth */
+    /** Double click → cancel the pending single-click and deselect the tooth */
     onSvgDblClick(event: MouseEvent): void {
         event.preventDefault();
+
+        // Cancel the single-click timer so it doesn't re-select after deselect
+        if (this.clickTimer !== null) {
+            clearTimeout(this.clickTimer);
+            this.clickTimer = null;
+        }
+
         const id = this.getToothIdFromEvent(event);
         if (id !== null && this.selectedTeeth.has(id)) {
             this.selectedTeeth.delete(id);

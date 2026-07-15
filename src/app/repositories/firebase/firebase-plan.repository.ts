@@ -26,7 +26,6 @@ export class FirebasePlanRepository extends PlanRepository {
     try {
       const docs = await this.api.listDocuments('plans', 50);
       const plans: PlanDetail[] = docs
-        .filter(d => d.id !== 'demo')
         .map(d => {
           const data = d.data;
           const key = d.id;
@@ -45,6 +44,12 @@ export class FirebasePlanRepository extends PlanRepository {
             max_patients: Number(data['max_patients'] || 0),
             validity_days: validityDays,
             features: Array.isArray(data['features']) ? data['features'] : undefined,
+            // plan_ending_nf: days before expiry when the notification window opens.
+            // undefined (not 0) when absent — used by SubscriptionExpiryNotificationService
+            // to distinguish demo plans (notify daily) from paid plans.
+            plan_ending_nf: data['plan_ending_nf'] != null
+              ? Number(data['plan_ending_nf'])
+              : undefined,
           } as PlanDetail;
         })
         .sort((a, b) => a.monthly_charges - b.monthly_charges);

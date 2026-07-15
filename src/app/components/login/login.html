@@ -1,3 +1,16 @@
+<!-- ── Notification: denied banner (shown when browser has blocked notifications) ── -->
+<app-notification-denied-banner
+  *ngIf="showDeniedBanner"
+  (dismissed)="onDeniedBannerDismissed()"
+></app-notification-denied-banner>
+
+<!-- ── Notification: custom opt-in modal (shown before navigation when permission is default) ── -->
+<app-notification-permission-modal
+  *ngIf="showNotificationModal"
+  [userId]="notificationUserId"
+  (closed)="onNotificationModalClosed()"
+></app-notification-permission-modal>
+
 <div class="login-page">
   <div class="login-card">
     <div class="text-center mb-2 login-logo">

@@ -9,11 +9,13 @@ import { UIStateService } from '../../services/uiStateService';
 import { ClinicContextService } from '../../services/clinicContextService';
 import { ClinicRepository } from '../../repositories/interfaces/clinic.repository';
 import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
+import { SubscriptionExpiryNotificationService } from '../../services/subscriptionExpiryNotificationService';
+import { SubscriptionExpiryBannerComponent } from '../subscription-expiry-banner/subscription-expiry-banner';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SubscriptionExpiryBannerComponent],
   templateUrl: './navbar.html',
   styleUrl: './navbar.css'
 })
@@ -30,6 +32,10 @@ export class NavbarComponent implements OnInit, OnDestroy {
   showSwitchClinic = false;
   currentClinicName = '';
   currentClinicAddress = '';
+  /** Whether the subscription-expiring banner should be visible. */
+  showExpiryBanner = false;
+  /** Days until expiry — passed to the banner for urgency styling/label. */
+  expiryDaysRemaining: number | null = null;
   private contextSub?: Subscription;
 
   constructor(
@@ -40,6 +46,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private clinicContextService: ClinicContextService,
     private clinicRepo: ClinicRepository,
     private subscriptionRepo: SubscriptionRepository,
+    private expiryNotificationService: SubscriptionExpiryNotificationService,
     private router: Router
   ) {
     this.currentUser$ = this.authService.currentUser$;
@@ -86,11 +93,35 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.currentClinicName = '';
         this.currentClinicAddress = '';
       }
+
+      // Re-check expiry whenever the subscription context changes
+      // (e.g. after Switch Clinic resolves to a different subscription)
+      void this.checkExpiryNotification(ctx.subscriptionId);
     });
   }
 
   ngOnDestroy(): void {
     this.contextSub?.unsubscribe();
+  }
+
+  /**
+   * Checks whether the subscription-expiring banner should be shown.
+   * Called once on init (via context$ subscription) and re-checked on
+   * clinic/subscription switches.
+   */
+  private async checkExpiryNotification(subscriptionId: string | null | undefined): Promise<void> {
+    const subId = subscriptionId ?? null;
+    const shouldShow = await this.expiryNotificationService.shouldShowExpiryNotification(subId);
+    this.showExpiryBanner = shouldShow;
+    if (shouldShow) {
+      this.expiryDaysRemaining = await this.expiryNotificationService.getDaysRemaining(subId);
+    }
+  }
+
+  /** Called by the banner's (dismissed) output binding. */
+  onExpiryBannerDismissed(): void {
+    this.expiryNotificationService.markSessionDismissed();
+    this.showExpiryBanner = false;
   }
 
   toggleTheme(): void {
@@ -148,6 +179,8 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
   async logout(): Promise<void> {
     try {
+      // Clear session dismiss so expiry banner re-evaluates on next login
+      this.expiryNotificationService.clearSessionDismiss();
       await this.authService.logout();
       this.themeService.setTheme(false); // reset to light for next user
       this.uiStateService.resetUIState();

@@ -1,0 +1,73 @@
+.ntf-denied-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1040;
+  background: linear-gradient(90deg, #fff7ed 0%, #ffedd5 100%);
+  border-bottom: 1.5px solid #fed7aa;
+  animation: ntf-banner-drop 0.3s ease both;
+}
+
+.ntf-denied-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 10px 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.ntf-denied-icon {
+  color: #ea580c;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+}
+
+.ntf-denied-text {
+  flex: 1;
+  font-size: 13px;
+  color: #7c2d12;
+  line-height: 1.55;
+}
+
+.ntf-denied-text strong {
+  font-weight: 700;
+}
+
+.ntf-denied-text em {
+  font-style: normal;
+  font-weight: 600;
+}
+
+.ntf-denied-hint {
+  display: block;
+  margin-top: 3px;
+  color: #9a3412;
+  font-size: 12.5px;
+}
+
+.ntf-denied-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: #c2410c;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  transition: background 0.15s ease, color 0.15s ease;
+  margin-top: 1px;
+}
+
+.ntf-denied-close:hover {
+  background: rgba(194, 65, 12, 0.1);
+  color: #9a3412;
+}
+
+@keyframes ntf-banner-drop {
+  from { transform: translateY(-100%); opacity: 0; }
+  to   { transform: translateY(0);     opacity: 1; }
+}
