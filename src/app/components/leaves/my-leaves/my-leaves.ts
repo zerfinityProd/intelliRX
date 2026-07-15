@@ -113,7 +113,7 @@ export class MyLeavesComponent implements OnInit {
     // Use normalized email as user_id — consistent with timeSlotService leave checks.
     // Fall back to Firebase Auth email (available from cache immediately).
     const rawEmail = this.auth.currentUserValue?.email
-                  || this.auth.getAuthUserEmail()
+                  || this.auth.getFirebaseUserEmail()
                   || '';
     const userEmail = normalizeEmail(rawEmail);
     const clinicId = this.clinicContext.getSelectedClinicId();
