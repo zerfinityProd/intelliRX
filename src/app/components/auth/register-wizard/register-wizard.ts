@@ -59,9 +59,9 @@ export class RegisterWizardComponent implements OnInit {
       console.error('Failed to load plans:', error);
       // Fallback uses PlanDetail shape (key, label, max_* flat fields)
       this.plans = [
-        { key: 'demo',    label: 'Demo',    max_clinics: 1, max_doctors: 1,  max_patients: 5,   max_receptionists: 1 },
-        { key: 'starter', label: 'Starter', max_clinics: 1, max_doctors: 3,  max_patients: 50,  max_receptionists: 2 },
-        { key: 'pro',     label: 'Pro',     max_clinics: 3, max_doctors: 10, max_patients: 500, max_receptionists: 5 },
+        { key: 'demo', label: 'Demo', max_clinics: 1, max_doctors: 1, max_patients: 5, max_receptionists: 1 },
+        { key: 'starter', label: 'Starter', max_clinics: 1, max_doctors: 3, max_patients: 50, max_receptionists: 2 },
+        { key: 'pro', label: 'Pro', max_clinics: 3, max_doctors: 10, max_patients: 500, max_receptionists: 5 },
       ];
     } finally {
       // Auto-select the first plan when no plan was pre-selected via query param
