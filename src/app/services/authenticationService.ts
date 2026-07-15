@@ -6,6 +6,8 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
     GoogleAuthProvider,
     signOut,
     onAuthStateChanged,
@@ -235,28 +237,11 @@ export class AuthenticationService {
      */
     async loginWithGoogle(): Promise<User | void> {
         this._loggingIn = true;
-        // Wipe any stale session data from a previous login before starting fresh.
         sessionStorage.clear();
         try {
-            const result = await signInWithPopup(this.auth, this.googleProvider);
-            const email = result.user.email || '';
-            const allowed = await this.authorizationService.isEmailAllowed(email);
-            if (!allowed) {
-                // User not in Firestore users collection — delete the auto-created
-                // Firebase Auth user so it doesn't linger in the console, then block.
-                try { await deleteUser(result.user); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                await signOut(this.auth);
-                this.setCurrentUser(null);
-                throw new Error('Access denied. Your email is not registered in the system.');
-            }
-            const role = await this.authorizationService.getUserRole(email);
-            const dbName = await this.authorizationService.getUserName(email);
-            const user: User = { ...this.transformFirebaseUser(result.user), role };
-            if (dbName) user.name = dbName;
-            this.setCurrentUser(user);
-            return user;
+            await signInWithRedirect(this.auth, this.googleProvider);
+            return;
         } catch (error: any) {
-            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') return;
             console.error('Google login error:', error);
             throw this.handleAuthError(error);
         } finally {
@@ -267,27 +252,11 @@ export class AuthenticationService {
     async loginWithMicrosoft(): Promise<User | void> {
         this._loggingIn = true;
         try {
-            const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
+            const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('microsoft.com');
-            const result = await signInWithPopup(this.auth, provider);
-            const email = result.user.email || '';
-            const allowed = await this.authorizationService.isEmailAllowed(email);
-            if (!allowed) {
-                // User not in Firestore users collection — delete the auto-created
-                // Firebase Auth user so it doesn't linger in the console, then block.
-                try { await deleteUser(result.user); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                await signOut(this.auth);
-                this.setCurrentUser(null);
-                throw new Error('Access denied. Your email is not registered in the system.');
-            }
-            const role = await this.authorizationService.getUserRole(email);
-            const dbName = await this.authorizationService.getUserName(email);
-            const user: User = { ...this.transformFirebaseUser(result.user), role };
-            if (dbName) user.name = dbName;
-            this.setCurrentUser(user);
-            return user;
+            await signInWithRedirect(this.auth, provider);
+            return;
         } catch (error: any) {
-            if (error.code === 'auth/popup-closed-by-user') return;
             console.error('Microsoft login error:', error);
             throw this.handleAuthError(error);
         } finally {
@@ -298,27 +267,11 @@ export class AuthenticationService {
     async loginWithApple(): Promise<User | void> {
         this._loggingIn = true;
         try {
-            const { OAuthProvider, signInWithPopup } = await import('@angular/fire/auth');
+            const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('apple.com');
-            const result = await signInWithPopup(this.auth, provider);
-            const email = result.user.email || '';
-            const allowed = await this.authorizationService.isEmailAllowed(email);
-            if (!allowed) {
-                // User not in Firestore users collection — delete the auto-created
-                // Firebase Auth user so it doesn't linger in the console, then block.
-                try { await deleteUser(result.user); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                await signOut(this.auth);
-                this.setCurrentUser(null);
-                throw new Error('Access denied. Your email is not registered in the system.');
-            }
-            const role = await this.authorizationService.getUserRole(email);
-            const dbName = await this.authorizationService.getUserName(email);
-            const user: User = { ...this.transformFirebaseUser(result.user), role };
-            if (dbName) user.name = dbName;
-            this.setCurrentUser(user);
-            return user;
+            await signInWithRedirect(this.auth, provider);
+            return;
         } catch (error: any) {
-            if (error.code === 'auth/popup-closed-by-user') return;
             console.error('Apple login error:', error);
             throw this.handleAuthError(error);
         } finally {

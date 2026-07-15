@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 // ─── Hoisted mocks ────────────────────────────────────────────────────────────
@@ -8,6 +7,8 @@ const hoisted = vi.hoisted(() => {
         mockSignIn: vi.fn(),
         mockCreateUser: vi.fn(),
         mockSignInWithPopup: vi.fn(),
+        mockSignInWithRedirect: vi.fn(),
+        mockGetRedirectResult: vi.fn(),
         mockSignOut: vi.fn(),
         mockUpdateProfile: vi.fn().mockResolvedValue(undefined),
         mockSendPasswordResetEmail: vi.fn().mockResolvedValue(undefined),
@@ -26,6 +27,8 @@ vi.mock('@angular/fire/auth', () => ({
     signInWithEmailAndPassword: (a: any, b: any, c: any) => hoisted.mockSignIn(a, b, c),
     createUserWithEmailAndPassword: (a: any, b: any, c: any) => hoisted.mockCreateUser(a, b, c),
     signInWithPopup: (a: any, b: any) => hoisted.mockSignInWithPopup(a, b),
+    signInWithRedirect: (a: any, b: any) => hoisted.mockSignInWithRedirect(a, b),
+    getRedirectResult: (a: any) => hoisted.mockGetRedirectResult(a),
     signOut: (a: any) => hoisted.mockSignOut(a),
     updateProfile: (a: any, b: any) => hoisted.mockUpdateProfile(a, b),
     sendPasswordResetEmail: (a: any, b: any) => hoisted.mockSendPasswordResetEmail(a, b),
@@ -66,9 +69,9 @@ vi.mock('@angular/core', () => ({
 }));
 
 // Import the concrete Firebase implementation (the only place Firebase types live)
-import { FirebaseAuthService } from '../../repositories/firebase/firebase-auth.service';
+import { FirebaseAuthService } from '../repositories/firebase/firebase-auth.service';
 // AuthenticationService is now the abstract shim — we test the concrete impl directly
-import { AuthService as AuthenticationService } from '../../services/auth/auth.service';
+import { AuthService as AuthenticationService } from './auth/auth.service';
 
 function mockLocalStorage() {
     const store: Record<string, string> = {};
@@ -97,14 +100,7 @@ function mockSessionStorage() {
 function makeService() {
     mockLocalStorage();
     mockSessionStorage();
-    // Use TestBed for proper Angular dependency injection
-    TestBed.configureTestingModule({
-        providers: [
-            { provide: AuthenticationService, useClass: FirebaseAuthService },
-            FirebaseAuthService,
-        ],
-    });
-    return TestBed.inject(FirebaseAuthService);
+    return new FirebaseAuthService();
 }
 
 function makeFirebaseUser(overrides = {}) {
@@ -254,13 +250,11 @@ describe('FirebaseAuthService', () => {
             hoisted.mockIsEmailAllowed.mockResolvedValue(true);
         });
 
-        it('should login with Google successfully', async () => {
-            const firebaseUser = makeFirebaseUser({ uid: 'google-uid-789' });
-            hoisted.mockSignInWithPopup.mockResolvedValue({ user: firebaseUser });
+        it('should redirect to Google provider instead of using a popup', async () => {
+            hoisted.mockSignInWithRedirect.mockResolvedValue(undefined);
 
-            const result = await service.loginWithGoogle();
-
-            expect((result as any)?.email).toBe('doc@test.com');
+            await expect(service.loginWithGoogle()).resolves.toBeUndefined();
+            expect(hoisted.mockSignInWithRedirect).toHaveBeenCalled();
         });
     });
 
