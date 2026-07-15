@@ -139,6 +139,7 @@ export class RegisterWizardComponent implements OnInit {
       });
 
     } catch (error: any) {
+      this.authService.setRegistering(false);
       console.error('[Register] Setup failed:', error);
       // Use NgZone.run to ensure Angular picks up the state changes,
       // because Firebase promise rejections can resolve outside the zone.
@@ -197,6 +198,8 @@ export class RegisterWizardComponent implements OnInit {
       // 4. Set subscription context
       this.clinicContext.setClinicContext(null, subscriptionId);
 
+      this.authService.setRegistering(false);
+
       // 7. Success → redirect to owner dashboard
       this.ngZone.run(() => {
         this.isSuccess = true;
@@ -209,6 +212,7 @@ export class RegisterWizardComponent implements OnInit {
       }, 2000);
 
     } catch (error: any) {
+      this.authService.setRegistering(false);
       console.error('[Finalize] Setup failed:', error);
       this.ngZone.run(() => {
         this.errorMessage = error.message || 'An error occurred during final setup.';

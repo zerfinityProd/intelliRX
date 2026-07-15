@@ -40,7 +40,7 @@ export class MyLeavesComponent implements OnInit {
     private auth: AuthenticationService,
     private clinicContext: ClinicContextService,
     private router: Router
-  ) {}
+  ) { }
 
   async ngOnInit() {
     // Auth restores the session from local cache synchronously,
@@ -113,8 +113,7 @@ export class MyLeavesComponent implements OnInit {
     // Use normalized email as user_id — consistent with timeSlotService leave checks.
     // Fall back to Firebase Auth email (available from cache immediately).
     const rawEmail = this.auth.currentUserValue?.email
-                  || this.auth.getFirebaseUserEmail()
-                  || '';
+      || '';
     const userEmail = normalizeEmail(rawEmail);
     const clinicId = this.clinicContext.getSelectedClinicId();
 
@@ -149,11 +148,11 @@ export class MyLeavesComponent implements OnInit {
       }
 
       await this.leaveService.addLeave({
-        user_id:  userEmail,
+        user_id: userEmail,
         clinic_id: clinicId,
-        date:     this.newLeave.date,
-        timing:   this.newLeave.timing,
-        status:   'approved'
+        date: this.newLeave.date,
+        timing: this.newLeave.timing,
+        status: 'approved'
       });
 
       this.newLeave.date = '';

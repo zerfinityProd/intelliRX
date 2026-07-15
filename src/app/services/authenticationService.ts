@@ -185,9 +185,19 @@ export class AuthenticationService {
         } catch (error: any) {
             console.error('Registration error:', error);
             throw this.handleAuthError(error);
-        } finally {
-            this._registering = false;
         }
+        // NOTE: We no longer set this._registering = false in a finally block here.
+        // It is managed externally by the register-wizard to prevent premature deletion 
+        // during the email verification pause.
+    }
+
+    /**
+     * Manually controls the registering state flag.
+     * Prevents onAuthStateChanged from prematurely deleting a user during long-running
+     * registration flows like email verification.
+     */
+    setRegistering(isRegistering: boolean) {
+        this._registering = isRegistering;
     }
 
     async login(email: string, password: string): Promise<User> {

@@ -20,8 +20,7 @@ export class LeaveService {
 
   async getMyLeaves(): Promise<Leave[]> {
     const rawEmail = this.auth.currentUserValue?.email
-                  || this.auth.getFirebaseUserEmail()
-                  || '';
+      || '';
     const userEmail = normalizeEmail(rawEmail);
     const clinicId = this.clinicContext.getSelectedClinicId();
     if (!userEmail || !clinicId) return [];
