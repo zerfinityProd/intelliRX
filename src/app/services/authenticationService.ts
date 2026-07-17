@@ -329,6 +329,11 @@ export class AuthenticationService {
                 try { await deleteUser(result); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
                 await signOut(this.auth);
                 this.setCurrentUser(null);
+                // Signal authReady so guards don't hang waiting
+                if (!this.authReady) {
+                    this.authReady = true;
+                    this.authReadySubject.next(true);
+                }
                 return;
             }
 
@@ -337,9 +342,20 @@ export class AuthenticationService {
             const user: User = { ...this.transformFirebaseUser(result), role };
             if (dbName) user.name = dbName;
             this.setCurrentUser(user);
+            // Signal authReady after the user is fully set up so route guards
+            // see the correct authenticated state before navigating.
+            if (!this.authReady) {
+                this.authReady = true;
+                this.authReadySubject.next(true);
+            }
             return user;
         } catch (error: any) {
             console.error('Google redirect result error:', error);
+            // Still signal authReady on error so guards are not left hanging
+            if (!this.authReady) {
+                this.authReady = true;
+                this.authReadySubject.next(true);
+            }
             return;
         }
     }

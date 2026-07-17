@@ -53,13 +53,16 @@ export class LoginComponent implements OnInit {
     constructor() { }
 
     async ngOnInit(): Promise<void> {
-        // If the user navigated to /app/login explicitly, sign them out so they
-        // can pick which account to use.
-        if (this.authService.isLoggedIn()) {
+        const redirectPending = sessionStorage.getItem(this.redirectAuthPendingKey) === 'true';
+
+        // If the user navigated to /app/login explicitly (no OAuth redirect in progress),
+        // sign them out so they can pick which account to use.
+        // We must NOT sign out here if a redirect-based sign-in (Google, Microsoft, Apple)
+        // is in progress — doing so would cancel the incoming credential and cause a
+        // permanent login loop where every redirect is immediately invalidated.
+        if (!redirectPending && this.authService.isLoggedIn()) {
             await this.authService.logout();
         }
-
-        const redirectPending = sessionStorage.getItem(this.redirectAuthPendingKey) === 'true';
 
         try {
             const user = await this.authService.handleGoogleRedirectResult();
