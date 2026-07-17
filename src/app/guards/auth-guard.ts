@@ -88,35 +88,4 @@ export const doctorGuard: CanActivateFn = () => {
         })
     );
 };
-
-/**
- * Receptionist guard — allows only users with role === 'receptionist'.
- * Redirects doctors to /home.
- * Redirects unauthenticated users to /app/login.
- */
-export const receptionGuard: CanActivateFn = () => {
-    const authService = inject(AuthenticationService);
-    const authorizationService = inject(AuthorizationService);
-    const router = inject(Router);
-
-    return authService.authReady$.pipe(
-        filter(ready => ready),
-        take(1),
-        switchMap(() => {
-            if (!authService.isLoggedIn()) {
-                router.navigate(['/app/login']);
-                return of(false);
-            }
-            const email = authService.currentUserValue?.email || '';
-            return from(authorizationService.getUserRole(email)).pipe(
-                map(role => {
-                    if (role === 'doctor') {
-                        router.navigate(['/home']);
-                        return false;
-                    }
-                    return true;
-                })
-            );
-        })
-    );
-};
+

@@ -46,7 +46,7 @@ export const routes: Routes = [
         path: 'admin',
         pathMatch: 'full',
         loadComponent: () => import('./components/super-admin/super-admin').then(m => m.SuperAdminComponent),
-        //canActivate: [superAdminGuard]
+        canActivate: [superAdminGuard]
     },
 
     // ── Admin Dashboard (subscription_owner logged via App Login) ──

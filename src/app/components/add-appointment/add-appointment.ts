@@ -388,7 +388,7 @@ export class AddAppointmentComponent implements OnInit {
       ? normalizeEmail(this.selectedDoctor.email)
       : '';
 
-    console.log('[Slots] refreshTimeSlotsForClinic →',
+    console.debug('[Slots] refreshTimeSlotsForClinic →',
       'clinic:', this.selectedClinicId,
       'date:', effectiveDate,
       'doctorEmail:', doctorEmail || '(empty – no filtering)',
@@ -401,7 +401,7 @@ export class AddAppointmentComponent implements OnInit {
       true // invalidate cache to get fresh schedule data
     );
 
-    console.log('[Slots] result →', result.slots.length, 'slots', result.slots.slice(0, 3));
+    console.debug('[Slots] result →', result.slots.length, 'slots', result.slots.slice(0, 3));
 
     this.allTimeSlots = result.slots;
     this.doctorLeaveInfo = result.leaveInfo;
@@ -782,7 +782,7 @@ export class AddAppointmentComponent implements OnInit {
           return normalized.startsWith(digits) || normalized.includes(digits);
         });
       }
-      console.log(`📞 Phone lookup (clinic=${clinicId}): ${merged.length} raw, ${allResults.length} match(es)`);
+      console.debug(`📞 Phone lookup (clinic=${clinicId}): ${merged.length} raw, ${allResults.length} match(es)`);
     } catch (err) {
       console.warn('Phone lookup failed:', err);
     }

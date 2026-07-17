@@ -119,7 +119,7 @@ export class AuthorizationService {
             if (rawUserDocs.length === 0) {
                 console.warn('[AuthZ] where-query returned 0 docs for', normalized, '— trying client-side fallback');
                 const allUsers = await this.userRepo.getAllUsers(300);
-                console.log('[AuthZ] Fetched', allUsers.length, 'docs from users collection for fallback');
+                console.debug('[AuthZ] Fetched', allUsers.length, 'docs from users collection for fallback');
 
                 const matchedUser = allUsers.find(u => {
                     for (const key of Object.keys(u)) {
@@ -127,7 +127,7 @@ export class AuthorizationService {
                         if (typeof val !== 'string') continue;
                         const cleanValue = stripInvisible(val).toLowerCase();
                         if (cleanValue === normalized) {
-                            console.log('[AuthZ] Fallback matched doc', u.id, 'via key', JSON.stringify(key));
+                            console.debug('[AuthZ] Fallback matched doc', u.id, 'via key', JSON.stringify(key));
                             return true;
                         }
                     }
@@ -139,7 +139,7 @@ export class AuthorizationService {
                     return null;
                 }
 
-                console.log('[AuthZ] Found user via client-side fallback:', matchedUser.id);
+                console.debug('[AuthZ] Found user via client-side fallback:', matchedUser.id);
                 rawUserDocs = [{ id: matchedUser.id!, data: matchedUser }];
             }
 
@@ -200,9 +200,9 @@ export class AuthorizationService {
             const allCuDocs: Array<{ id: string; data: any }> = [];
             for (const doc of rawUserDocs) {
                 const cuEntries = await this.userRepo.getClinicUsersByUserId(doc.id);
-                console.log(`[AuthZ] clinic_users query for user_id="${doc.id}" returned ${cuEntries.length} docs`);
+                console.debug(`[AuthZ] clinic_users query for user_id="${doc.id}" returned ${cuEntries.length} docs`);
                 cuEntries.forEach((cu, i) => {
-                    console.log(`[AuthZ]   clinic_users[${i}] id=${cu.id}`,
+                    console.debug(`[AuthZ]   clinic_users[${i}] id=${cu.id}`,
                         `clinic_id="${cu.clinic_id}"`,
                         `status="${(cu as any)['status'] ?? '(missing→active)'}"`,
                         `user_id="${cu.user_id}"`
@@ -223,7 +223,7 @@ export class AuthorizationService {
                 const cuData = cuDoc.data;
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') {
-                    console.log(`[AuthZ]   → SKIPPED (status="${status}")`, cuDoc.id);
+                    console.debug(`[AuthZ]   → SKIPPED (status="${status}")`, cuDoc.id);
                     continue;
                 }
                 const cId = cuData['clinic_id'] || '';
@@ -368,7 +368,7 @@ export class AuthorizationService {
             return existing.role;
         }
 
-        console.log('[AuthZ] Auto-provisioning user doc for:', normalized);
+        console.debug('[AuthZ] Auto-provisioning user doc for:', normalized);
 
         const defaultRole = 'doctor';
         await this.userRepo.createUser({
@@ -381,7 +381,7 @@ export class AuthorizationService {
 
         this.lookupCache.delete(normalized);
 
-        console.log('[AuthZ] Auto-provisioned user doc for:', normalized);
+        console.debug('[AuthZ] Auto-provisioned user doc for:', normalized);
         return defaultRole;
     }
 
@@ -501,7 +501,7 @@ export class AuthorizationService {
                 const allSubs = await this.subscriptionRepo.getSubscriptions();
                 const ownerSub = allSubs.find(s => (s as any)['owner_email'] === normalized);
                 if (ownerSub) {
-                    console.log('[AuthZ] Fallback subscription found via owner_email:', ownerSub.id);
+                    console.debug('[AuthZ] Fallback subscription found via owner_email:', ownerSub.id);
                     return ownerSub.id;
                 }
             } catch (fallbackErr) {
@@ -632,7 +632,7 @@ export class AuthorizationService {
             // a compound query which silently returns 0 rows on user_id mismatch.
             const cuEntries = await this.userRepo.getClinicUsersByUserId(result.userId);
 
-            console.log('[Avail] clinic_users for userId', result.userId, '→', cuEntries.length, 'docs',
+            console.debug('[Avail] clinic_users for userId', result.userId, '→', cuEntries.length, 'docs',
                 cuEntries.map(cu =>
                     `id=${cu.id} clinic_id=${cu.clinic_id} status=${(cu as any)['status']} avail_keys=${Object.keys(cu.availability || {}).join(',') || 'none'}`
                 ).join(' | '));
@@ -654,7 +654,7 @@ export class AuthorizationService {
                 }) ?? allMatchingDocs[0];
 
             const availability = matchingDoc.availability;
-            console.log('[Avail] matched doc', matchingDoc.id,
+            console.debug('[Avail] matched doc', matchingDoc.id,
                 'status=', (matchingDoc as any)['status'],
                 'availability=', JSON.stringify(availability));
 
@@ -790,13 +790,7 @@ export class AuthorizationService {
         }
     }
 
-    async allowEmail(email: string): Promise<void> {
 
-    }
-
-    async denyEmail(email: string): Promise<void> {
-
-    }
 
     /**
      * Check whether the subscription linked to a given email is still valid.
@@ -850,7 +844,7 @@ export class AuthorizationService {
             expiry.setDate(expiry.getDate() + validityDays);
             const valid_until = expiry.toISOString();
             await this.subscriptionRepo.updateSubscription(subId, { valid_until } as any);
-            console.log('[AuthZ] Backfilled valid_until:', valid_until, 'for sub:', subId);
+            console.debug('[AuthZ] Backfilled valid_until:', valid_until, 'for sub:', subId);
             return valid_until;
         } catch (e) {
             console.warn('[AuthZ] resolveValidUntil backfill failed for sub:', subId, e);

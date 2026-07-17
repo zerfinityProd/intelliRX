@@ -238,18 +238,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
-    console.log('[AdminDashboard] ngOnInit — waiting for authReady$');
+    console.debug('[AdminDashboard] ngOnInit — waiting for authReady$');
     await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
     this.adminName = this.authService.currentUserValue?.name || 'Admin';
     this.adminEmail = this.authService.currentUserValue?.email || '';
-    console.log('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
+    console.debug('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
 
     try {
       await this.loadSubscription();
-      console.log('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
+      console.debug('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
       if (this.subscription) {
         await Promise.all([this.loadClinics(), this.loadUsers(), this.loadConfig()]);
-        console.log('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
+        console.debug('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
       } else {
         console.warn('[AdminDashboard] No subscription found — dashboard will show "No Subscription" state');
       }
@@ -344,7 +344,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private async loadSubscription(): Promise<void> {
     try {
       const email = this.adminEmail.toLowerCase().trim();
-      console.log('[AdminDashboard] loadSubscription — querying users by email:', email);
+      console.debug('[AdminDashboard] loadSubscription — querying users by email:', email);
       let userDoc = await this.adminService.getUserByEmail(email);
 
       // If direct query fails, try client-side fallback
@@ -360,7 +360,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           return false;
         }) ?? null;
         if (userDoc) {
-          console.log('[AdminDashboard] Found user via fallback:', (userDoc as any).id);
+          console.debug('[AdminDashboard] Found user via fallback:', (userDoc as any).id);
         } else {
           console.warn('[AdminDashboard] User not found even with fallback — no subscription to load');
           return;
@@ -369,18 +369,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
       this.userDocId = (userDoc as any).id;
       let subscriptionId: string = (userDoc as any).subscription_id || '';
-      console.log('[AdminDashboard] userDocId=', this.userDocId, 'subscription_id=', subscriptionId);
+      console.debug('[AdminDashboard] userDocId=', this.userDocId, 'subscription_id=', subscriptionId);
 
       // Fallback: if the user doc doesn't have subscription_id,
       // search the subscriptions collection for this owner's email
       if (!subscriptionId) {
-        console.log('[AdminDashboard] No subscription_id on user doc — trying subscriptions query by owner_email');
+        console.debug('[AdminDashboard] No subscription_id on user doc — trying subscriptions query by owner_email');
         try {
           const allSubs = await this.subscriptionRepo.getSubscriptions();
           const ownerSub = allSubs.find(s => (s as any)['owner_email'] === email);
           if (ownerSub) {
             subscriptionId = ownerSub.id!;
-            console.log('[AdminDashboard] Found subscription via owner_email:', subscriptionId);
+            console.debug('[AdminDashboard] Found subscription via owner_email:', subscriptionId);
             await this.adminService.updateUser(this.userDocId, { subscription_id: subscriptionId } as any);
           } else {
             console.warn('[AdminDashboard] No subscriptions found for owner_email:', email);
@@ -404,14 +404,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         return;
       }
 
-      console.log('[AdminDashboard] Fetching subscription document:', subscriptionId);
+      console.debug('[AdminDashboard] Fetching subscription document:', subscriptionId);
       const sub = await this.subscriptionRepo.getSubscriptionById(subscriptionId);
       if (!sub) {
         console.warn('[AdminDashboard] Subscription document not found:', subscriptionId);
         return;
       }
 
-      console.log('[AdminDashboard] Subscription doc loaded:', sub.id, sub);
+      console.debug('[AdminDashboard] Subscription doc loaded:', sub.id, sub);
       // Cast to a non-null local so the compiler can track narrowing through async callbacks
       const subData = sub as (import('../../models/subscription.model').Subscription & { id: string });
       this.subscription = { ...subData, id: subData.id };
@@ -443,7 +443,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         if (planName) {
           try {
             const planDetails = await this.planRepo.getPlanByKey(planName);
-            console.log('[AdminDashboard] Plan doc data:', planDetails);
+            console.debug('[AdminDashboard] Plan doc data:', planDetails);
             if (planDetails) {
               const maxClinics = (planDetails as any)['max_clinics'] ?? (planDetails as any)['max_clinincs'] ?? 0;
               const maxDoctors = (planDetails as any)['max_doctors'] ?? 0;
@@ -499,7 +499,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           // Write back to Firestore so this doesn't repeat
           await this.subscriptionRepo.updateSubscription(this.subscription!.id, { valid_until } as any);
           this.subscription!.valid_until = valid_until;
-          console.log('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, '(', validityDays, 'days from created_at)');
+          console.debug('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, '(', validityDays, 'days from created_at)');
         } catch (backfillErr) {
           console.warn('[AdminDashboard] Could not backfill valid_until:', backfillErr);
         }
@@ -513,9 +513,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private async loadClinics(): Promise<void> {
     if (!this.subscription) return;
     try {
-      console.log('[AdminDashboard] loadClinics for subscription:', this.subscription.id);
+      console.debug('[AdminDashboard] loadClinics for subscription:', this.subscription.id);
       const raw = await this.adminService.getClinicsForSubscription(this.subscription.id);
-      console.log('[AdminDashboard] Clinics query returned:', raw.length);
+      console.debug('[AdminDashboard] Clinics query returned:', raw.length);
 
       this.clinics = await Promise.all(raw.map(async c => {
         let schedule = (c as any).schedule;
@@ -531,7 +531,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         } as AdminClinicState;
       }));
       this.stats.clinics = this.clinics.length;
-      console.log('[AdminDashboard] Final clinics loaded:', this.clinics.length);
+      console.debug('[AdminDashboard] Final clinics loaded:', this.clinics.length);
     } catch (e: any) {
       console.error('[AdminDashboard] loadClinics error:', e);
       this.showToast('Failed to load clinics', 'error');
@@ -541,12 +541,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private async loadUsers(): Promise<void> {
     if (!this.subscription) return;
     try {
-      console.log('[AdminDashboard] loadUsers for subscription:', this.subscription.id);
+      console.debug('[AdminDashboard] loadUsers for subscription:', this.subscription.id);
       const allCU = await this.adminService.getClinicUsers(this.subscription.id);
-      console.log('[AdminDashboard] clinic_users returned:', allCU.length);
+      console.debug('[AdminDashboard] clinic_users returned:', allCU.length);
 
       const userIds = [...new Set(allCU.map(cu => cu.user_id).filter(Boolean))];
-      console.log('[AdminDashboard] Unique user IDs to load:', userIds);
+      console.debug('[AdminDashboard] Unique user IDs to load:', userIds);
       this.users = [];
       for (const userId of userIds) {
         const userDoc = await this.adminService.getUserById(userId);
@@ -579,7 +579,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.stats.totalUsers = this.users.length;
       this.stats.doctors = this.users.filter(u => u.assignments.some(a => a.role === 'doctor')).length;
       this.stats.receptionists = this.users.filter(u => u.assignments.some(a => a.role === 'receptionist')).length;
-      console.log('[AdminDashboard] Final users loaded:', this.users.length, 'doctors:', this.stats.doctors, 'receptionists:', this.stats.receptionists);
+      console.debug('[AdminDashboard] Final users loaded:', this.users.length, 'doctors:', this.stats.doctors, 'receptionists:', this.stats.receptionists);
     } catch (e: any) {
       console.error('[AdminDashboard] loadUsers error:', e);
       this.showToast('Failed to load users', 'error');
@@ -664,9 +664,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }
     this.configSaving = true;
     this.cdr.detectChanges();
-    console.log('[saveConfig] subscription.id =', this.subscription.id);
-    console.log('[saveConfig] clinics =', this.clinics.map(c => c.id));
-    console.log('[saveConfig] clinicSlotMinutes =', [...this.clinicSlotMinutes.entries()]);
+    console.debug('[saveConfig] subscription.id =', this.subscription.id);
+    console.debug('[saveConfig] clinics =', this.clinics.map(c => c.id));
+    console.debug('[saveConfig] clinicSlotMinutes =', [...this.clinicSlotMinutes.entries()]);
     try {
       // Save subscription-level config
       const existing = await this.configService.getSubscriptionConfig(this.subscription.id);
@@ -675,12 +675,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         multiClinic: { ...this.configSettings },
         timeSlots: { ...(existing?.timeSlots ?? {}), slotMinutes: mins },
       });
-      console.log('[saveConfig] Subscription config saved OK');
+      console.debug('[saveConfig] Subscription config saved OK');
 
       // Save per-clinic slot overrides in parallel
       await Promise.all(this.clinics.map(async clinic => {
         const override = this.clinicSlotMinutes.get(clinic.id) ?? null;
-        console.log(`[saveConfig] clinic=${clinic.id} override=${override}`);
+        console.debug(`[saveConfig] clinic=${clinic.id} override=${override}`);
         try {
           const existingCfg = await this.configService.getClinicConfig(clinic.id, this.subscription!.id) ?? {};
           if (override !== null) {
@@ -688,12 +688,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
               ...existingCfg,
               timeSlots: { ...(existingCfg.timeSlots ?? {}), slotMinutes: override },
             }, this.subscription!.id);
-            console.log(`[saveConfig] clinic=${clinic.id} saved slotMinutes=${override}`);
+            console.debug(`[saveConfig] clinic=${clinic.id} saved slotMinutes=${override}`);
           } else {
             // Remove clinic-level override — keep existing config but clear slotMinutes
             const { timeSlots, ...rest } = existingCfg as any;
             await this.configService.setClinicConfig(clinic.id, { ...rest }, this.subscription!.id);
-            console.log(`[saveConfig] clinic=${clinic.id} cleared slot override`);
+            console.debug(`[saveConfig] clinic=${clinic.id} cleared slot override`);
           }
         } catch (e) {
           console.error(`[saveConfig] FAILED for clinic ${clinic.id}:`, e);

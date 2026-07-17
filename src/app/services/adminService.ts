@@ -27,9 +27,7 @@ export class AdminService {
 
   async computeNextClinicId(): Promise<string> {
     const allClinics = await this.clinicRepo.getClinics(''); // pass empty = all; impl may list all
-    // Fallback: use a simple sequential computation based on cached docs
-    const allIds: string[] = [];
-    // We enumerate using userRepo helper which knows all clinic IDs
+    const allIds = allClinics.map(c => c.id!).filter(Boolean);
     const max = allIds.reduce((m, id) => {
       const match = id.match(/^cln_(\d+)$/);
       return match ? Math.max(m, parseInt(match[1], 10)) : m;

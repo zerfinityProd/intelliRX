@@ -5,7 +5,6 @@ import {
     User as FirebaseUser,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithPopup,
     signInWithRedirect,
     getRedirectResult,
     GoogleAuthProvider,
@@ -310,12 +309,16 @@ export class AuthenticationService {
     }
 
     /**
-     * Handles the redirect result from Google OAuth popup.
-     * Called after user is redirected back to the app from Google.
+     * Handles the redirect result from Google / Microsoft / Apple OAuth.
+     * Called on app load after the provider redirects back to the app.
+     * Uses getRedirectResult() — the authoritative way to retrieve the
+     * redirect credential, avoiding the race where auth.currentUser may
+     * not yet reflect the incoming redirect at call time.
      */
     async handleGoogleRedirectResult(): Promise<User | void> {
         try {
-            const result = this.auth.currentUser;
+            const redirectResult = await getRedirectResult(this.auth);
+            const result = redirectResult?.user || this.auth.currentUser;
             if (!result) return;
 
             const email = result.email || '';
