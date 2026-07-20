@@ -14,9 +14,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   GoogleAuthProvider,
+  OAuthProvider,
   signOut,
   onAuthStateChanged,
   updateProfile,
@@ -210,11 +209,13 @@ export class FirebaseAuthService extends AuthService {
 
   async loginWithGoogle(): Promise<User | void> {
     this._loggingIn = true;
-    sessionStorage.clear();
     try {
-      await signInWithRedirect(this.auth, this.googleProvider);
-      return;
+      const credential = await signInWithPopup(this.auth, this.googleProvider);
+      return await this._buildUserFromFirebase(credential.user);
     } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return;
+      }
       console.error('Google login error:', error);
       throw this.handleAuthError(error);
     } finally {
@@ -225,11 +226,13 @@ export class FirebaseAuthService extends AuthService {
   async loginWithMicrosoft(): Promise<User | void> {
     this._loggingIn = true;
     try {
-      const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
       const provider = new OAuthProvider('microsoft.com');
-      await signInWithRedirect(this.auth, provider);
-      return;
+      const credential = await signInWithPopup(this.auth, provider);
+      return await this._buildUserFromFirebase(credential.user);
     } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return;
+      }
       console.error('Microsoft login error:', error);
       throw this.handleAuthError(error);
     } finally {
@@ -240,17 +243,39 @@ export class FirebaseAuthService extends AuthService {
   async loginWithApple(): Promise<User | void> {
     this._loggingIn = true;
     try {
-      const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
       const provider = new OAuthProvider('apple.com');
-      await signInWithRedirect(this.auth, provider);
-      return;
+      const credential = await signInWithPopup(this.auth, provider);
+      return await this._buildUserFromFirebase(credential.user);
     } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        return;
+      }
       console.error('Apple login error:', error);
       throw this.handleAuthError(error);
     } finally {
       this._loggingIn = false;
     }
   }
+
+  /** Shared helper: checks isEmailAllowed, fetches role/name, sets currentUser. */
+  private async _buildUserFromFirebase(firebaseUser: FirebaseUser): Promise<User> {
+    const email = firebaseUser.email || '';
+    const allowed = await this.authorizationService.isEmailAllowed(email);
+    if (!allowed) {
+      console.warn('[Auth] popup sign-in: email not registered, signing out:', email);
+      try { await deleteUser(firebaseUser); } catch { /* ignore */ }
+      await signOut(this.auth);
+      this.setCurrentUser(null);
+      throw new Error('Access denied. Your email is not registered in the system. Please contact your administrator.');
+    }
+    const role = await this.authorizationService.getUserRole(email);
+    const dbName = await this.authorizationService.getUserName(email);
+    const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
+    if (dbName) user.name = dbName;
+    this.setCurrentUser(user);
+    return user;
+  }
+
 
   async resetPassword(email: string): Promise<void> {
     try {
@@ -274,32 +299,12 @@ export class FirebaseAuthService extends AuthService {
     }
   }
 
+  /**
+   * No-op: OAuth sign-in now uses signInWithPopup, so there is no redirect
+   * result to handle. Kept for interface compatibility only.
+   */
   async handleGoogleRedirectResult(): Promise<User | void> {
-    try {
-      const redirectResult = await getRedirectResult(this.auth);
-      const result = redirectResult?.user || this.auth.currentUser;
-      if (!result) return;
-
-      const email = result.email || '';
-      const allowed = await this.authorizationService.isEmailAllowed(email);
-      if (!allowed) {
-        console.warn('[Auth] handleGoogleRedirectResult: email not registered, deleting auth user & signing out:', email);
-        try { await deleteUser(result); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-        await signOut(this.auth);
-        this.setCurrentUser(null);
-        return;
-      }
-
-      const role = await this.authorizationService.getUserRole(email);
-      const dbName = await this.authorizationService.getUserName(email);
-      const user: User = { ...this.transformFirebaseUser(result), role };
-      if (dbName) user.name = dbName;
-      this.setCurrentUser(user);
-      return user;
-    } catch (error: any) {
-      console.error('Google redirect result error:', error);
-      return;
-    }
+    return;
   }
 
   isLoggedIn(): boolean {

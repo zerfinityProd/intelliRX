@@ -17,8 +17,15 @@ import {
   withComponentInputBinding
 } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
-import { provideFirebaseApp, initializeApp } from '@angular/fire/app';
-import { provideAuth, getAuth } from '@angular/fire/auth';
+import { provideFirebaseApp, initializeApp, getApp } from '@angular/fire/app';
+import {
+  provideAuth,
+  browserPopupRedirectResolver,
+  browserLocalPersistence,
+  initializeAuth,
+  getAuth
+} from '@angular/fire/auth';
+
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
 
@@ -62,7 +69,30 @@ export const appConfig: ApplicationConfig = {
     // They are only required because the Firebase implementations (below) need
     // them.  When switching providers, replace or remove these two lines.
     provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAuth(() => getAuth()),
+    // Explicitly pass browserPopupRedirectResolver so that redirect-based
+    // OAuth sign-in (Google, Microsoft, Apple) works on localhost and on
+    // any domain other than the default Firebase Hosting subdomain.
+    // Without this, Firebase tries to load an iframe from
+    // <project>.firebaseapp.com/__/auth/iframe which fails cross-origin on
+    // localhost:4200, causing getRedirectResult() to return null and showing
+    // the "sign-in redirect did not complete" error.
+    provideAuth(() => {
+      const app = getApp();
+      try {
+        // Explicitly pass browserPopupRedirectResolver so redirect-based OAuth
+        // (Google, Microsoft, Apple) works on localhost and any non-Firebase-
+        // Hosting domain. Without this, Firebase loads a cross-origin iframe
+        // from <project>.firebaseapp.com/__/auth/iframe which fails on
+        // localhost:4200, causing getRedirectResult() to return null.
+        return initializeAuth(app, {
+          persistence: browserLocalPersistence,
+          popupRedirectResolver: browserPopupRedirectResolver
+        });
+      } catch {
+        // Auth already initialized (e.g. HMR / hot reload) — reuse the instance
+        return getAuth(app);
+      }
+    }),
 
     // ── Auth bindings ────────────────────────────────────────────────────────
     // Swap these two `useClass` values to migrate to a different auth provider.

@@ -5,9 +5,9 @@ import {
     User as FirebaseUser,
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
-    signInWithRedirect,
-    getRedirectResult,
+    signInWithPopup,
     GoogleAuthProvider,
+    OAuthProvider,
     signOut,
     onAuthStateChanged,
     updateProfile,
@@ -231,16 +231,18 @@ export class AuthenticationService {
     }
 
     /**
-     * Returns the signed-in User so callers can navigate based on role.
-     * Returns void (undefined) if popup was closed by user.
+     * Signs in with Google via popup.
+     * Returns the signed-in User, or void if the popup was closed by the user.
      */
     async loginWithGoogle(): Promise<User | void> {
         this._loggingIn = true;
-        sessionStorage.clear();
         try {
-            await signInWithRedirect(this.auth, this.googleProvider);
-            return;
+            const credential = await signInWithPopup(this.auth, this.googleProvider);
+            return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
+            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                return;
+            }
             console.error('Google login error:', error);
             throw this.handleAuthError(error);
         } finally {
@@ -251,11 +253,13 @@ export class AuthenticationService {
     async loginWithMicrosoft(): Promise<User | void> {
         this._loggingIn = true;
         try {
-            const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('microsoft.com');
-            await signInWithRedirect(this.auth, provider);
-            return;
+            const credential = await signInWithPopup(this.auth, provider);
+            return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
+            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                return;
+            }
             console.error('Microsoft login error:', error);
             throw this.handleAuthError(error);
         } finally {
@@ -266,16 +270,37 @@ export class AuthenticationService {
     async loginWithApple(): Promise<User | void> {
         this._loggingIn = true;
         try {
-            const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('apple.com');
-            await signInWithRedirect(this.auth, provider);
-            return;
+            const credential = await signInWithPopup(this.auth, provider);
+            return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
+            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                return;
+            }
             console.error('Apple login error:', error);
             throw this.handleAuthError(error);
         } finally {
             this._loggingIn = false;
         }
+    }
+
+    /** Shared helper: checks isEmailAllowed, fetches role/name, sets currentUser. */
+    private async _buildUserFromFirebase(firebaseUser: FirebaseUser): Promise<User> {
+        const email = firebaseUser.email || '';
+        const allowed = await this.authorizationService.isEmailAllowed(email);
+        if (!allowed) {
+            console.warn('[Auth] popup sign-in: email not registered, signing out:', email);
+            try { await deleteUser(firebaseUser); } catch { /* ignore */ }
+            await signOut(this.auth);
+            this.setCurrentUser(null);
+            throw new Error('Access denied. Your email is not registered in the system. Please contact your administrator.');
+        }
+        const role = await this.authorizationService.getUserRole(email);
+        const dbName = await this.authorizationService.getUserName(email);
+        const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
+        if (dbName) user.name = dbName;
+        this.setCurrentUser(user);
+        return user;
     }
 
     async resetPassword(email: string): Promise<void> {
@@ -309,55 +334,11 @@ export class AuthenticationService {
     }
 
     /**
-     * Handles the redirect result from Google / Microsoft / Apple OAuth.
-     * Called on app load after the provider redirects back to the app.
-     * Uses getRedirectResult() — the authoritative way to retrieve the
-     * redirect credential, avoiding the race where auth.currentUser may
-     * not yet reflect the incoming redirect at call time.
+     * No-op: OAuth sign-in now uses signInWithPopup, so there is no redirect
+     * result to handle. Kept for interface compatibility only.
      */
     async handleGoogleRedirectResult(): Promise<User | void> {
-        try {
-            const redirectResult = await getRedirectResult(this.auth);
-            const result = redirectResult?.user || this.auth.currentUser;
-            if (!result) return;
-
-            const email = result.email || '';
-            const allowed = await this.authorizationService.isEmailAllowed(email);
-            if (!allowed) {
-                // User not in Firestore users collection — delete auth user & block
-                console.warn('[Auth] handleGoogleRedirectResult: email not registered, deleting auth user & signing out:', email);
-                try { await deleteUser(result); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                await signOut(this.auth);
-                this.setCurrentUser(null);
-                // Signal authReady so guards don't hang waiting
-                if (!this.authReady) {
-                    this.authReady = true;
-                    this.authReadySubject.next(true);
-                }
-                return;
-            }
-
-            const role = await this.authorizationService.getUserRole(email);
-            const dbName = await this.authorizationService.getUserName(email);
-            const user: User = { ...this.transformFirebaseUser(result), role };
-            if (dbName) user.name = dbName;
-            this.setCurrentUser(user);
-            // Signal authReady after the user is fully set up so route guards
-            // see the correct authenticated state before navigating.
-            if (!this.authReady) {
-                this.authReady = true;
-                this.authReadySubject.next(true);
-            }
-            return user;
-        } catch (error: any) {
-            console.error('Google redirect result error:', error);
-            // Still signal authReady on error so guards are not left hanging
-            if (!this.authReady) {
-                this.authReady = true;
-                this.authReadySubject.next(true);
-            }
-            return;
-        }
+        return;
     }
 
     isLoggedIn(): boolean {

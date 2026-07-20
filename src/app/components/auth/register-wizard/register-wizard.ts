@@ -1,28 +1,31 @@
 import { Component, OnInit, NgZone, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { AuthenticationService } from '../../../services/authenticationService';
 import { AdminService } from '../../../services/adminService';
 import { SubscriptionRepository } from '../../../repositories/interfaces/subscription.repository';
-import { PlanRepository } from '../../../repositories/interfaces/plan.repository';
+import { PlanService } from '../../../services/planService';
 import { ClinicContextService } from '../../../services/clinicContextService';
+import { PlanDetail, BillingCycle } from '../../../models/subscription.model';
 
 @Component({
   selector: 'app-register-wizard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DecimalPipe],
   templateUrl: './register-wizard.html',
   styleUrl: './register-wizard.css'
 })
 export class RegisterWizardComponent implements OnInit {
   selectedPlan = '';
+  billingCycle: BillingCycle = 'monthly';
+
   isProcessing = false;
   isVerifying = false;
   isSuccess = false;
   errorMessage = '';
 
-  plans: any[] = [];
+  plans: PlanDetail[] = [];
 
   account = {
     name: '',
@@ -36,7 +39,7 @@ export class RegisterWizardComponent implements OnInit {
     private authService: AuthenticationService,
     private adminService: AdminService,
     private subscriptionRepo: SubscriptionRepository,
-    private planRepo: PlanRepository,
+    private planService: PlanService,
     private clinicContext: ClinicContextService,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef
@@ -54,14 +57,28 @@ export class RegisterWizardComponent implements OnInit {
 
   async loadPlans() {
     try {
-      this.plans = await this.planRepo.listPlans() as any[];
+      // Use PlanService — same single source of truth as Manage Subscription page.
+      // Keep Demo plan (unlike Manage Subscription which filters it out).
+      this.plans = await this.planService.getPlans();
     } catch (error) {
       console.error('Failed to load plans:', error);
-      // Fallback uses PlanDetail shape (key, label, max_* flat fields)
+      // Fallback using PlanDetail shape
       this.plans = [
-        { key: 'demo', label: 'Demo', max_clinics: 1, max_doctors: 1, max_patients: 5, max_receptionists: 1 },
-        { key: 'starter', label: 'Starter', max_clinics: 1, max_doctors: 3, max_patients: 50, max_receptionists: 2 },
-        { key: 'pro', label: 'Pro', max_clinics: 3, max_doctors: 10, max_patients: 500, max_receptionists: 5 },
+        {
+          key: 'demo', label: 'Demo', monthly_charges: 0, quarterly_charges: 0,
+          yearly_charges: 0, max_clinics: 1, max_doctors: 1, max_patients: 5,
+          max_receptionists: 1, validity_days: 7
+        },
+        {
+          key: 'starter', label: 'Starter', monthly_charges: 999, quarterly_charges: 749,
+          yearly_charges: 499, max_clinics: 1, max_doctors: 1, max_patients: 50,
+          max_receptionists: 1, validity_days: 30
+        },
+        {
+          key: 'pro', label: 'Pro', monthly_charges: 1999, quarterly_charges: 1499,
+          yearly_charges: 999, max_clinics: 5, max_doctors: 5, max_patients: 50,
+          max_receptionists: 5, validity_days: 30
+        },
       ];
     } finally {
       // Auto-select the first plan when no plan was pre-selected via query param
@@ -69,18 +86,57 @@ export class RegisterWizardComponent implements OnInit {
         this.selectedPlan = this.plans[0].key;
       }
       // The Firestore promise resolves outside Angular's zone, so change
-      // detection won't fire automatically — manually trigger it so the
-      // plan cards appear without requiring any user interaction.
+      // detection won't fire automatically — manually trigger it.
       this.cdr.detectChanges();
     }
   }
 
-  selectPlan(planId: string) {
-    this.selectedPlan = planId;
-    // Same zone issue as loadPlans — manually trigger so the selected
-    // state (radio dot, border highlight) is reflected immediately.
+  // ── Billing cycle ──────────────────────────────────────────────────────────
+
+  setBillingCycle(cycle: BillingCycle): void {
+    this.billingCycle = cycle;
     this.cdr.detectChanges();
   }
+
+  selectPlan(planKey: string) {
+    this.selectedPlan = planKey;
+    this.cdr.detectChanges();
+  }
+
+  // ── Computed savings badges on cycle buttons ───────────────────────────────
+
+  get maxQuarterlySavings(): number {
+    if (!this.plans.length) return 0;
+    return Math.max(...this.plans.map(p => this.planService.getSavingsPercent(p, 'quarterly')));
+  }
+
+  get maxYearlySavings(): number {
+    if (!this.plans.length) return 0;
+    return Math.max(...this.plans.map(p => this.planService.getSavingsPercent(p, 'yearly')));
+  }
+
+  // ── Price helpers — delegates to PlanService (no duplicated logic) ─────────
+
+  /** Per-month price for the selected billing cycle */
+  getPricePerMonth(plan: PlanDetail): number {
+    switch (this.billingCycle) {
+      case 'quarterly': return plan.quarterly_charges;
+      case 'yearly':    return plan.yearly_charges;
+      default:          return plan.monthly_charges;
+    }
+  }
+
+  /** Total billed amount for the selected cycle */
+  getTotalCharge(plan: PlanDetail): number {
+    return this.planService.getTotalCharge(plan, this.billingCycle);
+  }
+
+  /** Savings % vs monthly billing (0 for monthly) */
+  getSavings(plan: PlanDetail): number {
+    return this.planService.getSavingsPercent(plan, this.billingCycle);
+  }
+
+  // ── Form submission ────────────────────────────────────────────────────────
 
   async completeSetup(event: Event) {
     event.preventDefault();
@@ -141,8 +197,6 @@ export class RegisterWizardComponent implements OnInit {
     } catch (error: any) {
       this.authService.setRegistering(false);
       console.error('[Register] Setup failed:', error);
-      // Use NgZone.run to ensure Angular picks up the state changes,
-      // because Firebase promise rejections can resolve outside the zone.
       this.ngZone.run(() => {
         this.errorMessage = error.message || 'An error occurred during setup.';
         this.isProcessing = false;
@@ -178,11 +232,12 @@ export class RegisterWizardComponent implements OnInit {
 
   private async finalizeSetup() {
     try {
-      // 2. Create Subscription Document (ID is auto-generated by the repository)
+      // 2. Create Subscription Document — saves selected plan AND billing cycle
       const subscriptionId = await this.subscriptionRepo.createSubscription({
         entity_name: this.account.clinicName,
         owner_email: this.account.email.trim().toLowerCase(),
         plan: this.selectedPlan,
+        billing_cycle: this.billingCycle,
         status: 'active',
       } as any);
 
@@ -200,7 +255,7 @@ export class RegisterWizardComponent implements OnInit {
 
       this.authService.setRegistering(false);
 
-      // 7. Success → redirect to owner dashboard
+      // 5. Success → redirect to owner dashboard
       this.ngZone.run(() => {
         this.isSuccess = true;
         this.isVerifying = false;

@@ -43,7 +43,6 @@ export class LoginComponent implements OnInit {
     private readonly clinicRepo = inject(ClinicRepository);
     private readonly subscriptionRepo = inject(SubscriptionRepository);
     private readonly router = inject(Router);
-    private readonly redirectAuthPendingKey = 'redirectAuthPending';
 
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
@@ -53,36 +52,13 @@ export class LoginComponent implements OnInit {
     constructor() { }
 
     async ngOnInit(): Promise<void> {
-        const redirectPending = sessionStorage.getItem(this.redirectAuthPendingKey) === 'true';
+        // Clear any leftover OAuth redirect flags from before the popup migration
+        sessionStorage.removeItem('redirectAuthPending');
 
-        // If the user navigated to /app/login explicitly (no OAuth redirect in progress),
-        // sign them out so they can pick which account to use.
-        // We must NOT sign out here if a redirect-based sign-in (Google, Microsoft, Apple)
-        // is in progress — doing so would cancel the incoming credential and cause a
-        // permanent login loop where every redirect is immediately invalidated.
-        if (!redirectPending && this.authService.isLoggedIn()) {
+        // If the user lands on /app/login while already authenticated, sign them
+        // out so they can choose a different account.
+        if (this.authService.isLoggedIn()) {
             await this.authService.logout();
-        }
-
-        try {
-            const user = await this.authService.handleGoogleRedirectResult();
-            if (user) {
-                sessionStorage.removeItem(this.redirectAuthPendingKey);
-                await this.navigateByRole(user.email);
-                return;
-            }
-
-            if (redirectPending) {
-                this.errorMessage = 'The sign-in redirect did not complete. Please try again or use email/password login.';
-                this.cdr.detectChanges();
-            }
-        } catch (error: any) {
-            sessionStorage.removeItem(this.redirectAuthPendingKey);
-            if (error.message && !error.message.includes('popup was closed')) {
-                this.errorMessage = error.message;
-                this.cdr.detectChanges();
-                return;
-            }
         }
     }
 
@@ -293,7 +269,6 @@ export class LoginComponent implements OnInit {
     async onLogin(): Promise<void> {
         this.errorMessage = '';
         this.successMessage = '';
-        sessionStorage.removeItem(this.redirectAuthPendingKey);
 
         if (!this.email.trim()) { this.errorMessage = 'Please enter your email'; return; }
         if (!this.isValidEmail(this.email)) { this.errorMessage = 'Please enter a valid email address'; return; }
@@ -316,7 +291,6 @@ export class LoginComponent implements OnInit {
     async onRegister(): Promise<void> {
         this.errorMessage = '';
         this.successMessage = '';
-        sessionStorage.removeItem(this.redirectAuthPendingKey);
 
         if (!this.displayName.trim()) { this.errorMessage = 'Please enter your name'; return; }
         if (!this.email.trim()) { this.errorMessage = 'Please enter your email'; return; }
@@ -343,7 +317,6 @@ export class LoginComponent implements OnInit {
 
     async onGoogleLogin(): Promise<void> {
         this.errorMessage = '';
-        sessionStorage.setItem(this.redirectAuthPendingKey, 'true');
         this.isLoading = true;
         this.cdr.detectChanges();
         try {
@@ -362,13 +335,11 @@ export class LoginComponent implements OnInit {
 
     async onMicrosoftLogin(): Promise<void> {
         this.errorMessage = '';
-        sessionStorage.setItem(this.redirectAuthPendingKey, 'true');
         this.isLoading = true;
         this.cdr.detectChanges();
         try {
-            await this.authService.loginWithMicrosoft();
-            const email = this.authService.currentUserValue?.email || '';
-            if (email) await this.navigateByRole(email);
+            const user = await this.authService.loginWithMicrosoft();
+            if (user) await this.navigateByRole(user.email);
         } catch (error: any) {
             this.errorMessage = error.message || 'Microsoft login failed.';
             this.cdr.detectChanges();
@@ -380,13 +351,11 @@ export class LoginComponent implements OnInit {
 
     async onAppleLogin(): Promise<void> {
         this.errorMessage = '';
-        sessionStorage.setItem(this.redirectAuthPendingKey, 'true');
         this.isLoading = true;
         this.cdr.detectChanges();
         try {
-            await this.authService.loginWithApple();
-            const email = this.authService.currentUserValue?.email || '';
-            if (email) await this.navigateByRole(email);
+            const user = await this.authService.loginWithApple();
+            if (user) await this.navigateByRole(user.email);
         } catch (error: any) {
             this.errorMessage = error.message || 'Apple login failed.';
             this.cdr.detectChanges();
