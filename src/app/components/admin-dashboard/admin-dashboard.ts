@@ -61,14 +61,12 @@ type ActiveSection = 'clinics' | 'users' | 'config' | null;
   standalone: true,
   imports: [CommonModule, FormsModule, NavbarComponent],
   templateUrl: './admin-dashboard.html',
-  styleUrl: './admin-dashboard.css',
-  // ViewEncapsulation.None: removes _ngcontent attribute scoping so the
-  // component CSS is applied as global styles. Required because Angular's
-  // emulated encapsulation fails to re-apply scoped styles to elements that
-  // are dynamically added to the DOM by *ngIf in the production build.
-  // All classes use the 'ad-' prefix so no cross-component conflicts occur.
+  // CSS is delivered via the global styles bundle (angular.json styles array).
+  // ViewEncapsulation.None ensures Angular does not add _ngcontent scoping
+  // (which broke conditionally-rendered elements in the production build).
   encapsulation: ViewEncapsulation.None,
 })
+
 export class AdminDashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthenticationService);
   private adminService = inject(AdminService);
