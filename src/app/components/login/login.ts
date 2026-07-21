@@ -426,7 +426,7 @@ export class LoginComponent implements OnInit {
         if (permission === 'denied') {
             // Persist to Firestore in the background — non-critical, do not block navigation.
             this.authorizationService.getUserId(email)
-                .then(userId => { if (userId) return this.notificationService.markDenied(userId); })
+                .then(userId => userId ? this.notificationService.markDenied(userId) : undefined)
                 .catch(() => { /* non-critical */ });
 
             // Show the denied banner non-blocking — navigation proceeds immediately.
@@ -441,7 +441,7 @@ export class LoginComponent implements OnInit {
         if (permission === 'granted') {
             // Already granted — persist to Firestore in the background, then continue.
             this.authorizationService.getUserId(email)
-                .then(userId => { if (userId) return this.notificationService.markGranted(userId); })
+                .then(userId => userId ? this.notificationService.markGranted(userId) : undefined)
                 .catch(() => { /* non-critical */ });
             return;
         }
