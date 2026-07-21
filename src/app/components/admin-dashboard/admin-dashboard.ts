@@ -371,8 +371,25 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       let subscriptionId: string = (userDoc as any).subscription_id || '';
       console.debug('[AdminDashboard] userDocId=', this.userDocId, 'subscription_id=', subscriptionId);
 
-      // Fallback: if the user doc doesn't have subscription_id,
-      // search the subscriptions collection for this owner's email
+      // Fallback 1: clinicContextService already has the subscriptionId from
+      // the login flow (set by navigateByRole → ensureClinicSelected). This is
+      // the cheapest lookup and works for admin-only users who have no
+      // clinic_users entries and no subscription_id on their user doc.
+      if (!subscriptionId) {
+        const ctxSubId = this.clinicContext.getSubscriptionId();
+        if (ctxSubId) {
+          subscriptionId = ctxSubId;
+          console.debug('[AdminDashboard] Resolved subscriptionId from ClinicContextService:', subscriptionId);
+          // Persist it back to the user doc so future loads are direct
+          try {
+            await this.adminService.updateUser(this.userDocId, { subscription_id: subscriptionId } as any);
+          } catch { /* non-critical */ }
+        }
+      }
+
+      // Fallback 2: search the subscriptions collection for this owner's email.
+      // Note: this may be blocked by Firestore security rules (403) for some
+      // admin users — the catch handles that gracefully.
       if (!subscriptionId) {
         console.debug('[AdminDashboard] No subscription_id on user doc — trying subscriptions query by owner_email');
         try {

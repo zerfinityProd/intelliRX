@@ -276,7 +276,17 @@ export class AuthorizationService {
             // Extract subscriptionId and clinicIds from assignments
             const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
             const clinicIds = [...new Set(assignments.map(a => a.clinicId))];
-            const subscriptionId = subscriptionIds.length > 0 ? subscriptionIds[0] : '';
+            // Primary: derive subscriptionId from clinic assignments.
+            // Fallback: read the subscription_id field directly from the user doc.
+            // This covers admin-only users who have no clinic_users entries.
+            let subscriptionId = subscriptionIds.length > 0 ? subscriptionIds[0] : '';
+            if (!subscriptionId) {
+                const docSubId = getField(userData, 'subscription_id');
+                if (docSubId && typeof docSubId === 'string') {
+                    subscriptionId = docSubId;
+                    console.debug('[AuthZ] subscriptionId resolved from user doc field:', subscriptionId);
+                }
+            }
 
             const result: UserLookupResult = {
                 userId,

@@ -123,7 +123,15 @@ export class LoginComponent implements OnInit {
         }
 
         if (isAdmin && !hasClinicalRole) {
-            // Admin-only → admin dashboard (no access to clinical home)
+            // Admin-only → admin dashboard (no access to clinical home).
+            // Resolve and persist the subscriptionId into ClinicContextService
+            // so the admin dashboard can load it without extra Firestore queries.
+            try {
+                const subId = await this.authorizationService.getUserSubscriptionId(email);
+                if (subId) {
+                    this.clinicContextService.setClinicContext(null, subId);
+                }
+            } catch { /* non-critical — dashboard has its own fallbacks */ }
             this.router.navigate(['/admin-dashboard']);
             return;
         }
