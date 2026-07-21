@@ -240,6 +240,19 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
+
+    // ── Absolute failsafe ──────────────────────────────────────────────────
+    // If ANYTHING hangs (auth, Firestore, etc.), force the dashboard to render
+    // after 12 seconds. Without this, a single hanging Promise leaves users
+    // staring at a blank/invisible loading screen forever.
+    const failsafeTimer = setTimeout(() => {
+      if (this.isLoading) {
+        console.warn('[AdminDashboard] 12s failsafe triggered — forcing isLoading=false');
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    }, 12000);
+
     console.debug('[AdminDashboard] ngOnInit — waiting for authReady$');
     // Wait up to 10 seconds for auth to be ready. If it times out (e.g. Firestore
     // unreachable during onAuthStateChanged), proceed anyway using Firebase auth
@@ -260,6 +273,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       || '';
     console.debug('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
 
+    // ── Show the dashboard immediately ─────────────────────────────────────
+    // Don't wait for data — render now so the user sees something.
+    // Data loads below in the background.
+    this.isLoading = false;
+    clearTimeout(failsafeTimer);
+    this.cdr.detectChanges();
+
+    // ── Load data in background ────────────────────────────────────────────
     try {
       await this.loadSubscription();
       console.debug('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
