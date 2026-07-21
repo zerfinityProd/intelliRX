@@ -424,33 +424,31 @@ export class LoginComponent implements OnInit {
         console.log('[Notifications] checkNotificationState — browser permission:', permission);
 
         if (permission === 'denied') {
-            // Persist to Firestore so shouldShowModal stays consistent.
-            try {
-                const userId = await this.authorizationService.getUserId(email);
-                if (userId) await this.notificationService.markDenied(userId);
-            } catch { /* non-critical */ }
+            // Persist to Firestore in the background — non-critical, do not block navigation.
+            this.authorizationService.getUserId(email)
+                .then(userId => { if (userId) return this.notificationService.markDenied(userId); })
+                .catch(() => { /* non-critical */ });
 
+            // Show the denied banner non-blocking — navigation proceeds immediately.
+            // The banner renders outside the login card so it remains visible even
+            // after the component navigates (it will be destroyed on route change,
+            // which is acceptable since the banner is informational only).
             this.showDeniedBanner = true;
             this.cdr.detectChanges();
-
-            // Block navigation until the user explicitly dismisses the banner,
-            // otherwise the LoginComponent is destroyed and the banner vanishes.
-            await new Promise<void>(resolve => {
-                this.notificationModalResolve = resolve;
-            });
             return;
         }
 
         if (permission === 'granted') {
-            // Already granted — persist to Firestore if needed, then continue.
-            try {
-                const userId = await this.authorizationService.getUserId(email);
-                if (userId) await this.notificationService.markGranted(userId);
-            } catch { /* non-critical */ }
+            // Already granted — persist to Firestore in the background, then continue.
+            this.authorizationService.getUserId(email)
+                .then(userId => { if (userId) return this.notificationService.markGranted(userId); })
+                .catch(() => { /* non-critical */ });
             return;
         }
 
-        // permission === 'default': check if the modal should be shown.
+        // permission === 'default': check if the custom opt-in modal should be shown.
+        // This is the only case where we block navigation, because the modal asks
+        // for explicit user consent before the browser permission dialog is triggered.
         try {
             const userId = await this.authorizationService.getUserId(email);
             if (!userId) return;
