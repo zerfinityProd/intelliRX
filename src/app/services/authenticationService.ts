@@ -80,31 +80,36 @@ export class AuthenticationService {
                         return;
                     }
 
-                    // Page-refresh scenario: check if this email is registered.
-                    // IMPORTANT: wrap in try-catch so authReady is ALWAYS set,
-                    // even if Firestore is temporarily unavailable. Without this
-                    // guarantee, any thrown error here leaves authReady$ never
-                    // emitting true, permanently hanging any component waiting on it.
+                    // Page-refresh scenario: attempt to enrich the user with
+                    // Firestore role/name data. This is best-effort — if Firestore
+                    // is slow or unavailable we MUST NOT sign the user out or delete
+                    // their account, because isEmailAllowed() may return false simply
+                    // due to a timed-out HTTP request (lookupUser swallows errors and
+                    // returns {role:null}, making isEmailAllowed return false).
+                    // Authorization (admin role check) is handled separately by the
+                    // route guard, which will redirect non-admins to /home.
                     try {
                         const allowed = await this.authorizationService.isEmailAllowed(email);
-                        if (!allowed) {
-                            console.warn('[Auth] onAuthStateChanged: email not in users collection, deleting auth user & signing out:', email);
-                            // Delete the orphaned Firebase Auth user so it doesn't
-                            // persist in the Authentication console.
-                            try { await deleteUser(firebaseUser); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                            await signOut(this.auth);
-                            this.setCurrentUser(null);
-                        } else {
-                            // Fetch role and set subscription/clinic context
+                        if (allowed) {
                             const role = await this.authorizationService.getUserRole(email);
                             const dbName = await this.authorizationService.getUserName(email);
                             const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                             if (dbName) user.name = dbName;
                             this.setCurrentUser(user);
+                        } else {
+                            // isEmailAllowed returned false — this could be a genuine
+                            // "orphan auth user" OR a Firestore timeout.
+                            // Either way, do NOT sign out on page refresh — the guard
+                            // will redirect non-admin users to /home safely.
+                            // Set basic user data so the app can at least render.
+                            console.warn('[Auth] isEmailAllowed=false on page-refresh for', email,
+                                '— using basic token data (guard will redirect if not authorized)');
+                            this.setCurrentUser(this.transformFirebaseUser(firebaseUser));
                         }
                     } catch (e) {
-                        console.warn('[Auth] onAuthStateChanged page-refresh check failed — proceeding anyway:', e);
-                        // Still set the user from Firebase token data so the app is usable
+                        console.warn('[Auth] onAuthStateChanged page-refresh check failed — proceeding with basic user data:', e);
+                        // Firestore unavailable / timed out — set user from Firebase token
+                        // data so the app is usable. The guard handles authorization.
                         this.setCurrentUser(this.transformFirebaseUser(firebaseUser));
                     }
                 } else {
