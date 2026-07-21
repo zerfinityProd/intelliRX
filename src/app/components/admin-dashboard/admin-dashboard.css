@@ -1004,12 +1004,19 @@
 /* ── Loading ─────────────────────────────────────────────────────────── */
 .ad-loading {
   display: flex; align-items: center; justify-content: center;
-  flex-direction: column; gap: 12px; padding: 80px 20px;
-  color: var(--clr-text-muted, #5A8A9C); font-size: 14px;
+  flex-direction: column; gap: 16px; padding: 80px 20px;
+  /* High-contrast colours — white card on the teal background */
+  background: #fff;
+  border-radius: 16px;
+  border: 1.5px solid var(--clr-border, #C8DDE3);
+  max-width: 320px;
+  margin: 80px auto 0;
+  box-shadow: 0 4px 20px rgba(10,37,64,0.08);
+  color: var(--clr-text, #0A2540); font-size: 14px; font-weight: 500;
 }
 .ad-spinner {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 3px solid var(--clr-border, #C8DDE3);
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 3px solid rgba(20,141,158,0.2);
   border-top-color: var(--clr-primary, #148D9E);
   animation: ad-spin 0.8s linear infinite;
 }
