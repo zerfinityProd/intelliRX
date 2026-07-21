@@ -8,10 +8,7 @@
 // network round-trip occurs.
 //
 import { Injectable, inject } from '@angular/core';
-import { Auth, authState } from '@angular/fire/auth';
-import { firstValueFrom } from 'rxjs';
-import { filter, timeout, catchError } from 'rxjs/operators';
-import { of } from 'rxjs';
+import { Auth } from '@angular/fire/auth';
 import { AuthTokenProvider } from '../../services/auth/auth-token.provider';
 
 @Injectable()
@@ -28,33 +25,15 @@ export class FirebaseAuthTokenService extends AuthTokenProvider {
   private readonly CACHE_TTL_MS = 55 * 60 * 1_000;
 
   async getToken(): Promise<string | null> {
-    // Fast path: use cached token if still valid
+    const user = this.auth.currentUser;
+    if (!user) return null;
+
     const now = Date.now();
+
+    // Return cached token if still valid
     if (this._cachedToken && now < this._tokenExpiry) {
       return this._cachedToken;
     }
-
-    // Get current Firebase user — wait up to 5s if not yet available.
-    // Firebase restores the persisted session asynchronously on app start,
-    // so auth.currentUser can be null for a brief window even when the user
-    // is legitimately logged in. Returning null here causes 403s on all
-    // Firestore REST requests because no Authorization header is sent.
-    let user = this.auth.currentUser;
-    if (!user) {
-      try {
-        user = await firstValueFrom(
-          authState(this.auth).pipe(
-            filter(u => u !== null),
-            timeout(5000),
-            catchError(() => of(null))
-          )
-        );
-      } catch {
-        user = null;
-      }
-    }
-
-    if (!user) return null;
 
     // Deduplicate concurrent refresh requests
     if (!this._tokenPromise) {
