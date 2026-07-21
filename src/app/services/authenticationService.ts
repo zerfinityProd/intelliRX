@@ -211,16 +211,23 @@ export class AuthenticationService {
         // Wipe any stale session data from a previous login before starting fresh.
         sessionStorage.clear();
         try {
-            // Check Firestore FIRST — if email is not in the users collection,
-            // reject immediately without touching Firebase Auth at all.
-            // This prevents orphan auth-user creation for unregistered emails.
-            const allowed = await this.authorizationService.isEmailAllowed(email);
+            // Sign in with Firebase FIRST so auth.currentUser is set.
+            // isEmailAllowed() is called afterwards with a valid token — the
+            // users collection requires request.auth != null, so we must be
+            // signed in before querying Firestore.
+            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+
+            // Now check if this email is registered in our users collection.
+            // If not, immediately revoke the newly created Firebase Auth session.
+            const userEmail = userCredential.user.email || email;
+            const allowed = await this.authorizationService.isEmailAllowed(userEmail);
             if (!allowed) {
-                throw new Error('Access denied. Your email is not registered in the system.');
+                console.warn('[Auth] email/password login: email not in users collection, signing out:', userEmail);
+                try { await signOut(this.auth); } catch { /* ignore */ }
+                this.setCurrentUser(null);
+                throw new Error('Access denied. Your email is not registered in the system. Please contact your administrator.');
             }
 
-            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-            const userEmail = userCredential.user.email || email;
             const role = await this.authorizationService.getUserRole(userEmail);
             const dbName = await this.authorizationService.getUserName(userEmail);
             const user: User = { ...this.transformFirebaseUser(userCredential.user), role };

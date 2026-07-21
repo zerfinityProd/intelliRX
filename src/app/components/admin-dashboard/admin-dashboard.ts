@@ -4,7 +4,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
-import { filter, firstValueFrom } from 'rxjs';
+import { filter, firstValueFrom, timeout, catchError, of } from 'rxjs';
+import { Auth } from '@angular/fire/auth';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AdminService } from '../../services/adminService';
 import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
@@ -73,6 +74,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private location = inject(Location);
   private cdr = inject(ChangeDetectorRef);
   private clinicContext = inject(ClinicContextService);
+  private readonly firebaseAuth = inject(Auth);
 
   // ── State ─────────────────────────────────────────────────────────────────
   isLoading = true;
@@ -239,9 +241,23 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   async ngOnInit(): Promise<void> {
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
     console.debug('[AdminDashboard] ngOnInit — waiting for authReady$');
-    await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
-    this.adminName = this.authService.currentUserValue?.name || 'Admin';
-    this.adminEmail = this.authService.currentUserValue?.email || '';
+    // Wait up to 10 seconds for auth to be ready. If it times out (e.g. Firestore
+    // unreachable during onAuthStateChanged), proceed anyway using Firebase auth
+    // directly — we can still render the dashboard with the subscriptionId we
+    // already have from the login flow or from the Firebase session.
+    await firstValueFrom(
+      this.authService.authReady$.pipe(
+        filter(r => r),
+        timeout(10000),
+        catchError(() => of(true))
+      )
+    );
+    this.adminName = this.authService.currentUserValue?.name
+      || this.firebaseAuth.currentUser?.displayName
+      || 'Admin';
+    this.adminEmail = this.authService.currentUserValue?.email
+      || this.firebaseAuth.currentUser?.email
+      || '';
     console.debug('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
 
     try {
