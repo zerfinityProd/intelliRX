@@ -80,28 +80,33 @@ export class AuthenticationService {
                         return;
                     }
 
-                    // Page-refresh scenario: check if this email is registered
-                    const allowed = await this.authorizationService.isEmailAllowed(email);
-                    if (!allowed) {
-                        console.warn('[Auth] onAuthStateChanged: email not in users collection, deleting auth user & signing out:', email);
-                        // Delete the orphaned Firebase Auth user so it doesn't
-                        // persist in the Authentication console.
-                        try { await deleteUser(firebaseUser); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                        await signOut(this.auth);
-                        this.setCurrentUser(null);
-                        if (!this.authReady) {
-                            this.authReady = true;
-                            this.authReadySubject.next(true);
+                    // Page-refresh scenario: check if this email is registered.
+                    // IMPORTANT: wrap in try-catch so authReady is ALWAYS set,
+                    // even if Firestore is temporarily unavailable. Without this
+                    // guarantee, any thrown error here leaves authReady$ never
+                    // emitting true, permanently hanging any component waiting on it.
+                    try {
+                        const allowed = await this.authorizationService.isEmailAllowed(email);
+                        if (!allowed) {
+                            console.warn('[Auth] onAuthStateChanged: email not in users collection, deleting auth user & signing out:', email);
+                            // Delete the orphaned Firebase Auth user so it doesn't
+                            // persist in the Authentication console.
+                            try { await deleteUser(firebaseUser); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
+                            await signOut(this.auth);
+                            this.setCurrentUser(null);
+                        } else {
+                            // Fetch role and set subscription/clinic context
+                            const role = await this.authorizationService.getUserRole(email);
+                            const dbName = await this.authorizationService.getUserName(email);
+                            const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
+                            if (dbName) user.name = dbName;
+                            this.setCurrentUser(user);
                         }
-                        return;
+                    } catch (e) {
+                        console.warn('[Auth] onAuthStateChanged page-refresh check failed — proceeding anyway:', e);
+                        // Still set the user from Firebase token data so the app is usable
+                        this.setCurrentUser(this.transformFirebaseUser(firebaseUser));
                     }
-
-                    // Fetch role and set subscription/clinic context
-                    const role = await this.authorizationService.getUserRole(email);
-                    const dbName = await this.authorizationService.getUserName(email);
-                    const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
-                    if (dbName) user.name = dbName;
-                    this.setCurrentUser(user);
                 } else {
                     this.setCurrentUser(null);
                 }
