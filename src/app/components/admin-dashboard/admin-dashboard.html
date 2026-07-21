@@ -26,7 +26,7 @@
         <!-- Subscription read-only banner -->
         <div class="ad-sub-banner">
           <div class="ad-sub-banner-left">
-            <div class="ad-sub-av">{{ subscription.entity_name[0]?.toUpperCase() || '?' }}</div>
+            <div class="ad-sub-av">{{ subscription.entity_name?.trim()?.[0]?.toUpperCase() || '?' }}</div>
             <div>
               <div class="ad-sub-banner-name">{{ subscription.entity_name }}</div>
               <div class="ad-sub-banner-meta">
@@ -51,9 +51,9 @@
             </div>
           </div>
           <div class="ad-sub-limits">
-            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.clinics }}/{{ subscription.plan.limits.max_clinics }}</span>Clinics</div>
-            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.doctors }}/{{ subscription.plan.limits.max_doctors }}</span>Doctors</div>
-            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.receptionists }}/{{ subscription.plan.limits.max_receptionists }}</span>Receptionists</div>
+            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.clinics }}/{{ subscription.plan?.limits?.max_clinics ?? 0 }}</span>Clinics</div>
+            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.doctors }}/{{ subscription.plan?.limits?.max_doctors ?? 0 }}</span>Doctors</div>
+            <div class="ad-sub-limit"><span class="ad-sub-limit-num">{{ stats.receptionists }}/{{ subscription.plan?.limits?.max_receptionists ?? 0 }}</span>Receptionists</div>
           </div>
         </div>
 
@@ -140,7 +140,7 @@
             </button>
           </div>
           <div class="ad-limit-msg" *ngIf="clinicLimitReached && !showClinicForm">
-            ⚠ Clinic limit reached ({{ stats.clinics }}/{{ subscription!.plan.limits.max_clinics }}). Upgrade your plan to add more.
+            ⚠ Clinic limit reached ({{ stats.clinics }}/{{ subscription!.plan?.limits?.max_clinics ?? 0 }}). Upgrade your plan to add more.
           </div>
 
           <!-- Clinic Form -->
@@ -282,10 +282,10 @@
             </button>
           </div>
           <div class="ad-limit-msg" *ngIf="doctorLimitReached && !showUserForm">
-            ⚠ Doctor limit reached ({{ stats.doctors }}/{{ subscription!.plan.limits.max_doctors }}). Upgrade your plan to add more doctors.
+            ⚠ Doctor limit reached ({{ stats.doctors }}/{{ subscription!.plan?.limits?.max_doctors ?? 0 }}). Upgrade your plan to add more doctors.
           </div>
           <div class="ad-limit-msg" *ngIf="receptionistLimitReached && !showUserForm">
-            ⚠ Receptionist limit reached ({{ stats.receptionists }}/{{ subscription!.plan.limits.max_receptionists }}). Upgrade your plan to add more receptionists.
+            ⚠ Receptionist limit reached ({{ stats.receptionists }}/{{ subscription!.plan?.limits?.max_receptionists ?? 0 }}). Upgrade your plan to add more receptionists.
           </div>
 
           <!-- User Form -->
