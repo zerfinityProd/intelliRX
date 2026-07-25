@@ -244,6 +244,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     this.adminEmail = this.authService.currentUserValue?.email || '';
     console.debug('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
 
+    // If no email resolved from Firebase Auth, the auth token is invalid
+    // (e.g. IndexedDB corruption). Redirect to login immediately.
+    if (!this.adminEmail) {
+      console.warn('[AdminDashboard] No email from auth — likely stale/corrupted auth token. Redirecting to login.');
+      this.router.navigate(['/app/login']);
+      return;
+    }
+
     try {
       await this.loadSubscription();
       console.debug('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
@@ -253,8 +261,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       } else {
         console.warn('[AdminDashboard] No subscription found — dashboard will show "No Subscription" state');
       }
-    } catch (initErr) {
+    } catch (initErr: any) {
       console.error('[AdminDashboard] Unexpected error during init:', initErr);
+      // If the error is a Firestore permission error (PERMISSION_DENIED / 403),
+      // the auth token is likely expired or corrupted. Redirect to login.
+      const isPermissionError = initErr?.code === 'permission-denied'
+        || initErr?.message?.includes('403')
+        || initErr?.message?.includes('PERMISSION_DENIED');
+      if (isPermissionError) {
+        console.warn('[AdminDashboard] Firestore permission error — redirecting to login to refresh auth token.');
+        this.router.navigate(['/app/login']);
+        return;
+      }
     }
     this.isLoading = false;
     this.cdr.detectChanges();

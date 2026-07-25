@@ -434,29 +434,26 @@ export class AuthorizationService {
             const result = await this.lookupUser(email);
             if (!result) return { ...DEFAULT_PERMISSIONS };
 
-            // Merge permissions from ALL global_roles so that admin+doctor
-            // users get both admin and doctor permissions (e.g. canAppointment).
-            const allRoles = result.globalRoles.length > 0
-                ? result.globalRoles
-                : [result.role];
+            // Use global_roles directly from the user document.
+            // Each role name maps 1-to-1 to a document in the 'roles' collection
+            // (e.g. global_roles: ["admin", "doctor"] → roles/admin + roles/doctor).
+            // Only normalize the legacy 'recep' shorthand → 'receptionist'.
+            const roleNames = result.globalRoles
+                .map(r => r === 'recep' ? 'receptionist' : r);
 
-            // Map role names: 'admin' → 'subscription_owner', 'receptionist'/'recep' stays
-            const resolvedRoleNames = allRoles.map(r => {
-                if (r === 'admin') return 'subscription_owner';
-                if (r === 'recep') return 'receptionist';
-                return r;
-            });
+            if (roleNames.length === 0) {
+                console.warn('[AuthZ] getUserPermissions: no global_roles found for', email);
+                return { ...DEFAULT_PERMISSIONS };
+            }
 
-            // Load permissions from each role and merge them (union)
+            // Load permissions from each role document and merge (union)
             let mergedPermNames: string[] = [];
-            for (const roleName of new Set(resolvedRoleNames)) {
+            for (const roleName of new Set(roleNames)) {
                 const permNames = await this.loadRoleDefaults(roleName);
                 mergedPermNames = mergedPermNames.concat(permNames);
             }
 
-            const permissions = this.mapPermissionNames([...new Set(mergedPermNames)]);
-
-            return permissions;
+            return this.mapPermissionNames([...new Set(mergedPermNames)]);
         } catch (error) {
             console.warn('getUserPermissions failed for:', email, error);
             return { ...DEFAULT_PERMISSIONS };
