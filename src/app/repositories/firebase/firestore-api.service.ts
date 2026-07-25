@@ -12,7 +12,7 @@
 //
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { AuthTokenProvider } from '../../services/auth/auth-token.provider';
 import { environment } from '../../../environments/environment';
 
@@ -88,7 +88,7 @@ export class FirestoreApiService {
     const url = `${this.BASE}/${collectionPath}/${docId}`;
     try {
       const raw: any = await firstValueFrom(
-        this.http.get(url, { headers: await this.headers() }).pipe(timeout(30_000))
+        this.http.get(url, { headers: await this.headers() })
       );
       return this.parseDocResponse(raw);
     } catch (err: any) {
@@ -106,7 +106,7 @@ export class FirestoreApiService {
     const url = `${this.BASE}/${collectionPath}?documentId=${id}`;
     const body = { fields: this.toFields(data) };
     await firstValueFrom(
-      this.http.post(url, body, { headers: await this.headers() }).pipe(timeout(30_000))
+      this.http.post(url, body, { headers: await this.headers() })
     );
     return id;
   }
@@ -126,7 +126,7 @@ export class FirestoreApiService {
     }
     const body = { fields: this.toFields(data) };
     await firstValueFrom(
-      this.http.patch(url, body, { headers: await this.headers() }).pipe(timeout(30_000))
+      this.http.patch(url, body, { headers: await this.headers() })
     );
   }
 
@@ -153,7 +153,7 @@ export class FirestoreApiService {
     const url = `${this.BASE}/${collectionPath}/${docId}?${mask}`;
     const body = { fields: this.toFields(realData) };
     await firstValueFrom(
-      this.http.patch(url, body, { headers: await this.headers() }).pipe(timeout(30_000))
+      this.http.patch(url, body, { headers: await this.headers() })
     );
   }
 
@@ -161,7 +161,7 @@ export class FirestoreApiService {
   async deleteDocument(collectionPath: string, docId: string): Promise<void> {
     const url = `${this.BASE}/${collectionPath}/${docId}`;
     await firstValueFrom(
-      this.http.delete(url, { headers: await this.headers() }).pipe(timeout(30_000))
+      this.http.delete(url, { headers: await this.headers() })
     );
   }
 
@@ -209,7 +209,7 @@ export class FirestoreApiService {
 
     const body = { structuredQuery: sq };
     const raw: any[] = await firstValueFrom(
-      this.http.post<any[]>(url, body, { headers: await this.headers() }).pipe(timeout(30_000))
+      this.http.post<any[]>(url, body, { headers: await this.headers() })
     );
 
     // The response is an array; entries with a `document` key are results.
@@ -242,7 +242,7 @@ export class FirestoreApiService {
     };
 
     const raw: any[] = await firstValueFrom(
-      this.http.post<any[]>(url, body, { headers: await this.headers() }).pipe(timeout(30_000))
+      this.http.post<any[]>(url, body, { headers: await this.headers() })
     );
 
     const entry = raw?.find(r => r.result?.aggregateFields?.count);
@@ -256,7 +256,7 @@ export class FirestoreApiService {
   async listDocuments(collectionPath: string, pageSize = 300): Promise<DocumentResult[]> {
     const url = `${this.BASE}/${collectionPath}?pageSize=${pageSize}`;
     const raw: any = await firstValueFrom(
-      this.http.get(url, { headers: await this.headers() }).pipe(timeout(30_000))
+      this.http.get(url, { headers: await this.headers() })
     );
     if (!raw?.documents) return [];
     return raw.documents.map((d: any) => this.parseDocResponse(d));

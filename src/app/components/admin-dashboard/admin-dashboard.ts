@@ -1,11 +1,10 @@
 // src/app/components/admin-dashboard/admin-dashboard.ts
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Location } from '@angular/common';
-import { filter, firstValueFrom, timeout, catchError, of } from 'rxjs';
-import { Auth } from '@angular/fire/auth';
+import { filter, firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../services/authenticationService';
 import { AdminService } from '../../services/adminService';
 import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
@@ -61,12 +60,8 @@ type ActiveSection = 'clinics' | 'users' | 'config' | null;
   standalone: true,
   imports: [CommonModule, FormsModule, NavbarComponent],
   templateUrl: './admin-dashboard.html',
-  // CSS is delivered via the global styles bundle (angular.json styles array).
-  // ViewEncapsulation.None ensures Angular does not add _ngcontent scoping
-  // (which broke conditionally-rendered elements in the production build).
-  encapsulation: ViewEncapsulation.None,
+  styleUrl: './admin-dashboard.css',
 })
-
 export class AdminDashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthenticationService);
   private adminService = inject(AdminService);
@@ -78,7 +73,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private location = inject(Location);
   private cdr = inject(ChangeDetectorRef);
   private clinicContext = inject(ClinicContextService);
-  private readonly firebaseAuth = inject(Auth);
 
   // ── State ─────────────────────────────────────────────────────────────────
   isLoading = true;
@@ -244,47 +238,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
-
-    // ── Absolute failsafe ──────────────────────────────────────────────────
-    // If ANYTHING hangs (auth, Firestore, etc.), force the dashboard to render
-    // after 12 seconds. Without this, a single hanging Promise leaves users
-    // staring at a blank/invisible loading screen forever.
-    const failsafeTimer = setTimeout(() => {
-      if (this.isLoading) {
-        console.warn('[AdminDashboard] 12s failsafe triggered — forcing isLoading=false');
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      }
-    }, 12000);
-
     console.debug('[AdminDashboard] ngOnInit — waiting for authReady$');
-    // Wait up to 10 seconds for auth to be ready. If it times out (e.g. Firestore
-    // unreachable during onAuthStateChanged), proceed anyway using Firebase auth
-    // directly — we can still render the dashboard with the subscriptionId we
-    // already have from the login flow or from the Firebase session.
-    await firstValueFrom(
-      this.authService.authReady$.pipe(
-        filter(r => r),
-        timeout(10000),
-        catchError(() => of(true))
-      )
-    );
-    this.adminName = this.authService.currentUserValue?.name
-      || this.firebaseAuth.currentUser?.displayName
-      || 'Admin';
-    this.adminEmail = this.authService.currentUserValue?.email
-      || this.firebaseAuth.currentUser?.email
-      || '';
+    await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
+    this.adminName = this.authService.currentUserValue?.name || 'Admin';
+    this.adminEmail = this.authService.currentUserValue?.email || '';
     console.debug('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
 
-    // ── Show the dashboard immediately ─────────────────────────────────────
-    // Don't wait for data — render now so the user sees something.
-    // Data loads below in the background.
-    this.isLoading = false;
-    clearTimeout(failsafeTimer);
-    this.cdr.detectChanges();
-
-    // ── Load data in background ────────────────────────────────────────────
     try {
       await this.loadSubscription();
       console.debug('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
