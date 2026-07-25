@@ -256,7 +256,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       await this.loadSubscription();
       console.debug('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
       if (this.subscription) {
-        await Promise.all([this.loadClinics(), this.loadUsers(), this.loadConfig()]);
+        await Promise.all([this.loadClinics(), this.loadUsers()]);
         console.debug('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
       } else {
         console.warn('[AdminDashboard] No subscription found — dashboard will show "No Subscription" state');
