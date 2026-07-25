@@ -21,6 +21,7 @@ export interface Subscription {
   billing_email?: string;       // billing contact (defaults to owner_email)
   plan: SubscriptionPlan;
   status: 'active' | 'inactive' | 'suspended';
+
   /** ISO date string — subscription blocks login after this date (e.g. "2026-08-01T00:00:00.000Z") */
   valid_until?: string;
   /** Billing cycle selected when the plan was last changed */
