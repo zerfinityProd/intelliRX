@@ -45,6 +45,8 @@ export class AuthenticationService {
     private authReadySubject = new BehaviorSubject<boolean>(false);
     public authReady$ = this.authReadySubject.asObservable();
 
+    private readonly ROLE_KEY = 'intellirx_user_role';
+
     /** Set during registration to prevent onAuthStateChanged from signing out
      *  before the user document exists in Firestore. */
     private _registering = false;
@@ -100,12 +102,17 @@ export class AuthenticationService {
                             const dbName = await this.authorizationService.getUserName(email);
                             const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                             if (dbName) user.name = dbName;
+                            // Persist role so page-refresh can recover it if Firestore is unavailable
+                            try { sessionStorage.setItem(this.ROLE_KEY, role); } catch { /* ignore */ }
                             this.setCurrentUser(user);
                         }
                     } catch (e) {
                         console.warn('[Auth] onAuthStateChanged page-refresh check failed — proceeding anyway:', e);
-                        // Still set the user from Firebase token data so the app is usable
-                        this.setCurrentUser(this.transformFirebaseUser(firebaseUser));
+                        // Still set the user from Firebase token data so the app is usable.
+                        // Recover the last known role from sessionStorage so the admin guard
+                        // can still grant access without a Firestore round-trip.
+                        const savedRole = (() => { try { return sessionStorage.getItem(this.ROLE_KEY) || undefined; } catch { return undefined; } })();
+                        this.setCurrentUser({ ...this.transformFirebaseUser(firebaseUser), ...(savedRole ? { role: savedRole } : {}) });
                     }
                 } else {
                     this.setCurrentUser(null);
@@ -225,6 +232,7 @@ export class AuthenticationService {
             const dbName = await this.authorizationService.getUserName(userEmail);
             const user: User = { ...this.transformFirebaseUser(userCredential.user), role };
             if (dbName) user.name = dbName;
+            try { sessionStorage.setItem(this.ROLE_KEY, role); } catch { /* ignore */ }
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
