@@ -1,5 +1,5 @@
 // IntelliRX Service Worker
-const CACHE_NAME = 'intellirx-cache-v2';
+const CACHE_NAME = 'intellirx-cache-v3';
 
 // Assets to pre-cache on install
 const PRECACHE_ASSETS = [
@@ -35,22 +35,10 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (!url.protocol.startsWith('http')) return;
 
-  // Always fetch navigation requests (HTML) fresh from network — never serve
-  // from cache. This keeps Angular's client-side routing working correctly
-  // and prevents stale index.html from breaking route changes.
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() =>
-        // If offline and no network, return a minimal offline response
-        new Response('Offline — please check your connection.', {
-          status: 503,
-          statusText: 'Service Unavailable',
-          headers: { 'Content-Type': 'text/plain' },
-        })
-      )
-    );
-    return;
-  }
+  // Never intercept navigation requests (Angular SPA routes like /home,
+  // /admin/dashboard). The server (Firebase Hosting) serves index.html for
+  // all paths. Let the browser handle these natively — no SW involvement.
+  if (event.request.mode === 'navigate') return;
 
   // Skip Firebase, Google APIs, and other external origins
   // (except Google Fonts which we can cache)
