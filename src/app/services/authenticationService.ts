@@ -66,6 +66,11 @@ export class AuthenticationService {
 
         onAuthStateChanged(this.auth, (firebaseUser) => {
             runInInjectionContext(this.injector, async () => {
+                console.log('[AuthState] onAuthStateChanged fired.',
+                    'firebaseUser:', firebaseUser ? firebaseUser.email : 'null',
+                    '| _loggingIn:', this._loggingIn,
+                    '| _registering:', this._registering);
+
                 if (firebaseUser) {
                     const email = firebaseUser.email || '';
 
@@ -73,6 +78,7 @@ export class AuthenticationService {
                     // handle user setup themselves. Skip all processing here to avoid
                     // race conditions (e.g. setting up a user that will be signed out).
                     if (this._loggingIn || this._registering) {
+                        console.log('[AuthState] Skipping — login/registration in progress.');
                         if (!this.authReady) {
                             this.authReady = true;
                             this.authReadySubject.next(true);
@@ -85,13 +91,14 @@ export class AuthenticationService {
                     // even if Firestore is temporarily unavailable. Without this
                     // guarantee, any thrown error here leaves authReady$ never
                     // emitting true, permanently hanging any component waiting on it.
+                    console.log('[AuthState] Page-refresh path — checking Firestore for:', email);
                     try {
                         const allowed = await this.authorizationService.isEmailAllowed(email);
                         if (!allowed) {
-                            console.warn('[Auth] onAuthStateChanged: email not in users collection, deleting auth user & signing out:', email);
+                            console.warn('[AuthState] email not in users collection — deleting auth user & signing out:', email);
                             // Delete the orphaned Firebase Auth user so it doesn't
                             // persist in the Authentication console.
-                            try { await deleteUser(firebaseUser); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
+                            try { await deleteUser(firebaseUser); } catch (e) { console.warn('[AuthState] Could not delete auth user:', e); }
                             await signOut(this.auth);
                             this.setCurrentUser(null);
                         } else {
@@ -100,14 +107,16 @@ export class AuthenticationService {
                             const dbName = await this.authorizationService.getUserName(email);
                             const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                             if (dbName) user.name = dbName;
+                            console.log('[AuthState] Page-refresh user set. uid:', firebaseUser.uid, 'role:', role);
                             this.setCurrentUser(user);
                         }
                     } catch (e) {
-                        console.warn('[Auth] onAuthStateChanged page-refresh check failed — proceeding anyway:', e);
+                        console.warn('[AuthState] page-refresh check failed — proceeding anyway:', e);
                         // Still set the user from Firebase token data so the app is usable
                         this.setCurrentUser(this.transformFirebaseUser(firebaseUser));
                     }
                 } else {
+                    console.log('[AuthState] firebaseUser is null — clearing currentUser.');
                     this.setCurrentUser(null);
                 }
                 if (!this.authReady) {
@@ -207,38 +216,47 @@ export class AuthenticationService {
     }
 
     async login(email: string, password: string): Promise<User> {
+        console.log('[Auth] login start:', email);
         this._loggingIn = true;
-        // Wipe any stale session data from a previous login before starting fresh.
+        
+        // 1. Wipe stale state
+        this.clinicContextService.clear();
+        this.authorizationService.invalidateRolesCache();
         sessionStorage.clear();
+
         try {
-            // Check Firestore FIRST — if email is not in the users collection,
-            // reject immediately without touching Firebase Auth at all.
-            // This prevents orphan auth-user creation for unregistered emails.
-            const allowed = await this.authorizationService.isEmailAllowed(email);
+            // 2. Sign in first to establish auth session/token
+            console.log('[Auth] Calling signInWithEmailAndPassword...');
+            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+            console.log('[Auth] SignIn success. Checking database authorization...');
+            
+            // 3. Perform authorization check AFTER sign-in
+            const userEmail = userCredential.user.email || email;
+            const allowed = await this.authorizationService.isEmailAllowed(userEmail);
+            
             if (!allowed) {
+                console.warn('[Auth] Access denied for:', userEmail);
+                await signOut(this.auth);
                 throw new Error('Access denied. Your email is not registered in the system.');
             }
 
-            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-            const userEmail = userCredential.user.email || email;
             const role = await this.authorizationService.getUserRole(userEmail);
             const dbName = await this.authorizationService.getUserName(userEmail);
             const user: User = { ...this.transformFirebaseUser(userCredential.user), role };
             if (dbName) user.name = dbName;
+            
+            console.log('[Auth] login complete, user:', userEmail);
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            console.error('Login error:', error);
+            console.error('[Login] Error during login for', email, '| code:', error?.code, '| msg:', error?.message);
             throw this.handleAuthError(error);
         } finally {
             this._loggingIn = false;
+            console.log('[Login] _loggingIn reset to false');
         }
     }
 
-    /**
-     * Signs in with Google via popup.
-     * Returns the signed-in User, or void if the popup was closed by the user.
-     */
     async loginWithGoogle(): Promise<User | void> {
         this._loggingIn = true;
         try {
@@ -318,6 +336,9 @@ export class AuthenticationService {
     }
 
     async logout(): Promise<void> {
+        const prevEmail = this.currentUserValue?.email || '(none)';
+        console.log('[Logout] ── Starting logout ─────────────────────────────────');
+        console.log('[Logout] currentUser email:', prevEmail);
         try {
             await signOut(this.auth);
             this.setCurrentUser(null);
@@ -332,8 +353,9 @@ export class AuthenticationService {
             // visit data, day-view dates, etc.) so no previous user's data leaks
             // into the next session after a fresh login.
             sessionStorage.clear();
+            console.log('[Logout] Done. All session state cleared for:', prevEmail);
         } catch (error) {
-            console.error('Logout error:', error);
+            console.error('[Logout] Error:', error);
             throw error;
         }
     }

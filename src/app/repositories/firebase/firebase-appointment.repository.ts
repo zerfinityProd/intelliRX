@@ -41,7 +41,9 @@ export class FirebaseAppointmentRepository extends AppointmentRepository {
   async createAppointment(
     data: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<string> {
-    const id = await this.api.getNextSequentialId('apt');
+    const subId = data.subscription_id || this.getSubscriptionId();
+    // Use subscription-scoped ID so apt_1, apt_2 … are independent per tenant.
+    const id = await this.api.getNextSequentialIdForSubscription('apt', 'appointments', subId);
     const now = new Date();
 
     const clinicId = data.clinic_id || this.clinicContextService.getSelectedClinicId() || '';

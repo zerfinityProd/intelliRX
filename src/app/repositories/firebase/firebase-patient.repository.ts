@@ -37,11 +37,14 @@ export class FirebasePatientRepository extends PatientRepository {
   async addPatient(patientData: Omit<Patient, 'id' | 'last_updated'>): Promise<string> {
     try {
       const now = new Date().toISOString();
-      const id = await this.api.getNextSequentialId('pat');
+      const subId = this.getSubscriptionId();
+      // Use subscription-scoped ID generation so pat_1, pat_2 … are
+      // independent per tenant and do not reveal cross-tenant counts.
+      const id = await this.api.getNextSequentialIdForSubscription('pat', 'patients', subId);
 
       const patient: Omit<Patient, 'id'> & { nameLower: string; last_updated: string } = {
         ...patientData,
-        subscription_id: patientData.subscription_id || this.getSubscriptionId(),
+        subscription_id: patientData.subscription_id || subId,
         clinic_ids: patientData.clinic_ids ?? [],
         created_at: patientData.created_at || now,
         last_updated: now,
@@ -169,10 +172,28 @@ export class FirebasePatientRepository extends PatientRepository {
   async getPatientById(patientId: string): Promise<Patient | null> {
     try {
       const cached = this.getFromCache(patientId);
-      if (cached) return cached;
+      if (cached) {
+        // Verify cached patient belongs to current subscription
+        const subId = this.getSubscriptionId();
+        if (cached.subscription_id && cached.subscription_id !== subId) {
+          return null;
+        }
+        return cached;
+      }
 
       const result = await this.api.getDocument('patients', patientId);
       if (result) {
+        // ── Tenant isolation check ──────────────────────────────────────────
+        // Verify the fetched document belongs to the current user's subscription.
+        // Without this, any user knowing a patient ID can read another tenant's data.
+        const subId = this.getSubscriptionId();
+        if (result.data.subscription_id && result.data.subscription_id !== subId) {
+          console.warn('[PatientRepo] getPatientById: cross-tenant access blocked.',
+            'Requested:', patientId,
+            '| doc.subscription_id:', result.data.subscription_id,
+            '| current subId:', subId);
+          return null;
+        }
         const patient = { ...result.data, id: patientId } as Patient;
         this.addToCache(patientId, patient);
         return patient;
@@ -203,6 +224,20 @@ export class FirebasePatientRepository extends PatientRepository {
 
   async deletePatient(patientId: string): Promise<void> {
     const subId = this.getSubscriptionId();
+
+    // ── Tenant ownership check ─────────────────────────────────────────────
+    // Fetch the patient first and verify it belongs to the current subscription
+    // before deleting. Prevents cross-tenant deletions via direct document ID.
+    const existing = await this.api.getDocument('patients', patientId);
+    if (!existing) throw new Error(`Patient ${patientId} not found.`);
+    if (existing.data.subscription_id && existing.data.subscription_id !== subId) {
+      console.error('[PatientRepo] deletePatient: cross-tenant delete blocked.',
+        'patientId:', patientId,
+        '| doc.subscription_id:', existing.data.subscription_id,
+        '| current subId:', subId);
+      throw new Error('Access denied: patient does not belong to your subscription.');
+    }
+
     const visitDocs = await this.api.runQuery('', {
       collectionId: 'visits',
       filters: [
@@ -227,11 +262,13 @@ export class FirebasePatientRepository extends PatientRepository {
 
   async addVisit(visitData: Omit<Visit, 'id' | 'created_at'>): Promise<string> {
     try {
-      const id = await this.api.getNextSequentialId('vst');
+      const subId = this.getSubscriptionId();
+      // Use subscription-scoped ID so visit sequences are per-tenant.
+      const id = await this.api.getNextSequentialIdForSubscription('vst', 'visits', subId);
       const visit: Visit = {
         ...visitData,
         id,
-        subscription_id: visitData.subscription_id || this.getSubscriptionId(),
+        subscription_id: visitData.subscription_id || subId,
         clinic_id: visitData.clinic_id || this.clinicContext.getSelectedClinicId() || '',
         created_at: new Date().toISOString()
       };
@@ -278,6 +315,18 @@ export class FirebasePatientRepository extends PatientRepository {
   }
 
   async deleteVisit(visitId: string): Promise<void> {
+    // ── Tenant ownership check ─────────────────────────────────────────────
+    // Fetch the visit first and verify it belongs to the current subscription
+    // before deleting. Prevents cross-tenant deletions via direct visit ID.
+    const subId = this.getSubscriptionId();
+    const existing = await this.api.getDocument('visits', visitId);
+    if (existing && existing.data.subscription_id && existing.data.subscription_id !== subId) {
+      console.error('[PatientRepo] deleteVisit: cross-tenant delete blocked.',
+        'visitId:', visitId,
+        '| doc.subscription_id:', existing.data.subscription_id,
+        '| current subId:', subId);
+      throw new Error('Access denied: visit does not belong to your subscription.');
+    }
     await this.api.deleteDocument('visits', visitId);
   }
 

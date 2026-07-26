@@ -73,6 +73,7 @@ export class LoginComponent implements OnInit {
 
     /** Navigate based on role after successful login */
     private async navigateByRole(email: string): Promise<void> {
+        console.log('[Login] navigateByRole called for:', email);
         // ── Gate: only allow emails that exist in the users collection ──
         const allowed = await this.authorizationService.isEmailAllowed(email);
         if (!allowed) {
@@ -88,6 +89,7 @@ export class LoginComponent implements OnInit {
         // Fetch all global roles for routing decisions
         const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
         const role = await this.authorizationService.getUserRole(email);
+        console.log('[Login] navigateByRole — role:', role, '| globalRoles:', JSON.stringify(globalRoles));
         if (!role) {
             this.errorMessage = 'Could not determine user role. Please try again.';
             this.isLoading = false;
@@ -103,6 +105,7 @@ export class LoginComponent implements OnInit {
 
         // ── Gate: subscription expiry check (blocks all non-z_admin users) ──
         const expiryStatus = await this.authorizationService.checkSubscriptionExpiry(email);
+        console.log('[Login] subscriptionExpiryStatus:', expiryStatus);
         if (expiryStatus === 'expired') {
             await this.authService.logout();
             this.isLoading = false;
@@ -128,6 +131,7 @@ export class LoginComponent implements OnInit {
             // so the admin dashboard can load it without extra Firestore queries.
             try {
                 const subId = await this.authorizationService.getUserSubscriptionId(email);
+                console.log('[Login] Admin-only user. subscriptionId:', subId);
                 if (subId) {
                     this.clinicContextService.setClinicContext(null, subId);
                 }
@@ -162,10 +166,13 @@ export class LoginComponent implements OnInit {
      */
     private async ensureClinicSelected(userEmail: string): Promise<void> {
         const assignments = await this.authorizationService.getUserAssignments(userEmail);
+        console.log('[Login] ensureClinicSelected for:', userEmail,
+            '| assignments:', JSON.stringify(assignments));
 
         if (!assignments.length) {
             // No assignments — resolve subscriptionId from Firestore
             const subId = await this.authorizationService.getUserSubscriptionId(userEmail);
+            console.log('[Login] No assignments — subscriptionId from fallback:', subId);
             this.clinicContextService.setClinicContext(
                 this.clinicContextService.getSelectedClinicId(),
                 subId
@@ -175,6 +182,8 @@ export class LoginComponent implements OnInit {
 
         // Single assignment — auto-select without prompting
         if (assignments.length === 1) {
+            console.log('[Login] Single assignment — auto-selecting:',
+                'subscriptionId:', assignments[0].subscriptionId, '| clinicId:', assignments[0].clinicId);
             this.clinicContextService.setClinicContext(
                 assignments[0].clinicId,
                 assignments[0].subscriptionId
@@ -207,6 +216,7 @@ export class LoginComponent implements OnInit {
             chosenClinicId = await this.promptClinicSelection(clinicsInSub);
         }
 
+        console.log('[Login] Multi-assignment — chosen: subscriptionId:', chosenSubId, '| clinicId:', chosenClinicId);
         this.clinicContextService.setClinicContext(chosenClinicId, chosenSubId);
     }
 

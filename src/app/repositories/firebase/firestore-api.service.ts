@@ -417,6 +417,38 @@ export class FirestoreApiService {
   }
 
   /**
+   * Subscription-scoped sequential ID generator.
+   *
+   * Scans only documents that belong to `subscriptionId` (via the
+   * `subscription_id` field), so the counter is independent per tenant.
+   * This prevents:
+   *   1. Cross-tenant ID collision (two tenants both getting `pat_1`)
+   *   2. Information leakage (revealing how many patients exist across all tenants)
+   *
+   * Falls back to a timestamp suffix if the query fails.
+   */
+  async getNextSequentialIdForSubscription(
+    prefix: string,
+    collectionId: string,
+    subscriptionId: string
+  ): Promise<string> {
+    try {
+      const docs = await this.runQuery('', {
+        collectionId,
+        filters: [{ field: 'subscription_id', op: '==', value: subscriptionId }],
+        limit: 5000,
+      });
+      const max = docs.reduce((m, d) => {
+        const match = d.id.match(new RegExp(`^${prefix}_(\\d+)$`));
+        return match ? Math.max(m, parseInt(match[1], 10)) : m;
+      }, 0);
+      return `${prefix}_${max + 1}`;
+    } catch {
+      return `${prefix}_${Date.now()}`;
+    }
+  }
+
+  /**
    * Synchronous variant — compute the next ID from an already-fetched list of IDs.
    * Use this when you have a cached collection list to avoid any network call.
    */

@@ -29,9 +29,14 @@ export class ClinicContextService {
 
     // Restore from sessionStorage so the clinic selector is not re-shown
     // on a simple page refresh, while still prompting on fresh login.
+    const restoredClinicId = this.readSession(SS_CLINIC_ID);
+    const restoredSubId    = this.readSession(SS_SUB_ID);
+    console.log('[ClinicContext] Singleton constructed. Restoring from sessionStorage:',
+      'subscriptionId:', restoredSubId, '| clinicId:', restoredClinicId);
+
     this.contextSubject = new BehaviorSubject<ClinicContext>({
-      clinicId: this.readSession(SS_CLINIC_ID),
-      subscriptionId: this.readSession(SS_SUB_ID)
+      clinicId:       restoredClinicId,
+      subscriptionId: restoredSubId
     });
     this.context$ = this.contextSubject.asObservable();
   }
@@ -51,6 +56,8 @@ export class ClinicContextService {
   requireSubscriptionId(): string {
     const subId = this.contextSubject.value.subscriptionId;
     if (!subId) {
+      console.warn('[ClinicContext] requireSubscriptionId() called with NO subscription set!',
+        'This will throw. Ensure login flow calls setClinicContext before navigating.');
       throw new Error('Subscription context not set. Please log in again.');
     }
     return subId;
@@ -66,6 +73,11 @@ export class ClinicContextService {
   }
 
   setClinicContext(clinicId: string | null, subscriptionId: string | null, emitSwitch = false): void {
+    console.log('[ClinicContext] setClinicContext called.',
+      'subscriptionId:', subscriptionId,
+      '| clinicId:', clinicId,
+      '| emitSwitch:', emitSwitch,
+      '| caller:', new Error().stack?.split('\n')[2]?.trim() ?? 'unknown');
     this.contextSubject.next({ clinicId, subscriptionId });
     this.writeSession(SS_CLINIC_ID, clinicId);
     this.writeSession(SS_SUB_ID, subscriptionId);
@@ -75,6 +87,8 @@ export class ClinicContextService {
   }
 
   clear(): void {
+    console.log('[ClinicContext] clear() called \u2014 wiping subscription and clinic context.',
+      '| caller:', new Error().stack?.split('\n')[2]?.trim() ?? 'unknown');
     this.contextSubject.next({ clinicId: null, subscriptionId: null });
     try {
       sessionStorage.removeItem(SS_CLINIC_ID);
