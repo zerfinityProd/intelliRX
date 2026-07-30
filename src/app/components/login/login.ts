@@ -55,10 +55,17 @@ export class LoginComponent implements OnInit {
         // Clear any leftover OAuth redirect flags from before the popup migration
         sessionStorage.removeItem('redirectAuthPending');
 
-        // If the user lands on /app/login while already authenticated, sign them
-        // out so they can choose a different account.
+        // If the user lands on /app/login while already authenticated (e.g. opening
+        // a second tab), redirect them to their dashboard instead of signing them out.
+        // Signing out here would destroy the shared Firebase auth session for ALL open
+        // tabs (Firebase persists auth in localStorage), causing a black screen in any
+        // tab that is already inside the app.
         if (this.authService.isLoggedIn()) {
-            await this.authService.logout();
+            const email = this.authService.currentUserValue?.email;
+            if (email) {
+                await this.navigateByRole(email);
+                return;
+            }
         }
     }
 
