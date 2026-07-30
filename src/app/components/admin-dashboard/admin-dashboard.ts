@@ -15,6 +15,7 @@ import { ClinicUserAvailability } from '../../models/clinic-user.model';
 import { MultiClinicConfig, DEFAULT_MULTI_CLINIC_CONFIG } from '../../config/userSettings';
 import { NavbarComponent } from '../navbar/navbar';
 import { ClinicContextService } from '../../services/clinicContextService';
+import { SpecializationService } from '../../services/specializationService';
 
 // ── Local interfaces ──────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private location = inject(Location);
   private cdr = inject(ChangeDetectorRef);
   private clinicContext = inject(ClinicContextService);
+  private specializationService = inject(SpecializationService);
 
   // ── State ─────────────────────────────────────────────────────────────────
   isLoading = true;
@@ -99,6 +101,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   configLoading = false;
   configSaving = false;
 
+  /**
+   * Mirrors configurations/system → allow_same_clinic_name.
+   * When false, duplicate clinic names are blocked across ALL subscriptions.
+   */
+  allowSameClinicName = true;
+
 
   // ── Clinics ───────────────────────────────────────────────────────────────
   clinics: AdminClinicState[] = [];
@@ -118,6 +126,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   editingUser: AdminUserState | null = null;
   userForm: AdminUserState = this.emptyUserForm();
   userSearch = '';
+
+  /** List of specialization names fetched from `specializations/field` */
+  specializationNames: string[] = [];
 
   /**
    * Bookings loaded from the DB for the current user that are NOT represented
@@ -256,7 +267,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       await this.loadSubscription();
       console.debug('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
       if (this.subscription) {
-        await Promise.all([this.loadClinics(), this.loadUsers(), this.loadConfig()]);
+        await Promise.all([
+          this.loadClinics(),
+          this.loadUsers(),
+          this.loadConfig(),
+          this.specializationService.getSpecializationNames().then(names => {
+            this.specializationNames = names;
+          }),
+          // Load system-level config flags (e.g. allow_same_clinic_name)
+          this.configService.getSystemConfig().then(sys => {
+            this.allowSameClinicName = (sys['allow_same_clinic_name'] ?? 'yes') === 'yes';
+          }).catch(() => { this.allowSameClinicName = true; }),
+        ]);
         console.debug('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
       } else {
         console.warn('[AdminDashboard] No subscription found — dashboard will show "No Subscription" state');
@@ -876,6 +898,24 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.showToast(`Clinic limit reached (${this.stats.clinics}/${max}). Upgrade your plan to add more.`, 'error');
       return;
     }
+
+    // ── Duplicate name check within this subscription (when allow_same_clinic_name !== 'yes') ──
+    if (!this.allowSameClinicName) {
+      const newName = this.clinicForm.name.trim().toLowerCase();
+      const duplicate = this.clinics.find(c => {
+        // Skip the clinic being edited so renaming to the same name is allowed
+        if (this.editingClinic && c.id === this.editingClinic.id) return false;
+        return c.name.trim().toLowerCase() === newName;
+      });
+      if (duplicate) {
+        this.showToast(
+          `A clinic named "${duplicate.name}" already exists in this subscription. Duplicate names are not allowed.`,
+          'error'
+        );
+        return;
+      }
+    }
+
     this.isSaving = true;
     try {
       const schedule = { weekdays: [...this.clinicForm.weekdays], timings: this.clinicForm.timings.map(t => ({ ...t })) };
@@ -1369,8 +1409,13 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.showToast('Email and name are required', 'error'); return;
     }
 
-    // Doctor limit check — only block when adding a NEW doctor (edits are always allowed)
+    // Specialization is mandatory when any assignment has doctor role
     const hasDocRole = this.userForm.assignments.some(a => a.role === 'doctor');
+    if (hasDocRole && !this.userForm.specialization?.trim()) {
+      this.showToast('Specialization is required for doctor role', 'error'); return;
+    }
+
+    // Doctor limit check — only block when adding a NEW doctor (edits are always allowed)
     if (!this.editingUser && hasDocRole && this.doctorLimitReached) {
       const max = this.subscription?.plan?.limits?.max_doctors ?? 0;
       this.showToast(`Doctor limit reached (${this.stats.doctors}/${max}). Upgrade your plan to add more.`, 'error');

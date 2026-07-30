@@ -13,6 +13,7 @@ import { FullbodyWidgetComponent } from '../widgets/fullbody-widget/fullbody-wid
 import { MuscularWidgetComponent } from '../widgets/muscular-widget/muscular-widget';
 import { AuthorizationService } from '../../services/authorizationService';
 import { PatientContextService } from '../../services/patientContextService';
+import { SpecializationService } from '../../services/specializationService';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { NotificationService } from '../../services/notificationService';
@@ -147,6 +148,7 @@ export class AddVisitPageComponent implements OnInit {
     private readonly notificationService = inject(NotificationService);
     private readonly authorizationService = inject(AuthorizationService);
     private readonly patientContextService = inject(PatientContextService);
+    private readonly specializationService = inject(SpecializationService);
 
     async ngOnInit(): Promise<void> {
         const state = history.state as { origin?: string; appointmentId?: string; appointmentDatetime?: string; editVisitId?: string; editVisitData?: any } | undefined;
@@ -154,21 +156,12 @@ export class AddVisitPageComponent implements OnInit {
         this.routeAppointmentId = (state?.appointmentId || '').trim();
         this.routeAppointmentDatetime = (state?.appointmentDatetime || '').trim();
 
-        // ── Fetch doctor specialty ──
+        // ── Fetch doctor specialty and resolve chart tab from DB ──
         const currentUser = this.authService.currentUserValue;
         if (currentUser?.email) {
             try {
                 this.doctorSpecialty = await this.authorizationService.getUserSpecialization(currentUser.email);
-                const specLower = (this.doctorSpecialty || '').toLowerCase();
-                if (specLower.includes('dent')) {
-                    this.activeChartTab = 'dental';
-                } else if (specLower.includes('physio') || specLower.includes('therap')) {
-                    this.activeChartTab = 'muscular';
-                } else if (specLower.includes('cardio') || specLower.includes('heart')) {
-                    this.activeChartTab = 'cardiac';
-                } else {
-                    this.activeChartTab = 'skeletal';
-                }
+                this.activeChartTab = await this.specializationService.getChartTypeForSpecialization(this.doctorSpecialty);
             } catch (err) {
                 console.warn('Failed to load doctor specialty, defaulting to skeletal:', err);
                 this.activeChartTab = 'skeletal';

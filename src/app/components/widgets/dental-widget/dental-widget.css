@@ -28,12 +28,11 @@
 .dental-widget-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   padding: 0.4rem 0.75rem;
   border-bottom: 1px solid var(--border-color, #e2e8f0);
   background: rgba(0, 0, 0, 0.015);
   gap: 0.5rem;
-  flex-wrap: wrap;
   min-height: 36px;
   flex-shrink: 0;
 }

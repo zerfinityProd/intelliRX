@@ -66,15 +66,16 @@
 }
 
 .viewport-header {
-  padding: 0;
+  padding: 0.4rem 0.75rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   border-bottom: 1px solid var(--border-color, #e2e8f0);
   width: 100%;
   background: rgba(0, 0, 0, 0.015);
-  min-height: 36px;
+  min-height: 32px;
   flex-shrink: 0;
+  gap: 0.5rem;
 }
 
 :host-context([data-theme="dark"]) .viewport-header {
@@ -82,65 +83,162 @@
   border-color: #334155;
 }
 
-/* Light Mode (Default) Overrides */
-.view-toggles {
-  display: flex;
-  flex-wrap: nowrap;
-  justify-content: center;
-  align-items: center;
-  gap: 0;
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  border: none;
-  max-width: 100%;
-  overflow-x: auto;
-  white-space: nowrap;
+/* Spacer pushes Clear to the right */
+.header-spacer {
+  flex: 1;
 }
 
-:host-context([data-theme="dark"]) .view-toggles {
-  background: transparent;
-  border-color: transparent;
+/* Thin separator between Chart/Notes and Anterior/Posterior */
+.view-divider {
+  display: inline-block;
+  width: 1px;
+  height: 14px;
+  background: var(--border-color, #e2e8f0);
+  flex-shrink: 0;
+  margin: 0 0.25rem;
 }
 
-.toggle-btn {
+:host-context([data-theme="dark"]) .view-divider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+
+/* ── Mode tabs (Chart / Notes) — matches skeletal ── */
+.mode-tab {
   background: transparent;
   border: none;
-  border-right: 1px solid var(--clr-border, #C8DDE3);
-  color: var(--clr-text-muted, #5A8A9C);
-  padding: 8px 14px;
-  font-size: 13px;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  padding: 2px 8px 4px;
+  font-size: 0.75rem;
   font-weight: 600;
   border-radius: 0;
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
+  white-space: nowrap;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+:host-context([data-theme="dark"]) .mode-tab {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.mode-tab.active {
+  color: #148D9E;
+  border-bottom-color: #148D9E;
+}
+
+.mode-tab:hover:not(.active) {
+  color: #148D9E;
+}
+
+:host-context([data-theme="dark"]) .mode-tab.active {
+  color: #1CB5C9;
+  border-bottom-color: #1CB5C9;
+}
+
+.mode-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #148D9E;
+  color: white;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0 4px;
+  min-width: 15px;
+  height: 15px;
+  line-height: 1;
+  margin-left: 3px;
+  vertical-align: middle;
+}
+
+:host-context([data-theme="dark"]) .mode-badge {
+  background: #1CB5C9;
+}
+
+
+/* ── Clear button — matches skeletal ── */
+.clear-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: none;
+  border: 1px solid var(--border-color, #cbd5e1);
+  color: #ef4444;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.clear-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+.clear-btn:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+}
+
+:host-context([data-theme="dark"]) .clear-btn {
+  border-color: #475569;
+  color: #f87171;
+}
+
+:host-context([data-theme="dark"]) .clear-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+/* ── Anterior / Posterior toggle-btns (inline in header) ── */
+.toggle-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #64748b;
+  padding: 2px 8px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
   white-space: nowrap;
   flex-shrink: 0;
   font-family: inherit;
 }
 
 :host-context([data-theme="dark"]) .toggle-btn {
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.toggle-btn:last-child {
-  border-right: none;
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .toggle-btn.active {
-  background: transparent;
   color: #148D9E;
-  border-bottom: 2px solid #148D9E;
-  box-shadow: none;
+  border-bottom-color: #148D9E;
+}
+
+.toggle-btn:hover:not(.active) {
+  color: #148D9E;
 }
 
 :host-context([data-theme="dark"]) .toggle-btn.active {
-  background: transparent;
   color: #1CB5C9;
-  border-bottom: 2px solid #1CB5C9;
-  box-shadow: none;
+  border-bottom-color: #1CB5C9;
+}
+
+.toggle-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .chart-container-wrapper {
@@ -194,10 +292,6 @@
   display: none !important;
 }
 
-.toggle-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
 
 .selected-view-container {
   flex: 1;
@@ -221,11 +315,27 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   color: #94a3b8;
   font-size: 0.8rem;
   text-align: center;
   padding: 24px;
+}
+
+.empty-state svg {
+  opacity: 0.4;
+}
+
+.empty-state p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.empty-state p span {
+  display: block;
+  font-size: 0.72rem;
+  color: #b0bec5;
+  margin-top: 4px;
 }
 
 /* Selected List */
@@ -339,21 +449,13 @@
 }
 
 .badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #148D9E;
+  background: var(--primary-color, #148D9E);
   color: white;
-  border-radius: 999px;
-  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.68rem;
   font-weight: 700;
-  padding: 0 5px;
-  min-width: 17px;
-  height: 17px;
   line-height: 1;
-  margin-left: 4px;
-  vertical-align: middle;
-  flex-shrink: 0;
 }
 
 :host-context([data-theme="dark"]) .badge {

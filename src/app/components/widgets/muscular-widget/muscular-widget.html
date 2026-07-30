@@ -2,18 +2,24 @@
 
   <!-- MAIN VIEWPORT -->
   <div class="main-viewport">
+
+    <!-- ── Single-row header: Chart | Notes | Anterior | Posterior | → | Clear ── -->
     <div class="viewport-header">
-      <div class="view-toggles">
+      <button class="mode-tab" [class.active]="currentView !== 'SELECTED'" (click)="setView('FRONT')">Chart</button>
+      <button class="mode-tab" [class.active]="currentView === 'SELECTED'" (click)="setView('SELECTED')">
+        Notes <span class="mode-badge" [style.visibility]="selectedMuscles.length > 0 ? 'visible' : 'hidden'">{{ selectedMuscles.length }}</span>
+      </button>
+      <ng-container *ngIf="currentView !== 'SELECTED'">
+        <span class="view-divider"></span>
         <button class="toggle-btn" [class.active]="currentView === 'FRONT'" (click)="setView('FRONT')">Anterior</button>
         <button class="toggle-btn" [class.active]="currentView === 'BACK'" (click)="setView('BACK')">Posterior</button>
-        <button class="toggle-btn" [class.active]="currentView === 'SELECTED'" (click)="setView('SELECTED')">
-          Selected Muscles <span class="badge" [style.visibility]="selectedMuscles.length > 0 ? 'visible' : 'hidden'">{{ selectedMuscles.length || 0 }}</span>
-        </button>
-        <!-- Clear All Button next to the view toggles -->
-        <button class="toggle-btn clear-all-btn" [disabled]="selectedMuscles.length === 0" (click)="clearSelection()">
-          Clear All
-        </button>
-      </div>
+      </ng-container>
+      <button class="clear-btn" (click)="clearSelection()" [disabled]="selectedMuscles.length === 0">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6L6 18M6 6l12 12"></path>
+        </svg>
+        Clear
+      </button>
     </div>
 
     <!-- The BodyChart Mount Point -->
@@ -21,17 +27,20 @@
          (mousemove)="onMouseMove($event)" (mouseleave)="onMouseLeave()">
       <div #bodyMapContainer class="body-map-container"></div>
     </div>
-    
+
     <!-- Custom Tooltip -->
     <div class="muscle-tooltip" [ngStyle]="tooltipStyle" *ngIf="activeMuscle">
       <div class="tooltip-name">{{ activeMuscle.name }}</div>
       <div class="tooltip-status" *ngIf="activeMuscle.selected">Selected</div>
     </div>
 
-    <!-- Selected Muscles List View -->
+    <!-- Selected Muscles List View (Notes) -->
     <div class="selected-view-container" *ngIf="currentView === 'SELECTED'">
       <div class="empty-state" *ngIf="selectedMuscles.length === 0">
-        No muscles currently selected.
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/>
+        </svg>
+        <p>No muscles selected.<br><span>Switch to Chart and click a muscle.</span></p>
       </div>
       <div class="selected-list" *ngIf="selectedMuscles.length > 0">
         <div class="selected-item" *ngFor="let muscleId of selectedMuscles">

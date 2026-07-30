@@ -313,8 +313,16 @@
                 </select>
               </div>
               <div class="col-md-6" *ngIf="userFormHasDoctorRole">
-                <label class="ad-label">Specialization</label>
-                <input class="ad-input" type="text" [(ngModel)]="userForm.specialization" placeholder="e.g. Cardiologist" id="user-spec" />
+                <label class="ad-label">Specialization <span style="color:var(--ad-danger,#e05252)">*</span></label>
+                <select class="ad-input" [(ngModel)]="userForm.specialization" id="user-spec"
+                  [class.ad-input-error]="userFormHasDoctorRole && !userForm.specialization?.trim()">
+                  <option value="">— Select Specialization —</option>
+                  <option *ngFor="let spec of specializationNames" [value]="spec">{{ spec }}</option>
+                </select>
+                <div class="ad-field-hint" *ngIf="userFormHasDoctorRole && !userForm.specialization?.trim()"
+                  style="color:var(--ad-danger,#e05252);font-size:11px;margin-top:3px;">
+                  Specialization is required for doctors
+                </div>
               </div>
             </div>
 

@@ -52,6 +52,7 @@ export const authGuard: CanActivateFn = () => {
  * Doctor guard — allows only users with role === 'doctor'.
  * Redirects receptionists to /home.
  * Redirects unauthenticated users to /app/login.
+ * Redirects admin-only and z_admin users away from clinical routes.
  */
 export const doctorGuard: CanActivateFn = () => {
     const authService = inject(AuthenticationService);
@@ -67,20 +68,23 @@ export const doctorGuard: CanActivateFn = () => {
                 return of(false);
             }
             const email = authService.currentUserValue?.email || '';
-            return from(authorizationService.getUserRole(email)).pipe(
-                map(role => {
-                    if (role === 'receptionist') {
-                        router.navigate(['/home']);
-                        return false;
-                    }
-                    // Block z_admin from clinical app routes
-                    if (role === 'z_admin') {
+            return from(authorizationService.getUserGlobalRoles(email)).pipe(
+                map(globalRoles => {
+                    // z_admin has no clinical access
+                    if (globalRoles.includes('z_admin')) {
                         router.navigate(['/app/login']);
                         return false;
                     }
-                    // Allow admin (subscription_owner) full access like doctors
-                    if (role === 'subscription_owner') {
-                        return true;
+                    // Admin-only users (no doctor/receptionist role) belong in admin dashboard
+                    const hasClinicalRole = globalRoles.includes('doctor') || globalRoles.includes('receptionist');
+                    if (globalRoles.includes('admin') && !hasClinicalRole) {
+                        router.navigate(['/admin-dashboard']);
+                        return false;
+                    }
+                    // Receptionists cannot access doctor-only routes
+                    if (!globalRoles.includes('doctor')) {
+                        router.navigate(['/home']);
+                        return false;
                     }
                     return true;
                 })

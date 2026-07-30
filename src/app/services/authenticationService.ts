@@ -66,10 +66,6 @@ export class AuthenticationService {
 
         onAuthStateChanged(this.auth, (firebaseUser) => {
             runInInjectionContext(this.injector, async () => {
-                console.log('[AuthState] onAuthStateChanged fired.',
-                    'firebaseUser:', firebaseUser ? firebaseUser.email : 'null',
-                    '| _loggingIn:', this._loggingIn,
-                    '| _registering:', this._registering);
 
                 if (firebaseUser) {
                     const email = firebaseUser.email || '';
@@ -78,7 +74,7 @@ export class AuthenticationService {
                     // handle user setup themselves. Skip all processing here to avoid
                     // race conditions (e.g. setting up a user that will be signed out).
                     if (this._loggingIn || this._registering) {
-                        console.log('[AuthState] Skipping — login/registration in progress.');
+
                         if (!this.authReady) {
                             this.authReady = true;
                             this.authReadySubject.next(true);
@@ -91,7 +87,7 @@ export class AuthenticationService {
                     // even if Firestore is temporarily unavailable. Without this
                     // guarantee, any thrown error here leaves authReady$ never
                     // emitting true, permanently hanging any component waiting on it.
-                    console.log('[AuthState] Page-refresh path — checking Firestore for:', email);
+
                     try {
                         const allowed = await this.authorizationService.isEmailAllowed(email);
                         if (!allowed) {
@@ -107,7 +103,7 @@ export class AuthenticationService {
                             const dbName = await this.authorizationService.getUserName(email);
                             const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
                             if (dbName) user.name = dbName;
-                            console.log('[AuthState] Page-refresh user set. uid:', firebaseUser.uid, 'role:', role);
+
                             this.setCurrentUser(user);
                         }
                     } catch (e) {
@@ -116,7 +112,7 @@ export class AuthenticationService {
                         this.setCurrentUser(this.transformFirebaseUser(firebaseUser));
                     }
                 } else {
-                    console.log('[AuthState] firebaseUser is null — clearing currentUser.');
+
                     this.setCurrentUser(null);
                 }
                 if (!this.authReady) {
@@ -216,8 +212,8 @@ export class AuthenticationService {
     }
 
     async login(email: string, password: string): Promise<User> {
-        console.log('[Auth] login start:', email);
         this._loggingIn = true;
+
         
         // 1. Wipe stale state
         this.clinicContextService.clear();
@@ -225,10 +221,7 @@ export class AuthenticationService {
         sessionStorage.clear();
 
         try {
-            // 2. Sign in first to establish auth session/token
-            console.log('[Auth] Calling signInWithEmailAndPassword...');
             const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-            console.log('[Auth] SignIn success. Checking database authorization...');
             
             // 3. Perform authorization check AFTER sign-in
             const userEmail = userCredential.user.email || email;
@@ -245,7 +238,7 @@ export class AuthenticationService {
             const user: User = { ...this.transformFirebaseUser(userCredential.user), role };
             if (dbName) user.name = dbName;
             
-            console.log('[Auth] login complete, user:', userEmail);
+
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
@@ -253,7 +246,7 @@ export class AuthenticationService {
             throw this.handleAuthError(error);
         } finally {
             this._loggingIn = false;
-            console.log('[Login] _loggingIn reset to false');
+
         }
     }
 
@@ -336,9 +329,6 @@ export class AuthenticationService {
     }
 
     async logout(): Promise<void> {
-        const prevEmail = this.currentUserValue?.email || '(none)';
-        console.log('[Logout] ── Starting logout ─────────────────────────────────');
-        console.log('[Logout] currentUser email:', prevEmail);
         try {
             await signOut(this.auth);
             this.setCurrentUser(null);
@@ -353,7 +343,6 @@ export class AuthenticationService {
             // visit data, day-view dates, etc.) so no previous user's data leaks
             // into the next session after a fresh login.
             sessionStorage.clear();
-            console.log('[Logout] Done. All session state cleared for:', prevEmail);
         } catch (error) {
             console.error('[Logout] Error:', error);
             throw error;

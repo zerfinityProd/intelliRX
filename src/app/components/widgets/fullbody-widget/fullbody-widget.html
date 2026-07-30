@@ -20,10 +20,6 @@
       <button class="mode-tab" [class.active]="currentMode === 'notes'" (click)="setMode('notes')">
         Notes <span class="mode-badge" [style.visibility]="selectedBoneIds.length > 0 ? 'visible' : 'hidden'">{{ selectedBoneIds.length }}</span>
       </button>
-      <div class="selection-counter">
-        <span class="badge">{{ selectedBoneIds.length }}</span>
-        <span class="counter-label">selected</span>
-      </div>
       <button class="clear-btn" (click)="clearSelection()" aria-label="Deselect all bones" [disabled]="selectedBoneIds.length === 0">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-icon">
           <path d="M18 6L6 18M6 6l12 12"></path>
