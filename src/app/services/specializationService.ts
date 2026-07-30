@@ -1,6 +1,6 @@
 // src/app/services/specializationService.ts
 import { Injectable, inject } from '@angular/core';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { FirestoreApiService } from '../repositories/firebase/firestore-api.service';
 
 export interface SpecializationMap {
   [specialization: string]: string; // specialization name → chart type (e.g. 'dental', 'cardiac')
@@ -10,7 +10,7 @@ export type ChartType = 'dental' | 'skeletal' | 'muscular' | 'cardiac';
 
 @Injectable({ providedIn: 'root' })
 export class SpecializationService {
-  private firestore = inject(Firestore);
+  private api = inject(FirestoreApiService);
 
   /** Cache so we only hit Firestore once per session */
   private cachedMap: SpecializationMap | null = null;
@@ -22,10 +22,9 @@ export class SpecializationService {
   async getSpecializationMap(): Promise<SpecializationMap> {
     if (this.cachedMap) return this.cachedMap;
     try {
-      const ref = doc(this.firestore, 'specializations', 'field');
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        this.cachedMap = snap.data() as SpecializationMap;
+      const result = await this.api.getDocument('specializations', 'field');
+      if (result?.data && typeof result.data === 'object' && Object.keys(result.data).length > 0) {
+        this.cachedMap = result.data as SpecializationMap;
       } else {
         // Fallback defaults if document doesn't exist
         this.cachedMap = {
