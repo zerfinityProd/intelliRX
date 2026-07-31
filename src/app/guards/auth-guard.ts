@@ -24,6 +24,14 @@ export const authGuard: CanActivateFn = () => {
                 return of(false);
             }
 
+            // A newly registered user is signed into Firebase Auth but has not yet
+            // verified their email. Block them from entering any guarded route until
+            // they click the verification link.
+            if (!authService.isEmailVerified()) {
+                router.navigate(['/app/login']);
+                return of(false);
+            }
+
             const email = authService.currentUserValue?.email || '';
             if (!email) {
                 router.navigate(['/app/login']);
@@ -67,6 +75,13 @@ export const doctorGuard: CanActivateFn = () => {
                 router.navigate(['/app/login']);
                 return of(false);
             }
+
+            // Block unverified registration users from doctor-only routes.
+            if (!authService.isEmailVerified()) {
+                router.navigate(['/app/login']);
+                return of(false);
+            }
+
             const email = authService.currentUserValue?.email || '';
             return from(authorizationService.getUserGlobalRoles(email)).pipe(
                 map(globalRoles => {

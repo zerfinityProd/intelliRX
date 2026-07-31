@@ -276,7 +276,7 @@
               <p class="ad-page-sub">Add and manage doctors and receptionists</p>
             </div>
             <button class="ad-btn-primary" (click)="openNewUserForm()" *ngIf="!showUserForm"
-              [disabled]="doctorLimitReached && receptionistLimitReached" id="btn-add-user">
+              [disabled]="(doctorLimitReached && receptionistLimitReached) || hasNoClinics" id="btn-add-user">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Staff
             </button>
@@ -286,6 +286,11 @@
           </div>
           <div class="ad-limit-msg" *ngIf="receptionistLimitReached && !showUserForm">
             ⚠ Receptionist limit reached ({{ stats.receptionists }}/{{ subscription!.plan.limits.max_receptionists }}). Upgrade your plan to add more receptionists.
+          </div>
+          <div class="ad-limit-msg ad-no-clinic-msg" *ngIf="hasNoClinics && !showUserForm">
+            🏥 No clinics found. Please
+            <a (click)="activeSection = 'clinics'" style="cursor:pointer;text-decoration:underline;font-weight:600;">create a clinic first</a>
+            before adding staff — every staff member must be assigned to at least one clinic.
           </div>
 
           <!-- User Form -->

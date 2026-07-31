@@ -978,6 +978,13 @@
 [data-theme="dark"] .ad-limit-msg {
   background: rgba(217,119,6,0.12); border-color: rgba(217,119,6,0.25); color: #fbbf24;
 }
+.ad-no-clinic-msg {
+  background: #e0f2fe; border-color: #7dd3fc; color: #075985;
+}
+[data-theme="dark"] .ad-no-clinic-msg {
+  background: rgba(14,165,233,0.12); border-color: rgba(14,165,233,0.3); color: #38bdf8;
+}
+.ad-no-clinic-msg a { color: inherit; }
 
 /* ── No subscription ─────────────────────────────────────────────────── */
 .ad-no-sub {

@@ -28,6 +28,12 @@ export const adminGuard: CanActivateFn = () => {
                 return of(false);
             }
 
+            // Block unverified registration users from admin routes.
+            if (!authService.isEmailVerified()) {
+                router.navigate(['/app/login']);
+                return of(false);
+            }
+
             const email = (authService.currentUserValue?.email || '').toLowerCase().trim();
 
             return from(

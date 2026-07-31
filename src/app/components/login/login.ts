@@ -7,15 +7,12 @@ import { AuthorizationService } from '../../services/authorizationService';
 import { ClinicRepository } from '../../repositories/interfaces/clinic.repository';
 import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
 import { ThemeService } from '../../services/themeService';
-import { NotificationService } from '../../services/notificationService';
 import { ClinicContextService } from '../../services/clinicContextService';
-import { NotificationPermissionModalComponent } from '../notification-permission-modal/notification-permission-modal';
-import { NotificationDeniedBannerComponent } from '../notification-denied-banner/notification-denied-banner';
 
 @Component({
     selector: 'app-login',
     standalone: true,
-    imports: [CommonModule, FormsModule, NotificationPermissionModalComponent, NotificationDeniedBannerComponent],
+    imports: [CommonModule, FormsModule],
     templateUrl: './login.html',
     styleUrl: './login.css'
 })
@@ -29,14 +26,6 @@ export class LoginComponent implements OnInit {
     isLoading: boolean = false;
     showForgotPassword: boolean = false;
 
-    /** Controls visibility of the custom notification opt-in modal. */
-    showNotificationModal: boolean = false;
-    /** Controls visibility of the "notifications blocked" information banner. */
-    showDeniedBanner: boolean = false;
-    /** Firestore user ID passed into the modal so it can persist the choice. */
-    notificationUserId: string = '';
-    /** Resolves when the user closes the notification modal (enable or not-now). */
-    private notificationModalResolve: (() => void) | null = null;
 
     private readonly authService = inject(AuthenticationService);
     private readonly authorizationService = inject(AuthorizationService);
@@ -47,7 +36,7 @@ export class LoginComponent implements OnInit {
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
     private readonly clinicContextService = inject(ClinicContextService);
-    private readonly notificationService = inject(NotificationService);
+
 
     constructor() { }
 
@@ -60,7 +49,11 @@ export class LoginComponent implements OnInit {
         // Signing out here would destroy the shared Firebase auth session for ALL open
         // tabs (Firebase persists auth in localStorage), causing a black screen in any
         // tab that is already inside the app.
-        if (this.authService.isLoggedIn()) {
+        //
+        // IMPORTANT: Only auto-redirect if the email is verified. A user who completed
+        // the registration form but has not yet clicked the verification link is signed
+        // into Firebase Auth but must NOT be allowed into the app.
+        if (this.authService.isLoggedIn() && this.authService.isEmailVerified()) {
             const email = this.authService.currentUserValue?.email;
             if (email) {
                 await this.navigateByRole(email);
@@ -91,7 +84,6 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        await this.checkNotificationState(email);
 
         // Fetch all global roles for routing decisions
         const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
@@ -427,92 +419,6 @@ export class LoginComponent implements OnInit {
         this.router.navigate(['/']);
     }
 
-    /**
-     * Evaluates the current browser notification permission state after login
-     * and either:
-     *  - Shows the custom opt-in modal (permission === 'default' and the user
-     *    hasn't permanently opted out), waiting for the user to act before
-     *    navigation continues, OR
-     *  - Shows the denied-info banner (permission === 'denied'), also waiting
-     *    for the user to dismiss it before navigation continues, OR
-     *  - Does nothing (permission === 'granted').
-     *
-     * Both the modal and the denied banner block navigation via a Promise so
-     * the LoginComponent is not destroyed before the user can read/act on them.
-     */
-    private async checkNotificationState(email: string): Promise<void> {
-        if (!this.notificationService.isSupported) return;
-
-        const permission = this.notificationService.getPermissionState();
-
-
-        if (permission === 'denied') {
-            // Persist to Firestore in the background — non-critical, do not block navigation.
-            this.authorizationService.getUserId(email)
-                .then(userId => userId ? this.notificationService.markDenied(userId) : undefined)
-                .catch(() => { /* non-critical */ });
-
-            // Show the denied banner non-blocking — navigation proceeds immediately.
-            // The banner renders outside the login card so it remains visible even
-            // after the component navigates (it will be destroyed on route change,
-            // which is acceptable since the banner is informational only).
-            this.showDeniedBanner = true;
-            this.cdr.detectChanges();
-            return;
-        }
-
-        if (permission === 'granted') {
-            // Already granted — persist to Firestore in the background, then continue.
-            this.authorizationService.getUserId(email)
-                .then(userId => userId ? this.notificationService.markGranted(userId) : undefined)
-                .catch(() => { /* non-critical */ });
-            return;
-        }
-
-        // permission === 'default': check if the custom opt-in modal should be shown.
-        // This is the only case where we block navigation, because the modal asks
-        // for explicit user consent before the browser permission dialog is triggered.
-        try {
-            const userId = await this.authorizationService.getUserId(email);
-            if (!userId) return;
-
-            const show = await this.notificationService.shouldShowModal(userId);
-            if (!show) return;
-
-            // Store the userId so the modal can persist the user's choice.
-            this.notificationUserId = userId;
-            this.showNotificationModal = true;
-            this.cdr.detectChanges();
-
-            // Wait for the user to close the modal before navigation proceeds.
-            await new Promise<void>(resolve => {
-                this.notificationModalResolve = resolve;
-            });
-        } catch (err) {
-            console.warn('[Notifications] checkNotificationState error:', err);
-        }
-    }
-
-    /** Called by the modal's (closed) output binding. */
-    onNotificationModalClosed(): void {
-        this.showNotificationModal = false;
-        this.cdr.detectChanges();
-        if (this.notificationModalResolve) {
-            this.notificationModalResolve();
-            this.notificationModalResolve = null;
-        }
-    }
-
-    /** Called by the denied banner's (dismissed) output binding. */
-    onDeniedBannerDismissed(): void {
-        this.showDeniedBanner = false;
-        this.cdr.detectChanges();
-        // Unblock navigation (same Promise used for both denied banner and modal).
-        if (this.notificationModalResolve) {
-            this.notificationModalResolve();
-            this.notificationModalResolve = null;
-        }
-    }
 
     private isValidEmail(email: string): boolean {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

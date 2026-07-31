@@ -220,6 +220,11 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     return max > 0 && this.stats.receptionists >= max;
   }
 
+  /** True when no clinics have been created yet — staff cannot be added without at least one clinic. */
+  get hasNoClinics(): boolean {
+    return this.stats.clinics === 0;
+  }
+
   get filteredClinics(): AdminClinicState[] {
     if (!this.clinicSearch.trim()) return this.clinics;
     const q = this.clinicSearch.toLowerCase();
@@ -1027,6 +1032,11 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   // ── User CRUD ─────────────────────────────────────────────────────────────
   openNewUserForm(): void {
+    // Cannot add staff without at least one clinic to assign them to.
+    if (this.hasNoClinics) {
+      this.showToast('Please create a clinic first before adding staff.', 'error');
+      return;
+    }
     this.userForm = this.emptyUserForm();
     this.externalBookings = [];
     if (this.clinics.length) {

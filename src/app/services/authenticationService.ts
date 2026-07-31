@@ -361,6 +361,15 @@ export class AuthenticationService {
         return this.currentUserValue !== null && this.auth.currentUser !== null;
     }
 
+    /**
+     * Returns true only if the Firebase Auth user's email has been verified.
+     * Use this whenever you need to gate access for registration-flow users
+     * who are signed in but have not yet clicked the verification link.
+     */
+    isEmailVerified(): boolean {
+        return this.auth.currentUser?.emailVerified === true;
+    }
+
     getCurrentUserId(): string | null {
         return this.auth.currentUser?.uid || null;
     }
