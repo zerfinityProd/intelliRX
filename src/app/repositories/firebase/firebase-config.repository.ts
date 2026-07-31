@@ -35,7 +35,7 @@ export class FirebaseConfigRepository extends ConfigRepository {
     const cached = this.getFromCache(this.subscriptionCache, subscriptionId);
     if (cached !== undefined) return cached;
     try {
-      const result = await this.api.getDocument('configurations/sub', subscriptionId);
+      const result = await this.api.getDocument('configurations', subscriptionId);
       if (!result) return null;
       const config = this.extractConfigData<SubscriptionConfig>(result.data);
       this.addToCache(this.subscriptionCache, subscriptionId, config);
@@ -48,7 +48,7 @@ export class FirebaseConfigRepository extends ConfigRepository {
   async setSubscriptionConfig(subscriptionId: string, config: SubscriptionConfig): Promise<void> {
     if (!subscriptionId) throw new Error('subscriptionId is required');
     const payload = this.buildPayload(config);
-    await this.api.setDocument('configurations/sub', subscriptionId, payload);
+    await this.api.setDocument('configurations', subscriptionId, payload);
     this.subscriptionCache.delete(subscriptionId);
   }
 
@@ -59,7 +59,7 @@ export class FirebaseConfigRepository extends ConfigRepository {
     const subId = subscriptionId || this.clinicContext.getSubscriptionId();
     if (!subId) return null;
     try {
-      const result = await this.api.getDocument(`configurations/sub/${subId}/clinics`, clinicId);
+      const result = await this.api.getDocument(`configurations/${subId}/clinics`, clinicId);
       if (!result) return null;
       const config = this.extractConfigData<ClinicConfig>(result.data);
       this.addToCache(this.clinicCache, clinicId, config);
@@ -74,7 +74,7 @@ export class FirebaseConfigRepository extends ConfigRepository {
     const subId = subscriptionId || this.clinicContext.getSubscriptionId();
     if (!subId) throw new Error('Subscription context not set');
     const payload = this.buildPayload(config);
-    await this.api.setDocument(`configurations/sub/${subId}/clinics`, clinicId, payload);
+    await this.api.setDocument(`configurations/${subId}/clinics`, clinicId, payload);
     this.clinicCache.delete(clinicId);
   }
 
@@ -87,7 +87,7 @@ export class FirebaseConfigRepository extends ConfigRepository {
     if (!subId || !cId) return null;
     try {
       const result = await this.api.getDocument(
-        `configurations/sub/${subId}/clinics/${cId}/users`, userId
+        `configurations/${subId}/clinics/${cId}/users`, userId
       );
       if (!result) return null;
       const config = this.extractConfigData<DoctorConfig>(result.data);
@@ -105,7 +105,7 @@ export class FirebaseConfigRepository extends ConfigRepository {
     if (!subId || !cId) throw new Error('Subscription and clinic context required');
     const payload = this.buildPayload(config);
     await this.api.setDocument(
-      `configurations/sub/${subId}/clinics/${cId}/users`, userId, payload
+      `configurations/${subId}/clinics/${cId}/users`, userId, payload
     );
     this.doctorCache.delete(userId);
   }
