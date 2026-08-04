@@ -111,7 +111,12 @@ export class AddVisitPageComponent implements OnInit {
 
     // ── Widget toggle state & specialty ───────────────────────
     activeChartTab: 'dental' | 'skeletal' | 'muscular' | 'cardiac' = 'skeletal';
+    /** The single chart type mapped to this doctor's specialization.
+     *  null = no specialization resolved yet (show all tabs as fallback).
+     *  When set, only this tab button is rendered in the template. */
+    allowedChartTab: 'dental' | 'skeletal' | 'muscular' | 'cardiac' | null = null;
     doctorSpecialty: string = '';
+
 
     // ── Edit mode ─────────────────────────────────────────────
     isEditMode: boolean = false;
@@ -161,12 +166,19 @@ export class AddVisitPageComponent implements OnInit {
         if (currentUser?.email) {
             try {
                 this.doctorSpecialty = await this.authorizationService.getUserSpecialization(currentUser.email);
-                this.activeChartTab = await this.specializationService.getChartTypeForSpecialization(this.doctorSpecialty);
+                const resolved = await this.specializationService.getChartTypeForSpecialization(this.doctorSpecialty);
+                this.activeChartTab = resolved;
+                // Only lock to a single tab when a specialization is actually found.
+                // If doctorSpecialty is empty/unrecognised, keep allowedChartTab null
+                // so all tabs remain visible as a fallback.
+                this.allowedChartTab = this.doctorSpecialty ? resolved : null;
             } catch (err) {
                 console.warn('Failed to load doctor specialty, defaulting to skeletal:', err);
                 this.activeChartTab = 'skeletal';
+                this.allowedChartTab = null;
             }
         }
+
 
         // ── Edit mode detection ──
         if (state?.editVisitId) {
