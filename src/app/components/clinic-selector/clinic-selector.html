@@ -1,0 +1,87 @@
+<div class="selector-page">
+
+  <!-- Background decorative blobs -->
+  <div class="selector-blob selector-blob--1"></div>
+  <div class="selector-blob selector-blob--2"></div>
+
+  <div class="selector-container">
+
+    <!-- Header -->
+    <div class="selector-header">
+      <div class="selector-logo">
+        <svg width="36" height="36" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="25" cy="25" r="23" stroke="#ffffff" stroke-width="3"/>
+          <path d="M18 25 L23 30 L33 20" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="selector-logo-text">IntelliRx</span>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="selector-card">
+
+      <!-- Loading state -->
+      <div *ngIf="isLoading" class="selector-loading">
+        <div class="selector-spinner"></div>
+        <p>Loading your workspaces…</p>
+      </div>
+
+      <!-- Loaded state -->
+      <div *ngIf="!isLoading">
+        <div class="selector-card-header">
+          <h1 class="selector-title">{{ title }}</h1>
+          <p class="selector-subtitle">{{ subtitle }}</p>
+        </div>
+
+        <div class="selector-options">
+          <button
+            *ngFor="let opt of options"
+            class="selector-option"
+            [class.selector-option--selected]="selectedId === opt.id"
+            (click)="select(opt.id)"
+            type="button"
+          >
+            <!-- Avatar -->
+            <div
+              class="selector-avatar"
+              [style.background]="getColor(opt.colorIndex)"
+            >
+              {{ opt.initials }}
+            </div>
+
+            <!-- Labels -->
+            <div class="selector-option-labels">
+              <span class="selector-option-name">{{ opt.label }}</span>
+              <span *ngIf="opt.sublabel" class="selector-option-sub">{{ opt.sublabel }}</span>
+            </div>
+
+            <!-- Check mark -->
+            <div class="selector-check" [class.selector-check--visible]="selectedId === opt.id">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="11" fill="currentColor" opacity="0.15"/>
+                <path d="M7 12.5L10.5 16L17 9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </button>
+        </div>
+
+        <button
+          class="selector-continue-btn"
+          [class.selector-continue-btn--active]="selectedId !== null"
+          [disabled]="selectedId === null || isConfirming"
+          (click)="confirm()"
+          type="button"
+        >
+          <span *ngIf="!isConfirming">Continue</span>
+          <span *ngIf="isConfirming" class="selector-btn-loading">
+            <span class="selector-btn-spinner"></span>
+            Opening workspace…
+          </span>
+        </button>
+
+      </div>
+    </div>
+
+    <p class="selector-footer-note">IntelliRx · Admin, Doctor &amp; Staff Portal</p>
+  </div>
+</div>

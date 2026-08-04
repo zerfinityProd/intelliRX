@@ -1,9 +1,9 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationExtras } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
-import { AuthorizationService } from '../../services/authorizationService';
+import { AuthorizationService, ClinicAssignment } from '../../services/authorizationService';
 import { ClinicRepository } from '../../repositories/interfaces/clinic.repository';
 import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
 import { ThemeService } from '../../services/themeService';
@@ -44,16 +44,22 @@ export class LoginComponent implements OnInit {
         // Clear any leftover OAuth redirect flags from before the popup migration
         sessionStorage.removeItem('redirectAuthPending');
 
-        // If the user lands on /app/login while already authenticated (e.g. opening
-        // a second tab), redirect them to their dashboard instead of signing them out.
-        // Signing out here would destroy the shared Firebase auth session for ALL open
-        // tabs (Firebase persists auth in localStorage), causing a black screen in any
-        // tab that is already inside the app.
+        // ── Multi-tab redirect (second-tab scenario) ──────────────────────────
+        // We use a sessionStorage flag ('irx.appActive') that gets written the
+        // first time the app shell (home/dashboard) is loaded in this browser
+        // session. If that flag is already present when the user lands on /app/login,
+        // it means another tab in the same session is already inside the app —
+        // so we auto-redirect this tab too, preserving the session.
         //
-        // IMPORTANT: Only auto-redirect if the email is verified. A user who completed
-        // the registration form but has not yet clicked the verification link is signed
-        // into Firebase Auth but must NOT be allowed into the app.
-        if (this.authService.isLoggedIn() && this.authService.isEmailVerified()) {
+        // If the flag is NOT set, the user genuinely navigated to /app/login from
+        // outside (fresh load, bookmark, etc.) and the login form should always show,
+        // even if Firebase still holds an auth token from a previous session.
+        //
+        // Only redirect when email is verified — an unverified registration must
+        // not bypass the login form.
+        const isMultiTab = sessionStorage.getItem('irx.appActive') === '1';
+
+        if (isMultiTab && this.authService.isLoggedIn() && this.authService.isEmailVerified()) {
             const email = this.authService.currentUserValue?.email;
             if (email) {
                 await this.navigateByRole(email);
@@ -162,15 +168,17 @@ export class LoginComponent implements OnInit {
     /**
      * Two-tier selection: subscription → clinic.
      * Works for both doctors and receptionists.
+     *
+     * Single assignments are auto-selected. When there are multiple options,
+     * the user is navigated to the full-page /app/select-clinic route instead
+     * of a popup.
      */
     private async ensureClinicSelected(userEmail: string): Promise<void> {
         const assignments = await this.authorizationService.getUserAssignments(userEmail);
 
-
         if (!assignments.length) {
             // No assignments — resolve subscriptionId from Firestore
             const subId = await this.authorizationService.getUserSubscriptionId(userEmail);
-
             this.clinicContextService.setClinicContext(
                 this.clinicContextService.getSelectedClinicId(),
                 subId
@@ -180,7 +188,6 @@ export class LoginComponent implements OnInit {
 
         // Single assignment — auto-select without prompting
         if (assignments.length === 1) {
-
             this.clinicContextService.setClinicContext(
                 assignments[0].clinicId,
                 assignments[0].subscriptionId
@@ -191,87 +198,43 @@ export class LoginComponent implements OnInit {
         // Multiple assignments — check how many subscriptions
         const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
 
-        let chosenSubId: string;
         if (subscriptionIds.length === 1) {
-            // Single subscription, multiple clinics — skip subscription prompt
-            chosenSubId = subscriptionIds[0];
-        } else {
-            // Multiple subscriptions — prompt user to pick one
-            chosenSubId = await this.promptSubscriptionSelection(subscriptionIds);
-        }
+            // Single subscription, multiple clinics — jump straight to clinic picker
+            const chosenSubId = subscriptionIds[0];
+            const clinicsInSub = assignments
+                .filter(a => a.subscriptionId === chosenSubId)
+                .map(a => a.clinicId);
 
-        // Find clinics within the chosen subscription
-        const clinicsInSub = assignments
-            .filter(a => a.subscriptionId === chosenSubId)
-            .map(a => a.clinicId);
-
-        let chosenClinicId: string;
-        if (clinicsInSub.length === 1) {
-            chosenClinicId = clinicsInSub[0];
-        } else {
-            // Multiple clinics — prompt user to pick one
-            chosenClinicId = await this.promptClinicSelection(clinicsInSub);
-        }
-
-
-        this.clinicContextService.setClinicContext(chosenClinicId, chosenSubId);
-    }
-
-    private async promptSubscriptionSelection(subscriptionIds: string[]): Promise<string> {
-        const { default: Swal } = await import('sweetalert2');
-        // Fetch subscription names for display
-        const options: Record<string, string> = {};
-        for (const id of subscriptionIds) {
-            try {
-                const summary = await this.subscriptionRepo.getSubscriptionSummary(id);
-                options[id] = summary?.name || id;
-            } catch {
-                options[id] = id;
+            if (clinicsInSub.length === 1) {
+                // Only one clinic — auto-select
+                this.clinicContextService.setClinicContext(clinicsInSub[0], chosenSubId);
+                return;
             }
+
+            // Navigate to full-page clinic picker
+            const extras: NavigationExtras = {
+                state: {
+                    mode: 'clinic',
+                    ids: clinicsInSub,
+                    subscriptionId: chosenSubId,
+                    returnUrl: '/home'
+                }
+            };
+            this.router.navigate(['/app/select-clinic'], extras);
+            return;
         }
 
-        const result = await Swal.fire({
-            title: 'Select Organisation',
-            text: 'You belong to multiple organisations. Which one do you want to use?',
-            input: 'select',
-            inputOptions: options,
-            inputPlaceholder: 'Select an organisation',
-            showCancelButton: false,
-            confirmButtonText: 'Continue',
-            allowOutsideClick: false,
-            confirmButtonColor: '#148D9E'
-        });
-
-        return String(result.value ?? subscriptionIds[0]);
-    }
-
-    private async promptClinicSelection(clinicIds: string[]): Promise<string> {
-        const { default: Swal } = await import('sweetalert2');
-        // Fetch clinic names for display
-        const options: Record<string, string> = {};
-        for (const id of clinicIds) {
-            try {
-                const summary = await this.clinicRepo.getClinicSummary(id);
-                const name = summary?.name || id;
-                const address = summary?.address;
-                options[id] = address ? `${name} — ${address}` : name;
-            } catch {
-                options[id] = id;
+        // Multiple subscriptions — navigate to full-page subscription picker.
+        // Pass allAssignments so the selector can resolve clinics after sub is picked.
+        const extras: NavigationExtras = {
+            state: {
+                mode: 'subscription',
+                ids: subscriptionIds,
+                allAssignments: assignments,
+                returnUrl: '/home'
             }
-        }
-
-        const result = await Swal.fire({
-            title: 'Select Clinic',
-            input: 'select',
-            inputOptions: options,
-            inputPlaceholder: 'Select a clinic',
-            showCancelButton: false,
-            confirmButtonText: 'Continue',
-            allowOutsideClick: false,
-            confirmButtonColor: '#148D9E'
-        });
-
-        return String(result.value ?? clinicIds[0]);
+        };
+        this.router.navigate(['/app/select-clinic'], extras);
     }
 
     toggleMode(): void {

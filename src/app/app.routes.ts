@@ -22,6 +22,12 @@ export const routes: Routes = [
         loadComponent: () => import('./components/login/login').then(m => m.LoginComponent),
     },
 
+    // ── Clinic / Organisation Selector (shown after login when multiple workspaces exist) ──
+    {
+        path: 'app/select-clinic',
+        loadComponent: () => import('./components/clinic-selector/clinic-selector').then(m => m.ClinicSelectorComponent),
+    },
+
     // ── Backward compatibility: /login redirects to unified login ──
     {
         path: 'login',

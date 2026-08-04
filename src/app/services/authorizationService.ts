@@ -117,7 +117,7 @@ export class AuthorizationService {
             // Fallback: if where-query returned 0 docs, fetch all and match client-side.
             // This handles cases where Firestore field keys have invisible characters.
             if (rawUserDocs.length === 0) {
-                console.warn('[AuthZ] where-query returned 0 docs for', normalized, '— trying client-side fallback');
+                console.debug('[AuthZ] where-query returned 0 docs for', normalized, '— trying client-side fallback');
                 const allUsers = await this.userRepo.getAllUsers(300);
                 console.debug('[AuthZ] Fetched', allUsers.length, 'docs from users collection for fallback');
 
@@ -135,7 +135,7 @@ export class AuthorizationService {
                 });
 
                 if (!matchedUser) {
-                    console.warn('[AuthZ] User not found in users collection (even with fallback):', normalized);
+                    console.debug('[AuthZ] User not found in users collection (even with fallback):', normalized);
                     return null;
                 }
 
@@ -146,7 +146,7 @@ export class AuthorizationService {
             // Handle multiple user documents: aggregate clinic_users from ALL docs.
             let rawUserDoc = rawUserDocs[0];
             if (rawUserDocs.length > 1) {
-                console.warn('[AuthZ] Found', rawUserDocs.length, 'user docs for email:', normalized,
+                console.debug('[AuthZ] Found', rawUserDocs.length, 'user docs for email:', normalized,
                     '— IDs:', rawUserDocs.map(d => d.id).join(', '), '— aggregating assignments from all');
             }
             const userData = rawUserDoc.data;
@@ -200,19 +200,11 @@ export class AuthorizationService {
             const allCuDocs: Array<{ id: string; data: any }> = [];
             for (const doc of rawUserDocs) {
                 const cuEntries = await this.userRepo.getClinicUsersByUserId(doc.id);
-                console.debug(`[AuthZ] clinic_users query for user_id="${doc.id}" returned ${cuEntries.length} docs`);
-                cuEntries.forEach((cu, i) => {
-                    console.debug(`[AuthZ]   clinic_users[${i}] id=${cu.id}`,
-                        `clinic_id="${cu.clinic_id}"`,
-                        `status="${(cu as any)['status'] ?? '(missing→active)'}"`,
-                        `user_id="${cu.user_id}"`
-                    );
-                });
                 allCuDocs.push(...cuEntries.map(cu => ({ id: cu.id!, data: cu })));
             }
 
             if (allCuDocs.length === 0) {
-                console.warn('[AuthZ] No clinic_users entries found for any user docs of email:', normalized);
+                console.debug('[AuthZ] No clinic_users entries found for any user docs of email:', normalized);
             }
 
             const assignments: ClinicAssignment[] = [];
@@ -241,7 +233,7 @@ export class AuthorizationService {
                         clinicSubMap.set(cId, clinic.subscription_id || '');
                     }
                 } catch {
-                    console.warn(`[AuthZ] Could not fetch clinic doc for clinic_id=${cId}`);
+                    console.debug(`[AuthZ] Could not fetch clinic doc for clinic_id=${cId}`);
                 }
             }
 
@@ -258,7 +250,7 @@ export class AuthorizationService {
                         assignments.push({ subscriptionId: subId, clinicId: cId });
                     }
                 } else {
-                    console.warn(`[AuthZ]   → SKIPPED (missing subId or clinicId)`, cuDoc.id, { subId, cId });
+                    console.debug(`[AuthZ]   → SKIPPED (missing subId or clinicId)`, cuDoc.id, { subId, cId });
                 }
             }
             // Role is resolved solely from the users collection global_roles.
@@ -322,7 +314,7 @@ export class AuthorizationService {
         try {
             const permissions = await this.userRepo.getRolePermissions(roleName);
             if (!permissions.length) {
-                console.warn(`No global role defaults for: roles/${roleName}`);
+                console.debug(`No global role defaults for: roles/${roleName}`);
             }
             this.roleDefaultsCache.set(roleName, permissions);
             return permissions;
@@ -357,7 +349,7 @@ export class AuthorizationService {
             const result = await this.lookupUser(email);
             return result !== null;
         } catch (error) {
-            console.warn('Access check failed for:', email, error);
+            console.debug('Access check failed for:', email, error);
             return false;
         }
     }
@@ -502,7 +494,7 @@ export class AuthorizationService {
             // Fallback: clinic docs may be missing the subscription_id field, which causes
             // lookupUser to build zero assignments. Try finding the subscription by owner_email.
             const normalized = normalizeEmail(email);
-            console.warn('[AuthZ] getUserSubscriptionId: no assignments from lookupUser for', normalized,
+            console.debug('[AuthZ] getUserSubscriptionId: no assignments from lookupUser for', normalized,
                 '— falling back to subscriptions query by owner_email');
             try {
                 const allSubs = await this.subscriptionRepo.getSubscriptions();
@@ -512,7 +504,7 @@ export class AuthorizationService {
                     return ownerSub.id;
                 }
             } catch (fallbackErr) {
-                console.warn('[AuthZ] Fallback subscriptions query failed:', fallbackErr);
+                console.debug('[AuthZ] Fallback subscriptions query failed:', fallbackErr);
             }
 
             return null;

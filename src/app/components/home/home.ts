@@ -132,6 +132,11 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Mark this browser session as "inside the app" so that if the user opens
+    // /app/login in a second tab, the login component can detect the multi-tab
+    // scenario and auto-redirect instead of showing the login form.
+    try { sessionStorage.setItem('irx.appActive', '1'); } catch { /* ignore */ }
+
     // Restore search term from sessionStorage (persists across refresh)
     const savedSearch = sessionStorage.getItem('home_searchTerm');
     if (savedSearch) {

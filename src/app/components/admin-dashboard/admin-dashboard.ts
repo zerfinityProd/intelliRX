@@ -253,12 +253,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {
+    // Mark this browser session as "inside the app" — enables multi-tab redirect
+    // on the login page (see LoginComponent.ngOnInit).
+    try { sessionStorage.setItem('irx.appActive', '1'); } catch { /* ignore */ }
+
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
-    console.debug('[AdminDashboard] ngOnInit — waiting for authReady$');
     await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
     this.adminName = this.authService.currentUserValue?.name || 'Admin';
     this.adminEmail = this.authService.currentUserValue?.email || '';
-    console.debug('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
 
     // If no email resolved from Firebase Auth, the auth token is invalid
     // (e.g. IndexedDB corruption). Redirect to login immediately.
@@ -270,7 +272,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
     try {
       await this.loadSubscription();
-      console.debug('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
       if (this.subscription) {
         await Promise.all([
           this.loadClinics(),

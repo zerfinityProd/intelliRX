@@ -1,0 +1,368 @@
+/* ============================================================
+   CLINIC / ORG SELECTOR  —  Full-page experience
+   ============================================================ */
+
+/* ── Page shell ── */
+.selector-page {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(140deg, #042333 0%, #0A2540 40%, #0E6877 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow: hidden;
+}
+
+/* ── Decorative background blobs ── */
+.selector-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.selector-blob--1 {
+  width: 480px;
+  height: 480px;
+  background: radial-gradient(circle, #148D9E 0%, transparent 70%);
+  top: -120px;
+  right: -100px;
+}
+
+.selector-blob--2 {
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, #1CB5C9 0%, transparent 70%);
+  bottom: -80px;
+  left: -60px;
+}
+
+/* ── Centered column ── */
+.selector-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  animation: selectorFadeUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes selectorFadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Logo header ── */
+.selector-header {
+  display: flex;
+  justify-content: center;
+}
+
+.selector-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff;
+}
+
+.selector-logo svg {
+  filter: drop-shadow(0 2px 8px rgba(28, 181, 201, 0.4));
+}
+
+.selector-logo-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: #ffffff;
+}
+
+/* ── Card ── */
+.selector-card {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 24px;
+  padding: 36px 32px;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* ── Card header ── */
+.selector-card-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.selector-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0 0 8px;
+  letter-spacing: -0.3px;
+}
+
+.selector-subtitle {
+  font-size: 13px;
+  color: #5A8A9C;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Options list ── */
+.selector-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.selector-options::-webkit-scrollbar {
+  width: 4px;
+}
+.selector-options::-webkit-scrollbar-track {
+  background: transparent;
+}
+.selector-options::-webkit-scrollbar-thumb {
+  background: #C8DDE3;
+  border-radius: 4px;
+}
+
+/* ── Individual option button ── */
+.selector-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  background: #F8FBFC;
+  border: 1.5px solid #C8DDE3;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+  position: relative;
+}
+
+.selector-option:hover {
+  background: #EEF8FA;
+  border-color: #148D9E;
+  box-shadow: 0 2px 12px rgba(20, 141, 158, 0.12);
+  transform: translateY(-1px);
+}
+
+.selector-option--selected {
+  background: #E0F4F7;
+  border-color: #148D9E;
+  box-shadow: 0 0 0 3px rgba(20, 141, 158, 0.15);
+}
+
+.selector-option--selected:hover {
+  transform: none;
+}
+
+/* ── Avatar ── */
+.selector-avatar {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 12px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* ── Labels ── */
+.selector-option-labels {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selector-option-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selector-option-sub {
+  font-size: 12px;
+  color: #5A8A9C;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Check mark ── */
+.selector-check {
+  color: #148D9E;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+}
+
+.selector-check--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── Continue button ── */
+.selector-continue-btn {
+  width: 100%;
+  padding: 14px;
+  background: #C8DDE3;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: not-allowed;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.12s ease;
+  letter-spacing: 0.2px;
+}
+
+.selector-continue-btn--active {
+  background: linear-gradient(135deg, #148D9E 0%, #0E6877 100%);
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(20, 141, 158, 0.35);
+}
+
+.selector-continue-btn--active:hover {
+  background: linear-gradient(135deg, #1CB5C9 0%, #148D9E 100%);
+  box-shadow: 0 6px 20px rgba(20, 141, 158, 0.45);
+  transform: translateY(-1px);
+}
+
+.selector-continue-btn--active:active {
+  transform: translateY(0);
+}
+
+.selector-continue-btn:disabled {
+  pointer-events: none;
+}
+
+/* ── Button loading state ── */
+.selector-btn-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector-btn-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: selectorSpin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes selectorSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Full-page loading state ── */
+.selector-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px 0;
+  color: #5A8A9C;
+  font-size: 14px;
+}
+
+.selector-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #E0F4F7;
+  border-top-color: #148D9E;
+  border-radius: 50%;
+  animation: selectorSpin 0.8s linear infinite;
+}
+
+/* ── Footer note ── */
+.selector-footer-note {
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+  text-align: center;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+/* ── Dark mode ── */
+[data-theme="dark"] .selector-card {
+  background: #0C1A2E;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(26, 51, 82, 0.8);
+}
+
+[data-theme="dark"] .selector-title {
+  color: #D8E8ED;
+}
+
+[data-theme="dark"] .selector-option {
+  background: #132640;
+  border-color: #1A3352;
+}
+
+[data-theme="dark"] .selector-option:hover {
+  background: #1A3352;
+  border-color: #148D9E;
+}
+
+[data-theme="dark"] .selector-option--selected {
+  background: rgba(20, 141, 158, 0.15);
+  border-color: #148D9E;
+}
+
+[data-theme="dark"] .selector-option-name {
+  color: #D8E8ED;
+}
+
+[data-theme="dark"] .selector-option-sub {
+  color: #5A8A9C;
+}
+
+[data-theme="dark"] .selector-options::-webkit-scrollbar-thumb {
+  background: #1A3352;
+}
+
+/* ── Responsive ── */
+@media (max-width: 520px) {
+  .selector-card {
+    padding: 28px 20px;
+    border-radius: 20px;
+  }
+
+  .selector-title {
+    font-size: 20px;
+  }
+}
