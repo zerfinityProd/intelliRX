@@ -2,9 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { LeaveService } from '../../../services/leave';
 import { Leave } from '../../../models/leave.model';
 import { AuthenticationService } from '../../../services/authenticationService';
+import { AuthorizationService } from '../../../services/authorizationService';
 import { ClinicContextService } from '../../../services/clinicContextService';
 import { NavbarComponent } from '../../navbar/navbar';
 import { normalizeEmail } from '../../../utilities/normalize-email';
@@ -20,6 +23,12 @@ export class MyLeavesComponent implements OnInit {
   leaves: Leave[] = [];
   isLoading = true;   // true by default → spinner visible immediately
   isSubmitting = false;
+
+  /** Only approved leaves — shown in the Leave History panel. */
+  get approvedLeaves(): Leave[] {
+    return this.leaves.filter(l => l.status === 'approved');
+  }
+
 
   newLeave = {
     date: '',
@@ -38,13 +47,34 @@ export class MyLeavesComponent implements OnInit {
   constructor(
     private leaveService: LeaveService,
     private auth: AuthenticationService,
+    private authorizationService: AuthorizationService,
     private clinicContext: ClinicContextService,
     private router: Router
   ) { }
 
   async ngOnInit() {
-    // Auth restores the session from local cache synchronously,
-    // so getAuthUserEmail() is available here without any extra wait.
+    // Wait for Firebase auth to resolve — with a 5s timeout so the spinner
+    // can never hang indefinitely even if the auth state is slow.
+    const authTimeout = new Promise<void>(resolve => setTimeout(resolve, 5000));
+    await Promise.race([
+      firstValueFrom(this.auth.authReady$.pipe(filter(ready => ready))),
+      authTimeout
+    ]);
+
+    // If clinic context still isn't set (e.g. direct URL navigation), derive it from DB.
+    if (!this.clinicContext.getSelectedClinicId()) {
+      const email = this.auth.currentUserValue?.email;
+      if (email) {
+        try {
+          const clinicIds = await this.authorizationService.getUserClinicIds(email);
+          const subId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
+          if (clinicIds.length > 0 || subId) {
+            this.clinicContext.setClinicContext(clinicIds[0] || null, subId);
+          }
+        } catch { /* non-critical */ }
+      }
+    }
+
     await this.loadLeaves();
   }
 

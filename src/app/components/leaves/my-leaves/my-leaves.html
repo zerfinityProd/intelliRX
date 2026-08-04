@@ -97,7 +97,7 @@
             </svg>
           </div>
           <h3 class="lv-card-title">Leave History</h3>
-          <span class="lv-count-badge" *ngIf="leaves.length > 0">{{ leaves.length }}</span>
+          <span class="lv-count-badge" *ngIf="approvedLeaves.length > 0">{{ approvedLeaves.length }}</span>
         </div>
 
         <!-- Loading state -->
@@ -107,16 +107,15 @@
         </div>
 
         <!-- Empty state -->
-        <div class="lv-empty" *ngIf="!isLoading && leaves.length === 0">
+        <div class="lv-empty" *ngIf="!isLoading && approvedLeaves.length === 0">
           <div class="lv-empty__icon">📋</div>
-          <div class="lv-empty__title">No leaves yet</div>
-          <div class="lv-empty__desc">Your leave requests will appear here once you apply.</div>
+          <div class="lv-empty__title">No approved leaves</div>
+          <div class="lv-empty__desc">Your approved leaves will appear here.</div>
         </div>
 
-        <!-- Leave list (card-based, not table) -->
-        <div class="lv-list" *ngIf="!isLoading && leaves.length > 0">
-          <div class="lv-item" *ngFor="let leave of leaves" [class.lv-item--approved]="leave.status === 'approved'"
-            [class.lv-item--pending]="leave.status === 'pending'" [class.lv-item--rejected]="leave.status === 'rejected'">
+        <!-- Leave list — approved only -->
+        <div class="lv-list" *ngIf="!isLoading && approvedLeaves.length > 0">
+          <div class="lv-item lv-item--approved" *ngFor="let leave of approvedLeaves">
             <div class="lv-item__left">
               <div class="lv-item__date-badge">
                 <span class="lv-item__day">{{ leave.date | date:'dd' }}</span>
@@ -133,20 +132,12 @@
               <div class="lv-item__date-full">{{ leave.date | date:'EEEE, MMM d, yyyy' }}</div>
             </div>
             <div class="lv-item__right">
-              <span class="lv-status"
-                [class.lv-status--approved]="leave.status === 'approved'"
-                [class.lv-status--pending]="leave.status === 'pending'"
-                [class.lv-status--rejected]="leave.status === 'rejected'">
-                {{ leave.status === 'approved' ? '✓' : (leave.status === 'pending' ? '⏳' : '✕') }}
-                {{ leave.status | titlecase }}
-              </span>
-              <button class="lv-btn-cancel" (click)="cancelLeave(leave.id!)"
-                title="Cancel this leave">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
+              <!-- Simple approved checkmark — no label needed -->
+              <span class="lv-status lv-status--approved" title="Approved">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
-              </button>
+              </span>
             </div>
           </div>
         </div>

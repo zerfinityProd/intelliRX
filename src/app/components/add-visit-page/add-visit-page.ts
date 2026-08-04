@@ -838,6 +838,12 @@ export class AddVisitPageComponent implements OnInit {
 
             // Build visit data
             const currentEmail = this.authService.currentUserValue?.email || '';
+
+            // Determine which chart is in scope for this save.
+            // allowedChartTab is set when the doctor's specialization locks them to one chart.
+            // If null, include all chart fields (admin / multi-chart fallback).
+            const chartInScope = this.allowedChartTab ?? this.activeChartTab;
+
             const visitData: any = {
                 chiefComplaints: this.chiefComplaintsText.trim(),
                 diagnosis: this.diagnosis.trim(),
@@ -845,15 +851,28 @@ export class AddVisitPageComponent implements OnInit {
                 treatmentPlan: this.treatmentPlan.trim(),
                 advice: this.advice.trim(),
                 doctor_id: currentEmail,
-                selectedTeeth: this.selectedTeethIds,
-                toothNotes: this.toothNotes,
-                selectedBones: this.selectedBoneIds,
-                boneNotes: this.boneNotes,
-                selectedMuscles: this.selectedMuscleIds,
-                muscleNotes: this.muscleNotes,
-                selectedHeartRegions: this.selectedHeartRegionIds.length > 0 ? this.selectedHeartRegionIds : [],
-                heartRegionNotes: Object.keys(this.heartNotes).length > 0 ? this.heartNotes : {},
             };
+
+            // Only write chart fields that belong to the active chart type.
+            // This keeps Firestore documents clean — an orthopedist's visit
+            // will never have selectedTeeth/muscleNotes/heartRegionNotes etc.
+            if (chartInScope === 'skeletal' || this.allowedChartTab === null) {
+                visitData.selectedBones = this.selectedBoneIds;
+                visitData.boneNotes    = this.boneNotes;
+            }
+            if (chartInScope === 'dental' || this.allowedChartTab === null) {
+                visitData.selectedTeeth = this.selectedTeethIds;
+                visitData.toothNotes    = this.toothNotes;
+            }
+            if (chartInScope === 'muscular' || this.allowedChartTab === null) {
+                visitData.selectedMuscles = this.selectedMuscleIds;
+                visitData.muscleNotes     = this.muscleNotes;
+            }
+            if (chartInScope === 'cardiac' || this.allowedChartTab === null) {
+                visitData.selectedHeartRegions = this.selectedHeartRegionIds.length > 0 ? this.selectedHeartRegionIds : [];
+                visitData.heartRegionNotes     = Object.keys(this.heartNotes).length > 0 ? this.heartNotes : {};
+            }
+
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;
             const medicinesArr = this.formatMedicines();
