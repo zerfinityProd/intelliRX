@@ -619,12 +619,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         const fallbackRole: 'doctor' | 'receptionist' = globalRoles.includes('doctor') ? 'doctor' : 'receptionist';
         // Build clinic assignments — skip entries with no clinic_id (e.g. admin-level
         // clu records created at registration time with subscription_id only).
-        const assignments: UserClinicAssignment[] = allCU
+        const rawAssignments: UserClinicAssignment[] = allCU
           .filter(cu => cu.user_id === userId && cu.clinic_id)
           .map(cu => {
           const clinic = this.clinics.find(c => c.id === cu.clinic_id);
           const cuRole = (cu as any).role as string | undefined;
-          const role: 'doctor' | 'receptionist' = (cuRole === 'doctor' || cuRole === 'receptionist') ? cuRole : fallbackRole;
+          // Use the explicit per-clinic role stored on the clinic_users doc if valid.
+          // Only fall back to global_roles when no role field exists at all on this doc.
+          const role: 'doctor' | 'receptionist' =
+            cuRole === 'doctor' || cuRole === 'receptionist'
+              ? cuRole
+              : fallbackRole;
+
           return {
             clinicUserId: cu.id, clinicId: cu.clinic_id, clinicName: clinic?.name || cu.clinic_id,
             clinicAddress: clinic?.address || '',
@@ -634,6 +640,19 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
             dayBlockOverrides: this.deepCopyDayBlockOverrides((cu as any).dayBlockOverrides),
           };
         });
+
+        // Deduplicate by clinic_id + role — duplicate clinic_users docs (e.g. from
+        // double-writes or old registration flows) must not produce duplicate rows
+        // in the edit form, which would cause false "TAKEN" badges on role chips.
+        const seenKeys = new Set<string>();
+        const assignments: UserClinicAssignment[] = rawAssignments.filter(a => {
+          const key = `${a.clinicId}::${a.role}`;
+          if (seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
+
+
         this.users.push({
           userId, email: userDoc.email, name: userDoc.name, specialization: userDoc.specialization || '',
           global_roles: userDoc.global_roles || [], status: userDoc.status || 'active', assignments,
@@ -1108,23 +1127,33 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   addClinicAssignment(): void {
     if (!this.clinics.length) { this.showToast('No clinics available. Add a clinic first.', 'error'); return; }
-    // Find first clinic that still has at least one role free
     const current = this.userForm.assignments;
-    const available = this.clinics.filter(c => {
-      const existing = current.filter(a => a.clinicId === c.id);
-      const hasDoctor       = existing.some(a => a.role === 'doctor');
-      const hasReceptionist = existing.some(a => a.role === 'receptionist');
-      return !(hasDoctor && hasReceptionist);
+
+    // Split clinics into: fully unassigned first, then partially assigned.
+    // This prevents accidentally adding a second row for the same clinic
+    // when other clinics haven't been assigned at all yet.
+    const freshClinics = this.clinics.filter(c => !current.some(a => a.clinicId === c.id));
+    const partialClinics = this.clinics.filter(c => {
+      const rows = current.filter(a => a.clinicId === c.id);
+      const hasDoctor       = rows.some(a => a.role === 'doctor');
+      const hasReceptionist = rows.some(a => a.role === 'receptionist');
+      // Partially assigned = has one role but not both
+      return rows.length > 0 && !(hasDoctor && hasReceptionist);
     });
-    if (!available.length) {
+
+    if (!freshClinics.length && !partialClinics.length) {
       this.showToast('All clinics already have both Doctor and Receptionist assigned.', 'error');
       return;
     }
-    const c = available[0];
+
+    // Prefer a fresh (completely unassigned) clinic; fall back to partial.
+    const c = freshClinics.length ? freshClinics[0] : partialClinics[0];
+
     // Choose whichever role isn't yet assigned for this clinic
     const existingForClinic = current.filter(a => a.clinicId === c.id);
-    const hasRec  = existingForClinic.some(a => a.role === 'receptionist');
-    const role: 'doctor' | 'receptionist' = hasRec ? 'doctor' : 'receptionist';
+    const hasDoc = existingForClinic.some(a => a.role === 'doctor');
+    const role: 'doctor' | 'receptionist' = hasDoc ? 'receptionist' : 'doctor';
+
     this.userForm.assignments.push({
       clinicId: c.id, clinicName: c.name, clinicAddress: c.address || '',
       role, availability: {},
