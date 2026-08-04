@@ -923,11 +923,18 @@ export class AddVisitPageComponent implements OnInit {
                         const patientName = (this.patient.name || '').trim().toLowerCase();
                         const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
                         const now = new Date();
+                        // Normalize the current doctor's email for comparison
+                        const currentDoctorEmail = (this.authService.currentUserValue?.email || '').trim().toLowerCase();
 
                         // Only match SAME-DAY appointments (not future dates)
                         const candidates = allAppts
                             .filter(a => a.status === 'scheduled')
                             .filter(a => this.isSameLocalDay(new Date(a.datetime), now))
+                            // Only link to appointments that belong to THIS doctor
+                            .filter(a => {
+                                if (!a.doctor_id) return true; // no doctor_id stored — allow linking
+                                return a.doctor_id.trim().toLowerCase() === currentDoctorEmail;
+                            })
                             .filter(a => {
                                 const apptPatientId = (a.patient_id || '').trim();
                                 if (apptPatientId) return apptPatientId === patientId;
@@ -937,6 +944,7 @@ export class AddVisitPageComponent implements OnInit {
                             });
 
                         matchedAppointment = this.pickClosestAppointmentByTime(candidates, now);
+
 
                         if (matchedAppointment) {
                             const timing = this.classifyAppointmentTiming(matchedAppointment, now);

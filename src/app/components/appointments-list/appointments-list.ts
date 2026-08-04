@@ -231,7 +231,17 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     await this.initDoctorCache();
 
     try {
-      this.appointments = await this.appointmentService.getAppointments();
+      const raw = await this.appointmentService.getAppointments();
+      // Extra guard: doctors should only ever see their own appointments.
+      // This prevents stale cache or role-resolution edge cases from leaking
+      // another doctor's appointments into this doctor's board.
+      if (this.userRole === 'doctor' && this.currentUserEmail) {
+        this.appointments = raw.filter(
+          a => !a.doctor_id || normalizeEmail(a.doctor_id) === this.currentUserEmail
+        );
+      } else {
+        this.appointments = raw;
+      }
     } catch (e) {
       this.errorMessage = 'Failed to load appointments.';
       this.appointments = [];
@@ -272,7 +282,15 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     // Guard: skip if subscription context is not available yet
     if (!this.clinicContextService.getSubscriptionId()) return;
     try {
-      this.appointments = await this.appointmentService.getAppointments();
+      const raw = await this.appointmentService.getAppointments();
+      // Same doctor-scoping guard as the initial load
+      if (this.userRole === 'doctor' && this.currentUserEmail) {
+        this.appointments = raw.filter(
+          a => !a.doctor_id || normalizeEmail(a.doctor_id) === this.currentUserEmail
+        );
+      } else {
+        this.appointments = raw;
+      }
       this.cdr.detectChanges();
     } catch {
       // No-op: avoid breaking UI refresh loop
