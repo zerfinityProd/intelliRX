@@ -545,14 +545,25 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
       // ── Backfill valid_until if missing ─────────────────────────────────
       // Existing subscriptions created before the valid_until feature won't have
-      // this field. Compute it from created_at + plan validity days and write it
-      // back to Firestore so it's permanently set.
+      // this field. Compute it from created_at + billing_cycle duration and write
+      // it back to Firestore so it's permanently set.
       if (!this.subscription!.valid_until) {
         try {
           const planName = this.subscription!.plan?.name || '';
-          const validityDays = planName
-            ? await this.configService.getPlanValidityDays(planName)
-            : 30;
+          const cycle = this.subscription!.billing_cycle || 'monthly';
+
+          // Determine days from billing_cycle first — monthly=30, quarterly=90, yearly=365.
+          // This is the correct renewal period the user actually pays for.
+          const cycleDays: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
+          let validityDays = cycleDays[cycle] ?? 30;
+
+          // For short demo/trial plans (validity_days < 60), honour the plan's own ceiling
+          // so trials don't get extended to a full 30-day billing period.
+          if (planName) {
+            const planDays = await this.configService.getPlanValidityDays(planName);
+            if (planDays < 60) validityDays = planDays;
+          }
+
           const baseDate = this.subscription!.created_at
             ? new Date(this.subscription!.created_at)
             : new Date();
@@ -562,9 +573,40 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           // Write back to Firestore so this doesn't repeat
           await this.subscriptionRepo.updateSubscription(this.subscription!.id, { valid_until } as any);
           this.subscription!.valid_until = valid_until;
-          console.debug('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, '(', validityDays, 'days from created_at)');
+          console.debug('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, 'cycle:', cycle, '(', validityDays, 'days from created_at)');
         } catch (backfillErr) {
           console.warn('[AdminDashboard] Could not backfill valid_until:', backfillErr);
+        }
+      } else {
+        // ── Correct valid_until if it was previously set using plan validity_days
+        // instead of billing_cycle (a bug that set monthly users to 365 days).
+        // Only correct if the remaining days are grossly beyond the billing cycle.
+        try {
+          const cycle = this.subscription!.billing_cycle;
+          if (cycle && cycle !== 'yearly' && this.subscription!.valid_until) {
+            const maxCycleDays: Record<string, number> = { monthly: 45, quarterly: 120 };
+            const threshold = maxCycleDays[cycle];
+            if (threshold) {
+              const msLeft = new Date(this.subscription!.valid_until).getTime() - Date.now();
+              const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+              if (daysLeft > threshold) {
+                // valid_until is too far out — recompute from created_at + cycle days
+                const correctDays: Record<string, number> = { monthly: 30, quarterly: 90 };
+                const validityDays = correctDays[cycle] ?? 30;
+                const baseDate = this.subscription!.created_at
+                  ? new Date(this.subscription!.created_at)
+                  : new Date();
+                const expiryDate = new Date(baseDate);
+                expiryDate.setDate(expiryDate.getDate() + validityDays);
+                const valid_until = expiryDate.toISOString();
+                await this.subscriptionRepo.updateSubscription(this.subscription!.id, { valid_until } as any);
+                this.subscription!.valid_until = valid_until;
+                console.debug('[AdminDashboard] Corrected valid_until from', daysLeft, 'days to', validityDays, 'days for cycle:', cycle);
+              }
+            }
+          }
+        } catch (corrErr) {
+          console.warn('[AdminDashboard] Could not correct valid_until:', corrErr);
         }
       }
     } catch (e: any) {

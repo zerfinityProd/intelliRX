@@ -78,6 +78,7 @@ export class ClinicSelectorComponent implements OnInit {
 
     select(id: string): void {
         this.selectedId = id;
+        this.cdr.detectChanges();
     }
 
     async confirm(): Promise<void> {
