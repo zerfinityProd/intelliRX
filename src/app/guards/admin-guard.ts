@@ -43,9 +43,15 @@ export const adminGuard: CanActivateFn = () => {
                     if (globalRoles.includes('admin') || globalRoles.includes('z_admin')) {
                         return true;
                     }
-                    // Fallback: check if this email owns any subscription.
-                    // Covers subscription owners whose global_roles is ['doctor'] only
-                    // (the admin role was never explicitly written to their user doc).
+                    // Secondary: getUserRole() resolves 'subscription_owner' from the user doc
+                    // even when global_roles only contains ['doctor'].
+                    // This avoids the isSubscriptionOwner() fallback which fetches ALL subscriptions
+                    // — a Firestore read that doctor-role security rules block (404).
+                    const computedRole = await authzService.getUserRole(email);
+                    if (computedRole === 'subscription_owner') {
+                        return true;
+                    }
+                    // Last-resort fallback: check if this email owns any subscription.
                     const isOwner = await authzService.isSubscriptionOwner(email);
                     if (!isOwner) {
                         router.navigate(['/home']);
