@@ -63,6 +63,27 @@ export class NavbarComponent implements OnInit, OnDestroy {
       || url.startsWith('/admin/subscription');
   }
 
+  /**
+   * Reception Dashboard button should only appear when the user has the
+   * receptionist role but NOT the doctor role.
+   *
+   * Rationale: doctor role already includes all reception-level permissions,
+   * so when both roles are assigned the doctor dashboard is sufficient.
+   * Showing a separate Reception Dashboard button alongside Doctor Dashboard
+   * is redundant and confusing.
+   *
+   * Matrix:
+   *  admin only                → Admin Dashboard only
+   *  admin + doctor            → Admin Dashboard + Doctor Dashboard
+   *  admin + reception         → Admin Dashboard + Reception Dashboard
+   *  admin + doctor + reception→ Admin Dashboard + Doctor Dashboard
+   *  doctor only               → Doctor Dashboard
+   *  reception only            → Reception Dashboard
+   */
+  get showReceptionDashboard(): boolean {
+    return this.isReceptionist && !this.isDoctor;
+  }
+
   async ngOnInit(): Promise<void> {
     // Wait for Firebase auth to restore session before reading the user's email.
     // On a hard page refresh currentUserValue is null until onAuthStateChanged fires,
