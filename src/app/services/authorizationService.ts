@@ -170,19 +170,17 @@ export class AuthorizationService {
             const globalRoles = getField(userData, 'global_roles');
             const globalRolesArray: string[] = (globalRoles && Array.isArray(globalRoles)) ? [...globalRoles] : [];
             if (globalRolesArray.length > 0) {
-                for (const r of globalRolesArray) {
-                    if (r === 'recep' || r === 'receptionist') {
-                        role = 'receptionist';
-                        break;
-                    }
-                    // Treat 'admin' as 'subscription_owner' — they share the same portal access
-                    if (r === 'admin') {
-                        role = 'subscription_owner';
-                        break;
-                    }
-                    if (KNOWN_ROLES.includes(r)) {
-                        role = r;
-                        break;
+                // Priority: admin/subscription_owner roles take precedence over clinical roles.
+                // This ensures a user with ['doctor', 'admin'] resolves to subscription_owner,
+                // not 'doctor' (which would hide the Admin Dashboard link in the navbar).
+                if (globalRolesArray.includes('z_admin')) {
+                    role = 'z_admin';
+                } else if (globalRolesArray.includes('admin') || globalRolesArray.includes('subscription_owner')) {
+                    role = 'subscription_owner';
+                } else {
+                    for (const r of globalRolesArray) {
+                        if (r === 'recep' || r === 'receptionist') { role = 'receptionist'; break; }
+                        if (KNOWN_ROLES.includes(r)) { role = r; break; }
                     }
                 }
             }
@@ -540,6 +538,25 @@ export class AuthorizationService {
         } catch (error) {
             console.warn('getSubscriptionIds failed for:', email, error);
             return [];
+        }
+    }
+
+    /**
+     * Returns true when the given email is the owner_email of ANY subscription.
+     * This is the authoritative admin check — it searches across all subscriptions
+     * so it works even when the user's clinic_users records point to a different sub
+     * (e.g. due to historical cross-subscription data leaks).
+     */
+    async isSubscriptionOwner(email: string): Promise<boolean> {
+        try {
+            const normalized = normalizeEmail(email);
+            const allSubs = await this.subscriptionRepo.getSubscriptions();
+            return allSubs.some(
+                s => (s as any).owner_email?.toLowerCase().trim() === normalized
+            );
+        } catch (error) {
+            console.warn('[AuthZ] isSubscriptionOwner check failed for:', email, error);
+            return false;
         }
     }
 

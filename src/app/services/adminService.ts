@@ -26,13 +26,10 @@ export class AdminService {
   }
 
   async computeNextClinicId(): Promise<string> {
-    const allClinics = await this.clinicRepo.getClinics(''); // pass empty = all; impl may list all
-    const allIds = allClinics.map(c => c.id!).filter(Boolean);
-    const max = allIds.reduce((m, id) => {
-      const match = id.match(/^cln_(\d+)$/);
-      return match ? Math.max(m, parseInt(match[1], 10)) : m;
-    }, 0);
-    return `cln_${max + 1}`;
+    // Use getNextSequentialId via the repo which scans ALL clinic docs to find the
+    // global max. Passing '' to getClinics() filters by subscription_id='' and
+    // returns 0 results — causing cln_1 to be assigned every time.
+    return this.clinicRepo.getNextClinicId();
   }
 
   // ── Subscriptions ──────────────────────────────────────────────────────────
@@ -118,6 +115,13 @@ export class AdminService {
 
   async getAllUsers(limit?: number): Promise<AdminUser[]> {
     return this.userRepo.getAllUsers(limit);
+  }
+
+  /** Fetch all user docs that have subscription_id = subscriptionId. */
+  async getUsersBySubscription(subscriptionId: string): Promise<AdminUser[]> {
+    return this.userRepo.getUsersByFilter([
+      { field: 'subscription_id', op: '==', value: subscriptionId },
+    ]) as Promise<AdminUser[]>;
   }
 
   /** Convenience alias matching subscription repo method name */

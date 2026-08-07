@@ -43,6 +43,10 @@ export class ClinicService {
     return this.clinicRepo.getClinicName(clinicId);
   }
 
+  async getClinicSummary(clinicId: string): Promise<{ name: string; address?: string } | null> {
+    return this.clinicRepo.getClinicSummary(clinicId);
+  }
+
   // ─── CREATE ───
 
   async createClinic(

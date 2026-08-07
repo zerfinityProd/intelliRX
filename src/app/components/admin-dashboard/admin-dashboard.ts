@@ -359,6 +359,31 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       const draft = JSON.parse(raw);
       if (!draft?.userForm) return;
       this.userForm = draft.userForm;
+
+      // Validate assignments against the CURRENT subscription's clinics.
+      // A draft saved while working under a different admin (different subscription)
+      // may contain clinicIds that don't belong here — those must be stripped so
+      // staff don't get saved with wrong clinic_ids and become invisible in this dashboard.
+      const validClinicIds = new Set(this.clinics.map(c => c.id));
+      const validAssignments = (this.userForm.assignments as UserClinicAssignment[]).filter(
+        a => validClinicIds.has(a.clinicId)
+      );
+      if (validAssignments.length !== this.userForm.assignments.length) {
+        console.warn(
+          `[AdminDashboard] Draft had ${this.userForm.assignments.length} assignments; ` +
+          `${this.userForm.assignments.length - validAssignments.length} had unknown clinicIds ` +
+          `and were removed (cross-subscription draft leak).`
+        );
+        this.userForm.assignments = validAssignments;
+      }
+
+      // If no valid assignments remain, discard the entire draft — it's stale.
+      if (this.userForm.assignments.length === 0 && draft.editingUserId === null) {
+        console.warn('[AdminDashboard] Draft had no valid assignments for this subscription — discarding.');
+        sessionStorage.removeItem(this.DRAFT_KEY);
+        return;
+      }
+
       if (draft.editingUserId) {
         this.editingUser = this.users.find(u => u.userId === draft.editingUserId) ?? null;
         if (this.editingUser) {
@@ -647,8 +672,33 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     if (!this.subscription) return;
     try {
       console.debug('[AdminDashboard] loadUsers for subscription:', this.subscription.id);
+
+      // Primary: fetch clinic_users whose clinic_id matches this subscription's clinics.
       const allCU = await this.adminService.getClinicUsers(this.subscription.id);
-      console.debug('[AdminDashboard] clinic_users returned:', allCU.length);
+      console.debug('[AdminDashboard] clinic_users (by clinic) returned:', allCU.length);
+
+      // Fallback: also fetch all users with subscription_id = this subscription, then
+      // load their clinic_users by user_id. This recovers staff whose clinic_users doc
+      // has a wrong clinic_id (e.g. due to the cross-subscription draft bug).
+      let fallbackUserIds: string[] = [];
+      try {
+        const subUsers = await this.adminService.getUsersBySubscription(this.subscription.id);
+        const primaryUserIds = new Set(allCU.map(cu => cu.user_id).filter(Boolean));
+        fallbackUserIds = subUsers
+          .map(u => u.id!)
+          .filter(id => id && !primaryUserIds.has(id));
+        if (fallbackUserIds.length > 0) {
+          console.debug('[AdminDashboard] Fallback: found', fallbackUserIds.length, 'users by subscription_id not in primary results.');
+          for (const uid of fallbackUserIds) {
+            const extraCUs = await this.adminService.getClinicUsersByUser(uid);
+            for (const cu of extraCUs) {
+              if (!allCU.some(x => x.id === cu.id)) allCU.push(cu);
+            }
+          }
+        }
+      } catch (fbErr) {
+        console.warn('[AdminDashboard] Fallback subscription user lookup failed (non-critical):', fbErr);
+      }
 
       const userIds = [...new Set(allCU.map(cu => cu.user_id).filter(Boolean))];
       console.debug('[AdminDashboard] Unique user IDs to load:', userIds);
@@ -693,7 +743,6 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           seenKeys.add(key);
           return true;
         });
-
 
         this.users.push({
           userId, email: userDoc.email, name: userDoc.name, specialization: userDoc.specialization || '',
@@ -1225,7 +1274,41 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     if (a.role === 'doctor'       && doctorTaken)       a.role = 'receptionist';
     if (a.role === 'receptionist' && receptionistTaken) a.role = 'doctor';
 
+    // After this row's clinic changed, other rows' available-clinic lists may have changed
+    // too. Sanitize every OTHER row so its clinicId still points to a valid option.
+    // Without this, Angular's <select> can display a stale clinic name while the model
+    // still holds the old clinicId — causing false "TAKEN" badges on role chips.
+    this.sanitizeOtherAssignments(a);
+
     this.cdr.detectChanges();
+  }
+
+  /**
+   * After a clinic change on one row, validate every other row's clinicId against
+   * the (now-updated) available-clinics list. If a row's current clinicId is no longer
+   * available (both roles taken), reset it to the first available clinic and pick the
+   * appropriate role so it doesn't show a stale/wrong value.
+   */
+  private sanitizeOtherAssignments(changedRow: UserClinicAssignment): void {
+    for (const a of this.userForm.assignments) {
+      if (a === changedRow) continue;
+      const available = this.getAvailableClinicsForRow(a);
+      if (!available.some(c => c.id === a.clinicId)) {
+        // Current clinic is no longer valid for this row — pick the first available
+        const fallback = available[0];
+        if (!fallback) continue;
+        a.clinicId = fallback.id;
+        a.clinicName = fallback.name;
+        a.clinicAddress = fallback.address || '';
+        a.availability = {}; a.timingOverrides = {}; a.dayBlockOverrides = {};
+        // Pick whichever role isn't taken for this new clinic
+        const othersForFallback = this.userForm.assignments.filter(
+          o => o !== a && o.clinicId === fallback.id
+        );
+        const hasDoc = othersForFallback.some(o => o.role === 'doctor');
+        a.role = hasDoc ? 'receptionist' : 'doctor';
+      }
+    }
   }
 
   onAssignmentRoleChange(a: UserClinicAssignment): void {
@@ -1269,6 +1352,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   getAvailableClinicsForRow(currentAssignment: UserClinicAssignment): AdminClinicState[] {
     const others = this.userForm.assignments.filter(a => a !== currentAssignment);
     return this.clinics.filter(c => {
+      // Always keep the row's own current clinic in the list — removing it from the
+      // options causes Angular's <select> to display a blank/stale value without
+      // firing ngModelChange, which creates a model/view mismatch and false TAKEN badges.
+      if (c.id === currentAssignment.clinicId) return true;
       const sameClinic = others.filter(a => a.clinicId === c.id);
       const hasDoctor       = sameClinic.some(a => a.role === 'doctor');
       const hasReceptionist = sameClinic.some(a => a.role === 'receptionist');
@@ -1761,6 +1848,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           clinic_id: assignment.clinicId,
           user_id: userId, status: 'active',
           role: assignment.role,
+          // Store subscription_id on the clinic_users doc so staff can be found
+          // even if clinic_id lookup fails (e.g. due to cross-subscription data leaks).
+          subscription_id: this.subscription!.id,
         };
         if (assignment.role === 'doctor' && Object.keys(assignment.availability).length > 0)
           cuPayload.availability = assignment.availability;

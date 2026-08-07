@@ -37,14 +37,22 @@ export const adminGuard: CanActivateFn = () => {
             const email = (authService.currentUserValue?.email || '').toLowerCase().trim();
 
             return from(
-                authzService.getUserGlobalRoles(email).then(globalRoles => {
-                    // Allow both admin and z_admin to reach the admin dashboard
-                    if (!globalRoles.includes('admin') && !globalRoles.includes('z_admin')) {
+                (async () => {
+                    const globalRoles = await authzService.getUserGlobalRoles(email);
+                    // Primary: explicit admin/z_admin role in global_roles
+                    if (globalRoles.includes('admin') || globalRoles.includes('z_admin')) {
+                        return true;
+                    }
+                    // Fallback: check if this email owns any subscription.
+                    // Covers subscription owners whose global_roles is ['doctor'] only
+                    // (the admin role was never explicitly written to their user doc).
+                    const isOwner = await authzService.isSubscriptionOwner(email);
+                    if (!isOwner) {
                         router.navigate(['/home']);
                         return false;
                     }
                     return true;
-                }).catch(() => {
+                })().catch(() => {
                     router.navigate(['/home']);
                     return false;
                 })

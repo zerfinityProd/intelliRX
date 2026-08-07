@@ -280,15 +280,22 @@ export class FirebasePatientRepository extends PatientRepository {
     }
   }
 
-  async getPatientVisits(patientId: string): Promise<Visit[]> {
+  async getPatientVisits(patientId: string, clinicId?: string): Promise<Visit[]> {
     try {
       const subId = this.getSubscriptionId();
+      const filters: any[] = [
+        { field: 'subscription_id', op: '==', value: subId },
+        { field: 'patient_id', op: '==', value: patientId },
+      ];
+      // When a clinic ID is supplied, scope visits to that clinic only.
+      // This ensures each clinic sees only its own visits even when
+      // share_patients_across_clinics is enabled at the subscription level.
+      if (clinicId) {
+        filters.push({ field: 'clinic_id', op: '==', value: clinicId });
+      }
       const docs = await this.api.runQuery('', {
         collectionId: 'visits',
-        filters: [
-          { field: 'subscription_id', op: '==', value: subId },
-          { field: 'patient_id', op: '==', value: patientId },
-        ],
+        filters,
       });
       const visits = docs.map(d => d.data as Visit);
       visits.sort((a, b) => {

@@ -66,10 +66,16 @@ export class MyLeavesComponent implements OnInit {
       const email = this.auth.currentUserValue?.email;
       if (email) {
         try {
-          const clinicIds = await this.authorizationService.getUserClinicIds(email);
-          const subId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
-          if (clinicIds.length > 0 || subId) {
-            this.clinicContext.setClinicContext(clinicIds[0] || null, subId);
+          // Use assignments so we pick the subscription that actually owns the clinic,
+          // not always sub_1 (the first subscription returned by getUserSubscriptionId).
+          const assignments = await this.authorizationService.getUserAssignments(email).catch(() => []);
+          if (assignments.length > 0) {
+            this.clinicContext.setClinicContext(assignments[0].clinicId || null, assignments[0].subscriptionId);
+          } else {
+            const subId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
+            if (subId) {
+              this.clinicContext.setClinicContext(this.clinicContext.getSelectedClinicId(), subId);
+            }
           }
         } catch { /* non-critical */ }
       }

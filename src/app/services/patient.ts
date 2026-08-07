@@ -172,7 +172,12 @@ export class PatientService {
 
   async getPatientVisits(patientId: string): Promise<Visit[]> {
     try {
-      return await this.patientRepo.getPatientVisits(patientId);
+      // Always scope visits to the currently selected clinic.
+      // When share_patients_across_clinics is ON, the patient record is visible
+      // to all clinics in the subscription, but each clinic must only see
+      // visits it created — visit history is never shared across clinics.
+      const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+      return await this.patientRepo.getPatientVisits(patientId, clinicId);
     } catch (error) {
       console.error('❌ Error fetching visits:', error);
       return [];

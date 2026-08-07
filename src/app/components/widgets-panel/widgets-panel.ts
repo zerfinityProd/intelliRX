@@ -19,19 +19,20 @@ export class WidgetsPanelComponent {
   @Input() isLoadingAppts: boolean = true;
   @Input() selectedDashboardDoctor: Doctor | null = null;
   @Input() selectedClinicLabel: string = '';
+  @Input() selectedClinicAddress: string = '';
 
   // Doctor/Clinic context
   @Input() userRole: string = 'doctor';
   @Input() doctorContextReady: boolean = false;
 
   // Doctor clinic switcher (doctor with multiple clinics)
-  @Input() doctorClinics: Array<{ id: string; label: string }> = [];
+  @Input() doctorClinics: Array<{ id: string; label: string; address: string }> = [];
   @Input() selectedDoctorClinicId: string = '';
 
   // Receptionist doctor selection
   @Input() dashboardDoctors: Doctor[] = [];
   @Input() selectedDashboardDoctorId: string = '';
-  @Input() dashboardClinics: Array<{ id: string; label: string }> = [];
+  @Input() dashboardClinics: Array<{ id: string; label: string; address: string }> = [];
   @Input() selectedDashboardClinicId: string = '';
 
   // Calendar

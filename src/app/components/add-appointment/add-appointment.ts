@@ -261,16 +261,24 @@ export class AddAppointmentComponent implements OnInit {
       // Receptionist / admin+receptionist: can choose any doctor.
       this.canChooseDoctor = true;
 
-      this.subscriptionId = rawEmail
-        ? await this.authorizationService.getUserSubscriptionId(rawEmail).catch(() => null)
-        : null;
+      // Always prefer the already-active context (set at login / clinic-switch).
+      // Only fall back to a fresh getUserSubscriptionId lookup when context is
+      // genuinely absent — prevents overwriting the correct sub with sub_1.
+      this.subscriptionId = this.clinicContextService.getSubscriptionId();
+      if (!this.subscriptionId && rawEmail) {
+        this.subscriptionId = await this.authorizationService.getUserSubscriptionId(rawEmail).catch(() => null);
+      }
 
       // Load ALL clinics under the subscription (not just user-assigned ones)
       if (rawEmail && this.subscriptionId) {
         try {
           const allClinics = await this.authorizationService.getAllClinicsForSubscription(this.subscriptionId);
           this.clinics = allClinics.map(c => ({ id: c.id, label: c.name || c.id }));
-          this.selectedClinicId = allClinics.length > 0 ? allClinics[0].id : '';
+          // Preserve the already-selected clinic from context; only default to
+          // the first clinic when there is no prior selection.
+          const ctxClinicId = this.clinicContextService.getSelectedClinicId();
+          const ctxIsValid = ctxClinicId && allClinics.some(c => c.id === ctxClinicId);
+          this.selectedClinicId = ctxIsValid ? ctxClinicId : (allClinics.length > 0 ? allClinics[0].id : '');
           this.clinicContextService.setClinicContext(
             this.selectedClinicId || null,
             this.subscriptionId ?? null

@@ -74,7 +74,18 @@ export class NavbarComponent implements OnInit, OnDestroy {
     if (email) {
       const role = await this.authorizationService.getUserRole(email);
       const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
-      this.isAdmin = role === 'subscription_owner' || globalRoles.includes('admin');
+      this.isAdmin = role === 'subscription_owner' || globalRoles.includes('admin') || globalRoles.includes('z_admin');
+
+      // Fallback: scan all subscriptions for owner_email match.
+      // getUserSubscriptionId() may return a wrong subscription when the user's
+      // clinic_users doc has a stale clinic_id from a different sub — so we search
+      // ALL subscriptions directly instead of relying on the assignment-derived sub ID.
+      if (!this.isAdmin) {
+        try {
+          this.isAdmin = await this.authorizationService.isSubscriptionOwner(email);
+        } catch { /* non-critical — silently skip */ }
+      }
+
       this.isDoctor = globalRoles.includes('doctor');
       this.isReceptionist = globalRoles.includes('receptionist') || globalRoles.includes('recep');
 
