@@ -114,6 +114,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   editingClinic: AdminClinicState | null = null;
   clinicForm: AdminClinicState = this.emptyClinicForm();
   clinicSearch = '';
+  /** Clinics to render in the list — refreshed by applyClinicSearch(). */
+  clinicsDisplay: AdminClinicState[] = [];
 
   readonly allWeekdays = ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'];
   readonly weekdayLabels: Record<string, string> = {
@@ -126,6 +128,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   editingUser: AdminUserState | null = null;
   userForm: AdminUserState = this.emptyUserForm();
   userSearch = '';
+  /** Users to render in the table — refreshed by applyUserSearch(). */
+  usersDisplay: AdminUserState[] = [];
 
   /** List of specialization names fetched from `specializations/field` */
   specializationNames: string[] = [];
@@ -173,6 +177,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   get subscriptionPlanLabel(): string {
     return (this.subscription?.plan?.name || 'unknown').toUpperCase();
+  }
+
+  /** True when the active plan is 'pro' (search is enabled for pro only). */
+  get isPro(): boolean {
+    const name = (this.subscription?.plan?.name || '').toLowerCase();
+    return name === 'pro';
   }
 
   /**
@@ -226,7 +236,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   }
 
   get filteredClinics(): AdminClinicState[] {
-    if (!this.clinicSearch.trim()) return this.clinics;
+    // Search is only available on the Pro plan and requires at least 3 characters.
+    if (!this.isPro || this.clinicSearch.trim().length < 3) return this.clinics;
     const q = this.clinicSearch.toLowerCase();
     return this.clinics.filter(c => c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q));
   }
@@ -244,11 +255,44 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       );
       return hasClinicAssignment || hasStaffRole;
     });
-    if (!this.userSearch.trim()) return staff;
+    // Search is only available on the Pro plan and requires at least 3 characters.
+    if (!this.isPro || this.userSearch.trim().length < 3) return staff;
     const q = this.userSearch.toLowerCase();
     return staff.filter(u =>
       u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     );
+  }
+
+  // ── Search helpers ──────────────────────────────────────────────────────
+  /** Refresh clinicsDisplay based on plan and current clinicSearch term. */
+  applyClinicSearch(): void {
+    if (!this.isPro || this.clinicSearch.trim().length < 3) {
+      this.clinicsDisplay = [...this.clinics];
+    } else {
+      const q = this.clinicSearch.toLowerCase();
+      this.clinicsDisplay = this.clinics.filter(c =>
+        c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q)
+      );
+    }
+    this.cdr.detectChanges();
+  }
+
+  /** Refresh usersDisplay based on plan and current userSearch term. */
+  applyUserSearch(): void {
+    const staff = this.users.filter(u => {
+      const hasClinicAssignment = u.assignments.some(a => a.role === 'doctor' || a.role === 'receptionist');
+      const hasStaffRole = (u.global_roles || []).some(r => r === 'doctor' || r === 'receptionist');
+      return hasClinicAssignment || hasStaffRole;
+    });
+    if (!this.isPro || this.userSearch.trim().length < 3) {
+      this.usersDisplay = staff;
+    } else {
+      const q = this.userSearch.toLowerCase();
+      this.usersDisplay = staff.filter(u =>
+        u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      );
+    }
+    this.cdr.detectChanges();
   }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -661,6 +705,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         } as AdminClinicState;
       }));
       this.stats.clinics = this.clinics.length;
+      this.applyClinicSearch();
       console.debug('[AdminDashboard] Final clinics loaded:', this.clinics.length);
     } catch (e: any) {
       console.error('[AdminDashboard] loadClinics error:', e);
@@ -752,6 +797,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.stats.totalUsers = this.users.length;
       this.stats.doctors = this.users.filter(u => u.assignments.some(a => a.role === 'doctor')).length;
       this.stats.receptionists = this.users.filter(u => u.assignments.some(a => a.role === 'receptionist')).length;
+      this.applyUserSearch();
       console.debug('[AdminDashboard] Final users loaded:', this.users.length, 'doctors:', this.stats.doctors, 'receptionists:', this.stats.receptionists);
     } catch (e: any) {
       console.error('[AdminDashboard] loadUsers error:', e);
@@ -1055,7 +1101,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.showClinicForm = false;
       this.editingClinic = null;
     } catch (e: any) { this.showToast('Failed to save clinic: ' + e.message, 'error'); }
-    finally { this.isSaving = false; this.cdr.detectChanges(); }
+    finally { this.isSaving = false; this.applyClinicSearch(); this.cdr.detectChanges(); }
   }
 
   async deleteClinic(clinic: AdminClinicState): Promise<void> {
@@ -1070,7 +1116,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.stats.clinics = this.clinics.length;
       this.showToast('Clinic deleted');
     } catch (e: any) { this.showToast('Failed to delete clinic', 'error'); }
-    finally { this.isSaving = false; this.cdr.detectChanges(); }
+    finally { this.isSaving = false; this.applyClinicSearch(); this.cdr.detectChanges(); }
   }
 
   toggleWeekday(day: string): void {
@@ -1886,6 +1932,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       const idx = this.users.findIndex(u => u.userId === userId);
       if (idx >= 0) this.users[idx] = updated; else this.users.push(updated);
       this.updateUserStats();
+      this.applyUserSearch();
       this.showUserForm = false; this.editingUser = null;
       this.externalBookings = [];
       this.clearDraft();
@@ -1905,6 +1952,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       await this.adminService.deleteUser(user.userId);
       this.users = this.users.filter(u => u.userId !== user.userId);
       this.updateUserStats();
+      this.applyUserSearch();
       this.showToast('User deleted');
     } catch (e: any) { this.showToast('Failed to delete user', 'error'); }
     finally { this.isSaving = false; this.cdr.detectChanges(); }

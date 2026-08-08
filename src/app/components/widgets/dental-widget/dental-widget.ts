@@ -28,6 +28,10 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
     /** Timer used to debounce single-click so double-click can cancel it */
     private clickTimer: ReturnType<typeof setTimeout> | null = null;
 
+    /** True when a mixed-set selection was attempted — shows the warning banner */
+    mixWarningVisible = false;
+    private mixWarningTimer: ReturnType<typeof setTimeout> | null = null;
+
     /** Per-tooth notes */
     toothNotes: { [id: number]: string } = {};
 
@@ -96,6 +100,13 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
         this.clickTimer = setTimeout(() => {
             this.clickTimer = null;
             if (!this.selectedTeeth.has(id)) {
+                // Enforce single-set selection: adult and child teeth cannot be mixed.
+                const currentSet = this.getCurrentSelectionSet();
+                const clickedSet = this.getToothSet(id);
+                if (currentSet !== null && currentSet !== clickedSet) {
+                    this.showMixWarning();
+                    return;
+                }
                 this.selectedTeeth.add(id);
                 this.setGroupClass(id, true);
                 this.selectionChange.emit(Array.from(this.selectedTeeth));
@@ -128,8 +139,36 @@ export class DentalWidgetComponent implements OnChanges, AfterViewInit {
         this.selectedTeeth.clear();
         this.clearAllSelectedClasses();
         this.toothNotes = {};
+        this.mixWarningVisible = false;
+        if (this.mixWarningTimer) { clearTimeout(this.mixWarningTimer); this.mixWarningTimer = null; }
         this.selectionChange.emit([]);
         this.notesChange.emit({});
+    }
+
+    // ── Tooth-set helpers ─────────────────────────────────────────
+
+    /**
+     * Returns 'adult' for outer/permanent teeth (FDI IDs 11–48)
+     * and 'child' for inner/primary teeth (FDI IDs 51–85).
+     */
+    private getToothSet(id: number): 'adult' | 'child' {
+        return id >= 50 ? 'child' : 'adult';
+    }
+
+    /** Returns the tooth set currently in the selection, or null if nothing is selected. */
+    private getCurrentSelectionSet(): 'adult' | 'child' | null {
+        if (this.selectedTeeth.size === 0) return null;
+        return this.getToothSet(Array.from(this.selectedTeeth)[0]);
+    }
+
+    /** Shows the mix-warning banner and auto-hides it after 3 s. */
+    private showMixWarning(): void {
+        this.mixWarningVisible = true;
+        if (this.mixWarningTimer) clearTimeout(this.mixWarningTimer);
+        this.mixWarningTimer = setTimeout(() => {
+            this.mixWarningVisible = false;
+            this.mixWarningTimer = null;
+        }, 3000);
     }
 
     // ── Helpers ───────────────────────────────────────────────

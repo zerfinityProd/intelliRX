@@ -1,4 +1,37 @@
 /* ── Dental Chart Widget ── */
+
+/* ── Mix-set toast ── */
+.teeth-mix-toast {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #f1f5f9;
+  font-size: 0.7rem;
+  font-weight: 500;
+  border-radius: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  animation: toast-up 0.2s ease;
+}
+
+@keyframes toast-up {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+:host-context([data-theme="dark"]) .teeth-mix-toast {
+  background: rgba(248, 113, 50, 0.9);
+  color: #fff;
+}
 :host {
   display: flex;
   flex-direction: column;
@@ -8,6 +41,7 @@
 
 /* ── Container ── */
 .dental-widget-container {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;

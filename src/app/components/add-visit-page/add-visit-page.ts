@@ -208,15 +208,13 @@ export class AddVisitPageComponent implements OnInit {
         }
 
         // ── Restore saved form data from sessionStorage ──
-        // IMPORTANT: For a fresh "New Visit" (not edit mode), always clear stale
-        // session data first so the previous visit's clinical fields never bleed
-        // into the new form. Patient-level data (allergies, ailments, blood group)
-        // is loaded from the patient profile in loadPatient(), not from session.
-        if (!this.isEditMode) {
-            this.clearFormSession();
-        } else {
-            this.restoreFormFromSession(patientId);
-        }
+        // Restore in both new-visit and edit-mode so the page survives a browser
+        // refresh without losing in-progress work (dental selections, clinical text, etc.).
+        // Safety: the session key is patient-specific, the session is cleared on
+        // submit (onSubmit) and on explicit "Yes, cancel" (onCancel), and it
+        // auto-expires after 2 hours — so stale data from a different visit
+        // can never bleed in after a proper submit or cancel.
+        this.restoreFormFromSession(patientId);
 
         // Snapshot the form state after initialization for dirty-checking
         this.originalFormState = this.getFormStateSnapshot();

@@ -231,13 +231,13 @@
 
           <!-- Clinic List -->
           <div *ngIf="!showClinicForm">
-            <div class="ad-search-wrap mb-3">
+            <div class="ad-search-wrap mb-3" *ngIf="isPro">
               <svg class="ad-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input class="ad-search-input" type="text" [(ngModel)]="clinicSearch" placeholder="Search clinics…" id="clinic-search" />
+              <input class="ad-search-input" type="text" [(ngModel)]="clinicSearch" (ngModelChange)="applyClinicSearch()" placeholder="Search clinics…" id="clinic-search" />
             </div>
 
             <div class="row g-3">
-              <div class="col-md-6 col-lg-4" *ngFor="let clinic of filteredClinics">
+              <div class="col-md-6 col-lg-4" *ngFor="let clinic of clinicsDisplay">
                 <div class="ad-clinic-card">
                   <div class="ad-clinic-card-top">
                     <div class="ad-clinic-av">{{ clinic.name[0] | uppercase }}</div>
@@ -257,7 +257,7 @@
                   </div>
                 </div>
               </div>
-              <div class="col-12" *ngIf="filteredClinics.length === 0">
+              <div class="col-12" *ngIf="clinicsDisplay.length === 0">
                 <div class="ad-empty">
                   <div class="ad-empty-icon">🏥</div>
                   <div class="ad-empty-title">No clinics yet</div>
@@ -497,18 +497,18 @@
 
           <!-- User List -->
           <div *ngIf="!showUserForm">
-            <div class="ad-search-wrap mb-3">
+            <div class="ad-search-wrap mb-3" *ngIf="isPro">
               <svg class="ad-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input class="ad-search-input" type="text" [(ngModel)]="userSearch" placeholder="Search staff…" id="user-search" />
+              <input class="ad-search-input" type="text" [(ngModel)]="userSearch" (ngModelChange)="applyUserSearch()" placeholder="Search staff…" id="user-search" />
             </div>
 
-            <div class="ad-table-card" *ngIf="filteredUsers.length > 0">
+            <div class="ad-table-card" *ngIf="usersDisplay.length > 0">
               <table class="ad-table">
                 <thead>
                   <tr><th>Staff Member</th><th>Email</th><th>Roles &amp; Clinics</th><th>Status</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let user of filteredUsers">
+                  <tr *ngFor="let user of usersDisplay">
                     <td>
                       <div class="d-flex align-items-center gap-2">
                         <div class="ad-av">{{ user.name[0] | uppercase }}</div>
@@ -551,7 +551,7 @@
                 </tbody>
               </table>
             </div>
-            <div class="ad-empty" *ngIf="filteredUsers.length === 0">
+            <div class="ad-empty" *ngIf="usersDisplay.length === 0">
               <div class="ad-empty-icon">👥</div>
               <div class="ad-empty-title">No staff added yet</div>
               <div class="ad-empty-desc">Add doctors and receptionists to your clinics.</div>
