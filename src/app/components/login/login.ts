@@ -23,8 +23,16 @@ export class LoginComponent implements OnInit {
     displayName: string = '';
     errorMessage: string = '';
     successMessage: string = '';
-    isLoading: boolean = false;
+    isLoading: boolean = false;         // email/password & forgot-password only
+    googleLoading: boolean = false;
+    microsoftLoading: boolean = false;
+    appleLoading: boolean = false;
     showForgotPassword: boolean = false;
+
+    /** True while ANY social-login popup is open */
+    get socialLoading(): boolean {
+        return this.googleLoading || this.microsoftLoading || this.appleLoading;
+    }
 
 
     private readonly authService = inject(AuthenticationService);
@@ -295,50 +303,107 @@ export class LoginComponent implements OnInit {
 
     async onGoogleLogin(): Promise<void> {
         this.errorMessage = '';
-        this.isLoading = true;
+        this.googleLoading = true;
         this.cdr.detectChanges();
+
+        // Reset spinner immediately when the popup window is closed
+        // (window regains focus). Don't wait for Firebase's 2-4 s delay.
+        let resolved = false;
+        const focusHandler = () => {
+            setTimeout(() => {
+                if (!resolved && this.googleLoading) {
+                    this.googleLoading = false;
+                    this.cdr.detectChanges();
+                }
+            }, 300);
+        };
+        window.addEventListener('focus', focusHandler, { once: true });
+
         try {
             const user = await this.authService.loginWithGoogle();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
             if (user) {
                 await this.navigateByRole(user.email);
             }
         } catch (error: any) {
-            this.errorMessage = error.message || 'Google login failed.';
-            this.cdr.detectChanges();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (error?.code !== 'popup-cancelled') {
+                this.errorMessage = error.message || 'Google login failed.';
+            }
         } finally {
-            this.isLoading = false;
+            this.googleLoading = false;
             this.cdr.detectChanges();
         }
     }
 
     async onMicrosoftLogin(): Promise<void> {
         this.errorMessage = '';
-        this.isLoading = true;
+        this.microsoftLoading = true;
         this.cdr.detectChanges();
+
+        let resolved = false;
+        const focusHandler = () => {
+            setTimeout(() => {
+                if (!resolved && this.microsoftLoading) {
+                    this.microsoftLoading = false;
+                    this.cdr.detectChanges();
+                }
+            }, 300);
+        };
+        window.addEventListener('focus', focusHandler, { once: true });
+
         try {
             const user = await this.authService.loginWithMicrosoft();
-            if (user) await this.navigateByRole(user.email);
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (user) {
+                await this.navigateByRole(user.email);
+            }
         } catch (error: any) {
-            this.errorMessage = error.message || 'Microsoft login failed.';
-            this.cdr.detectChanges();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (error?.code !== 'popup-cancelled') {
+                this.errorMessage = error.message || 'Microsoft login failed.';
+            }
         } finally {
-            this.isLoading = false;
+            this.microsoftLoading = false;
             this.cdr.detectChanges();
         }
     }
 
     async onAppleLogin(): Promise<void> {
         this.errorMessage = '';
-        this.isLoading = true;
+        this.appleLoading = true;
         this.cdr.detectChanges();
+
+        let resolved = false;
+        const focusHandler = () => {
+            setTimeout(() => {
+                if (!resolved && this.appleLoading) {
+                    this.appleLoading = false;
+                    this.cdr.detectChanges();
+                }
+            }, 300);
+        };
+        window.addEventListener('focus', focusHandler, { once: true });
+
         try {
             const user = await this.authService.loginWithApple();
-            if (user) await this.navigateByRole(user.email);
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (user) {
+                await this.navigateByRole(user.email);
+            }
         } catch (error: any) {
-            this.errorMessage = error.message || 'Apple login failed.';
-            this.cdr.detectChanges();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (error?.code !== 'popup-cancelled') {
+                this.errorMessage = error.message || 'Apple login failed.';
+            }
         } finally {
-            this.isLoading = false;
+            this.appleLoading = false;
             this.cdr.detectChanges();
         }
     }
@@ -357,7 +422,15 @@ export class LoginComponent implements OnInit {
         if (!this.isValidEmail(this.email)) { this.errorMessage = 'Please enter a valid email address'; return; }
 
         this.isLoading = true;
+        this.cdr.detectChanges();
         try {
+            // Gate: only send reset links to emails registered in IntelliRx
+            const allowed = await this.authorizationService.isEmailAllowed(this.email.trim());
+            if (!allowed) {
+                this.errorMessage = 'This email is not registered in IntelliRx. Please contact your administrator.';
+                return;
+            }
+
             await this.authService.resetPassword(this.email.trim());
             this.successMessage = 'Password reset email sent! Check your inbox.';
             this.cdr.detectChanges();

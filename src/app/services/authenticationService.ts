@@ -257,7 +257,9 @@ export class AuthenticationService {
             return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
             if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-                return;
+                const cancelled = new Error('popup-cancelled') as any;
+                cancelled.code = 'popup-cancelled';
+                throw cancelled;
             }
             console.error('Google login error:', error);
             throw this.handleAuthError(error);
@@ -274,7 +276,9 @@ export class AuthenticationService {
             return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
             if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-                return;
+                const cancelled = new Error('popup-cancelled') as any;
+                cancelled.code = 'popup-cancelled';
+                throw cancelled;
             }
             console.error('Microsoft login error:', error);
             throw this.handleAuthError(error);
@@ -291,7 +295,9 @@ export class AuthenticationService {
             return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
             if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-                return;
+                const cancelled = new Error('popup-cancelled') as any;
+                cancelled.code = 'popup-cancelled';
+                throw cancelled;
             }
             console.error('Apple login error:', error);
             throw this.handleAuthError(error);
