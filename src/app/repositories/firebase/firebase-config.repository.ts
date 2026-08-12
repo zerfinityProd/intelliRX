@@ -126,6 +126,16 @@ export class FirebaseConfigRepository extends ConfigRepository {
     }
   }
 
+  async updateSystemConfig(patch: Record<string, number | string>): Promise<void> {
+    await this.api.updateDocument('configurations', 'system', {
+      ...patch,
+      updated_at: new Date().toISOString(),
+    });
+    // Invalidate cache so next read gets fresh data
+    this.systemConfigCache = null;
+    this.systemConfigFetchTime = 0;
+  }
+
   async getPlanValidityDays(planKey: string): Promise<number> {
     try {
       const planDoc = await this.api.getDocument('plans', planKey);

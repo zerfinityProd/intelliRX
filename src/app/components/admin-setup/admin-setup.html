@@ -149,7 +149,7 @@
                 <div class="sub-meta">
                   <div class="sub-name">{{ sub.entity_name }}</div>
                   <div class="sub-badges-row">
-                    <div class="sub-plan badge">{{ (sub.plan.name || 'unknown') | uppercase }}</div>
+                    <div class="sub-plan badge">{{ (sub.plan?.name || 'unknown') | uppercase }}</div>
                     <div class="badge badge-expired" *ngIf="sub.valid_until && isSubExpired(sub.valid_until)">EXPIRED</div>
                   </div>
                 </div>
@@ -162,8 +162,8 @@
                 <div class="info-row">
                   <span class="info-label">Limits</span>
                   <span>
-                    {{ sub.plan.limits.max_clinics }} clinics
-                    · {{ sub.plan.limits.max_doctors }} doctors
+                     {{ sub.plan?.limits?.max_clinics ?? '—' }} clinics
+                    · {{ sub.plan?.limits?.max_doctors ?? '—' }} doctors
                   </span>
                 </div>
                 <div class="info-row" *ngIf="sub.valid_until">
@@ -268,7 +268,7 @@
             <div class="ssb-info">
               <div class="ssb-name">{{ selectedSubscription.entity_name }}</div>
               <div class="ssb-meta">
-                <span class="badge">{{ (selectedSubscription.plan.name || 'unknown') | uppercase }}</span>
+                <span class="badge">{{ (selectedSubscription.plan?.name || 'unknown') | uppercase }}</span>
                 <span class="badge" [class.badge-active]="selectedSubscription.status === 'active'">
                   {{ selectedSubscription.status || 'active' }}
                 </span>
@@ -285,15 +285,15 @@
           </div>
           <div class="ssb-limits">
             <div class="ssb-limit-item">
-              <span class="ssb-limit-val">{{ selectedSubscription.plan.limits.max_clinics }}</span>
+              <span class="ssb-limit-val">{{ selectedSubscription.plan?.limits?.max_clinics ?? '—' }}</span>
               <span class="ssb-limit-label">Clinics</span>
             </div>
             <div class="ssb-limit-item">
-              <span class="ssb-limit-val">{{ selectedSubscription.plan.limits.max_doctors }}</span>
+              <span class="ssb-limit-val">{{ selectedSubscription.plan?.limits?.max_doctors ?? '—' }}</span>
               <span class="ssb-limit-label">Doctors</span>
             </div>
             <div class="ssb-limit-item">
-              <span class="ssb-limit-val">{{ selectedSubscription.plan.limits.max_appointments_per_day }}</span>
+              <span class="ssb-limit-val">{{ selectedSubscription.plan?.limits?.max_appointments_per_day ?? '—' }}</span>
               <span class="ssb-limit-label">Appts/Day</span>
             </div>
           </div>
@@ -750,14 +750,14 @@
             </div>
             <div class="review-row">
               <span class="review-key">Plan</span>
-              <span class="review-val">{{ selectedSubscription.plan.name | uppercase }}</span>
+              <span class="review-val">{{ selectedSubscription.plan?.name | uppercase }}</span>
             </div>
             <div class="review-row">
               <span class="review-key">Limits</span>
               <span class="review-val">
-                {{ selectedSubscription.plan.limits.max_clinics }} clinics ·
-                {{ selectedSubscription.plan.limits.max_doctors }} doctors ·
-                {{ selectedSubscription.plan.limits.max_appointments_per_day }} appts/day
+                {{ selectedSubscription.plan?.limits?.max_clinics ?? '—' }} clinics ·
+                {{ selectedSubscription.plan?.limits?.max_doctors ?? '—' }} doctors ·
+                {{ selectedSubscription.plan?.limits?.max_appointments_per_day ?? '—' }} appts/day
               </span>
             </div>
             <div class="review-row">

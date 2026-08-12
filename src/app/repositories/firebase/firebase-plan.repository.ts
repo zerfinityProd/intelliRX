@@ -67,6 +67,29 @@ export class FirebasePlanRepository extends PlanRepository {
     return plans.find(p => p.key === key) ?? null;
   }
 
+  async savePlan(key: string, data: Omit<PlanDetail, 'key'>): Promise<void> {
+    await this.api.setDocument('plans', key, {
+      label:               data.label || (key.charAt(0).toUpperCase() + key.slice(1)),
+      description:         data.description ?? '',
+      monthly_charges:     data.monthly_charges ?? 0,
+      quarterly_charges:   data.quarterly_charges ?? 0,
+      yearly_charges:      data.yearly_charges ?? 0,
+      max_clinics:         data.max_clinics ?? 0,
+      max_doctors:         data.max_doctors ?? 0,
+      max_receptionists:   data.max_receptionists ?? 0,
+      max_patients:        data.max_patients ?? 0,
+      validity_days:       data.validity_days ?? 30,
+      grace_period:        (data as any).grace_period ?? 0,
+      plan_ending_nf:      data.plan_ending_nf ?? 7,
+    });
+    this.invalidateCache();
+  }
+
+  async deletePlan(key: string): Promise<void> {
+    await this.api.deleteDocument('plans', key);
+    this.invalidateCache();
+  }
+
   invalidateCache(): void {
     this.cache = null;
   }

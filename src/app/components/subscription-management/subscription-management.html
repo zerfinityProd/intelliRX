@@ -20,7 +20,7 @@
       </div>
       <div class="sm-current-banner-info">
         <div class="sm-current-banner-label">Current Plan</div>
-        <div class="sm-current-banner-name">{{ subscription.plan.name | titlecase }}</div>
+        <div class="sm-current-banner-name">{{ subscription.plan?.name | titlecase }}</div>
         <div class="sm-current-banner-cycle" *ngIf="subscription.billing_cycle">
           Billed {{ subscription.billing_cycle | titlecase }}
         </div>

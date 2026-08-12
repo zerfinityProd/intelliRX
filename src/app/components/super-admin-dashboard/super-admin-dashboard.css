@@ -610,3 +610,195 @@
   .sa-tab svg { display: none; }
   .sa-page-title { font-size: 18px; }
 }
+
+/* ── User Subscriptions tab ──────────────────────────────────────────── */
+
+/* Table — wider first column */
+.sa-us-table { min-width: 760px; }
+.sa-us-table-card { overflow-x: auto; }
+.sa-us-th-action { text-align: center; }
+
+/* Highlighted row when the edit panel is open for it */
+.sa-us-row--active > td { background: color-mix(in srgb, var(--clr-primary, #148D9E) 6%, transparent) !important; }
+
+/* Muted style for rows with no subscription */
+.sa-us-row--nosub > td { opacity: 0.65; }
+
+/* Avatar variant for user subscriptions list */
+.sa-us-av {
+  background: linear-gradient(135deg, #148D9E 0%, #0d7a8c 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+/* Role badges */
+.sa-us-role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: capitalize;
+  background: var(--clr-bg, #E0F4F7);
+  color: var(--clr-primary, #148D9E);
+  border: 1px solid var(--clr-border, #C8DDE3);
+  white-space: nowrap;
+}
+[data-theme="dark"] .sa-us-role-badge {
+  background: var(--dk-bg3, #1a3a4a);
+  color: #1CB5C9;
+  border-color: var(--dk-border);
+}
+
+/* Expired status badge */
+.badge-expired {
+  background: #fff3cd;
+  color: #92600a;
+  border-color: #ffc107;
+}
+[data-theme="dark"] .badge-expired {
+  background: rgba(255, 193, 7, 0.12);
+  color: #ffc107;
+  border-color: rgba(255, 193, 7, 0.3);
+}
+
+/* Expired date tag (small label inside the Valid Until cell) */
+.sa-us-expired-tag {
+  display: inline-block;
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #e53e3e;
+  color: #fff;
+  letter-spacing: 0.3px;
+  vertical-align: middle;
+}
+
+/* Danger text (past expiry date) */
+.sa-text-danger { color: #e53e3e !important; }
+[data-theme="dark"] .sa-text-danger { color: #fc8181 !important; }
+
+/* Edit panel — bordered card with accent left stripe */
+.sa-us-edit-panel {
+  border-left: 3px solid var(--clr-primary, #148D9E);
+  margin-bottom: 20px;
+  animation: sa-slide-down 0.18s ease-out;
+}
+@keyframes sa-slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Meta line under the edit panel title */
+.sa-us-edit-meta {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--clr-text-muted, #5A8A9C);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  line-height: 1;
+}
+.sa-us-edit-name { font-weight: 700; color: var(--clr-text, #0A2540); }
+.sa-us-edit-sep  { opacity: 0.4; }
+.sa-us-edit-org  { font-weight: 500; }
+.sa-us-edit-id   { font-family: monospace; font-size: 11.5px; opacity: 0.7; }
+[data-theme="dark"] .sa-us-edit-name { color: #fff; }
+[data-theme="dark"] .sa-us-edit-meta { color: var(--dk-text2); }
+
+/* Responsive: stack edit columns on mobile */
+@media (max-width: 640px) {
+  .sa-us-table { min-width: 100%; }
+  .sa-us-table thead th:nth-child(2),
+  .sa-us-table tbody td:nth-child(2) { display: none; } /* hide Roles column */
+}
+
+/* ── System Config tab ───────────────────────────────────────────────── */
+.sa-cfg-table { table-layout: fixed; width: 100%; }
+.sa-cfg-input { width: 100%; padding: 6px 10px; font-size: 12.5px; height: 34px; }
+.sa-icon-btn--danger { color: #e53e3e; opacity: 0.75; transition: opacity 0.15s, color 0.15s; }
+.sa-icon-btn--danger:hover { opacity: 1; color: #c53030; }
+[data-theme="dark"] .sa-icon-btn--danger { color: #fc8181; }
+[data-theme="dark"] .sa-icon-btn--danger:hover { color: #feb2b2; }
+
+/* used/total fraction in limit chips */
+.sa-limit-total {
+  font-size: 0.65em;
+  font-weight: 500;
+  opacity: 0.45;
+  letter-spacing: 0;
+  margin-left: 1px;
+}
+
+/* ── Section divider inside forms ──────────────────────────────────── */
+.sa-section-divider {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--clr-primary, #148D9E);
+  padding: 6px 0 4px; border-bottom: 1px solid var(--clr-border, #C8DDE3);
+  margin-bottom: 2px;
+}
+.sa-hint { font-size: 11px; opacity: 0.55; font-weight: 400; margin-left: 4px; }
+
+/* ── Plan cards ─────────────────────────────────────────────────────── */
+.sa-plan-card {
+  background: var(--clr-surface, #fff);
+  border: 1px solid var(--clr-border, #C8DDE3);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: box-shadow 0.18s, transform 0.18s;
+}
+.sa-plan-card:hover { box-shadow: 0 6px 20px rgba(10,37,64,0.1); transform: translateY(-2px); }
+
+.sa-plan-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--clr-border, #C8DDE3);
+  background: linear-gradient(135deg, rgba(20,141,158,0.06) 0%, transparent 60%);
+}
+.sa-plan-name { display: block; font-size: 16px; font-weight: 700; color: var(--clr-text, #0A2540); }
+.sa-plan-key {
+  display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  background: rgba(20,141,158,0.12); color: var(--clr-primary, #148D9E);
+  border-radius: 5px; padding: 2px 7px; margin-top: 3px; text-transform: uppercase;
+}
+.sa-plan-validity {
+  font-size: 12px; font-weight: 700; color: var(--clr-primary, #148D9E);
+  background: rgba(20,141,158,0.12);
+  border-radius: 8px; padding: 4px 10px; white-space: nowrap;
+}
+
+/* 4-column grid for plan limits */
+.sa-plan-limits-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--clr-border, #C8DDE3);
+}
+.sa-plan-limit {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 12px 6px;
+  border-right: 1px solid var(--clr-border, #C8DDE3);
+}
+.sa-plan-limit:last-child { border-right: none; }
+.sa-plan-limit-val { font-size: 20px; font-weight: 800; color: var(--clr-primary, #148D9E); line-height: 1; }
+.sa-plan-limit-lbl { font-size: 10px; font-weight: 500; color: var(--clr-text-muted, #5A8A9C); margin-top: 3px; }
+
+/* pricing row */
+.sa-plan-pricing {
+  font-size: 12px; font-weight: 500; color: var(--clr-text-muted, #5A8A9C);
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--clr-border, #C8DDE3);
+}
+.sa-plan-pricing-sep { opacity: 0.35; }
+.sa-text-muted { color: var(--clr-text-muted, #5A8A9C) !important; padding: 10px 16px; font-size: 12px; }
+
+/* dark mode */
+[data-theme="dark"] .sa-plan-card { background: var(--dk-bg2); border-color: var(--dk-border); }
+[data-theme="dark"] .sa-plan-card-header { border-bottom-color: var(--dk-border); background: rgba(20,141,158,0.08); }
+[data-theme="dark"] .sa-plan-limits-grid { border-bottom-color: var(--dk-border); }
+[data-theme="dark"] .sa-plan-limit { border-right-color: var(--dk-border); }
+[data-theme="dark"] .sa-plan-pricing { border-bottom-color: var(--dk-border); }
+[data-theme="dark"] .sa-section-divider { border-bottom-color: var(--dk-border); }

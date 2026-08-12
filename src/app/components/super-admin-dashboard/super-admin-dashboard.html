@@ -15,15 +15,17 @@
         Subscriptions
         <span class="sa-tab-badge" *ngIf="subscriptions.length">{{ subscriptions.length }}</span>
       </button>
-      <button class="sa-tab" [class.sa-tab--active]="activeTab === 'admins'" (click)="setTab('admins')" id="nav-admins">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Admins
-        <span class="sa-tab-badge" *ngIf="adminUsers.length">{{ adminUsers.length }}</span>
+
+      <button class="sa-tab" [class.sa-tab--active]="activeTab === 'system-config'" (click)="setTab('system-config')" id="nav-system-config">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2"/></svg>
+        System Config
       </button>
-      <button class="sa-tab" [class.sa-tab--active]="activeTab === 'permissions'" (click)="setTab('permissions')" id="nav-permissions">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        Role Permissions
+      <button class="sa-tab" [class.sa-tab--active]="activeTab === 'plans'" (click)="setTab('plans'); loadPlans()" id="nav-plans">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Plans
+        <span class="sa-tab-badge" *ngIf="planList.length">{{ planList.length }}</span>
       </button>
+
     </div>
   </div>
 
@@ -139,54 +141,27 @@
             </button>
           </div>
           <div class="col-md-4">
-            <button class="sa-qa-card" (click)="setTab('admins'); openNewAdminForm()" id="qa-new-admin">
+            <button class="sa-qa-card" (click)="setTab('plans'); openNewPlanForm()" id="qa-new-plan">
               <div class="sa-qa-icon sa-qa-icon--blue">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
               </div>
               <div class="text-start">
-                <div class="sa-qa-title">Add Admin</div>
-                <div class="sa-qa-desc">Create and assign an admin user</div>
+                <div class="sa-qa-title">New Plan</div>
+                <div class="sa-qa-desc">Create a new subscription plan</div>
               </div>
             </button>
           </div>
           <div class="col-md-4">
-            <button class="sa-qa-card" (click)="setTab('permissions')" id="qa-permissions">
+            <button class="sa-qa-card" (click)="setTab('system-config')" id="qa-permissions">
               <div class="sa-qa-icon sa-qa-icon--teal">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
               </div>
               <div class="text-start">
-                <div class="sa-qa-title">Role Permissions</div>
-                <div class="sa-qa-desc">Configure doctor &amp; receptionist access</div>
+                <div class="sa-qa-title">System Config</div>
+                <div class="sa-qa-desc">Edit plan validity & platform settings</div>
               </div>
             </button>
           </div>
-        </div>
-
-        <!-- Recent Subscriptions -->
-        <div class="d-flex align-items-center justify-content-between mb-3" *ngIf="subscriptions.length">
-          <div class="sa-section-title">Recent Subscriptions</div>
-          <button class="sa-link-btn" (click)="setTab('subscriptions')">View all →</button>
-        </div>
-        <div class="sa-table-card" *ngIf="subscriptions.length">
-          <table class="sa-table">
-            <thead><tr><th>Organisation</th><th>Plan</th><th>Limits</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr *ngFor="let sub of subscriptions.slice(0,5)">
-                <td>
-                  <div class="d-flex align-items-center gap-2">
-                    <div class="sa-av sa-av--sm">{{ subInitial(sub) }}</div>
-                    <div>
-                      <div class="sa-cell-name">{{ sub.entity_name }}</div>
-                      <div class="sa-cell-sub">{{ sub.id }}</div>
-                    </div>
-                  </div>
-                </td>
-                <td><span class="sa-plan-badge" [class.sa-plan-badge--premium]="sub.plan.name === 'premium'">{{ (sub.plan.name || 'basic') | uppercase }}</span></td>
-                <td class="sa-cell-muted">{{ sub.plan.limits.max_clinics }} clinics · {{ sub.plan.limits.max_doctors }} doctors</td>
-                <td><span class="sa-status-badge" [ngClass]="getStatusClass(sub.status)">{{ sub.status }}</span></td>
-              </tr>
-            </tbody>
-          </table>
         </div>
       </div>
 
@@ -244,19 +219,8 @@
                 <option value="suspended">Suspended</option>
               </select>
             </div>
-            <div class="col-md-4">
-              <label class="sa-label">Max Clinics</label>
-              <input class="sa-input" type="number" [(ngModel)]="subForm.max_clinics" min="1" id="sub-max-clinics" />
-            </div>
-            <div class="col-md-4">
-              <label class="sa-label">Max Doctors</label>
-              <input class="sa-input" type="number" [(ngModel)]="subForm.max_doctors" min="1" id="sub-max-doctors" />
-            </div>
-            <div class="col-md-4">
-              <label class="sa-label">Max Appointments / Day</label>
-              <input class="sa-input" type="number" [(ngModel)]="subForm.max_appointments_per_day" min="1" id="sub-max-appts" />
-            </div>
           </div>
+
           <div class="sa-form-actions">
             <button class="sa-btn-ghost" (click)="cancelSubForm()">Cancel</button>
             <button class="sa-btn-primary" (click)="saveSub()" [disabled]="isSaving" id="btn-save-sub">
@@ -270,7 +234,7 @@
         <div *ngIf="!showSubForm">
           <div class="sa-search-wrap mb-3">
             <svg class="sa-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input class="sa-search-input" type="text" [(ngModel)]="subSearchQuery" placeholder="Search subscriptions…" id="sub-search" />
+            <input class="sa-search-input" type="text" [value]="subSearchQuery" (input)="subSearchQuery = $any($event.target).value; onSubSearch()" placeholder="Search subscriptions…" id="sub-search" />
           </div>
           <div class="row g-3">
             <div class="col-md-6 col-lg-4" *ngFor="let sub of filteredSubscriptions">
@@ -282,13 +246,13 @@
                     <div class="sa-cell-sub">{{ sub.id }}</div>
                   </div>
                   <div class="d-flex flex-column gap-1 align-items-end">
-                    <span class="sa-plan-badge">{{ (sub.plan.name || 'unknown') | uppercase }}</span>
+                    <span class="sa-plan-badge">{{ (sub.plan?.name || 'unknown') | uppercase }}</span>
                     <span class="sa-status-badge" [ngClass]="getStatusClass(sub.status)">{{ sub.status }}</span>
                     <span class="sa-plan-badge sa-badge-expired" *ngIf="isSubExpired(sub.valid_until)">EXPIRED</span>
                   </div>
                 </div>
                 <div class="sa-sub-detail-row">
-                  <span class="sa-sub-detail-lbl">Owner</span>
+                  <span class="sa-sub-detail-lbl">Admin Email</span>
                   <span class="sa-cell-muted">{{ sub.owner_email }}</span>
                 </div>
                 <div class="sa-sub-detail-row" *ngIf="sub.valid_until">
@@ -299,9 +263,18 @@
                   </span>
                 </div>
                 <div class="sa-sub-limits">
-                  <div class="sa-limit-chip"><span class="sa-limit-num">{{ sub.plan.limits.max_clinics }}</span><span>Clinics</span></div>
-                  <div class="sa-limit-chip"><span class="sa-limit-num">{{ sub.plan.limits.max_doctors }}</span><span>Doctors</span></div>
-                  <div class="sa-limit-chip"><span class="sa-limit-num">{{ sub.plan.limits.max_appointments_per_day }}</span><span>Appts/Day</span></div>
+                  <div class="sa-limit-chip">
+                    <span class="sa-limit-num">{{ subUsage.get(sub.id)?.clinics ?? 0 }}<span class="sa-limit-total"> / {{ sub.plan?.limits?.max_clinics ?? '—' }}</span></span>
+                    <span>Clinics</span>
+                  </div>
+                  <div class="sa-limit-chip">
+                    <span class="sa-limit-num">{{ subUsage.get(sub.id)?.doctors ?? 0 }}<span class="sa-limit-total"> / {{ sub.plan?.limits?.max_doctors ?? '—' }}</span></span>
+                    <span>Doctors</span>
+                  </div>
+                  <div class="sa-limit-chip">
+                    <span class="sa-limit-num">{{ subUsage.get(sub.id)?.receptionists ?? 0 }}<span class="sa-limit-total"> / {{ sub.plan?.limits?.max_receptionists ?? '—' }}</span></span>
+                    <span>Receptionists</span>
+                  </div>
                 </div>
                 <div class="sa-card-footer">
                   <button class="sa-btn-ghost-sm" (click)="openEditSubForm(sub)" id="btn-edit-sub-{{sub.id}}">Edit</button>
@@ -320,209 +293,203 @@
         </div>
       </div>
 
-      <!-- ══ ADMINS ══════════════════════════════════════════════════ -->
-      <div *ngIf="activeTab === 'admins'">
+      <!-- ══ SYSTEM CONFIG ═══════════════════════════════════════════ -->
+      <div *ngIf="activeTab === 'system-config'">
         <div class="sa-page-header">
           <div>
-            <h1 class="sa-page-title">Admin Users</h1>
-            <p class="sa-page-sub">Manage admin accounts and subscription assignments</p>
+            <h1 class="sa-page-title">System Config</h1>
+            <p class="sa-page-sub">Edit platform-wide settings stored in <code>configurations/system</code></p>
           </div>
-          <button class="sa-btn-primary" (click)="openNewAdminForm()" *ngIf="!showAdminForm" id="btn-new-admin">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Admin
-          </button>
-        </div>
-
-        <!-- Admin Form -->
-        <div class="sa-form-card" *ngIf="showAdminForm">
-          <div class="sa-form-card-header">
-            <h3 class="sa-form-title">{{ editingAdmin ? 'Edit Admin' : 'New Admin User' }}</h3>
-            <button class="sa-icon-btn" (click)="cancelAdminForm()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <div class="d-flex gap-2">
+            <button class="sa-btn-ghost" (click)="addConfigEntry()" id="btn-add-cfg">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Key
             </button>
-          </div>
-          <div class="sa-info-banner mb-3" *ngIf="!editingAdmin">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Admin users must be assigned a subscription. They can then manage clinics and staff within that subscription.
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="sa-label">Full Name *</label>
-              <input class="sa-input" type="text" [(ngModel)]="adminForm.name" placeholder="e.g. Dr. Rajesh Kumar" id="admin-name" />
-            </div>
-            <div class="col-md-6">
-              <label class="sa-label">Email Address *</label>
-              <input class="sa-input" type="email" [(ngModel)]="adminForm.email" placeholder="admin@example.com" [disabled]="!!editingAdmin" id="admin-email" />
-            </div>
-            <div class="col-12">
-              <label class="sa-label">Assign Subscription *</label>
-              <select class="sa-input" [(ngModel)]="adminForm.subscription_id" id="admin-subscription">
-                <option value="">— Select a subscription —</option>
-                <option *ngFor="let sub of subscriptions" [value]="sub.id">{{ sub.entity_name }} ({{ sub.id }}) · {{ sub.plan.name | uppercase }}</option>
-              </select>
-            </div>
-          </div>
-          <div class="sa-form-actions">
-            <button class="sa-btn-ghost" (click)="cancelAdminForm()">Cancel</button>
-            <button class="sa-btn-primary" (click)="saveAdmin()" [disabled]="isSaving" id="btn-save-admin">
+            <button class="sa-btn-primary" (click)="saveSystemConfig()" [disabled]="isSaving" id="btn-save-cfg">
               <span *ngIf="isSaving" class="sa-spinner-sm"></span>
-              {{ editingAdmin ? 'Update Admin' : 'Create Admin' }}
+              <svg *ngIf="!isSaving" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Config
             </button>
           </div>
-        </div>
-
-        <!-- Admin Table -->
-        <div *ngIf="!showAdminForm">
-          <div class="sa-search-wrap mb-3">
-            <svg class="sa-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input class="sa-search-input" type="text" [(ngModel)]="adminSearchQuery" placeholder="Search admins…" id="admin-search" />
-          </div>
-          <div class="sa-table-card" *ngIf="filteredAdmins.length > 0">
-            <table class="sa-table">
-              <thead><tr><th>Admin</th><th>Email</th><th>Assigned Subscription</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                <tr *ngFor="let admin of filteredAdmins">
-                  <td>
-                    <div class="d-flex align-items-center gap-2">
-                      <div class="sa-av sa-av--sm">{{ admin.name[0]?.toUpperCase() || 'A' }}</div>
-                      <span class="sa-cell-name">{{ admin.name }}</span>
-                    </div>
-                  </td>
-                  <td class="sa-cell-muted">{{ admin.email }}</td>
-                  <td>
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                      <span class="sa-sub-chip" *ngIf="admin.subscription_id">{{ getAdminSubscription(admin) }}</span>
-                      <span class="sa-cell-muted fst-italic" *ngIf="!admin.subscription_id">Not assigned</span>
-                      <select class="sa-inline-select" (change)="reassignSubscription(admin, $any($event.target).value)" [ngModel]="admin.subscription_id" id="reassign-{{admin.id}}">
-                        <option value="">Change…</option>
-                        <option *ngFor="let sub of subscriptions" [value]="sub.id">{{ sub.entity_name }}</option>
-                      </select>
-                    </div>
-                  </td>
-                  <td><span class="sa-status-badge badge-active">{{ admin.status || 'active' }}</span></td>
-                  <td>
-                    <div class="d-flex gap-2">
-                      <button class="sa-btn-ghost-sm" (click)="openEditAdminForm(admin)" id="btn-edit-admin-{{admin.id}}">Edit</button>
-                      <button class="sa-btn-danger-sm" (click)="deleteAdmin(admin)" id="btn-del-admin-{{admin.id}}">Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div class="sa-empty" *ngIf="filteredAdmins.length === 0">
-            <div class="sa-empty-icon">👤</div>
-            <div class="sa-empty-title">No admin users</div>
-            <div class="sa-empty-desc">Create an admin and assign a subscription.</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ══ PERMISSIONS ════════════════════════════════════════════ -->
-      <div *ngIf="activeTab === 'permissions'">
-        <div class="sa-page-header">
-          <div>
-            <h1 class="sa-page-title">Role Permissions</h1>
-            <p class="sa-page-sub">Configure global permissions for admins, doctors and receptionists</p>
-          </div>
-          <button class="sa-btn-primary" (click)="savePermissions()" [disabled]="isSaving" id="btn-save-perms">
-            <span *ngIf="isSaving" class="sa-spinner-sm"></span>
-            <svg *ngIf="!isSaving" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save Permissions
-          </button>
         </div>
 
         <div class="sa-info-banner mb-4">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          These permissions apply globally. Only super admins can modify these settings.
+          These settings are global and affect all subscriptions. Numeric values are stored as numbers; everything else as strings.
         </div>
 
-        <!-- Admin Permissions -->
-        <div class="sa-section-title mb-3">Admin Permissions</div>
-        <div class="row g-4 mb-4">
-          <div class="col-md-6">
-            <div class="sa-perm-card">
-              <div class="sa-perm-header sa-perm-header--doctor">
-                <span class="sa-perm-emoji">🛡️</span>
-                <div>
-                  <div class="sa-perm-role">Admin</div>
-                  <div class="sa-perm-count">{{ countActivePerms(adminPermissions) }} / {{ adminPermissionDefs.length }} permissions</div>
-                </div>
-              </div>
-              <div class="sa-perm-list">
-                <label class="sa-perm-row" *ngFor="let perm of adminPermissionDefs" [for]="'adm-' + perm.key">
-                  <div class="d-flex align-items-center gap-2 flex-grow-1">
-                    <span class="sa-perm-icon">{{ perm.icon }}</span>
-                    <div>
-                      <div class="sa-perm-name">{{ perm.label }}</div>
-                      <div class="sa-perm-desc">{{ perm.desc }}</div>
-                    </div>
-                  </div>
-                  <div class="sa-toggle">
-                    <input type="checkbox" [id]="'adm-' + perm.key" [(ngModel)]="adminPermissions[perm.key]" />
-                    <span class="sa-toggle-track"><span class="sa-toggle-thumb"></span></span>
-                  </div>
-                </label>
-              </div>
+        <!-- Loading shimmer -->
+        <div class="sa-loading" *ngIf="!systemConfigLoaded" style="min-height:120px;">
+          <div class="sa-spinner"></div><span>Loading system config…</span>
+        </div>
+
+        <!-- Key-value editor table -->
+        <div class="sa-table-card" *ngIf="systemConfigLoaded">
+          <table class="sa-table sa-cfg-table">
+            <thead>
+              <tr>
+                <th style="width:55%">Key</th>
+                <th style="width:40%">Value</th>
+                <th style="width:5%" class="text-center">Del</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let entry of systemConfigEntries; let i = index">
+                <td>
+                  <input class="sa-input sa-cfg-input" type="text"
+                         [(ngModel)]="entry.key"
+                         placeholder="e.g. demo_plan_validity_days"
+                         [id]="'cfg-key-' + i" />
+                </td>
+                <td>
+                  <input class="sa-input sa-cfg-input" type="text"
+                         [(ngModel)]="entry.value"
+                         placeholder="value"
+                         [id]="'cfg-val-' + i" />
+                </td>
+                <td class="text-center">
+                  <button class="sa-icon-btn sa-icon-btn--danger" (click)="removeConfigEntry(i)"
+                          title="Remove" [id]="'cfg-del-' + i">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="sa-empty" *ngIf="systemConfigEntries.length === 0">
+            <div class="sa-empty-icon">⚙️</div>
+            <div class="sa-empty-title">No config keys</div>
+            <div class="sa-empty-desc">Click "Add Key" to create the first entry.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ PLANS ════════════════════════════════════════════════ -->
+      <div *ngIf="activeTab === 'plans'">
+        <div class="sa-page-header">
+          <div>
+            <h1 class="sa-page-title">Plans</h1>
+            <p class="sa-page-sub">Configure subscription plans and their limits</p>
+          </div>
+          <button class="sa-btn-primary" (click)="openNewPlanForm()" id="btn-new-plan">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Plan
+          </button>
+        </div>
+
+        <!-- ── Form ─────────────────────────────────────────────── -->
+        <div class="sa-form-card" *ngIf="showPlanForm">
+          <div class="sa-form-card-header">
+            <h3 class="sa-form-title">{{ editingPlan ? 'Edit Plan' : 'New Plan' }}</h3>
+            <button class="sa-icon-btn" (click)="cancelPlanForm()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="sa-label">Plan Key * <span class="sa-hint">(e.g. pro, starter)</span></label>
+              <input class="sa-input" type="text" [(ngModel)]="planForm.key" [readonly]="!!editingPlan" id="plan-key" placeholder="demo" />
             </div>
+            <div class="col-md-4">
+              <label class="sa-label">Display Name *</label>
+              <input class="sa-input" type="text" [(ngModel)]="planForm.label" id="plan-label" placeholder="Demo" />
+            </div>
+            <div class="col-md-4">
+              <label class="sa-label">Description</label>
+              <input class="sa-input" type="text" [(ngModel)]="planForm.description" id="plan-desc" placeholder="For testing" />
+            </div>
+            <!-- Limits -->
+            <div class="col-12"><div class="sa-section-divider">Limits</div></div>
+            <div class="col-md-3">
+              <label class="sa-label">Max Clinics</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.max_clinics" min="1" id="plan-max-clinics" />
+            </div>
+            <div class="col-md-3">
+              <label class="sa-label">Max Doctors</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.max_doctors" min="1" id="plan-max-doctors" />
+            </div>
+            <div class="col-md-3">
+              <label class="sa-label">Max Receptionists</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.max_receptionists" min="0" id="plan-max-rec" />
+            </div>
+            <div class="col-md-3">
+              <label class="sa-label">Max Patients</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.max_patients" min="1" id="plan-max-patients" />
+            </div>
+            <!-- Validity & Grace -->
+            <div class="col-12"><div class="sa-section-divider">Validity</div></div>
+            <div class="col-md-4">
+              <label class="sa-label">Validity (days)</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.validity_days" min="1" id="plan-validity" />
+            </div>
+            <div class="col-md-4">
+              <label class="sa-label">Grace Period (days)</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.grace_period" min="0" id="plan-grace" />
+            </div>
+            <div class="col-md-4">
+              <label class="sa-label">Expiry Notification (days before)</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.plan_ending_nf" min="0" id="plan-nf" />
+            </div>
+            <!-- Pricing -->
+            <div class="col-12"><div class="sa-section-divider">Pricing (₹)</div></div>
+            <div class="col-md-4">
+              <label class="sa-label">Monthly Charge</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.monthly_charges" min="0" id="plan-monthly" />
+            </div>
+            <div class="col-md-4">
+              <label class="sa-label">Quarterly Charge</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.quarterly_charges" min="0" id="plan-quarterly" />
+            </div>
+            <div class="col-md-4">
+              <label class="sa-label">Yearly Charge</label>
+              <input class="sa-input" type="number" [(ngModel)]="planForm.yearly_charges" min="0" id="plan-yearly" />
+            </div>
+          </div>
+          <div class="sa-form-actions">
+            <button class="sa-btn-ghost" (click)="cancelPlanForm()">Cancel</button>
+            <button class="sa-btn-primary" (click)="savePlanForm()" [disabled]="isSaving" id="btn-save-plan">
+              <span *ngIf="isSaving" class="sa-spinner-sm"></span>
+              {{ editingPlan ? 'Update Plan' : 'Create Plan' }}
+            </button>
           </div>
         </div>
 
-        <!-- Staff Permissions -->
-        <div class="sa-section-title mb-3">Staff Permissions</div>
-        <div class="row g-4">
-          <!-- Doctor -->
-          <div class="col-md-6">
-            <div class="sa-perm-card">
-              <div class="sa-perm-header sa-perm-header--doctor">
-                <span class="sa-perm-emoji">🩺</span>
+        <!-- ── Plan Cards ────────────────────────────────────────── -->
+        <div *ngIf="!showPlanForm" class="row g-3 mt-1">
+          <div class="col-md-4" *ngFor="let plan of planList">
+            <div class="sa-plan-card">
+              <div class="sa-plan-card-header">
                 <div>
-                  <div class="sa-perm-role">Doctor</div>
-                  <div class="sa-perm-count">{{ countActivePerms(doctorPermissions) }} / {{ permissionDefs.length }} permissions</div>
+                  <span class="sa-plan-name">{{ plan.label || plan.key }}</span>
+                  <span class="sa-plan-key">{{ plan.key }}</span>
                 </div>
+                <div class="sa-plan-validity">{{ plan.validity_days }}d</div>
               </div>
-              <div class="sa-perm-list">
-                <label class="sa-perm-row" *ngFor="let perm of permissionDefs" [for]="'doc-' + perm.key">
-                  <div class="d-flex align-items-center gap-2 flex-grow-1">
-                    <span class="sa-perm-icon">{{ perm.icon }}</span>
-                    <div>
-                      <div class="sa-perm-name">{{ perm.label }}</div>
-                      <div class="sa-perm-desc">{{ perm.desc }}</div>
-                    </div>
-                  </div>
-                  <div class="sa-toggle">
-                    <input type="checkbox" [id]="'doc-' + perm.key" [(ngModel)]="doctorPermissions[perm.key]" />
-                    <span class="sa-toggle-track"><span class="sa-toggle-thumb"></span></span>
-                  </div>
-                </label>
+              <div class="sa-plan-limits-grid">
+                <div class="sa-plan-limit"><span class="sa-plan-limit-val">{{ plan.max_clinics }}</span><span class="sa-plan-limit-lbl">Clinics</span></div>
+                <div class="sa-plan-limit"><span class="sa-plan-limit-val">{{ plan.max_doctors }}</span><span class="sa-plan-limit-lbl">Doctors</span></div>
+                <div class="sa-plan-limit"><span class="sa-plan-limit-val">{{ plan.max_receptionists }}</span><span class="sa-plan-limit-lbl">Recep.</span></div>
+                <div class="sa-plan-limit"><span class="sa-plan-limit-val">{{ plan.max_patients }}</span><span class="sa-plan-limit-lbl">Patients</span></div>
+              </div>
+              <div class="sa-plan-pricing" *ngIf="plan.monthly_charges > 0">
+                <span>₹{{ plan.monthly_charges }}/mo</span>
+                <span class="sa-plan-pricing-sep">·</span>
+                <span>₹{{ plan.quarterly_charges }}/qtr</span>
+                <span class="sa-plan-pricing-sep">·</span>
+                <span>₹{{ plan.yearly_charges }}/yr</span>
+              </div>
+              <div class="sa-plan-pricing sa-text-muted" *ngIf="plan.monthly_charges === 0">Free / Trial</div>
+              <div class="sa-card-footer">
+                <button class="sa-btn-ghost-sm" (click)="openEditPlanForm(plan)" id="btn-edit-plan-{{plan.key}}">Edit</button>
+                <button class="sa-btn-danger-sm" (click)="deletePlanItem(plan)" id="btn-del-plan-{{plan.key}}">Delete</button>
               </div>
             </div>
           </div>
-          <!-- Receptionist -->
-          <div class="col-md-6">
-            <div class="sa-perm-card">
-              <div class="sa-perm-header sa-perm-header--recept">
-                <span class="sa-perm-emoji">🗂️</span>
-                <div>
-                  <div class="sa-perm-role">Receptionist</div>
-                  <div class="sa-perm-count">{{ countActivePerms(receptionistPermissions) }} / {{ permissionDefs.length }} permissions</div>
-                </div>
-              </div>
-              <div class="sa-perm-list">
-                <label class="sa-perm-row" *ngFor="let perm of permissionDefs" [for]="'rec-' + perm.key">
-                  <div class="d-flex align-items-center gap-2 flex-grow-1">
-                    <span class="sa-perm-icon">{{ perm.icon }}</span>
-                    <div>
-                      <div class="sa-perm-name">{{ perm.label }}</div>
-                      <div class="sa-perm-desc">{{ perm.desc }}</div>
-                    </div>
-                  </div>
-                  <div class="sa-toggle">
-                    <input type="checkbox" [id]="'rec-' + perm.key" [(ngModel)]="receptionistPermissions[perm.key]" />
-                    <span class="sa-toggle-track"><span class="sa-toggle-thumb"></span></span>
-                  </div>
-                </label>
-              </div>
+          <div class="col-12" *ngIf="planList.length === 0">
+            <div class="sa-empty">
+              <div class="sa-empty-icon">📋</div>
+              <div class="sa-empty-title">No plans yet</div>
+              <div class="sa-empty-desc">Click "New Plan" to create your first plan.</div>
             </div>
           </div>
         </div>
@@ -531,6 +498,7 @@
     </ng-container>
   </div>
 </div>
+
 
 <!-- Toast -->
 <div class="sa-toast" [class.sa-toast--visible]="toastVisible" [class.sa-toast--error]="toastType === 'error'">

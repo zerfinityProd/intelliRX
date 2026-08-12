@@ -565,7 +565,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
       // Check if plan.limits is already populated with real values
       const hasLimits = this.subscription!.plan?.limits
-        && (this.subscription!.plan.limits.max_clinics > 0 || this.subscription!.plan.limits.max_doctors > 0);
+        && (this.subscription!.plan?.limits?.max_clinics > 0 || this.subscription!.plan?.limits?.max_doctors > 0);
 
       if (!hasLimits) {
         const planName = (this.subscription!.plan?.name || '').toLowerCase();

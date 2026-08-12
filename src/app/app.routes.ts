@@ -51,7 +51,7 @@ export const routes: Routes = [
     {
         path: 'admin',
         pathMatch: 'full',
-        loadComponent: () => import('./components/super-admin/super-admin').then(m => m.SuperAdminComponent),
+        loadComponent: () => import('./components/super-admin-dashboard/super-admin-dashboard').then(m => m.SuperAdminDashboardComponent),
         canActivate: [superAdminGuard]
     },
 

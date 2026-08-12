@@ -5,9 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { filter, firstValueFrom } from 'rxjs';
 import { AuthenticationService } from '../../services/authenticationService';
-import { SuperAdminService, SuperAdminUser, DashboardOverview } from '../../services/superAdminService';
+import { SuperAdminService, SuperAdminUser, DashboardOverview, UserWithSubscription } from '../../services/superAdminService';
 import { ConfigService } from '../../services/configService';
-import { Subscription } from '../../models/subscription.model';
+import { PlanService } from '../../services/planService';
+import { Subscription, PlanDetail } from '../../models/subscription.model';
 import { PlanOption } from '../../models/subscription.model';
 import { NavbarComponent } from '../navbar/navbar';
 
@@ -21,7 +22,7 @@ export interface AdminPermissionSet {
   add_staff: boolean;
 }
 
-type ActiveTab = 'overview' | 'subscriptions' | 'admins' | 'permissions';
+type ActiveTab = 'overview' | 'subscriptions' | 'system-config' | 'plans';
 
 @Component({
   selector: 'app-super-admin-dashboard',
@@ -34,6 +35,7 @@ export class SuperAdminDashboardComponent implements OnInit {
   private authService = inject(AuthenticationService);
   private superAdminService = inject(SuperAdminService);
   private configService = inject(ConfigService);
+  private planService = inject(PlanService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
 
@@ -54,12 +56,15 @@ export class SuperAdminDashboardComponent implements OnInit {
 
   // ── Subscriptions ─────────────────────────────────────────────────────
   subscriptions: (Subscription & { id: string })[] = [];
+  /** usage counts per subscription id, populated in loadSubscriptions() */
+  subUsage: Map<string, { clinics: number; doctors: number; receptionists: number }> = new Map();
   planOptions: PlanOption[] = [];
   plansLoading = false;
   showSubForm = false;
   editingSub: (Subscription & { id: string }) | null = null;
   subForm = this.emptySubForm();
   subSearchQuery = '';
+  filteredSubscriptions: (Subscription & { id: string })[] = [];
 
   // ── Admins ────────────────────────────────────────────────────────────
   adminUsers: SuperAdminUser[] = [];
@@ -69,6 +74,21 @@ export class SuperAdminDashboardComponent implements OnInit {
     email: '', name: '', subscription_id: '',
   };
   adminSearchQuery = '';
+
+  // ── System Config ───────────────────────────────────────────────
+  systemConfigEntries: { key: string; value: string }[] = [];
+  systemConfigLoaded = false;
+
+  // ── User Subscriptions ────────────────────────────────────────────────
+  userSubItems: UserWithSubscription[] = [];
+  userSubSearchQuery = '';
+  showUserSubEditPanel = false;
+  editingUserSub: UserWithSubscription | null = null;
+  userSubForm: {
+    plan_name: string;
+    status: 'active' | 'inactive' | 'suspended';
+    valid_until: string;
+  } = { plan_name: '', status: 'active', valid_until: '' };
 
   // ── Permissions ──────────────────────────────────────────────────────
   readonly permissionDefs: { key: keyof PermissionSet; label: string; icon: string; desc: string }[] = [
@@ -115,10 +135,15 @@ export class SuperAdminDashboardComponent implements OnInit {
     await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
     this.adminName = this.authService.currentUserValue?.name || 'Super Admin';
     this.adminEmail = this.authService.currentUserValue?.email || '';
-    // Load plan options from Firestore first (used by subscription form)
+    // Load plan options from plans collection (not configurations/system)
     this.plansLoading = true;
     try {
-      this.planOptions = await this.configService.getAvailablePlans();
+      const plans = await this.planService.getPlans();
+      this.planOptions = plans.map(p => ({
+        key: p.key,
+        label: p.label || (p.key.charAt(0).toUpperCase() + p.key.slice(1)),
+        days: p.validity_days ?? 30,
+      }));
     } catch { /* non-blocking */ } finally { this.plansLoading = false; }
     await this.loadAll();
     this.isLoading = false;
@@ -129,8 +154,8 @@ export class SuperAdminDashboardComponent implements OnInit {
     await Promise.all([
       this.loadOverview(),
       this.loadSubscriptions(),
-      this.loadAdminUsers(),
-      this.loadPermissions(),
+      this.loadSystemConfig(),
+      this.loadPlans(),
     ]);
   }
 
@@ -140,7 +165,40 @@ export class SuperAdminDashboardComponent implements OnInit {
   }
 
   async loadSubscriptions(): Promise<void> {
-    try { this.subscriptions = await this.superAdminService.getAllSubscriptions(); }
+    try {
+      const [subs, allClinics, allUsers] = await Promise.all([
+        this.superAdminService.getAllSubscriptions(),
+        this.superAdminService.getAllClinics().catch(() => [] as any[]),
+        this.superAdminService.getAllUsersRaw().catch(() => [] as any[]),
+      ]);
+      this.subscriptions = subs;
+
+      // Build usage map: subscription_id → { clinics, doctors, receptionists }
+      const usageMap = new Map<string, { clinics: number; doctors: number; receptionists: number }>();
+
+      // Clinic count from clinics collection
+      for (const c of allClinics) {
+        const sid: string = (c as any).subscription_id || '';
+        if (!sid) continue;
+        const e = usageMap.get(sid) ?? { clinics: 0, doctors: 0, receptionists: 0 };
+        e.clinics++;
+        usageMap.set(sid, e);
+      }
+
+      // Doctor + receptionist counts from users collection (by subscription_id + role)
+      for (const u of allUsers) {
+        const sid: string = (u as any).subscription_id || '';
+        if (!sid) continue;
+        const roles: string[] = (u as any).global_roles || [];
+        const e = usageMap.get(sid) ?? { clinics: 0, doctors: 0, receptionists: 0 };
+        if (roles.includes('doctor'))       e.doctors++;
+        if (roles.includes('receptionist')) e.receptionists++;
+        usageMap.set(sid, e);
+      }
+
+      this.subUsage = usageMap;
+      this.filteredSubscriptions = this.subscriptions; // sync display list
+    }
     catch (e: any) { this.showToast('Failed to load subscriptions', 'error'); }
   }
 
@@ -149,21 +207,52 @@ export class SuperAdminDashboardComponent implements OnInit {
     catch (e: any) { this.showToast('Failed to load admin users', 'error'); }
   }
 
-  async loadPermissions(): Promise<void> {
+  async loadUserSubscriptions(): Promise<void> {
+    try { this.userSubItems = await this.superAdminService.getAllUsersWithSubscriptions(); }
+    catch (e: any) { this.showToast('Failed to load user subscriptions', 'error'); }
+  }
+
+  async loadSystemConfig(): Promise<void> {
     try {
-      const [dp, rp, ap] = await Promise.all([
-        this.superAdminService.getRolePermissions('doctor'),
-        this.superAdminService.getRolePermissions('receptionist'),
-        this.superAdminService.getRolePermissions('admin'),
-      ]);
-      this.permissionDefs.forEach(p => {
-        (this.doctorPermissions as any)[p.key] = dp.includes(p.key);
-        (this.receptionistPermissions as any)[p.key] = rp.includes(p.key);
-      });
-      this.adminPermissionDefs.forEach(p => {
-        (this.adminPermissions as any)[p.key] = ap.includes(p.key);
-      });
-    } catch (e: any) { this.showToast('Failed to load permissions', 'error'); }
+      const cfg = await this.configService.getSystemConfig();
+      // Flatten to editable key-value pairs, sorted alphabetically
+      this.systemConfigEntries = Object.entries(cfg)
+        .map(([key, value]) => ({ key, value: String(value) }))
+        .sort((a, b) => a.key.localeCompare(b.key));
+      this.systemConfigLoaded = true;
+    } catch (e: any) {
+      this.showToast('Failed to load system config', 'error');
+    }
+  }
+
+  async saveSystemConfig(): Promise<void> {
+    this.isSaving = true;
+    this.cdr.detectChanges();
+    try {
+      const patch: Record<string, number | string> = {};
+      for (const entry of this.systemConfigEntries) {
+        if (!entry.key.trim()) continue; // skip blank keys
+        const num = Number(entry.value);
+        patch[entry.key.trim()] = isNaN(num) ? entry.value : num;
+      }
+      await this.configService.updateSystemConfig(patch);
+      this.showToast('System config saved successfully');
+    } catch (e: any) {
+      this.showToast('Failed to save config: ' + (e?.message || 'Unknown error'), 'error');
+    } finally {
+      this.isSaving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  addConfigEntry(): void {
+    this.systemConfigEntries = [...this.systemConfigEntries, { key: '', value: '' }];
+    this.cdr.detectChanges();
+  }
+
+  removeConfigEntry(index: number): void {
+    this.systemConfigEntries = this.systemConfigEntries.filter((_, i) => i !== index);
+    this.cdr.detectChanges();
   }
 
   // ── Navigation ────────────────────────────────────────────────────────
@@ -183,14 +272,18 @@ export class SuperAdminDashboardComponent implements OnInit {
     if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening';
   }
 
-  get filteredSubscriptions(): (Subscription & { id: string })[] {
-    if (!this.subSearchQuery.trim()) return this.subscriptions;
-    const q = this.subSearchQuery.toLowerCase();
-    return this.subscriptions.filter(s =>
-      s.entity_name?.toLowerCase().includes(q) ||
-      s.owner_email?.toLowerCase().includes(q) ||
-      s.id.toLowerCase().includes(q)
-    );
+  onSubSearch(): void {
+    const q = this.subSearchQuery.trim().toLowerCase();
+    if (q.length < 3) {
+      this.filteredSubscriptions = this.subscriptions;
+    } else {
+      this.filteredSubscriptions = this.subscriptions.filter(s =>
+        s.entity_name?.toLowerCase().includes(q) ||
+        s.owner_email?.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q)
+      );
+    }
+    this.cdr.detectChanges();
   }
 
   get filteredAdmins(): SuperAdminUser[] {
@@ -206,6 +299,124 @@ export class SuperAdminDashboardComponent implements OnInit {
     if (!admin.subscription_id) return '—';
     const sub = this.subscriptions.find(s => s.id === admin.subscription_id);
     return sub?.entity_name || admin.subscription_id;
+  }
+
+  // ── User Subscription helpers ────────────────────────────────────────
+
+  get filteredUserSubs(): UserWithSubscription[] {
+    if (!this.userSubSearchQuery.trim()) return this.userSubItems;
+    const q = this.userSubSearchQuery.toLowerCase();
+    return this.userSubItems.filter(item =>
+      item.user.name.toLowerCase().includes(q) ||
+      item.user.email.toLowerCase().includes(q) ||
+      item.subscription?.entity_name?.toLowerCase().includes(q) ||
+      item.subscription?.plan?.name?.toLowerCase().includes(q)
+    );
+  }
+
+  getUserRoleBadges(user: SuperAdminUser): string[] {
+    return (user.global_roles || []).filter(r => r !== 'z_admin');
+  }
+
+  isExpired(validUntil: string | undefined): boolean {
+    if (!validUntil) return false;
+    return new Date(validUntil) < new Date();
+  }
+
+  getSubStatusClass(sub: (Subscription & { id: string }) | null): string {
+    if (!sub) return 'badge-inactive';
+    if (this.isExpired(sub.valid_until)) return 'badge-expired';
+    return this.getStatusClass(sub.status);
+  }
+
+  getSubStatusLabel(sub: (Subscription & { id: string }) | null): string {
+    if (!sub) return '—';
+    if (this.isExpired(sub.valid_until)) return 'expired';
+    return sub.status;
+  }
+
+  isoToDateInput(iso: string | undefined): string {
+    if (!iso) return '';
+    return iso.split('T')[0];
+  }
+
+  openEditUserSub(item: UserWithSubscription): void {
+    this.editingUserSub = item;
+    const sub = item.subscription;
+    this.userSubForm = {
+      plan_name: sub?.plan?.name || '',
+      status: (sub?.status as 'active' | 'inactive' | 'suspended') || 'active',
+      valid_until: this.isoToDateInput(sub?.valid_until),
+    };
+    this.showUserSubEditPanel = true;
+    this.cdr.detectChanges();
+  }
+
+  cancelUserSubEdit(): void {
+    this.showUserSubEditPanel = false;
+    this.editingUserSub = null;
+    this.cdr.detectChanges();
+  }
+
+  async saveUserSub(): Promise<void> {
+    if (!this.editingUserSub?.subscription) {
+      this.showToast('No subscription linked to this user', 'error');
+      return;
+    }
+    this.isSaving = true;
+    this.cdr.detectChanges();
+    try {
+      const subId = this.editingUserSub.subscription.id;
+      const validUntil = this.userSubForm.valid_until
+        ? new Date(this.userSubForm.valid_until).toISOString()
+        : (this.editingUserSub.subscription.valid_until || '');
+
+      // Preserve existing plan limits; only update the plan name
+      const existingLimits = this.editingUserSub.subscription.plan?.limits || {
+        max_clinics: 5, max_doctors: 10, max_receptionists: 10, max_appointments_per_day: 50,
+      };
+
+      await this.superAdminService.updateSubscriptionDetails(subId, {
+        plan: { name: this.userSubForm.plan_name, limits: existingLimits },
+        status: this.userSubForm.status,
+        valid_until: validUntil,
+      });
+
+      // Update local cache so UI reflects the change immediately
+      const idx = this.userSubItems.findIndex(i => i === this.editingUserSub);
+      if (idx >= 0) {
+        this.userSubItems = [...this.userSubItems];
+        this.userSubItems[idx] = {
+          ...this.userSubItems[idx],
+          subscription: {
+            ...this.editingUserSub.subscription!,
+            plan: { name: this.userSubForm.plan_name, limits: existingLimits },
+            status: this.userSubForm.status,
+            valid_until: validUntil,
+          },
+        };
+      }
+      // Also refresh the subscriptions list used by Overview tab
+      const subIdx = this.subscriptions.findIndex(s => s.id === subId);
+      if (subIdx >= 0) {
+        this.subscriptions = [...this.subscriptions];
+        this.subscriptions[subIdx] = {
+          ...this.subscriptions[subIdx],
+          plan: { name: this.userSubForm.plan_name, limits: existingLimits },
+          status: this.userSubForm.status,
+          valid_until: validUntil,
+        };
+      }
+
+      this.showToast('Subscription updated successfully');
+      this.showUserSubEditPanel = false;
+      this.editingUserSub = null;
+    } catch (e: any) {
+      this.showToast('Failed to update: ' + (e?.message || 'Unknown error'), 'error');
+    } finally {
+      this.isSaving = false;
+      this.cdr.detectChanges();
+    }
   }
 
   countActivePerms(perms: PermissionSet | AdminPermissionSet): number {
@@ -299,6 +510,7 @@ export class SuperAdminDashboardComponent implements OnInit {
       }
       this.overview.totalSubscriptions = this.subscriptions.length;
       this.overview.activeSubscriptions = this.subscriptions.filter(s => s.status === 'active').length;
+      this.filteredSubscriptions = [...this.subscriptions]; // keep display list in sync
       this.showSubForm = false;
       this.editingSub = null;
     } catch (e: any) { this.showToast('Failed to save: ' + e.message, 'error'); }
@@ -312,6 +524,7 @@ export class SuperAdminDashboardComponent implements OnInit {
     try {
       await this.superAdminService.deleteSubscription(sub.id);
       this.subscriptions = this.subscriptions.filter(s => s.id !== sub.id);
+      this.filteredSubscriptions = [...this.subscriptions]; // keep display list in sync
       this.overview.totalSubscriptions = this.subscriptions.length;
       this.showToast('Subscription deleted');
     } catch (e: any) { this.showToast('Failed to delete: ' + e.message, 'error'); }
@@ -433,6 +646,97 @@ export class SuperAdminDashboardComponent implements OnInit {
       this.showToast('Subscription assigned');
     } catch (e: any) { this.showToast('Failed to assign subscription', 'error'); }
     finally { this.cdr.detectChanges(); }
+  }
+
+  // ── Plans ──────────────────────────────────────────────────────────────
+  planList: PlanDetail[] = [];
+  showPlanForm = false;
+  editingPlan: PlanDetail | null = null;
+  planForm: {
+    key: string; label: string; description: string;
+    monthly_charges: number; quarterly_charges: number; yearly_charges: number;
+    max_clinics: number; max_doctors: number; max_receptionists: number;
+    max_patients: number; validity_days: number;
+    grace_period: number; plan_ending_nf: number;
+  } = this.emptyPlanForm();
+
+  private emptyPlanForm() {
+    return {
+      key: '', label: '', description: '',
+      monthly_charges: 0, quarterly_charges: 0, yearly_charges: 0,
+      max_clinics: 1, max_doctors: 5, max_receptionists: 2,
+      max_patients: 100, validity_days: 30,
+      grace_period: 0, plan_ending_nf: 7,
+    };
+  }
+
+  async loadPlans(): Promise<void> {
+    try {
+      this.planList = await this.planService.getPlans();
+    } catch (e: any) { this.showToast('Failed to load plans', 'error'); }
+  }
+
+  openNewPlanForm(): void {
+    this.editingPlan = null;
+    this.planForm = this.emptyPlanForm();
+    this.showPlanForm = true;
+  }
+
+  openEditPlanForm(plan: PlanDetail): void {
+    this.editingPlan = plan;
+    this.planForm = {
+      key: plan.key,
+      label: plan.label,
+      description: plan.description || '',
+      monthly_charges: plan.monthly_charges,
+      quarterly_charges: plan.quarterly_charges,
+      yearly_charges: plan.yearly_charges,
+      max_clinics: plan.max_clinics,
+      max_doctors: plan.max_doctors,
+      max_receptionists: plan.max_receptionists,
+      max_patients: plan.max_patients,
+      validity_days: plan.validity_days,
+      grace_period: (plan as any).grace_period ?? 0,
+      plan_ending_nf: plan.plan_ending_nf ?? 7,
+    };
+    this.showPlanForm = true;
+  }
+
+  async savePlanForm(): Promise<void> {
+    const key = this.planForm.key.trim().toLowerCase().replace(/\s+/g, '_');
+    if (!key) { this.showToast('Plan key is required', 'error'); return; }
+    this.isSaving = true;
+    try {
+      const { key: _k, ...rest } = this.planForm;
+      await this.planService.savePlan(key, rest as any);
+      await this.loadPlans();
+      // refresh planOptions dropdown too
+      this.planOptions = this.planList.map(p => ({
+        key: p.key,
+        label: p.label || (p.key.charAt(0).toUpperCase() + p.key.slice(1)),
+        days: p.validity_days ?? 30,
+      }));
+      this.showToast(this.editingPlan ? 'Plan updated' : 'Plan created');
+      this.showPlanForm = false;
+    } catch (e: any) { this.showToast('Failed to save plan: ' + e.message, 'error'); }
+    finally { this.isSaving = false; this.cdr.detectChanges(); }
+  }
+
+  async deletePlanItem(plan: PlanDetail): Promise<void> {
+    const ok = await this.showConfirm('Delete Plan', `Delete "${plan.label || plan.key}"? This will affect all subscriptions using this plan.`);
+    if (!ok) return;
+    try {
+      await this.planService.deletePlan(plan.key);
+      this.planList = this.planList.filter(p => p.key !== plan.key);
+      this.showToast('Plan deleted');
+    } catch (e: any) { this.showToast('Failed to delete plan: ' + e.message, 'error'); }
+    this.cdr.detectChanges();
+  }
+
+  cancelPlanForm(): void {
+    this.showPlanForm = false;
+    this.editingPlan = null;
+    this.planForm = this.emptyPlanForm();
   }
 
   // ── Permissions ───────────────────────────────────────────────────────
