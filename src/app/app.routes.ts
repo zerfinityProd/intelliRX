@@ -4,6 +4,7 @@ import { authGuard, doctorGuard } from './guards/auth-guard';
 import { adminGuard } from './guards/admin-guard';
 import { superAdminGuard } from './guards/super-admin-guard';
 import { patientContextGuard } from './guards/patient-context.guard';
+import { expiredSubscriptionGuard } from './guards/expired-subscription.guard';
 
 export const routes: Routes = [
     // ── Public Routes (Website) ──
@@ -60,12 +61,12 @@ export const routes: Routes = [
     {
         path: 'admin/dashboard',
         loadComponent: () => import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),
-        canActivate: [adminGuard]
+        canActivate: [expiredSubscriptionGuard, adminGuard]
     },
     {
         path: 'admin-dashboard',
         loadComponent: () => import('./components/admin-dashboard/admin-dashboard').then(m => m.AdminDashboardComponent),
-        canActivate: [adminGuard]
+        canActivate: [expiredSubscriptionGuard, adminGuard]
     },
     {
         path: 'admin/subscription',
@@ -77,35 +78,35 @@ export const routes: Routes = [
     {
         path: 'home',
         loadComponent: () => import('./components/home/home').then(m => m.HomeComponent),
-        canActivate: [authGuard]
+        canActivate: [expiredSubscriptionGuard, authGuard]
     },
     {
         // Secure route: patient ID is passed via history.state / PatientContextService,
         // never exposed in the URL — prevents IDOR enumeration attacks.
         path: 'patient/view',
         loadComponent: () => import('./components/patient-details/patient-details').then(m => m.PatientDetailsComponent),
-        canActivate: [patientContextGuard]
+        canActivate: [expiredSubscriptionGuard, patientContextGuard]
     },
     {
         // Secure route: patient ID is passed via history.state / PatientContextService.
         path: 'patient/add-visit',
         loadComponent: () => import('./components/add-visit-page/add-visit-page').then(m => m.AddVisitPageComponent),
-        canActivate: [patientContextGuard]
+        canActivate: [expiredSubscriptionGuard, patientContextGuard]
     },
     {
         path: 'add-appointment',
         loadComponent: () => import('./components/add-appointment/add-appointment').then(m => m.AddAppointmentComponent),
-        canActivate: [authGuard]
+        canActivate: [expiredSubscriptionGuard, authGuard]
     },
     {
         path: 'my-leaves',
         loadComponent: () => import('./components/leaves/my-leaves/my-leaves').then(m => m.MyLeavesComponent),
-        canActivate: [authGuard]
+        canActivate: [expiredSubscriptionGuard, authGuard]
     },
     {
         path: 'appointments',
         loadComponent: () => import('./components/appointments-list/appointments-list').then(m => m.AppointmentsListComponent),
-        canActivate: [authGuard]
+        canActivate: [expiredSubscriptionGuard, authGuard]
     },
     // ── Subscription Expired (accessible without auth — user is logged out) ──
     {

@@ -120,6 +120,26 @@ export class LoginComponent implements OnInit {
         const expiryStatus = await this.authorizationService.checkSubscriptionExpiry(email);
 
         if (expiryStatus === 'expired') {
+            // Admins / subscription owners can manage their own subscription —
+            // keep them logged in and send them straight to the Manage Subscription page.
+            const isAdmin = globalRoles.includes('admin') || role === 'subscription_owner';
+
+            if (isAdmin) {
+                // Persist subscriptionId so the subscription management page can load without extra queries
+                try {
+                    const subId = await this.authorizationService.getUserSubscriptionId(email);
+                    if (subId) {
+                        this.clinicContextService.setClinicContext(null, subId);
+                    }
+                } catch { /* non-critical */ }
+
+                this.isLoading = false;
+                this.cdr.detectChanges();
+                this.router.navigate(['/admin/subscription']);
+                return;
+            }
+
+            // Non-admin staff (doctors, receptionists) — log out and show the expired page.
             await this.authService.logout();
             this.isLoading = false;
             this.cdr.detectChanges();

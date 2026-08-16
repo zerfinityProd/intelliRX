@@ -44,125 +44,157 @@
       <div *ngIf="activeTab === 'overview'">
         <div class="sa-page-header">
           <div>
-            <h1 class="sa-page-title">{{ greeting }}, {{ adminName.split(' ')[0] }} 👋</h1>
-            <p class="sa-page-sub">Here's your platform at a glance</p>
+            <h1 class="sa-page-title">Analytics Overview</h1>
+            <p class="sa-page-sub">Subscription health &amp; platform metrics at a glance</p>
           </div>
           <span class="sa-date-badge">{{ currentTime | date: 'EEE, MMM d · h:mm a' }}</span>
         </div>
 
-        <!-- Stat Cards -->
-        <div class="row g-3 mb-4">
-          <div class="col-sm-6 col-lg-4">
-            <div class="sa-stat-card">
-              <div class="sa-stat-icon sa-stat-icon--primary">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <!-- ── KPI Strip ── -->
+        <div class="an-kpi-strip mb-4">
+          <div class="an-kpi">
+            <div class="an-kpi-val">{{ subscriptions.length }}</div>
+            <div class="an-kpi-lbl">Total Subscriptions</div>
+          </div>
+          <div class="an-kpi-sep"></div>
+          <div class="an-kpi">
+            <div class="an-kpi-val an-kpi-val--active">{{ subStatusCounts.active }}</div>
+            <div class="an-kpi-lbl">Active</div>
+          </div>
+          <div class="an-kpi-sep"></div>
+          <div class="an-kpi">
+            <div class="an-kpi-val an-kpi-val--expired">{{ subStatusCounts.expired }}</div>
+            <div class="an-kpi-lbl">Expired</div>
+          </div>
+          <div class="an-kpi-sep"></div>
+          <div class="an-kpi">
+            <div class="an-kpi-val an-kpi-val--inactive">{{ subStatusCounts.inactive }}</div>
+            <div class="an-kpi-lbl">Inactive</div>
+          </div>
+          <div class="an-kpi-sep"></div>
+          <div class="an-kpi">
+            <div class="an-kpi-val an-kpi-val--suspended">{{ subStatusCounts.suspended }}</div>
+            <div class="an-kpi-lbl">Suspended</div>
+          </div>
+          <div class="an-kpi-sep"></div>
+          <div class="an-kpi">
+            <div class="an-kpi-val">{{ overview.totalClinics }}</div>
+            <div class="an-kpi-lbl">Clinics</div>
+          </div>
+          <div class="an-kpi-sep"></div>
+          <div class="an-kpi">
+            <div class="an-kpi-val">{{ overview.totalUsers }}</div>
+            <div class="an-kpi-lbl">Users</div>
+          </div>
+        </div>
+
+        <!-- ── Charts Row ── -->
+        <div class="row g-4 mb-4">
+
+          <!-- Subscription Status Pie -->
+          <div class="col-md-4">
+            <div class="an-chart-card">
+              <div class="an-chart-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                Subscription Status
               </div>
-              <div class="sa-stat-body">
-                <div class="sa-stat-val">{{ overview.totalSubscriptions }}</div>
-                <div class="sa-stat-label">Total Subscriptions</div>
-                <div class="sa-stat-sub">{{ overview.activeSubscriptions }} active</div>
+              <div class="an-donut-wrap">
+                <svg class="an-donut" viewBox="0 0 200 200">
+                  <ng-container *ngFor="let seg of statusDonutSegments">
+                    <circle
+                      cx="100" cy="100" r="70"
+                      fill="none"
+                      [attr.stroke]="seg.color"
+                      stroke-width="36"
+                      [attr.stroke-dasharray]="seg.dash"
+                      [attr.stroke-dashoffset]="seg.offset"
+                      stroke-linecap="butt"
+                    />
+                  </ng-container>
+                  <!-- Centre label -->
+                  <text x="100" y="95" text-anchor="middle" class="an-donut-center-val">{{ subscriptions.length }}</text>
+                  <text x="100" y="113" text-anchor="middle" class="an-donut-center-lbl">Total</text>
+                </svg>
+              </div>
+              <div class="an-legend">
+                <div class="an-legend-item" *ngFor="let seg of statusDonutSegments">
+                  <span class="an-legend-dot" [style.background]="seg.color"></span>
+                  <span class="an-legend-name">{{ seg.label }}</span>
+                  <span class="an-legend-val">{{ seg.count }}</span>
+                </div>
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-4">
-            <div class="sa-stat-card">
-              <div class="sa-stat-icon sa-stat-icon--blue">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+
+          <!-- Subscriptions by Plan Pie -->
+          <div class="col-md-4">
+            <div class="an-chart-card">
+              <div class="an-chart-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Subscriptions by Plan
               </div>
-              <div class="sa-stat-body">
-                <div class="sa-stat-val">{{ overview.totalAdmins }}</div>
-                <div class="sa-stat-label">Admins</div>
-                <div class="sa-stat-sub">Platform administrators</div>
+              <div class="an-donut-wrap">
+                <svg class="an-donut" viewBox="0 0 200 200">
+                  <ng-container *ngFor="let seg of planDonutSegments">
+                    <circle
+                      cx="100" cy="100" r="70"
+                      fill="none"
+                      [attr.stroke]="seg.color"
+                      stroke-width="36"
+                      [attr.stroke-dasharray]="seg.dash"
+                      [attr.stroke-dashoffset]="seg.offset"
+                      stroke-linecap="butt"
+                    />
+                  </ng-container>
+                  <text x="100" y="95" text-anchor="middle" class="an-donut-center-val">{{ planList.length }}</text>
+                  <text x="100" y="113" text-anchor="middle" class="an-donut-center-lbl">Plans</text>
+                </svg>
               </div>
-            </div>
-          </div>
-          <div class="col-sm-6 col-lg-4">
-            <div class="sa-stat-card">
-              <div class="sa-stat-icon sa-stat-icon--teal">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              </div>
-              <div class="sa-stat-body">
-                <div class="sa-stat-val">{{ overview.totalDoctors }}</div>
-                <div class="sa-stat-label">Doctors</div>
-                <div class="sa-stat-sub">Across all clinics</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-sm-6 col-lg-4">
-            <div class="sa-stat-card">
-              <div class="sa-stat-icon sa-stat-icon--amber">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-              </div>
-              <div class="sa-stat-body">
-                <div class="sa-stat-val">{{ overview.totalReceptionists }}</div>
-                <div class="sa-stat-label">Receptionists</div>
-                <div class="sa-stat-sub">Across all clinics</div>
+              <div class="an-legend">
+                <div class="an-legend-item" *ngFor="let seg of planDonutSegments">
+                  <span class="an-legend-dot" [style.background]="seg.color"></span>
+                  <span class="an-legend-name">{{ seg.label }}</span>
+                  <span class="an-legend-val">{{ seg.count }}</span>
+                </div>
               </div>
             </div>
           </div>
-          <div class="col-sm-6 col-lg-4">
-            <div class="sa-stat-card">
-              <div class="sa-stat-icon sa-stat-icon--rose">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+
+          <!-- Renewal / Expiry Breakdown Pie -->
+          <div class="col-md-4">
+            <div class="an-chart-card">
+              <div class="an-chart-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                Expiry Breakdown
               </div>
-              <div class="sa-stat-body">
-                <div class="sa-stat-val">{{ overview.totalClinics }}</div>
-                <div class="sa-stat-label">Total Clinics</div>
-                <div class="sa-stat-sub">All subscriptions</div>
+              <div class="an-donut-wrap">
+                <svg class="an-donut" viewBox="0 0 200 200">
+                  <ng-container *ngFor="let seg of expiryDonutSegments">
+                    <circle
+                      cx="100" cy="100" r="70"
+                      fill="none"
+                      [attr.stroke]="seg.color"
+                      stroke-width="36"
+                      [attr.stroke-dasharray]="seg.dash"
+                      [attr.stroke-dashoffset]="seg.offset"
+                      stroke-linecap="butt"
+                    />
+                  </ng-container>
+                  <text x="100" y="95" text-anchor="middle" class="an-donut-center-val">{{ subscriptions.length }}</text>
+                  <text x="100" y="113" text-anchor="middle" class="an-donut-center-lbl">Subs</text>
+                </svg>
               </div>
-            </div>
-          </div>
-          <div class="col-sm-6 col-lg-4">
-            <div class="sa-stat-card">
-              <div class="sa-stat-icon sa-stat-icon--green">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              </div>
-              <div class="sa-stat-body">
-                <div class="sa-stat-val">{{ overview.totalUsers }}</div>
-                <div class="sa-stat-label">Total Users</div>
-                <div class="sa-stat-sub">All platform users</div>
+              <div class="an-legend">
+                <div class="an-legend-item" *ngFor="let seg of expiryDonutSegments">
+                  <span class="an-legend-dot" [style.background]="seg.color"></span>
+                  <span class="an-legend-name">{{ seg.label }}</span>
+                  <span class="an-legend-val">{{ seg.count }}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Quick Actions -->
-        <div class="sa-section-title mb-3">Quick Actions</div>
-        <div class="row g-3 mb-4">
-          <div class="col-md-4">
-            <button class="sa-qa-card" (click)="setTab('subscriptions'); openNewSubForm()" id="qa-new-sub">
-              <div class="sa-qa-icon sa-qa-icon--primary">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </div>
-              <div class="text-start">
-                <div class="sa-qa-title">New Subscription</div>
-                <div class="sa-qa-desc">Create a new subscription plan</div>
-              </div>
-            </button>
-          </div>
-          <div class="col-md-4">
-            <button class="sa-qa-card" (click)="setTab('plans'); openNewPlanForm()" id="qa-new-plan">
-              <div class="sa-qa-icon sa-qa-icon--blue">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              </div>
-              <div class="text-start">
-                <div class="sa-qa-title">New Plan</div>
-                <div class="sa-qa-desc">Create a new subscription plan</div>
-              </div>
-            </button>
-          </div>
-          <div class="col-md-4">
-            <button class="sa-qa-card" (click)="setTab('system-config')" id="qa-permissions">
-              <div class="sa-qa-icon sa-qa-icon--teal">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-              </div>
-              <div class="text-start">
-                <div class="sa-qa-title">System Config</div>
-                <div class="sa-qa-desc">Edit plan validity & platform settings</div>
-              </div>
-            </button>
-          </div>
-        </div>
       </div>
 
       <!-- ══ SUBSCRIPTIONS ══════════════════════════════════════════ -->
@@ -301,21 +333,24 @@
             <p class="sa-page-sub">Edit platform-wide settings stored in <code>configurations/system</code></p>
           </div>
           <div class="d-flex gap-2">
-            <button class="sa-btn-ghost" (click)="addConfigEntry()" id="btn-add-cfg">
+            <button class="sa-btn-ghost" (click)="openCfgModal('add')" id="btn-add-cfg">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Add Key
             </button>
-            <button class="sa-btn-primary" (click)="saveSystemConfig()" [disabled]="isSaving" id="btn-save-cfg">
+            <!-- Show commit button only when there are pending deletions -->
+            <button class="sa-btn-danger" *ngIf="pendingDeletedKeys.length > 0"
+                    (click)="saveSystemConfig()" [disabled]="isSaving" id="btn-save-cfg">
               <span *ngIf="isSaving" class="sa-spinner-sm"></span>
-              <svg *ngIf="!isSaving" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-              Save Config
+              <svg *ngIf="!isSaving" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              Commit Deletions
+              <span class="cfg-del-badge">{{ pendingDeletedKeys.length }}</span>
             </button>
           </div>
         </div>
 
         <div class="sa-info-banner mb-4">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          These settings are global and affect all subscriptions. Numeric values are stored as numbers; everything else as strings.
+          Add or edit keys using the modal — changes save <strong>instantly</strong>. Deletions are staged until you click <strong>Commit Deletions</strong>.
         </div>
 
         <!-- Loading shimmer -->
@@ -323,35 +358,67 @@
           <div class="sa-spinner"></div><span>Loading system config…</span>
         </div>
 
-        <!-- Key-value editor table -->
+        <!-- Search bar -->
+        <div class="sa-cfg-search-wrap" *ngIf="systemConfigLoaded">
+          <div class="sa-search-bar">
+            <svg class="sa-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input class="sa-search-input" type="text"
+                   [(ngModel)]="configSearchQuery"
+                   (input)="updateConfigFilter()"
+                   placeholder="Search by key or description…"
+                   id="cfg-search" />
+            <button *ngIf="configSearchQuery" class="sa-search-clear"
+                    (click)="configSearchQuery = ''; updateConfigFilter()" aria-label="Clear">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Read-only display table -->
         <div class="sa-table-card" *ngIf="systemConfigLoaded">
           <table class="sa-table sa-cfg-table">
             <thead>
               <tr>
-                <th style="width:55%">Key</th>
-                <th style="width:40%">Value</th>
-                <th style="width:5%" class="text-center">Del</th>
+                <th style="width:24%">Key</th>
+                <th style="width:28%">Description</th>
+                <th style="width:30%">Value</th>
+                <th style="width:10%" class="text-center">Type</th>
+                <th style="width:8%" class="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let entry of systemConfigEntries; let i = index">
+              <tr *ngFor="let entry of filteredConfigEntries; let i = index">
                 <td>
-                  <input class="sa-input sa-cfg-input" type="text"
-                         [(ngModel)]="entry.key"
-                         placeholder="e.g. demo_plan_validity_days"
-                         [id]="'cfg-key-' + i" />
+                  <span class="cfg-key-badge">{{ entry.key }}</span>
+                </td>
+                <td class="sa-text-muted" style="font-size:12.5px;">
+                  {{ entry.description || '—' }}
                 </td>
                 <td>
-                  <input class="sa-input sa-cfg-input" type="text"
-                         [(ngModel)]="entry.value"
-                         placeholder="value"
-                         [id]="'cfg-val-' + i" />
+                  <!-- Toggle display -->
+                  <ng-container *ngIf="entry.valueType === 'toggle'">
+                    <span class="cfg-val-pill" [class.cfg-val-pill--on]="entry.value === 'yes'"
+                                               [class.cfg-val-pill--off]="entry.value !== 'yes'">
+                      {{ entry.value === 'yes' ? 'Yes' : 'No' }}
+                    </span>
+                  </ng-container>
+                  <!-- Int / String display -->
+                  <ng-container *ngIf="entry.valueType !== 'toggle'">
+                    <span class="cfg-val-text">{{ entry.value }}</span>
+                  </ng-container>
                 </td>
                 <td class="text-center">
-                  <button class="sa-icon-btn sa-icon-btn--danger" (click)="removeConfigEntry(i)"
-                          title="Remove" [id]="'cfg-del-' + i">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-                  </button>
+                  <span class="cfg-type-chip cfg-type-chip--{{ entry.valueType }}">{{ entry.valueType }}</span>
+                </td>
+                <td class="text-center">
+                  <div class="d-flex justify-content-center gap-2">
+                    <button class="sa-icon-btn" (click)="openCfgModal('edit', entry._origIndex)" title="Edit" [id]="'cfg-edit-' + entry._origIndex">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="sa-icon-btn sa-icon-btn--danger" (click)="removeConfigEntry(entry._origIndex)" title="Delete" [id]="'cfg-del-' + entry._origIndex">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -359,9 +426,105 @@
           <div class="sa-empty" *ngIf="systemConfigEntries.length === 0">
             <div class="sa-empty-icon">⚙️</div>
             <div class="sa-empty-title">No config keys</div>
-            <div class="sa-empty-desc">Click "Add Key" to create the first entry.</div>
+            <div class="sa-empty-desc">Click "+ Add Key" to create the first entry.</div>
+          </div>
+          <div class="sa-empty" *ngIf="systemConfigEntries.length > 0 && filteredConfigEntries.length === 0">
+            <div class="sa-empty-icon">🔍</div>
+            <div class="sa-empty-title">No results</div>
+            <div class="sa-empty-desc">No keys or descriptions match "{{ configSearchQuery }}".</div>
           </div>
         </div>
+
+        <!-- ── Add / Edit Config Modal ───────────────────────────────── -->
+        <div class="cfg-modal-backdrop" *ngIf="cfgModal.visible" (click)="closeCfgModal()"></div>
+        <div class="cfg-modal" *ngIf="cfgModal.visible" role="dialog" aria-modal="true">
+          <div class="cfg-modal-header">
+            <span class="cfg-modal-title">{{ cfgModal.mode === 'add' ? '+ Add Config Key' : 'Edit Config Key' }}</span>
+            <button class="sa-icon-btn" (click)="closeCfgModal()" aria-label="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div class="cfg-modal-body">
+            <!-- Key -->
+            <div class="cfg-modal-field">
+              <label class="cfg-modal-label" for="cfg-modal-key">Key <span class="cfg-required">*</span></label>
+              <input class="sa-input" type="text" id="cfg-modal-key"
+                     [(ngModel)]="cfgModal.key"
+                     [readonly]="cfgModal.mode === 'edit'"
+                     placeholder="e.g. allow_same_clinic_name" />
+            </div>
+
+            <!-- Description -->
+            <div class="cfg-modal-field">
+              <label class="cfg-modal-label" for="cfg-modal-desc">Description</label>
+              <input class="sa-input" type="text" id="cfg-modal-desc"
+                     [(ngModel)]="cfgModal.description"
+                     placeholder="What this setting controls…" />
+            </div>
+
+            <!-- Value Type picker -->
+            <div class="cfg-modal-field">
+              <label class="cfg-modal-label">Value Type</label>
+              <div class="cfg-type-picker">
+                <button class="cfg-type-btn" [class.cfg-type-btn--active]="cfgModal.valueType === 'toggle'"
+                        (click)="cfgModal.valueType = 'toggle'; cfgModal.value = cfgModal.value === 'yes' ? 'yes' : 'no'">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="22" height="12" rx="6"/><circle [attr.cx]="cfgModal.valueType === 'toggle' ? 17 : 7" cy="12" r="4" fill="currentColor"/></svg>
+                  Toggle
+                </button>
+                <button class="cfg-type-btn" [class.cfg-type-btn--active]="cfgModal.valueType === 'int'"
+                        (click)="cfgModal.valueType = 'int'">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>
+                  Integer
+                </button>
+                <button class="cfg-type-btn" [class.cfg-type-btn--active]="cfgModal.valueType === 'string'"
+                        (click)="cfgModal.valueType = 'string'">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+                  String
+                </button>
+              </div>
+            </div>
+
+            <!-- Value input — conditional on type -->
+            <div class="cfg-modal-field">
+              <label class="cfg-modal-label">Value</label>
+              <!-- Toggle -->
+              <ng-container *ngIf="cfgModal.valueType === 'toggle'">
+                <label class="cfg-toggle">
+                  <input type="checkbox"
+                         [checked]="cfgModal.value === 'yes'"
+                         (change)="cfgModal.value = $any($event.target).checked ? 'yes' : 'no'" />
+                  <span class="cfg-toggle-track"><span class="cfg-toggle-thumb"></span></span>
+                  <span class="cfg-toggle-label">{{ cfgModal.value === 'yes' ? 'Yes' : 'No' }}</span>
+                </label>
+              </ng-container>
+              <!-- Integer -->
+              <ng-container *ngIf="cfgModal.valueType === 'int'">
+                <input class="sa-input" type="number" id="cfg-modal-val-int"
+                       [(ngModel)]="cfgModal.value"
+                       placeholder="e.g. 7" />
+              </ng-container>
+              <!-- String -->
+              <ng-container *ngIf="cfgModal.valueType === 'string'">
+                <input class="sa-input" type="text" id="cfg-modal-val-str"
+                       [(ngModel)]="cfgModal.value"
+                       placeholder="e.g. asia-south1" />
+              </ng-container>
+            </div>
+          </div>
+
+          <div class="cfg-modal-footer">
+            <button class="sa-btn-ghost" (click)="closeCfgModal()" [disabled]="cfgModal.saving">Cancel</button>
+            <button class="sa-btn-primary" (click)="saveCfgModal()" [disabled]="cfgModal.saving" id="cfg-modal-save">
+              <span *ngIf="cfgModal.saving" class="sa-spinner-sm" style="border-color:rgba(255,255,255,0.3);border-top-color:#fff"></span>
+              <ng-container *ngIf="!cfgModal.saving">
+                {{ cfgModal.mode === 'add' ? 'Add Key' : 'Save Changes' }}
+              </ng-container>
+              <ng-container *ngIf="cfgModal.saving">Saving…</ng-container>
+            </button>
+          </div>
+        </div>
+
       </div>
 
       <!-- ══ PLANS ════════════════════════════════════════════════ -->
@@ -514,6 +677,79 @@
     <div class="d-flex gap-2 justify-content-center">
       <button class="sa-btn-ghost" (click)="onConfirmNo()" id="btn-confirm-no">Cancel</button>
       <button class="sa-btn-danger" (click)="onConfirmYes()" id="btn-confirm-yes">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Subscription — name-confirmation dialog -->
+<div class="sa-confirm-backdrop" *ngIf="deleteSubConfirmVisible">
+  <div class="sa-confirm-dialog sa-confirm-dialog--wide">
+    <div class="sa-confirm-emoji">🗑️</div>
+    <div class="sa-confirm-title">Delete Subscription</div>
+    <div class="sa-confirm-msg">
+      This action <strong>cannot be undone</strong>. All data associated with
+      <strong>{{ deleteSubTarget?.entity_name }}</strong> will be permanently removed.
+    </div>
+
+    <div class="sa-confirm-name-field">
+      <label class="sa-confirm-name-label">
+        Type <span class="sa-confirm-name-hint">{{ deleteSubTarget?.entity_name }}</span> to confirm
+      </label>
+      <input
+        class="sa-confirm-name-input"
+        type="text"
+        placeholder="Enter subscription name"
+        [(ngModel)]="deleteSubNameInput"
+        id="input-delete-sub-name"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="d-flex gap-2 justify-content-center">
+      <button class="sa-btn-ghost" (click)="onDeleteSubCancel()" id="btn-delete-sub-cancel">Cancel</button>
+      <button
+        class="sa-btn-danger"
+        (click)="onDeleteSubConfirm()"
+        id="btn-delete-sub-confirm"
+        [disabled]="deleteSubNameInput.trim() !== deleteSubTarget?.entity_name?.trim()"
+      >Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Plan — name-confirmation dialog -->
+<div class="sa-confirm-backdrop" *ngIf="deletePlanConfirmVisible">
+  <div class="sa-confirm-dialog sa-confirm-dialog--wide">
+    <div class="sa-confirm-emoji">🗑️</div>
+    <div class="sa-confirm-title">Delete Plan</div>
+    <div class="sa-confirm-msg">
+      This action <strong>cannot be undone</strong>. Deleting
+      <strong>{{ deletePlanTarget?.label || deletePlanTarget?.key }}</strong>
+      will affect all subscriptions currently using this plan.
+    </div>
+
+    <div class="sa-confirm-name-field">
+      <label class="sa-confirm-name-label">
+        Type <span class="sa-confirm-name-hint">{{ deletePlanTarget?.label || deletePlanTarget?.key }}</span> to confirm
+      </label>
+      <input
+        class="sa-confirm-name-input"
+        type="text"
+        placeholder="Enter plan name"
+        [(ngModel)]="deletePlanNameInput"
+        id="input-delete-plan-name"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="d-flex gap-2 justify-content-center">
+      <button class="sa-btn-ghost" (click)="onDeletePlanCancel()" id="btn-delete-plan-cancel">Cancel</button>
+      <button
+        class="sa-btn-danger"
+        (click)="onDeletePlanConfirm()"
+        id="btn-delete-plan-confirm"
+        [disabled]="deletePlanNameInput.trim() !== (deletePlanTarget?.label || deletePlanTarget?.key)"
+      >Delete</button>
     </div>
   </div>
 </div>

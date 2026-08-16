@@ -36,6 +36,33 @@
   line-height: 1.5;
 }
 
+/* ── Expired-subscription lock banner ───────────────────────────────────── */
+.sm-expired-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #d97706;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sm-expired-banner svg {
+  flex-shrink: 0;
+  color: #f59e0b;
+}
+
+[data-theme="dark"] .sm-expired-banner {
+  background: rgba(245, 158, 11, 0.1);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
 /* ── Current plan banner ─────────────────────────────────────────────────── */
 .sm-current-banner {
   display: flex;

@@ -131,7 +131,16 @@ export class FirebaseConfigRepository extends ConfigRepository {
       ...patch,
       updated_at: new Date().toISOString(),
     });
-    // Invalidate cache so next read gets fresh data
+    this.systemConfigCache = null;
+    this.systemConfigFetchTime = 0;
+  }
+
+  async setSystemConfig(data: Record<string, any>): Promise<void> {
+    // Full replace — cleanly removes any stale __desc__/__type__ fields
+    await this.api.setDocument('configurations', 'system', {
+      ...data,
+      updated_at: new Date().toISOString(),
+    });
     this.systemConfigCache = null;
     this.systemConfigFetchTime = 0;
   }

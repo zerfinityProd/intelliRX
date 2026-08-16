@@ -76,8 +76,32 @@ export class SuperAdminDashboardComponent implements OnInit {
   adminSearchQuery = '';
 
   // ── System Config ───────────────────────────────────────────────
-  systemConfigEntries: { key: string; value: string }[] = [];
+  systemConfigEntries: { key: string; value: string; description: string; valueType: 'toggle' | 'int' | 'string' }[] = [];
   systemConfigLoaded = false;
+  /** Keys removed locally but not yet committed to Firestore. */
+  pendingDeletedKeys: string[] = [];
+  configSearchQuery = '';
+  filteredConfigEntries: (typeof this.systemConfigEntries[0] & { _origIndex: number })[] = [];
+
+  updateConfigFilter(): void {
+    const q = this.configSearchQuery.trim().toLowerCase();
+    this.filteredConfigEntries = this.systemConfigEntries
+      .map((e, i) => ({ ...e, _origIndex: i }))
+      .filter(e => q.length < 1 || e.key.toLowerCase().includes(q) || e.description.toLowerCase().includes(q));
+    this.cdr.detectChanges();
+  }
+
+  // ── Config Entry Modal ────────────────────────────────────────────
+  cfgModal: {
+    visible: boolean;
+    mode: 'add' | 'edit';
+    editIndex: number;
+    key: string;
+    description: string;
+    valueType: 'toggle' | 'int' | 'string';
+    value: string;
+    saving: boolean;
+  } = { visible: false, mode: 'add', editIndex: -1, key: '', description: '', valueType: 'string', value: '', saving: false };
 
   // ── User Subscriptions ────────────────────────────────────────────────
   userSubItems: UserWithSubscription[] = [];
@@ -122,6 +146,16 @@ export class SuperAdminDashboardComponent implements OnInit {
   confirmTitle = '';
   confirmMessage = '';
   private confirmResolve: ((v: boolean) => void) | null = null;
+
+  // ── Delete-subscription name-confirm dialog ────────────────────────────
+  deleteSubConfirmVisible = false;
+  deleteSubTarget: (Subscription & { id: string }) | null = null;
+  deleteSubNameInput = '';
+
+  // ── Delete-plan name-confirm dialog ────────────────────────────────
+  deletePlanConfirmVisible = false;
+  deletePlanTarget: PlanDetail | null = null;
+  deletePlanNameInput = '';
 
   // ── Toast ─────────────────────────────────────────────────────────────
   toastMessage = '';
@@ -215,28 +249,51 @@ export class SuperAdminDashboardComponent implements OnInit {
   async loadSystemConfig(): Promise<void> {
     try {
       const cfg = await this.configService.getSystemConfig();
-      // Flatten to editable key-value pairs, sorted alphabetically
+      // New clean structure: real values are flat, metadata lives in _meta map
+      const meta = ((cfg['_meta'] as unknown) as Record<string, { type: 'toggle'|'int'|'string'; description: string }>) || {};
       this.systemConfigEntries = Object.entries(cfg)
-        .map(([key, value]) => ({ key, value: String(value) }))
-        .sort((a, b) => a.key.localeCompare(b.key));
+        .filter(([k]) => k !== '_meta' && k !== 'updated_at')
+        // Also skip any legacy __desc__ / __type__ keys from old format
+        .filter(([k]) => !k.startsWith('__desc__') && !k.startsWith('__type__'))
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => {
+          const m = meta[key];
+          const stored = m?.type;
+          const valueType: 'toggle'|'int'|'string' = stored ?? (
+            String(value) === 'yes' || String(value) === 'no' ? 'toggle' :
+            !isNaN(Number(value)) && String(value) !== '' ? 'int' : 'string'
+          );
+          return { key, value: String(value), description: m?.description ?? '', valueType };
+        });
+      this.pendingDeletedKeys = [];
       this.systemConfigLoaded = true;
+      this.updateConfigFilter();
     } catch (e: any) {
       this.showToast('Failed to load system config', 'error');
     }
   }
 
+  /** Build the Firestore document payload from current entries. */
+  private buildCfgPayload(): Record<string, any> {
+    const doc: Record<string, any> = {};
+    const meta: Record<string, { type: string; description: string }> = {};
+    for (const entry of this.systemConfigEntries) {
+      if (!entry.key.trim()) continue;
+      doc[entry.key] = entry.valueType === 'int' ? Number(entry.value) : entry.value;
+      meta[entry.key] = { type: entry.valueType, description: entry.description ?? '' };
+    }
+    doc['_meta'] = meta;
+    return doc;
+  }
+
+  /** Save Config — only needed to commit pending deletions. */
   async saveSystemConfig(): Promise<void> {
     this.isSaving = true;
     this.cdr.detectChanges();
     try {
-      const patch: Record<string, number | string> = {};
-      for (const entry of this.systemConfigEntries) {
-        if (!entry.key.trim()) continue; // skip blank keys
-        const num = Number(entry.value);
-        patch[entry.key.trim()] = isNaN(num) ? entry.value : num;
-      }
-      await this.configService.updateSystemConfig(patch);
-      this.showToast('System config saved successfully');
+      await this.configService.setSystemConfig(this.buildCfgPayload());
+      this.pendingDeletedKeys = [];
+      this.showToast('Deletions committed successfully');
     } catch (e: any) {
       this.showToast('Failed to save config: ' + (e?.message || 'Unknown error'), 'error');
     } finally {
@@ -245,14 +302,62 @@ export class SuperAdminDashboardComponent implements OnInit {
     }
   }
 
-  addConfigEntry(): void {
-    this.systemConfigEntries = [...this.systemConfigEntries, { key: '', value: '' }];
+  /** Opens the Add/Edit config modal. */
+  openCfgModal(mode: 'add' | 'edit', index = -1): void {
+    if (mode === 'edit' && index >= 0) {
+      const e = this.systemConfigEntries[index];
+      this.cfgModal = { visible: true, mode: 'edit', editIndex: index,
+        key: e.key, description: e.description, valueType: e.valueType, value: e.value, saving: false };
+    } else {
+      this.cfgModal = { visible: true, mode: 'add', editIndex: -1,
+        key: '', description: '', valueType: 'string', value: '', saving: false };
+    }
     this.cdr.detectChanges();
   }
 
-  removeConfigEntry(index: number): void {
-    this.systemConfigEntries = this.systemConfigEntries.filter((_, i) => i !== index);
+  closeCfgModal(): void {
+    this.cfgModal.visible = false;
     this.cdr.detectChanges();
+  }
+
+  async saveCfgModal(): Promise<void> {
+    const k = this.cfgModal.key.trim();
+    if (!k) { this.showToast('Key is required', 'error'); return; }
+    if (this.cfgModal.mode === 'add' && this.systemConfigEntries.some(e => e.key === k)) {
+      this.showToast(`Key "${k}" already exists`, 'error'); return;
+    }
+    let val = this.cfgModal.value;
+    if (this.cfgModal.valueType === 'toggle') val = val === 'yes' ? 'yes' : 'no';
+    if (this.cfgModal.valueType === 'int' && isNaN(Number(val))) { this.showToast('Value must be a number', 'error'); return; }
+
+    const entry = { key: k, description: this.cfgModal.description, valueType: this.cfgModal.valueType, value: val };
+    if (this.cfgModal.mode === 'edit') {
+      this.systemConfigEntries = this.systemConfigEntries.map((e, i) => i === this.cfgModal.editIndex ? entry : e);
+    } else {
+      this.systemConfigEntries = [...this.systemConfigEntries, entry].sort((a, b) => a.key.localeCompare(b.key));
+    }
+    this.updateConfigFilter();
+
+    // Save immediately to Firestore
+    this.cfgModal.saving = true;
+    this.cdr.detectChanges();
+    try {
+      await this.configService.setSystemConfig(this.buildCfgPayload());
+      this.showToast(this.cfgModal.mode === 'add' ? 'Key added & saved' : 'Changes saved');
+      this.cfgModal.visible = false;
+    } catch (e: any) {
+      this.showToast('Failed to save: ' + (e?.message || 'Unknown error'), 'error');
+    } finally {
+      this.cfgModal.saving = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  removeConfigEntry(origIndex: number): void {
+    const removed = this.systemConfigEntries[origIndex];
+    if (removed) this.pendingDeletedKeys = [...this.pendingDeletedKeys, removed.key];
+    this.systemConfigEntries = this.systemConfigEntries.filter((_, i) => i !== origIndex);
+    this.updateConfigFilter();
   }
 
   // ── Navigation ────────────────────────────────────────────────────────
@@ -270,6 +375,91 @@ export class SuperAdminDashboardComponent implements OnInit {
   get greeting(): string {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning'; if (h < 17) return 'Good afternoon'; return 'Good evening';
+  }
+
+  // ── Analytics helpers ────────────────────────────────────────────────
+  get subStatusCounts(): { active: number; expired: number; inactive: number; suspended: number } {
+    const now = new Date();
+    let active = 0, expired = 0, inactive = 0, suspended = 0;
+    for (const s of this.subscriptions) {
+      const isExp = s.valid_until ? new Date(s.valid_until) < now : false;
+      if (isExp) { expired++; }
+      else if (s.status === 'active') { active++; }
+      else if (s.status === 'suspended') { suspended++; }
+      else { inactive++; }
+    }
+    return { active, expired, inactive, suspended };
+  }
+
+  private buildDonut(
+    segments: { label: string; count: number; color: string }[]
+  ): { label: string; count: number; color: string; dash: string; offset: string }[] {
+    const total = segments.reduce((s, g) => s + g.count, 0) || 1;
+    const circumference = 2 * Math.PI * 70; // r=70
+    let consumed = 0;
+    return segments.map(seg => {
+      const frac = seg.count / total;
+      const dash = `${frac * circumference} ${circumference}`;
+      // offset: start at top (-circumference/4) minus already consumed
+      const offset = String(-(consumed * circumference) + circumference / 4);
+      consumed += frac;
+      return { ...seg, dash, offset };
+    });
+  }
+
+  get statusDonutSegments() {
+    const c = this.subStatusCounts;
+    return this.buildDonut([
+      { label: 'Active',    count: c.active,    color: '#1CB5C9' },
+      { label: 'Expired',   count: c.expired,   color: '#E05252' },
+      { label: 'Inactive',  count: c.inactive,  color: '#A0AEB5' },
+      { label: 'Suspended', count: c.suspended, color: '#F59E0B' },
+    ]);
+  }
+
+  get planDonutSegments() {
+    const planColors = ['#148D9E','#0E7A8C','#1CB5C9','#37C8D9','#6DD7E4','#A0E5ED'];
+    const countMap = new Map<string, number>();
+    for (const s of this.subscriptions) {
+      const key = s.plan?.name || 'unknown';
+      countMap.set(key, (countMap.get(key) ?? 0) + 1);
+    }
+    const entries = Array.from(countMap.entries()).map(([label, count], i) => ({
+      label, count, color: planColors[i % planColors.length],
+    }));
+    return this.buildDonut(entries.length ? entries : [{ label: 'No subs', count: 1, color: '#C8DDE3' }]);
+  }
+
+  get expiryDonutSegments() {
+    const now = new Date();
+    const in7  = new Date(now); in7.setDate(now.getDate() + 7);
+    const in30 = new Date(now); in30.setDate(now.getDate() + 30);
+    let already = 0, within7 = 0, within30 = 0, beyond = 0;
+    for (const s of this.subscriptions) {
+      if (!s.valid_until) { beyond++; continue; }
+      const exp = new Date(s.valid_until);
+      if (exp < now)   { already++; }
+      else if (exp <= in7)  { within7++; }
+      else if (exp <= in30) { within30++; }
+      else                  { beyond++; }
+    }
+    return this.buildDonut([
+      { label: 'Already expired', count: already,  color: '#E05252' },
+      { label: 'Expiring ≤7d',    count: within7,  color: '#F59E0B' },
+      { label: 'Expiring ≤30d',   count: within30, color: '#1CB5C9' },
+      { label: 'Valid >30d',      count: beyond,   color: '#22C55E' },
+    ]);
+  }
+
+  usagePct(sub: Subscription & { id: string }, field: 'clinics' | 'doctors'): number {
+    const usage = this.subUsage.get(sub.id);
+    if (!usage) return 0;
+    const used = usage[field];
+    const max = field === 'clinics'
+      ? (sub.plan?.limits?.max_clinics ?? 0)
+      : (sub.plan?.limits?.max_doctors ?? 0);
+    if (!max) return 0;
+    return Math.min(100, Math.round((used / max) * 100));
   }
 
   onSubSearch(): void {
@@ -517,14 +707,33 @@ export class SuperAdminDashboardComponent implements OnInit {
     finally { this.isSaving = false; this.cdr.detectChanges(); }
   }
 
-  async deleteSub(sub: Subscription & { id: string }): Promise<void> {
-    const ok = await this.showConfirm('Delete Subscription', `Delete "${sub.entity_name}"? This cannot be undone.`);
-    if (!ok) return;
+  /** Opens the name-confirmation dialog for deleting a subscription. */
+  deleteSub(sub: Subscription & { id: string }): void {
+    this.deleteSubTarget = sub;
+    this.deleteSubNameInput = '';
+    this.deleteSubConfirmVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onDeleteSubCancel(): void {
+    this.deleteSubConfirmVisible = false;
+    this.deleteSubTarget = null;
+    this.deleteSubNameInput = '';
+    this.cdr.detectChanges();
+  }
+
+  async onDeleteSubConfirm(): Promise<void> {
+    const sub = this.deleteSubTarget;
+    if (!sub || this.deleteSubNameInput.trim() !== sub.entity_name.trim()) return;
+    this.deleteSubConfirmVisible = false;
+    this.deleteSubTarget = null;
+    this.deleteSubNameInput = '';
     this.isSaving = true;
+    this.cdr.detectChanges();
     try {
       await this.superAdminService.deleteSubscription(sub.id);
       this.subscriptions = this.subscriptions.filter(s => s.id !== sub.id);
-      this.filteredSubscriptions = [...this.subscriptions]; // keep display list in sync
+      this.filteredSubscriptions = [...this.subscriptions];
       this.overview.totalSubscriptions = this.subscriptions.length;
       this.showToast('Subscription deleted');
     } catch (e: any) { this.showToast('Failed to delete: ' + e.message, 'error'); }
@@ -722,9 +931,28 @@ export class SuperAdminDashboardComponent implements OnInit {
     finally { this.isSaving = false; this.cdr.detectChanges(); }
   }
 
-  async deletePlanItem(plan: PlanDetail): Promise<void> {
-    const ok = await this.showConfirm('Delete Plan', `Delete "${plan.label || plan.key}"? This will affect all subscriptions using this plan.`);
-    if (!ok) return;
+  /** Opens the name-confirmation dialog for deleting a plan. */
+  deletePlanItem(plan: PlanDetail): void {
+    this.deletePlanTarget = plan;
+    this.deletePlanNameInput = '';
+    this.deletePlanConfirmVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onDeletePlanCancel(): void {
+    this.deletePlanConfirmVisible = false;
+    this.deletePlanTarget = null;
+    this.deletePlanNameInput = '';
+    this.cdr.detectChanges();
+  }
+
+  async onDeletePlanConfirm(): Promise<void> {
+    const plan = this.deletePlanTarget;
+    const expectedName = plan?.label || plan?.key || '';
+    if (!plan || this.deletePlanNameInput.trim() !== expectedName.trim()) return;
+    this.deletePlanConfirmVisible = false;
+    this.deletePlanTarget = null;
+    this.deletePlanNameInput = '';
     try {
       await this.planService.deletePlan(plan.key);
       this.planList = this.planList.filter(p => p.key !== plan.key);

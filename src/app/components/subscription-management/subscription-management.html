@@ -1,5 +1,5 @@
 <!-- src/app/components/subscription-management/subscription-management.html -->
-<app-navbar [showBack]="true" (backClick)="goBack()"></app-navbar>
+<app-navbar [showBack]="!isExpiredMode" (backClick)="goBack()"></app-navbar>
 
 <div class="sm-page">
   <div class="sm-content">
@@ -8,6 +8,16 @@
     <div class="sm-header">
       <h1 class="sm-header-title">Manage Subscription</h1>
       <p class="sm-header-sub">Choose the plan and billing cycle that best fits your practice.</p>
+    </div>
+
+    <!-- Expired-subscription lock banner -->
+    <div class="sm-expired-banner" *ngIf="isExpiredMode">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>Your subscription has expired. Please select a plan to continue using IntelliRX.</span>
     </div>
 
     <!-- Current plan banner (shown when subscription is loaded) -->

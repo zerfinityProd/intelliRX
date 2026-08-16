@@ -15,6 +15,7 @@ import { PlanService } from '../../services/planService';
 
 import { Subscription, BillingCycle, PlanDetail } from '../../models/subscription.model';
 import { NavbarComponent } from '../navbar/navbar';
+import { AuthorizationService } from '../../services/authorizationService';
 
 @Component({
   selector: 'app-subscription-management',
@@ -33,6 +34,7 @@ export class SubscriptionManagementComponent implements OnInit {
   private planRepo     = inject(PlanRepository);
   private configService = inject(ConfigService);
   private planService  = inject(PlanService);
+  private authzService = inject(AuthorizationService);
   private router       = inject(Router);
   private cdr          = inject(ChangeDetectorRef);
 
@@ -53,6 +55,13 @@ export class SubscriptionManagementComponent implements OnInit {
   confirmPlan: PlanDetail | null = null;
   /** Total charge to display in confirm dialog */
   confirmTotal = 0;
+
+  // ── Expired-subscription lock ──────────────────────────────────────────────
+  /**
+   * True when the user arrived here because their subscription is expired.
+   * While true the back button is hidden — they must pick a new plan first.
+   */
+  isExpiredMode = false;
 
   // ── Toast ─────────────────────────────────────────────────────────────────
   toastMessage = '';
@@ -82,6 +91,14 @@ export class SubscriptionManagementComponent implements OnInit {
       ]);
     } catch (e) {
       console.error('[SubscriptionManagement] Init error:', e);
+    }
+
+    // Detect if the subscription is currently expired so we can lock navigation
+    try {
+      const expiryStatus = await this.authzService.checkSubscriptionExpiry(email);
+      this.isExpiredMode = expiryStatus === 'expired';
+    } catch {
+      this.isExpiredMode = false;
     }
 
     this.isLoading = false;
@@ -131,6 +148,9 @@ export class SubscriptionManagementComponent implements OnInit {
   // ── UI actions ────────────────────────────────────────────────────────────
 
   goBack(): void {
+    // Blocked while subscription is expired — the guard enforces this on
+    // every guarded route, so simply doing nothing here is sufficient.
+    if (this.isExpiredMode) return;
     this.router.navigate(['/admin/dashboard']);
   }
 
@@ -219,6 +239,9 @@ export class SubscriptionManagementComponent implements OnInit {
       };
       this.selectedPlanKey = planKey;
       this.confirmVisible = false;
+
+      // Subscription renewed — lift the navigation lock
+      this.isExpiredMode = false;
 
       const expiryStr = expiry.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
       this.showToast(`Switched to ${this.confirmPlan.label} (${this.billingCycle}) — valid until ${expiryStr}`, 'success');
