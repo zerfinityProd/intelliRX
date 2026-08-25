@@ -63,9 +63,7 @@
 <!-- ── FAB Menu (hidden for admin / no clinic) ── -->
 <app-fab-menu
   *ngIf="hasClinicSelected"
-  [isFabOpen]="(uiState$ | async)?.isFabOpen || false"
   [permissions]="permissions"
-  (toggleFabClicked)="toggleFab()"
   (addAppointmentClicked)="openAddAppointmentForm()"
   (addPatientClicked)="openAddPatientForm()">
 </app-fab-menu>

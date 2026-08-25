@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
-    "watch": "ng build --watch --configuration development",
+    "start": "set NODE_OPTIONS=--max-old-space-size=4096 && ng serve",
+    "build": "set NODE_OPTIONS=--max-old-space-size=4096 && ng build",
+    "watch": "set NODE_OPTIONS=--max-old-space-size=4096 && ng build --watch --configuration development",
     "test": "ng test"
   },
   "prettier": {
@@ -35,6 +35,7 @@
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.1",
     "firebase": "^11.10.0",
+    "jspdf": "^4.2.1",
     "moment": "^2.30.1",
     "rxjs": "~7.8.0",
     "sweetalert2": "^11.26.18",

@@ -146,6 +146,42 @@
           </div>
         </div>
 
+        <!-- ── SECTION 2: WHATSAPP OPT-IN ── -->
+        <div class="mb-4 mt-3">
+          <h3 class="section-title">WhatsApp Notifications</h3>
+
+          <div class="row g-3 mb-2 align-items-end">
+            <!-- Country code dropdown -->
+            <div class="col-md-4">
+              <label for="waCountryCode" class="form-label fw-semibold" style="font-size:12px">
+                Country Code
+              </label>
+              <select id="waCountryCode" name="waCountryCode" [(ngModel)]="whatsappCountryCode"
+                class="form-select" [disabled]="!whatsappConsent">
+                <option *ngFor="let c of countryCodes" [value]="c.code">{{ c.label }}</option>
+              </select>
+            </div>
+
+            <!-- Consent checkbox -->
+            <div class="col-md-8 d-flex align-items-center gap-2 pb-1">
+              <input
+                class="form-check-input mt-0"
+                type="checkbox"
+                id="waConsent"
+                name="waConsent"
+                [(ngModel)]="whatsappConsent"
+                style="width:18px; height:18px; cursor:pointer"
+              />
+              <label class="form-check-label fw-semibold" for="waConsent" style="font-size:13px; cursor:pointer">
+                📱 Send appointment &amp; prescription updates via WhatsApp
+                <span class="text-muted fw-normal" style="font-size:11px; display:block">
+                  Notifications will be sent to the phone number above
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+
         <!-- ── Form Actions ── -->
         <div class="form-actions">
           <span *ngIf="successMessage" class="success-msg" role="status" aria-live="polite">✓ {{ successMessage }}</span>

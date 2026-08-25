@@ -61,6 +61,7 @@ export class AuthenticationService {
 
     constructor() {
         this.googleProvider = new GoogleAuthProvider();
+        this.googleProvider.setCustomParameters({ prompt: 'select_account' });
         this.currentUserSubject = new BehaviorSubject<User | null>(null);
         this.currentUser$ = this.currentUserSubject.asObservable();
 

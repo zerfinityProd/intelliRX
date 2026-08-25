@@ -55,6 +55,7 @@ export class FirebaseAuthService extends AuthService {
   constructor() {
     super();
     this.googleProvider = new GoogleAuthProvider();
+    this.googleProvider.setCustomParameters({ prompt: 'select_account' });
     this.currentUserSubject = new BehaviorSubject<User | null>(null);
     this.currentUser$ = this.currentUserSubject.asObservable();
 

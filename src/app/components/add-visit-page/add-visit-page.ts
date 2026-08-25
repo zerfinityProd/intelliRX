@@ -17,6 +17,7 @@ import { SpecializationService } from '../../services/specializationService';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { NotificationService } from '../../services/notificationService';
+import { WhatsappService } from '../../services/whatsapp.service';
 
 
 interface Examination {
@@ -151,6 +152,7 @@ export class AddVisitPageComponent implements OnInit {
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly ngZone = inject(NgZone);
     private readonly notificationService = inject(NotificationService);
+    private readonly whatsappService = inject(WhatsappService);
     private readonly authorizationService = inject(AuthorizationService);
     private readonly patientContextService = inject(PatientContextService);
     private readonly specializationService = inject(SpecializationService);
@@ -995,7 +997,19 @@ export class AddVisitPageComponent implements OnInit {
 
                 await this.patientService.addVisit(patientId, visitData);
 
-                // Auto-complete the linked appointment
+                // ── WhatsApp prescription notification (non-blocking) ─────────
+                if (this.patient?.whatsapp_consent) {
+                    const doctorDisplay = this.authService.currentUserValue?.name
+                        || this.authService.currentUserValue?.email
+                        || 'Doctor';
+                    this.whatsappService.sendPrescription(
+                        visitData,
+                        this.patient,
+                        doctorDisplay,
+                        'IntelliRX Clinic'
+                    ).catch(err => console.warn('[WhatsApp] Prescription notification failed:', err));
+                }
+
                 if (hasAppointment && appointmentId) {
                     try {
                         await this.appointmentService.updateAppointmentStatus(appointmentId, 'completed');

@@ -63,6 +63,11 @@ export class NavbarComponent implements OnInit, OnDestroy {
       || url.startsWith('/admin/subscription');
   }
 
+  /** True when the current route is the doctor dashboard (/home) */
+  get isOnDoctorDashboard(): boolean {
+    return this.router.url === '/home' || this.router.url.startsWith('/home?');
+  }
+
   /**
    * Reception Dashboard button should only appear when the user has the
    * receptionist role but NOT the doctor role.
