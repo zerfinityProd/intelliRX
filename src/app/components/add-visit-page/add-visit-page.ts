@@ -998,7 +998,7 @@ export class AddVisitPageComponent implements OnInit {
                 await this.patientService.addVisit(patientId, visitData);
 
                 // ── WhatsApp prescription notification (non-blocking) ─────────
-                if (this.patient?.whatsapp_consent) {
+                if (this.patient?.whatsapp_consent !== false) {
                     const doctorDisplay = this.authService.currentUserValue?.name
                         || this.authService.currentUserValue?.email
                         || 'Doctor';

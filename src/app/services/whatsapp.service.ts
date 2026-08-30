@@ -7,8 +7,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { getApp } from 'firebase/app';
+import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
 import { environment } from '../../environments/environment';
 import { Patient } from '../models/patient.model';
 import { Appointment } from '../models/appointment.model';
@@ -32,7 +31,8 @@ export class WhatsappService {
 
   private readonly WORKER_URL    = environment.whatsappWorkerUrl;
   private readonly WORKER_SECRET = environment.whatsappWorkerSecret;
-  private readonly http = inject(HttpClient);
+  private readonly http    = inject(HttpClient);
+  private readonly storage = inject(Storage);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // PUBLIC API
@@ -43,7 +43,7 @@ export class WhatsappService {
    * Silently skips if the patient has no WhatsApp consent or no phone.
    */
   async notifyAppointment(appointment: Appointment, patient: Patient): Promise<void> {
-    if (!patient.whatsapp_consent) return;
+    if (patient.whatsapp_consent === false) return;
 
     const phone = this.buildE164Phone(patient);
     if (!phone) {
@@ -86,7 +86,7 @@ export class WhatsappService {
     doctorDisplayName: string,
     clinicName: string
   ): Promise<void> {
-    if (!patient.whatsapp_consent) return;
+    if (patient.whatsapp_consent === false) return;
 
     const phone = this.buildE164Phone(patient);
     if (!phone) {
@@ -94,16 +94,14 @@ export class WhatsappService {
       return;
     }
 
-    // 1. Generate PDF
-    const pdfBlob = await this.generatePrescriptionPDF(visitData, patient, doctorDisplayName, clinicName);
-
-    // 2. Upload to Firebase Storage → get public URL
-    const pdfUrl = await this.uploadPdfToStorage(pdfBlob, patient.id || Date.now().toString());
-
     // Strip "Dr." prefix — template already has "Dr." before {{2}}
     const doctorName = doctorDisplayName.replace(/^Dr\.\s*/i, '').trim() || 'your doctor';
 
-    // 3. Call Cloudflare Worker
+    // NOTE: PDF upload via Firebase Storage requires the Blaze plan.
+    // Until then, we send the app URL as the prescription link.
+    const pdfUrl = 'https://intellirx.zerfinity.com';
+
+    // Call Cloudflare Worker
     await this.callWorker('/notify/prescription', {
       phone,
       patientName: patient.name || 'Patient',
@@ -250,9 +248,8 @@ export class WhatsappService {
    * Returns the public download URL.
    */
   private async uploadPdfToStorage(pdfBlob: Blob, patientId: string): Promise<string> {
-    const storage  = getStorage(getApp());
-    const filePath = `prescriptions/${patientId}/${Date.now()}.pdf`;
-    const storageRef = ref(storage, filePath);
+    const filePath   = `prescriptions/${patientId}/${Date.now()}.pdf`;
+    const storageRef = ref(this.storage, filePath);
     await uploadBytes(storageRef, pdfBlob, { contentType: 'application/pdf' });
     return getDownloadURL(storageRef);
   }

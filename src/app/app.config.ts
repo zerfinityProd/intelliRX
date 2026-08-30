@@ -25,6 +25,7 @@ import {
   initializeAuth,
   getAuth
 } from '@angular/fire/auth';
+import { provideStorage, getStorage } from '@angular/fire/storage';
 
 import { routes } from './app.routes';
 import { environment } from '../environments/environment';
@@ -93,6 +94,7 @@ export const appConfig: ApplicationConfig = {
         return getAuth(app);
       }
     }),
+    provideStorage(() => getStorage()),
 
     // ── Auth bindings ────────────────────────────────────────────────────────
     // Swap these two `useClass` values to migrate to a different auth provider.

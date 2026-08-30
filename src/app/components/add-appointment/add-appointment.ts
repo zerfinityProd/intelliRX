@@ -21,6 +21,7 @@ import { todayLocalISO } from '../../utilities/local-date';
 import { isSlotInPast as sharedIsSlotInPast } from '../../utilities/date-helpers';
 import { Doctor } from '../../interfaces/doctor';
 import { NotificationService } from '../../services/notificationService';
+import { WhatsappService } from '../../services/whatsapp.service';
 
 
 
@@ -105,6 +106,8 @@ export class AddAppointmentComponent implements OnInit {
   /** Slots blocked by doctor leave — shown as disabled with a 'Leave' tag. */
   leaveBlockedSlots: string[] = [];
 
+  whatsappConsent: boolean = true;  // WhatsApp opt-in — ticked by default
+
   errorMessage: string = '';
   newPatientWarning: string = '';
   isSubmitting: boolean = false;
@@ -120,6 +123,7 @@ export class AddAppointmentComponent implements OnInit {
   private timeSlotService = inject(TimeSlotService);
   private leaveService = inject(LeaveService);
   private notificationService = inject(NotificationService);
+  private whatsappService = inject(WhatsappService);
   private patientContextService = inject(PatientContextService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -1067,6 +1071,27 @@ export class AddAppointmentComponent implements OnInit {
         '📅 Appointment Booked',
         `Appointment for ${patientName} on ${this.appointmentDate} at ${this.formatSlotLabel(this.selectedTimeSlot)}.`,
         `appointment-booked-${Date.now()}`
+      );
+
+      // Fire WhatsApp notification (fire-and-forget — never blocks the user flow)
+      const apptForWa: any = {
+        datetime: apptDatetime,
+        doctor_name: this.selectedDoctor?.name || '',
+        clinic_name: this.clinics.find(c => c.id === this.selectedClinicId)?.label || this.selectedClinicId || '',
+      };
+      const patientForWa: any = {
+        id: patientId,
+        name: patientName,
+        phone: patientPhone,
+        whatsapp_consent: this.whatsappConsent,
+        whatsapp_country_code: '+91',    // default India; stored per-patient when set
+      };
+      // Override country code with stored patient data if available
+      if (this.matchedPatient) {
+        patientForWa.whatsapp_country_code = (this.matchedPatient as any).whatsapp_country_code ?? '+91';
+      }
+      this.whatsappService.notifyAppointment(apptForWa, patientForWa).catch(e =>
+        console.warn('[WhatsApp] Appointment notification failed (non-blocking):', e)
       );
 
       this.clearFormSession();
