@@ -1,0 +1,14 @@
+{
+  "name": "intellirx-firebase-backup-tool",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Export and import IntelliRX Firebase data.",
+  "type": "module",
+  "scripts": {
+    "export": "node firebase-backup.mjs export",
+    "import": "node firebase-backup.mjs import"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0"
+  }
+}
