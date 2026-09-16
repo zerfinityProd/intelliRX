@@ -15,6 +15,7 @@ import { ClinicUserAvailability } from '../../models/clinic-user.model';
 import { MultiClinicConfig, DEFAULT_MULTI_CLINIC_CONFIG } from '../../config/userSettings';
 import { NavbarComponent } from '../navbar/navbar';
 import { ClinicContextService } from '../../services/clinicContextService';
+import { SpecializationService } from '../../services/specializationService';
 
 // ── Local interfaces ──────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private location = inject(Location);
   private cdr = inject(ChangeDetectorRef);
   private clinicContext = inject(ClinicContextService);
+  private specializationService = inject(SpecializationService);
 
   // ── State ─────────────────────────────────────────────────────────────────
   isLoading = true;
@@ -99,6 +101,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   configLoading = false;
   configSaving = false;
 
+  /**
+   * Mirrors configurations/system → allow_same_clinic_name.
+   * When false, duplicate clinic names are blocked across ALL subscriptions.
+   */
+  allowSameClinicName = true;
+
 
   // ── Clinics ───────────────────────────────────────────────────────────────
   clinics: AdminClinicState[] = [];
@@ -106,6 +114,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   editingClinic: AdminClinicState | null = null;
   clinicForm: AdminClinicState = this.emptyClinicForm();
   clinicSearch = '';
+  /** Clinics to render in the list — refreshed by applyClinicSearch(). */
+  clinicsDisplay: AdminClinicState[] = [];
 
   readonly allWeekdays = ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'];
   readonly weekdayLabels: Record<string, string> = {
@@ -118,6 +128,11 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   editingUser: AdminUserState | null = null;
   userForm: AdminUserState = this.emptyUserForm();
   userSearch = '';
+  /** Users to render in the table — refreshed by applyUserSearch(). */
+  usersDisplay: AdminUserState[] = [];
+
+  /** List of specialization names fetched from `specializations/field` */
+  specializationNames: string[] = [];
 
   /**
    * Bookings loaded from the DB for the current user that are NOT represented
@@ -162,6 +177,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   get subscriptionPlanLabel(): string {
     return (this.subscription?.plan?.name || 'unknown').toUpperCase();
+  }
+
+  /** True when the active plan is 'pro' (search is enabled for pro only). */
+  get isPro(): boolean {
+    const name = (this.subscription?.plan?.name || '').toLowerCase();
+    return name === 'pro';
   }
 
   /**
@@ -209,8 +230,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     return max > 0 && this.stats.receptionists >= max;
   }
 
+  /** True when no clinics have been created yet — staff cannot be added without at least one clinic. */
+  get hasNoClinics(): boolean {
+    return this.stats.clinics === 0;
+  }
+
   get filteredClinics(): AdminClinicState[] {
-    if (!this.clinicSearch.trim()) return this.clinics;
+    // Search is only available on the Pro plan and requires at least 3 characters.
+    if (!this.isPro || this.clinicSearch.trim().length < 3) return this.clinics;
     const q = this.clinicSearch.toLowerCase();
     return this.clinics.filter(c => c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q));
   }
@@ -228,33 +255,96 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       );
       return hasClinicAssignment || hasStaffRole;
     });
-    if (!this.userSearch.trim()) return staff;
+    // Search is only available on the Pro plan and requires at least 3 characters.
+    if (!this.isPro || this.userSearch.trim().length < 3) return staff;
     const q = this.userSearch.toLowerCase();
     return staff.filter(u =>
       u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
     );
   }
 
+  // ── Search helpers ──────────────────────────────────────────────────────
+  /** Refresh clinicsDisplay based on plan and current clinicSearch term. */
+  applyClinicSearch(): void {
+    if (!this.isPro || this.clinicSearch.trim().length < 3) {
+      this.clinicsDisplay = [...this.clinics];
+    } else {
+      const q = this.clinicSearch.toLowerCase();
+      this.clinicsDisplay = this.clinics.filter(c =>
+        c.name.toLowerCase().includes(q) || c.address.toLowerCase().includes(q)
+      );
+    }
+    this.cdr.detectChanges();
+  }
+
+  /** Refresh usersDisplay based on plan and current userSearch term. */
+  applyUserSearch(): void {
+    const staff = this.users.filter(u => {
+      const hasClinicAssignment = u.assignments.some(a => a.role === 'doctor' || a.role === 'receptionist');
+      const hasStaffRole = (u.global_roles || []).some(r => r === 'doctor' || r === 'receptionist');
+      return hasClinicAssignment || hasStaffRole;
+    });
+    if (!this.isPro || this.userSearch.trim().length < 3) {
+      this.usersDisplay = staff;
+    } else {
+      const q = this.userSearch.toLowerCase();
+      this.usersDisplay = staff.filter(u =>
+        u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+      );
+    }
+    this.cdr.detectChanges();
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
   async ngOnInit(): Promise<void> {
+    // Mark this browser session as "inside the app" — enables multi-tab redirect
+    // on the login page (see LoginComponent.ngOnInit).
+    try { sessionStorage.setItem('irx.appActive', '1'); } catch { /* ignore */ }
+
     window.addEventListener('beforeunload', this.beforeUnloadHandler);
-    console.log('[AdminDashboard] ngOnInit — waiting for authReady$');
     await firstValueFrom(this.authService.authReady$.pipe(filter(r => r)));
     this.adminName = this.authService.currentUserValue?.name || 'Admin';
     this.adminEmail = this.authService.currentUserValue?.email || '';
-    console.log('[AdminDashboard] Auth ready. email=', this.adminEmail, 'name=', this.adminName);
+
+    // If no email resolved from Firebase Auth, the auth token is invalid
+    // (e.g. IndexedDB corruption). Redirect to login immediately.
+    if (!this.adminEmail) {
+      console.warn('[AdminDashboard] No email from auth — likely stale/corrupted auth token. Redirecting to login.');
+      this.router.navigate(['/app/login']);
+      return;
+    }
 
     try {
       await this.loadSubscription();
-      console.log('[AdminDashboard] loadSubscription done. subscription=', this.subscription ? this.subscription.id : null);
       if (this.subscription) {
-        await Promise.all([this.loadClinics(), this.loadUsers(), this.loadConfig()]);
-        console.log('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
+        await Promise.all([
+          this.loadClinics(),
+          this.loadUsers(),
+          this.loadConfig(),
+          this.specializationService.getSpecializationNames().then(names => {
+            this.specializationNames = names;
+          }),
+          // Load system-level config flags (e.g. allow_same_clinic_name)
+          this.configService.getSystemConfig().then(sys => {
+            this.allowSameClinicName = (sys['allow_same_clinic_name'] ?? 'yes') === 'yes';
+          }).catch(() => { this.allowSameClinicName = true; }),
+        ]);
+        console.debug('[AdminDashboard] Clinics:', this.clinics.length, 'Users:', this.users.length);
       } else {
         console.warn('[AdminDashboard] No subscription found — dashboard will show "No Subscription" state');
       }
-    } catch (initErr) {
+    } catch (initErr: any) {
       console.error('[AdminDashboard] Unexpected error during init:', initErr);
+      // If the error is a Firestore permission error (PERMISSION_DENIED / 403),
+      // the auth token is likely expired or corrupted. Redirect to login.
+      const isPermissionError = initErr?.code === 'permission-denied'
+        || initErr?.message?.includes('403')
+        || initErr?.message?.includes('PERMISSION_DENIED');
+      if (isPermissionError) {
+        console.warn('[AdminDashboard] Firestore permission error — redirecting to login to refresh auth token.');
+        this.router.navigate(['/app/login']);
+        return;
+      }
     }
     this.isLoading = false;
     this.cdr.detectChanges();
@@ -313,6 +403,31 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       const draft = JSON.parse(raw);
       if (!draft?.userForm) return;
       this.userForm = draft.userForm;
+
+      // Validate assignments against the CURRENT subscription's clinics.
+      // A draft saved while working under a different admin (different subscription)
+      // may contain clinicIds that don't belong here — those must be stripped so
+      // staff don't get saved with wrong clinic_ids and become invisible in this dashboard.
+      const validClinicIds = new Set(this.clinics.map(c => c.id));
+      const validAssignments = (this.userForm.assignments as UserClinicAssignment[]).filter(
+        a => validClinicIds.has(a.clinicId)
+      );
+      if (validAssignments.length !== this.userForm.assignments.length) {
+        console.warn(
+          `[AdminDashboard] Draft had ${this.userForm.assignments.length} assignments; ` +
+          `${this.userForm.assignments.length - validAssignments.length} had unknown clinicIds ` +
+          `and were removed (cross-subscription draft leak).`
+        );
+        this.userForm.assignments = validAssignments;
+      }
+
+      // If no valid assignments remain, discard the entire draft — it's stale.
+      if (this.userForm.assignments.length === 0 && draft.editingUserId === null) {
+        console.warn('[AdminDashboard] Draft had no valid assignments for this subscription — discarding.');
+        sessionStorage.removeItem(this.DRAFT_KEY);
+        return;
+      }
+
       if (draft.editingUserId) {
         this.editingUser = this.users.find(u => u.userId === draft.editingUserId) ?? null;
         if (this.editingUser) {
@@ -344,7 +459,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private async loadSubscription(): Promise<void> {
     try {
       const email = this.adminEmail.toLowerCase().trim();
-      console.log('[AdminDashboard] loadSubscription — querying users by email:', email);
+      console.debug('[AdminDashboard] loadSubscription — querying users by email:', email);
       let userDoc = await this.adminService.getUserByEmail(email);
 
       // If direct query fails, try client-side fallback
@@ -360,7 +475,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           return false;
         }) ?? null;
         if (userDoc) {
-          console.log('[AdminDashboard] Found user via fallback:', (userDoc as any).id);
+          console.debug('[AdminDashboard] Found user via fallback:', (userDoc as any).id);
         } else {
           console.warn('[AdminDashboard] User not found even with fallback — no subscription to load');
           return;
@@ -369,18 +484,35 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
       this.userDocId = (userDoc as any).id;
       let subscriptionId: string = (userDoc as any).subscription_id || '';
-      console.log('[AdminDashboard] userDocId=', this.userDocId, 'subscription_id=', subscriptionId);
+      console.debug('[AdminDashboard] userDocId=', this.userDocId, 'subscription_id=', subscriptionId);
 
-      // Fallback: if the user doc doesn't have subscription_id,
-      // search the subscriptions collection for this owner's email
+      // Fallback 1: clinicContextService already has the subscriptionId from
+      // the login flow (set by navigateByRole → ensureClinicSelected). This is
+      // the cheapest lookup and works for admin-only users who have no
+      // clinic_users entries and no subscription_id on their user doc.
       if (!subscriptionId) {
-        console.log('[AdminDashboard] No subscription_id on user doc — trying subscriptions query by owner_email');
+        const ctxSubId = this.clinicContext.getSubscriptionId();
+        if (ctxSubId) {
+          subscriptionId = ctxSubId;
+          console.debug('[AdminDashboard] Resolved subscriptionId from ClinicContextService:', subscriptionId);
+          // Persist it back to the user doc so future loads are direct
+          try {
+            await this.adminService.updateUser(this.userDocId, { subscription_id: subscriptionId } as any);
+          } catch { /* non-critical */ }
+        }
+      }
+
+      // Fallback 2: search the subscriptions collection for this owner's email.
+      // Note: this may be blocked by Firestore security rules (403) for some
+      // admin users — the catch handles that gracefully.
+      if (!subscriptionId) {
+        console.debug('[AdminDashboard] No subscription_id on user doc — trying subscriptions query by owner_email');
         try {
           const allSubs = await this.subscriptionRepo.getSubscriptions();
           const ownerSub = allSubs.find(s => (s as any)['owner_email'] === email);
           if (ownerSub) {
             subscriptionId = ownerSub.id!;
-            console.log('[AdminDashboard] Found subscription via owner_email:', subscriptionId);
+            console.debug('[AdminDashboard] Found subscription via owner_email:', subscriptionId);
             await this.adminService.updateUser(this.userDocId, { subscription_id: subscriptionId } as any);
           } else {
             console.warn('[AdminDashboard] No subscriptions found for owner_email:', email);
@@ -404,14 +536,14 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         return;
       }
 
-      console.log('[AdminDashboard] Fetching subscription document:', subscriptionId);
+      console.debug('[AdminDashboard] Fetching subscription document:', subscriptionId);
       const sub = await this.subscriptionRepo.getSubscriptionById(subscriptionId);
       if (!sub) {
         console.warn('[AdminDashboard] Subscription document not found:', subscriptionId);
         return;
       }
 
-      console.log('[AdminDashboard] Subscription doc loaded:', sub.id, sub);
+      console.debug('[AdminDashboard] Subscription doc loaded:', sub.id, sub);
       // Cast to a non-null local so the compiler can track narrowing through async callbacks
       const subData = sub as (import('../../models/subscription.model').Subscription & { id: string });
       this.subscription = { ...subData, id: subData.id };
@@ -433,7 +565,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
       // Check if plan.limits is already populated with real values
       const hasLimits = this.subscription!.plan?.limits
-        && (this.subscription!.plan.limits.max_clinics > 0 || this.subscription!.plan.limits.max_doctors > 0);
+        && (this.subscription!.plan?.limits?.max_clinics > 0 || this.subscription!.plan?.limits?.max_doctors > 0);
 
       if (!hasLimits) {
         const planName = (this.subscription!.plan?.name || '').toLowerCase();
@@ -443,7 +575,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         if (planName) {
           try {
             const planDetails = await this.planRepo.getPlanByKey(planName);
-            console.log('[AdminDashboard] Plan doc data:', planDetails);
+            console.debug('[AdminDashboard] Plan doc data:', planDetails);
             if (planDetails) {
               const maxClinics = (planDetails as any)['max_clinics'] ?? (planDetails as any)['max_clinincs'] ?? 0;
               const maxDoctors = (planDetails as any)['max_doctors'] ?? 0;
@@ -482,14 +614,25 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
       // ── Backfill valid_until if missing ─────────────────────────────────
       // Existing subscriptions created before the valid_until feature won't have
-      // this field. Compute it from created_at + plan validity days and write it
-      // back to Firestore so it's permanently set.
+      // this field. Compute it from created_at + billing_cycle duration and write
+      // it back to Firestore so it's permanently set.
       if (!this.subscription!.valid_until) {
         try {
           const planName = this.subscription!.plan?.name || '';
-          const validityDays = planName
-            ? await this.configService.getPlanValidityDays(planName)
-            : 30;
+          const cycle = this.subscription!.billing_cycle || 'monthly';
+
+          // Determine days from billing_cycle first — monthly=30, quarterly=90, yearly=365.
+          // This is the correct renewal period the user actually pays for.
+          const cycleDays: Record<string, number> = { monthly: 30, quarterly: 90, yearly: 365 };
+          let validityDays = cycleDays[cycle] ?? 30;
+
+          // For short demo/trial plans (validity_days < 60), honour the plan's own ceiling
+          // so trials don't get extended to a full 30-day billing period.
+          if (planName) {
+            const planDays = await this.configService.getPlanValidityDays(planName);
+            if (planDays < 60) validityDays = planDays;
+          }
+
           const baseDate = this.subscription!.created_at
             ? new Date(this.subscription!.created_at)
             : new Date();
@@ -499,9 +642,40 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           // Write back to Firestore so this doesn't repeat
           await this.subscriptionRepo.updateSubscription(this.subscription!.id, { valid_until } as any);
           this.subscription!.valid_until = valid_until;
-          console.log('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, '(', validityDays, 'days from created_at)');
+          console.debug('[AdminDashboard] Backfilled valid_until:', valid_until, 'for plan:', planName, 'cycle:', cycle, '(', validityDays, 'days from created_at)');
         } catch (backfillErr) {
           console.warn('[AdminDashboard] Could not backfill valid_until:', backfillErr);
+        }
+      } else {
+        // ── Correct valid_until if it was previously set using plan validity_days
+        // instead of billing_cycle (a bug that set monthly users to 365 days).
+        // Only correct if the remaining days are grossly beyond the billing cycle.
+        try {
+          const cycle = this.subscription!.billing_cycle;
+          if (cycle && cycle !== 'yearly' && this.subscription!.valid_until) {
+            const maxCycleDays: Record<string, number> = { monthly: 45, quarterly: 120 };
+            const threshold = maxCycleDays[cycle];
+            if (threshold) {
+              const msLeft = new Date(this.subscription!.valid_until).getTime() - Date.now();
+              const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+              if (daysLeft > threshold) {
+                // valid_until is too far out — recompute from created_at + cycle days
+                const correctDays: Record<string, number> = { monthly: 30, quarterly: 90 };
+                const validityDays = correctDays[cycle] ?? 30;
+                const baseDate = this.subscription!.created_at
+                  ? new Date(this.subscription!.created_at)
+                  : new Date();
+                const expiryDate = new Date(baseDate);
+                expiryDate.setDate(expiryDate.getDate() + validityDays);
+                const valid_until = expiryDate.toISOString();
+                await this.subscriptionRepo.updateSubscription(this.subscription!.id, { valid_until } as any);
+                this.subscription!.valid_until = valid_until;
+                console.debug('[AdminDashboard] Corrected valid_until from', daysLeft, 'days to', validityDays, 'days for cycle:', cycle);
+              }
+            }
+          }
+        } catch (corrErr) {
+          console.warn('[AdminDashboard] Could not correct valid_until:', corrErr);
         }
       }
     } catch (e: any) {
@@ -513,9 +687,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private async loadClinics(): Promise<void> {
     if (!this.subscription) return;
     try {
-      console.log('[AdminDashboard] loadClinics for subscription:', this.subscription.id);
+      console.debug('[AdminDashboard] loadClinics for subscription:', this.subscription.id);
       const raw = await this.adminService.getClinicsForSubscription(this.subscription.id);
-      console.log('[AdminDashboard] Clinics query returned:', raw.length);
+      console.debug('[AdminDashboard] Clinics query returned:', raw.length);
 
       this.clinics = await Promise.all(raw.map(async c => {
         let schedule = (c as any).schedule;
@@ -531,7 +705,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         } as AdminClinicState;
       }));
       this.stats.clinics = this.clinics.length;
-      console.log('[AdminDashboard] Final clinics loaded:', this.clinics.length);
+      this.applyClinicSearch();
+      console.debug('[AdminDashboard] Final clinics loaded:', this.clinics.length);
     } catch (e: any) {
       console.error('[AdminDashboard] loadClinics error:', e);
       this.showToast('Failed to load clinics', 'error');
@@ -541,12 +716,37 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   private async loadUsers(): Promise<void> {
     if (!this.subscription) return;
     try {
-      console.log('[AdminDashboard] loadUsers for subscription:', this.subscription.id);
+      console.debug('[AdminDashboard] loadUsers for subscription:', this.subscription.id);
+
+      // Primary: fetch clinic_users whose clinic_id matches this subscription's clinics.
       const allCU = await this.adminService.getClinicUsers(this.subscription.id);
-      console.log('[AdminDashboard] clinic_users returned:', allCU.length);
+      console.debug('[AdminDashboard] clinic_users (by clinic) returned:', allCU.length);
+
+      // Fallback: also fetch all users with subscription_id = this subscription, then
+      // load their clinic_users by user_id. This recovers staff whose clinic_users doc
+      // has a wrong clinic_id (e.g. due to the cross-subscription draft bug).
+      let fallbackUserIds: string[] = [];
+      try {
+        const subUsers = await this.adminService.getUsersBySubscription(this.subscription.id);
+        const primaryUserIds = new Set(allCU.map(cu => cu.user_id).filter(Boolean));
+        fallbackUserIds = subUsers
+          .map(u => u.id!)
+          .filter(id => id && !primaryUserIds.has(id));
+        if (fallbackUserIds.length > 0) {
+          console.debug('[AdminDashboard] Fallback: found', fallbackUserIds.length, 'users by subscription_id not in primary results.');
+          for (const uid of fallbackUserIds) {
+            const extraCUs = await this.adminService.getClinicUsersByUser(uid);
+            for (const cu of extraCUs) {
+              if (!allCU.some(x => x.id === cu.id)) allCU.push(cu);
+            }
+          }
+        }
+      } catch (fbErr) {
+        console.warn('[AdminDashboard] Fallback subscription user lookup failed (non-critical):', fbErr);
+      }
 
       const userIds = [...new Set(allCU.map(cu => cu.user_id).filter(Boolean))];
-      console.log('[AdminDashboard] Unique user IDs to load:', userIds);
+      console.debug('[AdminDashboard] Unique user IDs to load:', userIds);
       this.users = [];
       for (const userId of userIds) {
         const userDoc = await this.adminService.getUserById(userId);
@@ -556,12 +756,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         const fallbackRole: 'doctor' | 'receptionist' = globalRoles.includes('doctor') ? 'doctor' : 'receptionist';
         // Build clinic assignments — skip entries with no clinic_id (e.g. admin-level
         // clu records created at registration time with subscription_id only).
-        const assignments: UserClinicAssignment[] = allCU
+        const rawAssignments: UserClinicAssignment[] = allCU
           .filter(cu => cu.user_id === userId && cu.clinic_id)
           .map(cu => {
           const clinic = this.clinics.find(c => c.id === cu.clinic_id);
           const cuRole = (cu as any).role as string | undefined;
-          const role: 'doctor' | 'receptionist' = (cuRole === 'doctor' || cuRole === 'receptionist') ? cuRole : fallbackRole;
+          // Use the explicit per-clinic role stored on the clinic_users doc if valid.
+          // Only fall back to global_roles when no role field exists at all on this doc.
+          const role: 'doctor' | 'receptionist' =
+            cuRole === 'doctor' || cuRole === 'receptionist'
+              ? cuRole
+              : fallbackRole;
+
           return {
             clinicUserId: cu.id, clinicId: cu.clinic_id, clinicName: clinic?.name || cu.clinic_id,
             clinicAddress: clinic?.address || '',
@@ -571,6 +777,18 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
             dayBlockOverrides: this.deepCopyDayBlockOverrides((cu as any).dayBlockOverrides),
           };
         });
+
+        // Deduplicate by clinic_id + role — duplicate clinic_users docs (e.g. from
+        // double-writes or old registration flows) must not produce duplicate rows
+        // in the edit form, which would cause false "TAKEN" badges on role chips.
+        const seenKeys = new Set<string>();
+        const assignments: UserClinicAssignment[] = rawAssignments.filter(a => {
+          const key = `${a.clinicId}::${a.role}`;
+          if (seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
+
         this.users.push({
           userId, email: userDoc.email, name: userDoc.name, specialization: userDoc.specialization || '',
           global_roles: userDoc.global_roles || [], status: userDoc.status || 'active', assignments,
@@ -579,7 +797,8 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.stats.totalUsers = this.users.length;
       this.stats.doctors = this.users.filter(u => u.assignments.some(a => a.role === 'doctor')).length;
       this.stats.receptionists = this.users.filter(u => u.assignments.some(a => a.role === 'receptionist')).length;
-      console.log('[AdminDashboard] Final users loaded:', this.users.length, 'doctors:', this.stats.doctors, 'receptionists:', this.stats.receptionists);
+      this.applyUserSearch();
+      console.debug('[AdminDashboard] Final users loaded:', this.users.length, 'doctors:', this.stats.doctors, 'receptionists:', this.stats.receptionists);
     } catch (e: any) {
       console.error('[AdminDashboard] loadUsers error:', e);
       this.showToast('Failed to load users', 'error');
@@ -664,9 +883,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     }
     this.configSaving = true;
     this.cdr.detectChanges();
-    console.log('[saveConfig] subscription.id =', this.subscription.id);
-    console.log('[saveConfig] clinics =', this.clinics.map(c => c.id));
-    console.log('[saveConfig] clinicSlotMinutes =', [...this.clinicSlotMinutes.entries()]);
+    console.debug('[saveConfig] subscription.id =', this.subscription.id);
+    console.debug('[saveConfig] clinics =', this.clinics.map(c => c.id));
+    console.debug('[saveConfig] clinicSlotMinutes =', [...this.clinicSlotMinutes.entries()]);
     try {
       // Save subscription-level config
       const existing = await this.configService.getSubscriptionConfig(this.subscription.id);
@@ -675,12 +894,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         multiClinic: { ...this.configSettings },
         timeSlots: { ...(existing?.timeSlots ?? {}), slotMinutes: mins },
       });
-      console.log('[saveConfig] Subscription config saved OK');
+      console.debug('[saveConfig] Subscription config saved OK');
 
       // Save per-clinic slot overrides in parallel
       await Promise.all(this.clinics.map(async clinic => {
         const override = this.clinicSlotMinutes.get(clinic.id) ?? null;
-        console.log(`[saveConfig] clinic=${clinic.id} override=${override}`);
+        console.debug(`[saveConfig] clinic=${clinic.id} override=${override}`);
         try {
           const existingCfg = await this.configService.getClinicConfig(clinic.id, this.subscription!.id) ?? {};
           if (override !== null) {
@@ -688,12 +907,12 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
               ...existingCfg,
               timeSlots: { ...(existingCfg.timeSlots ?? {}), slotMinutes: override },
             }, this.subscription!.id);
-            console.log(`[saveConfig] clinic=${clinic.id} saved slotMinutes=${override}`);
+            console.debug(`[saveConfig] clinic=${clinic.id} saved slotMinutes=${override}`);
           } else {
             // Remove clinic-level override — keep existing config but clear slotMinutes
             const { timeSlots, ...rest } = existingCfg as any;
             await this.configService.setClinicConfig(clinic.id, { ...rest }, this.subscription!.id);
-            console.log(`[saveConfig] clinic=${clinic.id} cleared slot override`);
+            console.debug(`[saveConfig] clinic=${clinic.id} cleared slot override`);
           }
         } catch (e) {
           console.error(`[saveConfig] FAILED for clinic ${clinic.id}:`, e);
@@ -841,6 +1060,24 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.showToast(`Clinic limit reached (${this.stats.clinics}/${max}). Upgrade your plan to add more.`, 'error');
       return;
     }
+
+    // ── Duplicate name check within this subscription (when allow_same_clinic_name !== 'yes') ──
+    if (!this.allowSameClinicName) {
+      const newName = this.clinicForm.name.trim().toLowerCase();
+      const duplicate = this.clinics.find(c => {
+        // Skip the clinic being edited so renaming to the same name is allowed
+        if (this.editingClinic && c.id === this.editingClinic.id) return false;
+        return c.name.trim().toLowerCase() === newName;
+      });
+      if (duplicate) {
+        this.showToast(
+          `A clinic named "${duplicate.name}" already exists in this subscription. Duplicate names are not allowed.`,
+          'error'
+        );
+        return;
+      }
+    }
+
     this.isSaving = true;
     try {
       const schedule = { weekdays: [...this.clinicForm.weekdays], timings: this.clinicForm.timings.map(t => ({ ...t })) };
@@ -864,7 +1101,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.showClinicForm = false;
       this.editingClinic = null;
     } catch (e: any) { this.showToast('Failed to save clinic: ' + e.message, 'error'); }
-    finally { this.isSaving = false; this.cdr.detectChanges(); }
+    finally { this.isSaving = false; this.applyClinicSearch(); this.cdr.detectChanges(); }
   }
 
   async deleteClinic(clinic: AdminClinicState): Promise<void> {
@@ -879,7 +1116,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.stats.clinics = this.clinics.length;
       this.showToast('Clinic deleted');
     } catch (e: any) { this.showToast('Failed to delete clinic', 'error'); }
-    finally { this.isSaving = false; this.cdr.detectChanges(); }
+    finally { this.isSaving = false; this.applyClinicSearch(); this.cdr.detectChanges(); }
   }
 
   toggleWeekday(day: string): void {
@@ -952,6 +1189,11 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   // ── User CRUD ─────────────────────────────────────────────────────────────
   openNewUserForm(): void {
+    // Cannot add staff without at least one clinic to assign them to.
+    if (this.hasNoClinics) {
+      this.showToast('Please create a clinic first before adding staff.', 'error');
+      return;
+    }
     this.userForm = this.emptyUserForm();
     this.externalBookings = [];
     if (this.clinics.length) {
@@ -1022,23 +1264,33 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
 
   addClinicAssignment(): void {
     if (!this.clinics.length) { this.showToast('No clinics available. Add a clinic first.', 'error'); return; }
-    // Find first clinic that still has at least one role free
     const current = this.userForm.assignments;
-    const available = this.clinics.filter(c => {
-      const existing = current.filter(a => a.clinicId === c.id);
-      const hasDoctor       = existing.some(a => a.role === 'doctor');
-      const hasReceptionist = existing.some(a => a.role === 'receptionist');
-      return !(hasDoctor && hasReceptionist);
+
+    // Split clinics into: fully unassigned first, then partially assigned.
+    // This prevents accidentally adding a second row for the same clinic
+    // when other clinics haven't been assigned at all yet.
+    const freshClinics = this.clinics.filter(c => !current.some(a => a.clinicId === c.id));
+    const partialClinics = this.clinics.filter(c => {
+      const rows = current.filter(a => a.clinicId === c.id);
+      const hasDoctor       = rows.some(a => a.role === 'doctor');
+      const hasReceptionist = rows.some(a => a.role === 'receptionist');
+      // Partially assigned = has one role but not both
+      return rows.length > 0 && !(hasDoctor && hasReceptionist);
     });
-    if (!available.length) {
+
+    if (!freshClinics.length && !partialClinics.length) {
       this.showToast('All clinics already have both Doctor and Receptionist assigned.', 'error');
       return;
     }
-    const c = available[0];
+
+    // Prefer a fresh (completely unassigned) clinic; fall back to partial.
+    const c = freshClinics.length ? freshClinics[0] : partialClinics[0];
+
     // Choose whichever role isn't yet assigned for this clinic
     const existingForClinic = current.filter(a => a.clinicId === c.id);
-    const hasRec  = existingForClinic.some(a => a.role === 'receptionist');
-    const role: 'doctor' | 'receptionist' = hasRec ? 'doctor' : 'receptionist';
+    const hasDoc = existingForClinic.some(a => a.role === 'doctor');
+    const role: 'doctor' | 'receptionist' = hasDoc ? 'receptionist' : 'doctor';
+
     this.userForm.assignments.push({
       clinicId: c.id, clinicName: c.name, clinicAddress: c.address || '',
       role, availability: {},
@@ -1068,7 +1320,41 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     if (a.role === 'doctor'       && doctorTaken)       a.role = 'receptionist';
     if (a.role === 'receptionist' && receptionistTaken) a.role = 'doctor';
 
+    // After this row's clinic changed, other rows' available-clinic lists may have changed
+    // too. Sanitize every OTHER row so its clinicId still points to a valid option.
+    // Without this, Angular's <select> can display a stale clinic name while the model
+    // still holds the old clinicId — causing false "TAKEN" badges on role chips.
+    this.sanitizeOtherAssignments(a);
+
     this.cdr.detectChanges();
+  }
+
+  /**
+   * After a clinic change on one row, validate every other row's clinicId against
+   * the (now-updated) available-clinics list. If a row's current clinicId is no longer
+   * available (both roles taken), reset it to the first available clinic and pick the
+   * appropriate role so it doesn't show a stale/wrong value.
+   */
+  private sanitizeOtherAssignments(changedRow: UserClinicAssignment): void {
+    for (const a of this.userForm.assignments) {
+      if (a === changedRow) continue;
+      const available = this.getAvailableClinicsForRow(a);
+      if (!available.some(c => c.id === a.clinicId)) {
+        // Current clinic is no longer valid for this row — pick the first available
+        const fallback = available[0];
+        if (!fallback) continue;
+        a.clinicId = fallback.id;
+        a.clinicName = fallback.name;
+        a.clinicAddress = fallback.address || '';
+        a.availability = {}; a.timingOverrides = {}; a.dayBlockOverrides = {};
+        // Pick whichever role isn't taken for this new clinic
+        const othersForFallback = this.userForm.assignments.filter(
+          o => o !== a && o.clinicId === fallback.id
+        );
+        const hasDoc = othersForFallback.some(o => o.role === 'doctor');
+        a.role = hasDoc ? 'receptionist' : 'doctor';
+      }
+    }
   }
 
   onAssignmentRoleChange(a: UserClinicAssignment): void {
@@ -1112,6 +1398,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
   getAvailableClinicsForRow(currentAssignment: UserClinicAssignment): AdminClinicState[] {
     const others = this.userForm.assignments.filter(a => a !== currentAssignment);
     return this.clinics.filter(c => {
+      // Always keep the row's own current clinic in the list — removing it from the
+      // options causes Angular's <select> to display a blank/stale value without
+      // firing ngModelChange, which creates a model/view mismatch and false TAKEN badges.
+      if (c.id === currentAssignment.clinicId) return true;
       const sameClinic = others.filter(a => a.clinicId === c.id);
       const hasDoctor       = sameClinic.some(a => a.role === 'doctor');
       const hasReceptionist = sameClinic.some(a => a.role === 'receptionist');
@@ -1334,8 +1624,13 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       this.showToast('Email and name are required', 'error'); return;
     }
 
-    // Doctor limit check — only block when adding a NEW doctor (edits are always allowed)
+    // Specialization is mandatory when any assignment has doctor role
     const hasDocRole = this.userForm.assignments.some(a => a.role === 'doctor');
+    if (hasDocRole && !this.userForm.specialization?.trim()) {
+      this.showToast('Specialization is required for doctor role', 'error'); return;
+    }
+
+    // Doctor limit check — only block when adding a NEW doctor (edits are always allowed)
     if (!this.editingUser && hasDocRole && this.doctorLimitReached) {
       const max = this.subscription?.plan?.limits?.max_doctors ?? 0;
       this.showToast(`Doctor limit reached (${this.stats.doctors}/${max}). Upgrade your plan to add more.`, 'error');
@@ -1599,6 +1894,9 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           clinic_id: assignment.clinicId,
           user_id: userId, status: 'active',
           role: assignment.role,
+          // Store subscription_id on the clinic_users doc so staff can be found
+          // even if clinic_id lookup fails (e.g. due to cross-subscription data leaks).
+          subscription_id: this.subscription!.id,
         };
         if (assignment.role === 'doctor' && Object.keys(assignment.availability).length > 0)
           cuPayload.availability = assignment.availability;
@@ -1634,6 +1932,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       const idx = this.users.findIndex(u => u.userId === userId);
       if (idx >= 0) this.users[idx] = updated; else this.users.push(updated);
       this.updateUserStats();
+      this.applyUserSearch();
       this.showUserForm = false; this.editingUser = null;
       this.externalBookings = [];
       this.clearDraft();
@@ -1653,6 +1952,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
       await this.adminService.deleteUser(user.userId);
       this.users = this.users.filter(u => u.userId !== user.userId);
       this.updateUserStats();
+      this.applyUserSearch();
       this.showToast('User deleted');
     } catch (e: any) { this.showToast('Failed to delete user', 'error'); }
     finally { this.isSaving = false; this.cdr.detectChanges(); }

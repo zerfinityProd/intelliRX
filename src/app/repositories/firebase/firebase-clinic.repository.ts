@@ -159,6 +159,12 @@ export class FirebaseClinicRepository extends ClinicRepository {
     this.cache.clear();
   }
 
+  async getNextClinicId(): Promise<string> {
+    // Delegates to getNextSequentialId which lists ALL clinic documents and finds
+    // the global max — so new clinics across any subscription get a unique ID.
+    return this.api.getNextSequentialId('cln');
+  }
+
   private addToCache(clinic: Clinic): void {
     if (clinic.id) this.cache.set(clinic.id, { clinic, timestamp: Date.now() });
   }

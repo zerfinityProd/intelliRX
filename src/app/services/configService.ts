@@ -92,6 +92,14 @@ export class ConfigService {
     return this.configRepo.getSystemConfig();
   }
 
+  async updateSystemConfig(patch: Record<string, number | string>): Promise<void> {
+    return this.configRepo.updateSystemConfig(patch);
+  }
+
+  async setSystemConfig(data: Record<string, any>): Promise<void> {
+    return this.configRepo.setSystemConfig(data);
+  }
+
   async getAvailablePlans(): Promise<PlanOption[]> {
     const config = await this.getSystemConfig();
     const suffix = '_plan_validity_days';

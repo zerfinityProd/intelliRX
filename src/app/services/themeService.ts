@@ -81,9 +81,13 @@ export class ThemeService {
                 return;
             }
 
-            // No theme saved yet — persist current default to Firestore
-            const currentTheme = this.isDarkTheme$.value ? 'dark' : 'light';
-            await this.saveThemeToConfig(currentTheme);
+            // No theme saved yet — only persist the current default to Firestore when
+            // the clinic context is fully resolved. Skipping this when subId/clinicId
+            // are absent prevents a 400 Bad Request on the PATCH call.
+            if (subId && clinicId) {
+                const currentTheme = this.isDarkTheme$.value ? 'dark' : 'light';
+                await this.saveThemeToConfig(currentTheme);
+            }
         } catch {
             // Keep the local/system default — Firestore is unavailable
         }

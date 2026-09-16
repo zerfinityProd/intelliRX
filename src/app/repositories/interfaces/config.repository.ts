@@ -55,5 +55,9 @@ export abstract class ConfigRepository {
 
   abstract getSystemConfig(): Promise<SystemConfig>;
 
+  abstract updateSystemConfig(patch: Record<string, number | string>): Promise<void>;
+
+  abstract setSystemConfig(data: Record<string, any>): Promise<void>;
+
   abstract getPlanValidityDays(planKey: string): Promise<number>;
 }

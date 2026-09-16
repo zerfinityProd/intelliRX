@@ -95,7 +95,7 @@ export class TimeSlotService {
 
             // Resolve the per-clinic slot duration (clinic override → sub default → 30 min)
             const slotMinutes = await this.resolveSlotMinutes(id);
-            console.log('[TimeSlotsService] slotMinutes for', id, '=', slotMinutes);
+            console.debug('[TimeSlotsService] slotMinutes for', id, '=', slotMinutes);
 
             const clinic = await this.clinicService.getClinicById(id);
             let timings = clinic?.schedule?.timings;
@@ -109,9 +109,9 @@ export class TimeSlotService {
                 effectiveDate = new Date(date + 'T00:00:00');
             }
 
-            console.log('[TimeSlotsService] \u2500 getTimeSlotsWithLeaveInfo',
+            console.debug('[TimeSlotsService] ─ getTimeSlotsWithLeaveInfo',
                 '\n  clinicId:', id,
-                '\n  date:', date, '\u2192 effectiveDate:', effectiveDate,
+                '\n  date:', date, '→ effectiveDate:', effectiveDate,
                 '\n  doctorEmail:', doctorEmail || '(none)',
                 '\n  clinic timings:', JSON.stringify(timings));
 

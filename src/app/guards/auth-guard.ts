@@ -24,6 +24,14 @@ export const authGuard: CanActivateFn = () => {
                 return of(false);
             }
 
+            // A newly registered user is signed into Firebase Auth but has not yet
+            // verified their email. Block them from entering any guarded route until
+            // they click the verification link.
+            if (!authService.isEmailVerified()) {
+                router.navigate(['/app/login']);
+                return of(false);
+            }
+
             const email = authService.currentUserValue?.email || '';
             if (!email) {
                 router.navigate(['/app/login']);
@@ -52,6 +60,7 @@ export const authGuard: CanActivateFn = () => {
  * Doctor guard — allows only users with role === 'doctor'.
  * Redirects receptionists to /home.
  * Redirects unauthenticated users to /app/login.
+ * Redirects admin-only and z_admin users away from clinical routes.
  */
 export const doctorGuard: CanActivateFn = () => {
     const authService = inject(AuthenticationService);
@@ -66,51 +75,29 @@ export const doctorGuard: CanActivateFn = () => {
                 router.navigate(['/app/login']);
                 return of(false);
             }
-            const email = authService.currentUserValue?.email || '';
-            return from(authorizationService.getUserRole(email)).pipe(
-                map(role => {
-                    if (role === 'receptionist') {
-                        router.navigate(['/home']);
-                        return false;
-                    }
-                    // Block z_admin from clinical app routes
-                    if (role === 'z_admin') {
-                        router.navigate(['/app/login']);
-                        return false;
-                    }
-                    // Allow admin (subscription_owner) full access like doctors
-                    if (role === 'subscription_owner') {
-                        return true;
-                    }
-                    return true;
-                })
-            );
-        })
-    );
-};
 
-/**
- * Receptionist guard — allows only users with role === 'receptionist'.
- * Redirects doctors to /home.
- * Redirects unauthenticated users to /app/login.
- */
-export const receptionGuard: CanActivateFn = () => {
-    const authService = inject(AuthenticationService);
-    const authorizationService = inject(AuthorizationService);
-    const router = inject(Router);
-
-    return authService.authReady$.pipe(
-        filter(ready => ready),
-        take(1),
-        switchMap(() => {
-            if (!authService.isLoggedIn()) {
+            // Block unverified registration users from doctor-only routes.
+            if (!authService.isEmailVerified()) {
                 router.navigate(['/app/login']);
                 return of(false);
             }
+
             const email = authService.currentUserValue?.email || '';
-            return from(authorizationService.getUserRole(email)).pipe(
-                map(role => {
-                    if (role === 'doctor') {
+            return from(authorizationService.getUserGlobalRoles(email)).pipe(
+                map(globalRoles => {
+                    // z_admin has no clinical access
+                    if (globalRoles.includes('z_admin')) {
+                        router.navigate(['/app/login']);
+                        return false;
+                    }
+                    // Admin-only users (no doctor/receptionist role) belong in admin dashboard
+                    const hasClinicalRole = globalRoles.includes('doctor') || globalRoles.includes('receptionist');
+                    if (globalRoles.includes('admin') && !hasClinicalRole) {
+                        router.navigate(['/admin-dashboard']);
+                        return false;
+                    }
+                    // Receptionists cannot access doctor-only routes
+                    if (!globalRoles.includes('doctor')) {
                         router.navigate(['/home']);
                         return false;
                     }
@@ -120,3 +107,4 @@ export const receptionGuard: CanActivateFn = () => {
         })
     );
 };
+

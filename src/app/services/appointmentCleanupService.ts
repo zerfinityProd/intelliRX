@@ -58,7 +58,7 @@ export class AppointmentCleanupService {
         try {
           const visits = await this.patientService.getPatientVisits(appt.patient_id);
           if (visits.length === 0) {
-            console.log(`🧹 Cleanup: deleting no-visit patient ${appt.patient_id} (${appt.patientName})`);
+            console.debug('[Cleanup] Removing no-visit temporary patient record.');
             await this.patientService.deletePatient(appt.patient_id);
           }
         } catch {

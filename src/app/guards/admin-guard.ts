@@ -28,17 +28,37 @@ export const adminGuard: CanActivateFn = () => {
                 return of(false);
             }
 
+            // Block unverified registration users from admin routes.
+            if (!authService.isEmailVerified()) {
+                router.navigate(['/app/login']);
+                return of(false);
+            }
+
             const email = (authService.currentUserValue?.email || '').toLowerCase().trim();
 
             return from(
-                authzService.getUserGlobalRoles(email).then(globalRoles => {
-                    // Allow both admin and z_admin to reach the admin dashboard
-                    if (!globalRoles.includes('admin') && !globalRoles.includes('z_admin')) {
+                (async () => {
+                    const globalRoles = await authzService.getUserGlobalRoles(email);
+                    // Primary: explicit admin/z_admin role in global_roles
+                    if (globalRoles.includes('admin') || globalRoles.includes('z_admin')) {
+                        return true;
+                    }
+                    // Secondary: getUserRole() resolves 'subscription_owner' from the user doc
+                    // even when global_roles only contains ['doctor'].
+                    // This avoids the isSubscriptionOwner() fallback which fetches ALL subscriptions
+                    // — a Firestore read that doctor-role security rules block (404).
+                    const computedRole = await authzService.getUserRole(email);
+                    if (computedRole === 'subscription_owner') {
+                        return true;
+                    }
+                    // Last-resort fallback: check if this email owns any subscription.
+                    const isOwner = await authzService.isSubscriptionOwner(email);
+                    if (!isOwner) {
                         router.navigate(['/home']);
                         return false;
                     }
                     return true;
-                }).catch(() => {
+                })().catch(() => {
                     router.navigate(['/home']);
                     return false;
                 })

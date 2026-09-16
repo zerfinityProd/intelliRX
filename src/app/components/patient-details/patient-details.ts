@@ -89,7 +89,7 @@ export class PatientDetailsComponent implements OnInit {
     // This never touches the URL, preventing IDOR exposure.
     const patientId = this.patientContextService.getPatientId();
 
-    console.log('🔍 Patient Details - Loading patient:', patientId ? '[REDACTED]' : 'null');
+    console.debug('🔍 Patient Details - Loading patient:', patientId ? '[REDACTED]' : 'null');
 
     if (!patientId) {
       this.ngZone.run(() => {
@@ -111,10 +111,10 @@ export class PatientDetailsComponent implements OnInit {
     });
 
     try {
-      console.log('📡 Fetching patient from service...');
+      console.debug('📡 Fetching patient from service...');
       this.patient = await this.patientService.getPatient(patientId);
 
-      console.log('✅ Patient data received:', this.patient ? 'Success' : 'Not found');
+      console.debug('✅ Patient data received:', this.patient ? 'Success' : 'Not found');
 
       this.ngZone.run(() => {
         if (!this.patient) {
@@ -149,7 +149,7 @@ export class PatientDetailsComponent implements OnInit {
     });
 
     try {
-      console.log('📡 Fetching visits...');
+      console.debug('📡 Fetching visits...');
       let allVisits = await this.patientService.getPatientVisits(this.patient.id!);
 
       // Doctor visit isolation: doctors only see their own visits
@@ -162,7 +162,7 @@ export class PatientDetailsComponent implements OnInit {
       }
 
       this.visits = allVisits;
-      console.log('✅ Visits loaded:', this.visits.length);
+      console.debug('✅ Visits loaded:', this.visits.length);
 
       this.ngZone.run(() => {
         this.isLoadingVisits = false;
@@ -203,7 +203,7 @@ export class PatientDetailsComponent implements OnInit {
 
   // Handle patient info updated
   async onPatientInfoUpdated(patientId: string): Promise<void> {
-    console.log('✅ Patient info updated:', patientId);
+    console.debug('✅ Patient info updated:', patientId);
 
     // Reload patient data
     await this.loadPatient(patientId);

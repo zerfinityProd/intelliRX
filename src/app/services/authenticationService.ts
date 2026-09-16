@@ -6,9 +6,8 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult,
     GoogleAuthProvider,
+    OAuthProvider,
     signOut,
     onAuthStateChanged,
     updateProfile,
@@ -62,11 +61,13 @@ export class AuthenticationService {
 
     constructor() {
         this.googleProvider = new GoogleAuthProvider();
+        this.googleProvider.setCustomParameters({ prompt: 'select_account' });
         this.currentUserSubject = new BehaviorSubject<User | null>(null);
         this.currentUser$ = this.currentUserSubject.asObservable();
 
         onAuthStateChanged(this.auth, (firebaseUser) => {
             runInInjectionContext(this.injector, async () => {
+
                 if (firebaseUser) {
                     const email = firebaseUser.email || '';
 
@@ -74,6 +75,7 @@ export class AuthenticationService {
                     // handle user setup themselves. Skip all processing here to avoid
                     // race conditions (e.g. setting up a user that will be signed out).
                     if (this._loggingIn || this._registering) {
+
                         if (!this.authReady) {
                             this.authReady = true;
                             this.authReadySubject.next(true);
@@ -81,29 +83,37 @@ export class AuthenticationService {
                         return;
                     }
 
-                    // Page-refresh scenario: check if this email is registered
-                    const allowed = await this.authorizationService.isEmailAllowed(email);
-                    if (!allowed) {
-                        console.warn('[Auth] onAuthStateChanged: email not in users collection, deleting auth user & signing out:', email);
-                        // Delete the orphaned Firebase Auth user so it doesn't
-                        // persist in the Authentication console.
-                        try { await deleteUser(firebaseUser); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                        await signOut(this.auth);
-                        this.setCurrentUser(null);
-                        if (!this.authReady) {
-                            this.authReady = true;
-                            this.authReadySubject.next(true);
-                        }
-                        return;
-                    }
+                    // Page-refresh scenario: check if this email is registered.
+                    // IMPORTANT: wrap in try-catch so authReady is ALWAYS set,
+                    // even if Firestore is temporarily unavailable. Without this
+                    // guarantee, any thrown error here leaves authReady$ never
+                    // emitting true, permanently hanging any component waiting on it.
 
-                    // Fetch role and set subscription/clinic context
-                    const role = await this.authorizationService.getUserRole(email);
-                    const dbName = await this.authorizationService.getUserName(email);
-                    const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
-                    if (dbName) user.name = dbName;
-                    this.setCurrentUser(user);
+                    try {
+                        const allowed = await this.authorizationService.isEmailAllowed(email);
+                        if (!allowed) {
+                            console.warn('[AuthState] email not in users collection — deleting auth user & signing out:', email);
+                            // Delete the orphaned Firebase Auth user so it doesn't
+                            // persist in the Authentication console.
+                            try { await deleteUser(firebaseUser); } catch (e) { console.warn('[AuthState] Could not delete auth user:', e); }
+                            await signOut(this.auth);
+                            this.setCurrentUser(null);
+                        } else {
+                            // Fetch role and set subscription/clinic context
+                            const role = await this.authorizationService.getUserRole(email);
+                            const dbName = await this.authorizationService.getUserName(email);
+                            const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
+                            if (dbName) user.name = dbName;
+
+                            this.setCurrentUser(user);
+                        }
+                    } catch (e) {
+                        console.warn('[AuthState] page-refresh check failed — proceeding anyway:', e);
+                        // Still set the user from Firebase token data so the app is usable
+                        this.setCurrentUser(this.transformFirebaseUser(firebaseUser));
+                    }
                 } else {
+
                     this.setCurrentUser(null);
                 }
                 if (!this.authReady) {
@@ -204,44 +214,54 @@ export class AuthenticationService {
 
     async login(email: string, password: string): Promise<User> {
         this._loggingIn = true;
-        // Wipe any stale session data from a previous login before starting fresh.
+
+        
+        // 1. Wipe stale state
+        this.clinicContextService.clear();
+        this.authorizationService.invalidateRolesCache();
         sessionStorage.clear();
+
         try {
-            // Check Firestore FIRST — if email is not in the users collection,
-            // reject immediately without touching Firebase Auth at all.
-            // This prevents orphan auth-user creation for unregistered emails.
-            const allowed = await this.authorizationService.isEmailAllowed(email);
+            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
+            
+            // 3. Perform authorization check AFTER sign-in
+            const userEmail = userCredential.user.email || email;
+            const allowed = await this.authorizationService.isEmailAllowed(userEmail);
+            
             if (!allowed) {
+                console.warn('[Auth] Access denied for:', userEmail);
+                await signOut(this.auth);
                 throw new Error('Access denied. Your email is not registered in the system.');
             }
 
-            const userCredential = await signInWithEmailAndPassword(this.auth, email, password);
-            const userEmail = userCredential.user.email || email;
             const role = await this.authorizationService.getUserRole(userEmail);
             const dbName = await this.authorizationService.getUserName(userEmail);
             const user: User = { ...this.transformFirebaseUser(userCredential.user), role };
             if (dbName) user.name = dbName;
+            
+
             this.setCurrentUser(user);
             return user;
         } catch (error: any) {
-            console.error('Login error:', error);
+            console.error('[Login] Error during login for', email, '| code:', error?.code, '| msg:', error?.message);
             throw this.handleAuthError(error);
         } finally {
             this._loggingIn = false;
+
         }
     }
 
-    /**
-     * Returns the signed-in User so callers can navigate based on role.
-     * Returns void (undefined) if popup was closed by user.
-     */
     async loginWithGoogle(): Promise<User | void> {
         this._loggingIn = true;
-        sessionStorage.clear();
         try {
-            await signInWithRedirect(this.auth, this.googleProvider);
-            return;
+            const credential = await signInWithPopup(this.auth, this.googleProvider);
+            return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
+            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                const cancelled = new Error('popup-cancelled') as any;
+                cancelled.code = 'popup-cancelled';
+                throw cancelled;
+            }
             console.error('Google login error:', error);
             throw this.handleAuthError(error);
         } finally {
@@ -252,11 +272,15 @@ export class AuthenticationService {
     async loginWithMicrosoft(): Promise<User | void> {
         this._loggingIn = true;
         try {
-            const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('microsoft.com');
-            await signInWithRedirect(this.auth, provider);
-            return;
+            const credential = await signInWithPopup(this.auth, provider);
+            return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
+            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                const cancelled = new Error('popup-cancelled') as any;
+                cancelled.code = 'popup-cancelled';
+                throw cancelled;
+            }
             console.error('Microsoft login error:', error);
             throw this.handleAuthError(error);
         } finally {
@@ -267,16 +291,39 @@ export class AuthenticationService {
     async loginWithApple(): Promise<User | void> {
         this._loggingIn = true;
         try {
-            const { OAuthProvider, signInWithRedirect } = await import('@angular/fire/auth');
             const provider = new OAuthProvider('apple.com');
-            await signInWithRedirect(this.auth, provider);
-            return;
+            const credential = await signInWithPopup(this.auth, provider);
+            return await this._buildUserFromFirebase(credential.user);
         } catch (error: any) {
+            if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+                const cancelled = new Error('popup-cancelled') as any;
+                cancelled.code = 'popup-cancelled';
+                throw cancelled;
+            }
             console.error('Apple login error:', error);
             throw this.handleAuthError(error);
         } finally {
             this._loggingIn = false;
         }
+    }
+
+    /** Shared helper: checks isEmailAllowed, fetches role/name, sets currentUser. */
+    private async _buildUserFromFirebase(firebaseUser: FirebaseUser): Promise<User> {
+        const email = firebaseUser.email || '';
+        const allowed = await this.authorizationService.isEmailAllowed(email);
+        if (!allowed) {
+            console.warn('[Auth] popup sign-in: email not registered, signing out:', email);
+            try { await deleteUser(firebaseUser); } catch { /* ignore */ }
+            await signOut(this.auth);
+            this.setCurrentUser(null);
+            throw new Error('Access denied. Your email is not registered in the system. Please contact your administrator.');
+        }
+        const role = await this.authorizationService.getUserRole(email);
+        const dbName = await this.authorizationService.getUserName(email);
+        const user: User = { ...this.transformFirebaseUser(firebaseUser), role };
+        if (dbName) user.name = dbName;
+        this.setCurrentUser(user);
+        return user;
     }
 
     async resetPassword(email: string): Promise<void> {
@@ -304,45 +351,30 @@ export class AuthenticationService {
             // into the next session after a fresh login.
             sessionStorage.clear();
         } catch (error) {
-            console.error('Logout error:', error);
+            console.error('[Logout] Error:', error);
             throw error;
         }
     }
 
     /**
-     * Handles the redirect result from Google OAuth popup.
-     * Called after user is redirected back to the app from Google.
+     * No-op: OAuth sign-in now uses signInWithPopup, so there is no redirect
+     * result to handle. Kept for interface compatibility only.
      */
     async handleGoogleRedirectResult(): Promise<User | void> {
-        try {
-            const result = this.auth.currentUser;
-            if (!result) return;
-
-            const email = result.email || '';
-            const allowed = await this.authorizationService.isEmailAllowed(email);
-            if (!allowed) {
-                // User not in Firestore users collection — delete auth user & block
-                console.warn('[Auth] handleGoogleRedirectResult: email not registered, deleting auth user & signing out:', email);
-                try { await deleteUser(result); } catch (e) { console.warn('[Auth] Could not delete auth user:', e); }
-                await signOut(this.auth);
-                this.setCurrentUser(null);
-                return;
-            }
-
-            const role = await this.authorizationService.getUserRole(email);
-            const dbName = await this.authorizationService.getUserName(email);
-            const user: User = { ...this.transformFirebaseUser(result), role };
-            if (dbName) user.name = dbName;
-            this.setCurrentUser(user);
-            return user;
-        } catch (error: any) {
-            console.error('Google redirect result error:', error);
-            return;
-        }
+        return;
     }
 
     isLoggedIn(): boolean {
         return this.currentUserValue !== null && this.auth.currentUser !== null;
+    }
+
+    /**
+     * Returns true only if the Firebase Auth user's email has been verified.
+     * Use this whenever you need to gate access for registration-flow users
+     * who are signed in but have not yet clicked the verification link.
+     */
+    isEmailVerified(): boolean {
+        return this.auth.currentUser?.emailVerified === true;
     }
 
     getCurrentUserId(): string | null {

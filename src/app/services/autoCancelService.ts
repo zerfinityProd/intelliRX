@@ -110,7 +110,7 @@ export class AutoCancelService {
             try {
                 await this.appointmentService.updateAppointmentStatus(appt.id, 'cancelled');
                 appt.status = 'cancelled';
-                console.log(`🕐 Auto-cancelled past appointment: ${appt.patientName} (${new Date(appt.datetime).toLocaleDateString()})`);
+                console.debug(`🕐 Auto-cancelled past appointment: ${appt.patientName} (${new Date(appt.datetime).toLocaleDateString()})`);
             } catch {
                 // keep going
             }

@@ -9,6 +9,9 @@ export const environment = {
   messagingSenderId: "143213488063",
   appId: "1:143213488063:web:e88b8d09640113750fe30a",
   measurementId: "G-YPK8C0V09T"
-  }
+  },
+  // ── WhatsApp Cloudflare Worker ─────────────────────────────────────────────
+  whatsappWorkerUrl: 'https://intellirx-whatsapp-worker.intellirx.workers.dev',
+  whatsappWorkerSecret: 'intellirx@2026'   // must match WORKER_SECRET set via wrangler secret
 };
 

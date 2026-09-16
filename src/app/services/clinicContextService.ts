@@ -29,9 +29,12 @@ export class ClinicContextService {
 
     // Restore from sessionStorage so the clinic selector is not re-shown
     // on a simple page refresh, while still prompting on fresh login.
+    const restoredClinicId = this.readSession(SS_CLINIC_ID);
+    const restoredSubId    = this.readSession(SS_SUB_ID);
+
     this.contextSubject = new BehaviorSubject<ClinicContext>({
-      clinicId: this.readSession(SS_CLINIC_ID),
-      subscriptionId: this.readSession(SS_SUB_ID)
+      clinicId:       restoredClinicId,
+      subscriptionId: restoredSubId
     });
     this.context$ = this.contextSubject.asObservable();
   }
@@ -51,6 +54,8 @@ export class ClinicContextService {
   requireSubscriptionId(): string {
     const subId = this.contextSubject.value.subscriptionId;
     if (!subId) {
+      console.warn('[ClinicContext] requireSubscriptionId() called with NO subscription set!',
+        'This will throw. Ensure login flow calls setClinicContext before navigating.');
       throw new Error('Subscription context not set. Please log in again.');
     }
     return subId;
@@ -75,6 +80,7 @@ export class ClinicContextService {
   }
 
   clear(): void {
+
     this.contextSubject.next({ clinicId: null, subscriptionId: null });
     try {
       sessionStorage.removeItem(SS_CLINIC_ID);

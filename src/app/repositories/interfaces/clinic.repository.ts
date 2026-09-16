@@ -37,4 +37,11 @@ export abstract class ClinicRepository {
   ): Promise<void>;
 
   abstract invalidateCache(): void;
+
+  /**
+   * Returns the next globally-unique clinic ID (e.g. "cln_7").
+   * Scans all clinic documents to find the current maximum, so IDs
+   * are never duplicated across subscriptions.
+   */
+  abstract getNextClinicId(): Promise<string>;
 }

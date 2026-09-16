@@ -777,3 +777,40 @@
     font-size: 12px;
   }
 }
+
+/* ── WhatsApp consent row ── */
+.appt-wa-consent {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.appt-wa-consent__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: #15803d;
+  margin: 0;
+  user-select: none;
+}
+
+.appt-wa-consent__checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: #25d366;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .appt-wa-consent {
+  background: #052e16;
+  border-color: #166534;
+}
+
+[data-theme="dark"] .appt-wa-consent__label {
+  color: #86efac;
+}

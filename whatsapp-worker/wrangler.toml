@@ -1,0 +1,9 @@
+name = "intellirx-whatsapp-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+# Secrets are NOT stored here.
+# Set them via: wrangler secret put WA_ACCESS_TOKEN
+# Set them via: wrangler secret put WA_PHONE_NUMBER_ID
+# Set them via: wrangler secret put WORKER_SECRET

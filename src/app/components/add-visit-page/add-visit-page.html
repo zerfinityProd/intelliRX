@@ -322,8 +322,8 @@
     <div class="avp-right-area">
       <div class="avp-anatomy-panel">
         
-        <!-- Tab Toggle -->
-        <div class="anatomy-tabs">
+        <!-- Tab Toggle — shown only when the doctor has multiple chart types (allowedChartTab === null) -->
+        <div class="anatomy-tabs" *ngIf="allowedChartTab === null">
           <button type="button" class="anatomy-tab" [class.active]="activeChartTab === 'skeletal'" (click)="activeChartTab = 'skeletal'" aria-label="Skeletal chart">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
               <path d="M8 2v20M16 2v20M3 12h18M3 6h18M3 18h18"></path>
@@ -345,6 +345,38 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
             </svg> Cardiac
+          </button>
+        </div>
+
+        <!-- Single-chart label — shown when doctor specialization locks to one chart type -->
+        <div class="anatomy-tabs" *ngIf="allowedChartTab !== null">
+          <button type="button" class="anatomy-tab active" disabled aria-label="Chart type">
+            <!-- Skeletal icon -->
+            <ng-container *ngIf="allowedChartTab === 'skeletal'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                <path d="M8 2v20M16 2v20M3 12h18M3 6h18M3 18h18"></path>
+              </svg> Skeletal
+            </ng-container>
+            <!-- Muscular icon -->
+            <ng-container *ngIf="allowedChartTab === 'muscular'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 8v8M8 12h8"></path>
+              </svg> Muscular
+            </ng-container>
+            <!-- Dental icon -->
+            <ng-container *ngIf="allowedChartTab === 'dental'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                <path d="M12 21a9 9 0 0 1-9-9c0-3 2-6 5-8a2 2 0 0 1 3 0c1.5 1.5 3 1.5 4.5 0a2 2 0 0 1 3 0c3 2 5 5 5 8a9 9 0 0 1-9 9z"></path>
+                <path d="M12 12v9"></path>
+              </svg> Dental
+            </ng-container>
+            <!-- Cardiac icon -->
+            <ng-container *ngIf="allowedChartTab === 'cardiac'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+              </svg> Cardiac
+            </ng-container>
           </button>
         </div>
 

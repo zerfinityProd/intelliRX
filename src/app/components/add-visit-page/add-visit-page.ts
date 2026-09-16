@@ -13,9 +13,11 @@ import { FullbodyWidgetComponent } from '../widgets/fullbody-widget/fullbody-wid
 import { MuscularWidgetComponent } from '../widgets/muscular-widget/muscular-widget';
 import { AuthorizationService } from '../../services/authorizationService';
 import { PatientContextService } from '../../services/patientContextService';
+import { SpecializationService } from '../../services/specializationService';
 import Swal from 'sweetalert2';
 import { DEFAULT_SYSTEM_SETTINGS } from '../../config/userSettings';
 import { NotificationService } from '../../services/notificationService';
+import { WhatsappService } from '../../services/whatsapp.service';
 
 
 interface Examination {
@@ -110,7 +112,12 @@ export class AddVisitPageComponent implements OnInit {
 
     // ── Widget toggle state & specialty ───────────────────────
     activeChartTab: 'dental' | 'skeletal' | 'muscular' | 'cardiac' = 'skeletal';
+    /** The single chart type mapped to this doctor's specialization.
+     *  null = no specialization resolved yet (show all tabs as fallback).
+     *  When set, only this tab button is rendered in the template. */
+    allowedChartTab: 'dental' | 'skeletal' | 'muscular' | 'cardiac' | null = null;
     doctorSpecialty: string = '';
+
 
     // ── Edit mode ─────────────────────────────────────────────
     isEditMode: boolean = false;
@@ -145,8 +152,10 @@ export class AddVisitPageComponent implements OnInit {
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly ngZone = inject(NgZone);
     private readonly notificationService = inject(NotificationService);
+    private readonly whatsappService = inject(WhatsappService);
     private readonly authorizationService = inject(AuthorizationService);
     private readonly patientContextService = inject(PatientContextService);
+    private readonly specializationService = inject(SpecializationService);
 
     async ngOnInit(): Promise<void> {
         const state = history.state as { origin?: string; appointmentId?: string; appointmentDatetime?: string; editVisitId?: string; editVisitData?: any } | undefined;
@@ -154,26 +163,24 @@ export class AddVisitPageComponent implements OnInit {
         this.routeAppointmentId = (state?.appointmentId || '').trim();
         this.routeAppointmentDatetime = (state?.appointmentDatetime || '').trim();
 
-        // ── Fetch doctor specialty ──
+        // ── Fetch doctor specialty and resolve chart tab from DB ──
         const currentUser = this.authService.currentUserValue;
         if (currentUser?.email) {
             try {
                 this.doctorSpecialty = await this.authorizationService.getUserSpecialization(currentUser.email);
-                const specLower = (this.doctorSpecialty || '').toLowerCase();
-                if (specLower.includes('dent')) {
-                    this.activeChartTab = 'dental';
-                } else if (specLower.includes('physio') || specLower.includes('therap')) {
-                    this.activeChartTab = 'muscular';
-                } else if (specLower.includes('cardio') || specLower.includes('heart')) {
-                    this.activeChartTab = 'cardiac';
-                } else {
-                    this.activeChartTab = 'skeletal';
-                }
+                const resolved = await this.specializationService.getChartTypeForSpecialization(this.doctorSpecialty);
+                this.activeChartTab = resolved;
+                // Only lock to a single tab when a specialization is actually found.
+                // If doctorSpecialty is empty/unrecognised, keep allowedChartTab null
+                // so all tabs remain visible as a fallback.
+                this.allowedChartTab = this.doctorSpecialty ? resolved : null;
             } catch (err) {
                 console.warn('Failed to load doctor specialty, defaulting to skeletal:', err);
                 this.activeChartTab = 'skeletal';
+                this.allowedChartTab = null;
             }
         }
+
 
         // ── Edit mode detection ──
         if (state?.editVisitId) {
@@ -203,15 +210,13 @@ export class AddVisitPageComponent implements OnInit {
         }
 
         // ── Restore saved form data from sessionStorage ──
-        // IMPORTANT: For a fresh "New Visit" (not edit mode), always clear stale
-        // session data first so the previous visit's clinical fields never bleed
-        // into the new form. Patient-level data (allergies, ailments, blood group)
-        // is loaded from the patient profile in loadPatient(), not from session.
-        if (!this.isEditMode) {
-            this.clearFormSession();
-        } else {
-            this.restoreFormFromSession(patientId);
-        }
+        // Restore in both new-visit and edit-mode so the page survives a browser
+        // refresh without losing in-progress work (dental selections, clinical text, etc.).
+        // Safety: the session key is patient-specific, the session is cleared on
+        // submit (onSubmit) and on explicit "Yes, cancel" (onCancel), and it
+        // auto-expires after 2 hours — so stale data from a different visit
+        // can never bleed in after a proper submit or cancel.
+        this.restoreFormFromSession(patientId);
 
         // Snapshot the form state after initialization for dirty-checking
         this.originalFormState = this.getFormStateSnapshot();
@@ -833,6 +838,12 @@ export class AddVisitPageComponent implements OnInit {
 
             // Build visit data
             const currentEmail = this.authService.currentUserValue?.email || '';
+
+            // Determine which chart is in scope for this save.
+            // allowedChartTab is set when the doctor's specialization locks them to one chart.
+            // If null, include all chart fields (admin / multi-chart fallback).
+            const chartInScope = this.allowedChartTab ?? this.activeChartTab;
+
             const visitData: any = {
                 chiefComplaints: this.chiefComplaintsText.trim(),
                 diagnosis: this.diagnosis.trim(),
@@ -840,15 +851,28 @@ export class AddVisitPageComponent implements OnInit {
                 treatmentPlan: this.treatmentPlan.trim(),
                 advice: this.advice.trim(),
                 doctor_id: currentEmail,
-                selectedTeeth: this.selectedTeethIds,
-                toothNotes: this.toothNotes,
-                selectedBones: this.selectedBoneIds,
-                boneNotes: this.boneNotes,
-                selectedMuscles: this.selectedMuscleIds,
-                muscleNotes: this.muscleNotes,
-                selectedHeartRegions: this.selectedHeartRegionIds.length > 0 ? this.selectedHeartRegionIds : [],
-                heartRegionNotes: Object.keys(this.heartNotes).length > 0 ? this.heartNotes : {},
             };
+
+            // Only write chart fields that belong to the active chart type.
+            // This keeps Firestore documents clean — an orthopedist's visit
+            // will never have selectedTeeth/muscleNotes/heartRegionNotes etc.
+            if (chartInScope === 'skeletal' || this.allowedChartTab === null) {
+                visitData.selectedBones = this.selectedBoneIds;
+                visitData.boneNotes    = this.boneNotes;
+            }
+            if (chartInScope === 'dental' || this.allowedChartTab === null) {
+                visitData.selectedTeeth = this.selectedTeethIds;
+                visitData.toothNotes    = this.toothNotes;
+            }
+            if (chartInScope === 'muscular' || this.allowedChartTab === null) {
+                visitData.selectedMuscles = this.selectedMuscleIds;
+                visitData.muscleNotes     = this.muscleNotes;
+            }
+            if (chartInScope === 'cardiac' || this.allowedChartTab === null) {
+                visitData.selectedHeartRegions = this.selectedHeartRegionIds.length > 0 ? this.selectedHeartRegionIds : [];
+                visitData.heartRegionNotes     = Object.keys(this.heartNotes).length > 0 ? this.heartNotes : {};
+            }
+
             const clinicalFindingsVal = this.clinicalFindingsText.trim();
             if (clinicalFindingsVal) visitData.presentIllness = clinicalFindingsVal;
             const medicinesArr = this.formatMedicines();
@@ -918,11 +942,18 @@ export class AddVisitPageComponent implements OnInit {
                         const patientName = (this.patient.name || '').trim().toLowerCase();
                         const patientPhoneDigits = this.normalizePhoneDigits(this.patient.phone || '');
                         const now = new Date();
+                        // Normalize the current doctor's email for comparison
+                        const currentDoctorEmail = (this.authService.currentUserValue?.email || '').trim().toLowerCase();
 
                         // Only match SAME-DAY appointments (not future dates)
                         const candidates = allAppts
                             .filter(a => a.status === 'scheduled')
                             .filter(a => this.isSameLocalDay(new Date(a.datetime), now))
+                            // Only link to appointments that belong to THIS doctor
+                            .filter(a => {
+                                if (!a.doctor_id) return true; // no doctor_id stored — allow linking
+                                return a.doctor_id.trim().toLowerCase() === currentDoctorEmail;
+                            })
                             .filter(a => {
                                 const apptPatientId = (a.patient_id || '').trim();
                                 if (apptPatientId) return apptPatientId === patientId;
@@ -932,6 +963,7 @@ export class AddVisitPageComponent implements OnInit {
                             });
 
                         matchedAppointment = this.pickClosestAppointmentByTime(candidates, now);
+
 
                         if (matchedAppointment) {
                             const timing = this.classifyAppointmentTiming(matchedAppointment, now);
@@ -965,7 +997,19 @@ export class AddVisitPageComponent implements OnInit {
 
                 await this.patientService.addVisit(patientId, visitData);
 
-                // Auto-complete the linked appointment
+                // ── WhatsApp prescription notification (non-blocking) ─────────
+                if (this.patient?.whatsapp_consent !== false) {
+                    const doctorDisplay = this.authService.currentUserValue?.name
+                        || this.authService.currentUserValue?.email
+                        || 'Doctor';
+                    this.whatsappService.sendPrescription(
+                        visitData,
+                        this.patient,
+                        doctorDisplay,
+                        'IntelliRX Clinic'
+                    ).catch(err => console.warn('[WhatsApp] Prescription notification failed:', err));
+                }
+
                 if (hasAppointment && appointmentId) {
                     try {
                         await this.appointmentService.updateAppointmentStatus(appointmentId, 'completed');

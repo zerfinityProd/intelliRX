@@ -1,21 +1,18 @@
 import { Component, OnInit, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, NavigationExtras } from '@angular/router';
 import { AuthenticationService } from '../../services/authenticationService';
-import { AuthorizationService } from '../../services/authorizationService';
+import { AuthorizationService, ClinicAssignment } from '../../services/authorizationService';
 import { ClinicRepository } from '../../repositories/interfaces/clinic.repository';
 import { SubscriptionRepository } from '../../repositories/interfaces/subscription.repository';
 import { ThemeService } from '../../services/themeService';
-import { NotificationService } from '../../services/notificationService';
 import { ClinicContextService } from '../../services/clinicContextService';
-import { NotificationPermissionModalComponent } from '../notification-permission-modal/notification-permission-modal';
-import { NotificationDeniedBannerComponent } from '../notification-denied-banner/notification-denied-banner';
 
 @Component({
     selector: 'app-login',
     standalone: true,
-    imports: [CommonModule, FormsModule, NotificationPermissionModalComponent, NotificationDeniedBannerComponent],
+    imports: [CommonModule, FormsModule],
     templateUrl: './login.html',
     styleUrl: './login.css'
 })
@@ -26,58 +23,54 @@ export class LoginComponent implements OnInit {
     displayName: string = '';
     errorMessage: string = '';
     successMessage: string = '';
-    isLoading: boolean = false;
+    isLoading: boolean = false;         // email/password & forgot-password only
+    googleLoading: boolean = false;
+    microsoftLoading: boolean = false;
+    appleLoading: boolean = false;
     showForgotPassword: boolean = false;
 
-    /** Controls visibility of the custom notification opt-in modal. */
-    showNotificationModal: boolean = false;
-    /** Controls visibility of the "notifications blocked" information banner. */
-    showDeniedBanner: boolean = false;
-    /** Firestore user ID passed into the modal so it can persist the choice. */
-    notificationUserId: string = '';
-    /** Resolves when the user closes the notification modal (enable or not-now). */
-    private notificationModalResolve: (() => void) | null = null;
+    /** True while ANY social-login popup is open */
+    get socialLoading(): boolean {
+        return this.googleLoading || this.microsoftLoading || this.appleLoading;
+    }
+
 
     private readonly authService = inject(AuthenticationService);
     private readonly authorizationService = inject(AuthorizationService);
     private readonly clinicRepo = inject(ClinicRepository);
     private readonly subscriptionRepo = inject(SubscriptionRepository);
     private readonly router = inject(Router);
-    private readonly redirectAuthPendingKey = 'redirectAuthPending';
 
     private readonly cdr = inject(ChangeDetectorRef);
     private readonly themeService = inject(ThemeService);
     private readonly clinicContextService = inject(ClinicContextService);
-    private readonly notificationService = inject(NotificationService);
+
 
     constructor() { }
 
     async ngOnInit(): Promise<void> {
-        // If the user navigated to /app/login explicitly, sign them out so they
-        // can pick which account to use.
-        if (this.authService.isLoggedIn()) {
-            await this.authService.logout();
-        }
+        // Clear any leftover OAuth redirect flags from before the popup migration
+        sessionStorage.removeItem('redirectAuthPending');
 
-        const redirectPending = sessionStorage.getItem(this.redirectAuthPendingKey) === 'true';
+        // ── Multi-tab redirect (second-tab scenario) ──────────────────────────
+        // We use a sessionStorage flag ('irx.appActive') that gets written the
+        // first time the app shell (home/dashboard) is loaded in this browser
+        // session. If that flag is already present when the user lands on /app/login,
+        // it means another tab in the same session is already inside the app —
+        // so we auto-redirect this tab too, preserving the session.
+        //
+        // If the flag is NOT set, the user genuinely navigated to /app/login from
+        // outside (fresh load, bookmark, etc.) and the login form should always show,
+        // even if Firebase still holds an auth token from a previous session.
+        //
+        // Only redirect when email is verified — an unverified registration must
+        // not bypass the login form.
+        const isMultiTab = sessionStorage.getItem('irx.appActive') === '1';
 
-        try {
-            const user = await this.authService.handleGoogleRedirectResult();
-            if (user) {
-                sessionStorage.removeItem(this.redirectAuthPendingKey);
-                await this.navigateByRole(user.email);
-                return;
-            }
-
-            if (redirectPending) {
-                this.errorMessage = 'The sign-in redirect did not complete. Please try again or use email/password login.';
-                this.cdr.detectChanges();
-            }
-        } catch (error: any) {
-            sessionStorage.removeItem(this.redirectAuthPendingKey);
-            if (error.message && !error.message.includes('popup was closed')) {
-                this.errorMessage = error.message;
-                this.cdr.detectChanges();
+        if (isMultiTab && this.authService.isLoggedIn() && this.authService.isEmailVerified()) {
+            const email = this.authService.currentUserValue?.email;
+            if (email) {
+                await this.navigateByRole(email);
                 return;
             }
         }
@@ -94,6 +87,7 @@ export class LoginComponent implements OnInit {
 
     /** Navigate based on role after successful login */
     private async navigateByRole(email: string): Promise<void> {
+
         // ── Gate: only allow emails that exist in the users collection ──
         const allowed = await this.authorizationService.isEmailAllowed(email);
         if (!allowed) {
@@ -104,11 +98,11 @@ export class LoginComponent implements OnInit {
             return;
         }
 
-        await this.checkNotificationState(email);
 
         // Fetch all global roles for routing decisions
         const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
         const role = await this.authorizationService.getUserRole(email);
+
         if (!role) {
             this.errorMessage = 'Could not determine user role. Please try again.';
             this.isLoading = false;
@@ -124,7 +118,28 @@ export class LoginComponent implements OnInit {
 
         // ── Gate: subscription expiry check (blocks all non-z_admin users) ──
         const expiryStatus = await this.authorizationService.checkSubscriptionExpiry(email);
+
         if (expiryStatus === 'expired') {
+            // Admins / subscription owners can manage their own subscription —
+            // keep them logged in and send them straight to the Manage Subscription page.
+            const isAdmin = globalRoles.includes('admin') || role === 'subscription_owner';
+
+            if (isAdmin) {
+                // Persist subscriptionId so the subscription management page can load without extra queries
+                try {
+                    const subId = await this.authorizationService.getUserSubscriptionId(email);
+                    if (subId) {
+                        this.clinicContextService.setClinicContext(null, subId);
+                    }
+                } catch { /* non-critical */ }
+
+                this.isLoading = false;
+                this.cdr.detectChanges();
+                this.router.navigate(['/admin/subscription']);
+                return;
+            }
+
+            // Non-admin staff (doctors, receptionists) — log out and show the expired page.
             await this.authService.logout();
             this.isLoading = false;
             this.cdr.detectChanges();
@@ -144,7 +159,16 @@ export class LoginComponent implements OnInit {
         }
 
         if (isAdmin && !hasClinicalRole) {
-            // Admin-only → admin dashboard (no access to clinical home)
+            // Admin-only → admin dashboard (no access to clinical home).
+            // Resolve and persist the subscriptionId into ClinicContextService
+            // so the admin dashboard can load it without extra Firestore queries.
+            try {
+                const subId = await this.authorizationService.getUserSubscriptionId(email);
+
+                if (subId) {
+                    this.clinicContextService.setClinicContext(null, subId);
+                }
+            } catch { /* non-critical — dashboard has its own fallbacks */ }
             this.router.navigate(['/admin-dashboard']);
             return;
         }
@@ -172,6 +196,10 @@ export class LoginComponent implements OnInit {
     /**
      * Two-tier selection: subscription → clinic.
      * Works for both doctors and receptionists.
+     *
+     * Single assignments are auto-selected. When there are multiple options,
+     * the user is navigated to the full-page /app/select-clinic route instead
+     * of a popup.
      */
     private async ensureClinicSelected(userEmail: string): Promise<void> {
         const assignments = await this.authorizationService.getUserAssignments(userEmail);
@@ -198,86 +226,43 @@ export class LoginComponent implements OnInit {
         // Multiple assignments — check how many subscriptions
         const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
 
-        let chosenSubId: string;
         if (subscriptionIds.length === 1) {
-            // Single subscription, multiple clinics — skip subscription prompt
-            chosenSubId = subscriptionIds[0];
-        } else {
-            // Multiple subscriptions — prompt user to pick one
-            chosenSubId = await this.promptSubscriptionSelection(subscriptionIds);
-        }
+            // Single subscription, multiple clinics — jump straight to clinic picker
+            const chosenSubId = subscriptionIds[0];
+            const clinicsInSub = assignments
+                .filter(a => a.subscriptionId === chosenSubId)
+                .map(a => a.clinicId);
 
-        // Find clinics within the chosen subscription
-        const clinicsInSub = assignments
-            .filter(a => a.subscriptionId === chosenSubId)
-            .map(a => a.clinicId);
-
-        let chosenClinicId: string;
-        if (clinicsInSub.length === 1) {
-            chosenClinicId = clinicsInSub[0];
-        } else {
-            // Multiple clinics — prompt user to pick one
-            chosenClinicId = await this.promptClinicSelection(clinicsInSub);
-        }
-
-        this.clinicContextService.setClinicContext(chosenClinicId, chosenSubId);
-    }
-
-    private async promptSubscriptionSelection(subscriptionIds: string[]): Promise<string> {
-        const { default: Swal } = await import('sweetalert2');
-        // Fetch subscription names for display
-        const options: Record<string, string> = {};
-        for (const id of subscriptionIds) {
-            try {
-                const summary = await this.subscriptionRepo.getSubscriptionSummary(id);
-                options[id] = summary?.name || id;
-            } catch {
-                options[id] = id;
+            if (clinicsInSub.length === 1) {
+                // Only one clinic — auto-select
+                this.clinicContextService.setClinicContext(clinicsInSub[0], chosenSubId);
+                return;
             }
+
+            // Navigate to full-page clinic picker
+            const extras: NavigationExtras = {
+                state: {
+                    mode: 'clinic',
+                    ids: clinicsInSub,
+                    subscriptionId: chosenSubId,
+                    returnUrl: '/home'
+                }
+            };
+            this.router.navigate(['/app/select-clinic'], extras);
+            return;
         }
 
-        const result = await Swal.fire({
-            title: 'Select Organisation',
-            text: 'You belong to multiple organisations. Which one do you want to use?',
-            input: 'select',
-            inputOptions: options,
-            inputPlaceholder: 'Select an organisation',
-            showCancelButton: false,
-            confirmButtonText: 'Continue',
-            allowOutsideClick: false,
-            confirmButtonColor: '#148D9E'
-        });
-
-        return String(result.value ?? subscriptionIds[0]);
-    }
-
-    private async promptClinicSelection(clinicIds: string[]): Promise<string> {
-        const { default: Swal } = await import('sweetalert2');
-        // Fetch clinic names for display
-        const options: Record<string, string> = {};
-        for (const id of clinicIds) {
-            try {
-                const summary = await this.clinicRepo.getClinicSummary(id);
-                const name = summary?.name || id;
-                const address = summary?.address;
-                options[id] = address ? `${name} — ${address}` : name;
-            } catch {
-                options[id] = id;
+        // Multiple subscriptions — navigate to full-page subscription picker.
+        // Pass allAssignments so the selector can resolve clinics after sub is picked.
+        const extras: NavigationExtras = {
+            state: {
+                mode: 'subscription',
+                ids: subscriptionIds,
+                allAssignments: assignments,
+                returnUrl: '/home'
             }
-        }
-
-        const result = await Swal.fire({
-            title: 'Select Clinic',
-            input: 'select',
-            inputOptions: options,
-            inputPlaceholder: 'Select a clinic',
-            showCancelButton: false,
-            confirmButtonText: 'Continue',
-            allowOutsideClick: false,
-            confirmButtonColor: '#148D9E'
-        });
-
-        return String(result.value ?? clinicIds[0]);
+        };
+        this.router.navigate(['/app/select-clinic'], extras);
     }
 
     toggleMode(): void {
@@ -290,7 +275,6 @@ export class LoginComponent implements OnInit {
     async onLogin(): Promise<void> {
         this.errorMessage = '';
         this.successMessage = '';
-        sessionStorage.removeItem(this.redirectAuthPendingKey);
 
         if (!this.email.trim()) { this.errorMessage = 'Please enter your email'; return; }
         if (!this.isValidEmail(this.email)) { this.errorMessage = 'Please enter a valid email address'; return; }
@@ -313,7 +297,6 @@ export class LoginComponent implements OnInit {
     async onRegister(): Promise<void> {
         this.errorMessage = '';
         this.successMessage = '';
-        sessionStorage.removeItem(this.redirectAuthPendingKey);
 
         if (!this.displayName.trim()) { this.errorMessage = 'Please enter your name'; return; }
         if (!this.email.trim()) { this.errorMessage = 'Please enter your email'; return; }
@@ -340,55 +323,107 @@ export class LoginComponent implements OnInit {
 
     async onGoogleLogin(): Promise<void> {
         this.errorMessage = '';
-        sessionStorage.setItem(this.redirectAuthPendingKey, 'true');
-        this.isLoading = true;
+        this.googleLoading = true;
         this.cdr.detectChanges();
+
+        // Reset spinner immediately when the popup window is closed
+        // (window regains focus). Don't wait for Firebase's 2-4 s delay.
+        let resolved = false;
+        const focusHandler = () => {
+            setTimeout(() => {
+                if (!resolved && this.googleLoading) {
+                    this.googleLoading = false;
+                    this.cdr.detectChanges();
+                }
+            }, 300);
+        };
+        window.addEventListener('focus', focusHandler, { once: true });
+
         try {
             const user = await this.authService.loginWithGoogle();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
             if (user) {
                 await this.navigateByRole(user.email);
             }
         } catch (error: any) {
-            this.errorMessage = error.message || 'Google login failed.';
-            this.cdr.detectChanges();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (error?.code !== 'popup-cancelled') {
+                this.errorMessage = error.message || 'Google login failed.';
+            }
         } finally {
-            this.isLoading = false;
+            this.googleLoading = false;
             this.cdr.detectChanges();
         }
     }
 
     async onMicrosoftLogin(): Promise<void> {
         this.errorMessage = '';
-        sessionStorage.setItem(this.redirectAuthPendingKey, 'true');
-        this.isLoading = true;
+        this.microsoftLoading = true;
         this.cdr.detectChanges();
+
+        let resolved = false;
+        const focusHandler = () => {
+            setTimeout(() => {
+                if (!resolved && this.microsoftLoading) {
+                    this.microsoftLoading = false;
+                    this.cdr.detectChanges();
+                }
+            }, 300);
+        };
+        window.addEventListener('focus', focusHandler, { once: true });
+
         try {
-            await this.authService.loginWithMicrosoft();
-            const email = this.authService.currentUserValue?.email || '';
-            if (email) await this.navigateByRole(email);
+            const user = await this.authService.loginWithMicrosoft();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (user) {
+                await this.navigateByRole(user.email);
+            }
         } catch (error: any) {
-            this.errorMessage = error.message || 'Microsoft login failed.';
-            this.cdr.detectChanges();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (error?.code !== 'popup-cancelled') {
+                this.errorMessage = error.message || 'Microsoft login failed.';
+            }
         } finally {
-            this.isLoading = false;
+            this.microsoftLoading = false;
             this.cdr.detectChanges();
         }
     }
 
     async onAppleLogin(): Promise<void> {
         this.errorMessage = '';
-        sessionStorage.setItem(this.redirectAuthPendingKey, 'true');
-        this.isLoading = true;
+        this.appleLoading = true;
         this.cdr.detectChanges();
+
+        let resolved = false;
+        const focusHandler = () => {
+            setTimeout(() => {
+                if (!resolved && this.appleLoading) {
+                    this.appleLoading = false;
+                    this.cdr.detectChanges();
+                }
+            }, 300);
+        };
+        window.addEventListener('focus', focusHandler, { once: true });
+
         try {
-            await this.authService.loginWithApple();
-            const email = this.authService.currentUserValue?.email || '';
-            if (email) await this.navigateByRole(email);
+            const user = await this.authService.loginWithApple();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (user) {
+                await this.navigateByRole(user.email);
+            }
         } catch (error: any) {
-            this.errorMessage = error.message || 'Apple login failed.';
-            this.cdr.detectChanges();
+            resolved = true;
+            window.removeEventListener('focus', focusHandler);
+            if (error?.code !== 'popup-cancelled') {
+                this.errorMessage = error.message || 'Apple login failed.';
+            }
         } finally {
-            this.isLoading = false;
+            this.appleLoading = false;
             this.cdr.detectChanges();
         }
     }
@@ -407,7 +442,15 @@ export class LoginComponent implements OnInit {
         if (!this.isValidEmail(this.email)) { this.errorMessage = 'Please enter a valid email address'; return; }
 
         this.isLoading = true;
+        this.cdr.detectChanges();
         try {
+            // Gate: only send reset links to emails registered in IntelliRx
+            const allowed = await this.authorizationService.isEmailAllowed(this.email.trim());
+            if (!allowed) {
+                this.errorMessage = 'This email is not registered in IntelliRx. Please contact your administrator.';
+                return;
+            }
+
             await this.authService.resetPassword(this.email.trim());
             this.successMessage = 'Password reset email sent! Check your inbox.';
             this.cdr.detectChanges();
@@ -432,94 +475,6 @@ export class LoginComponent implements OnInit {
         this.router.navigate(['/']);
     }
 
-    /**
-     * Evaluates the current browser notification permission state after login
-     * and either:
-     *  - Shows the custom opt-in modal (permission === 'default' and the user
-     *    hasn't permanently opted out), waiting for the user to act before
-     *    navigation continues, OR
-     *  - Shows the denied-info banner (permission === 'denied'), also waiting
-     *    for the user to dismiss it before navigation continues, OR
-     *  - Does nothing (permission === 'granted').
-     *
-     * Both the modal and the denied banner block navigation via a Promise so
-     * the LoginComponent is not destroyed before the user can read/act on them.
-     */
-    private async checkNotificationState(email: string): Promise<void> {
-        if (!this.notificationService.isSupported) return;
-
-        const permission = this.notificationService.getPermissionState();
-        console.log('[Notifications] checkNotificationState — browser permission:', permission);
-
-        if (permission === 'denied') {
-            // Persist to Firestore so shouldShowModal stays consistent.
-            try {
-                const userId = await this.authorizationService.getUserId(email);
-                if (userId) await this.notificationService.markDenied(userId);
-            } catch { /* non-critical */ }
-
-            this.showDeniedBanner = true;
-            this.cdr.detectChanges();
-
-            // Block navigation until the user explicitly dismisses the banner,
-            // otherwise the LoginComponent is destroyed and the banner vanishes.
-            await new Promise<void>(resolve => {
-                this.notificationModalResolve = resolve;
-            });
-            return;
-        }
-
-        if (permission === 'granted') {
-            // Already granted — persist to Firestore if needed, then continue.
-            try {
-                const userId = await this.authorizationService.getUserId(email);
-                if (userId) await this.notificationService.markGranted(userId);
-            } catch { /* non-critical */ }
-            return;
-        }
-
-        // permission === 'default': check if the modal should be shown.
-        try {
-            const userId = await this.authorizationService.getUserId(email);
-            if (!userId) return;
-
-            const show = await this.notificationService.shouldShowModal(userId);
-            if (!show) return;
-
-            // Store the userId so the modal can persist the user's choice.
-            this.notificationUserId = userId;
-            this.showNotificationModal = true;
-            this.cdr.detectChanges();
-
-            // Wait for the user to close the modal before navigation proceeds.
-            await new Promise<void>(resolve => {
-                this.notificationModalResolve = resolve;
-            });
-        } catch (err) {
-            console.warn('[Notifications] checkNotificationState error:', err);
-        }
-    }
-
-    /** Called by the modal's (closed) output binding. */
-    onNotificationModalClosed(): void {
-        this.showNotificationModal = false;
-        this.cdr.detectChanges();
-        if (this.notificationModalResolve) {
-            this.notificationModalResolve();
-            this.notificationModalResolve = null;
-        }
-    }
-
-    /** Called by the denied banner's (dismissed) output binding. */
-    onDeniedBannerDismissed(): void {
-        this.showDeniedBanner = false;
-        this.cdr.detectChanges();
-        // Unblock navigation (same Promise used for both denied banner and modal).
-        if (this.notificationModalResolve) {
-            this.notificationModalResolve();
-            this.notificationModalResolve = null;
-        }
-    }
 
     private isValidEmail(email: string): boolean {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

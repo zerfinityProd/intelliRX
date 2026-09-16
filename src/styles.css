@@ -960,12 +960,8 @@ input[type="date"] {
   filter: none;
 }
 
-/*  FAB label  */
-[data-theme="dark"] .fab-label {
-  background: var(--dk-bg2);
-  color: var(--dk-text1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
+
+
 
 /*  Scrollbar  */
 [data-theme="dark"] ::-webkit-scrollbar-track {
@@ -2339,137 +2335,8 @@ main {
   color: var(--clr-text);
 }
 
-/*  FAB (Floating Action Button)  */
-.fab-container {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 14px;
-  z-index: 1000;
-  pointer-events: none;
-}
 
-.fab-main-btn {
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark));
-  color: #ffffff;
-  border: none;
-  cursor: pointer;
-  box-shadow: 0 6px 20px rgba(20, 141, 158, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  position: relative;
-  flex-shrink: 0;
-  pointer-events: auto;
-}
 
-.fab-main-btn:hover {
-  transform: scale(1.08);
-  box-shadow: 0 8px 28px rgba(20, 141, 158, 0.55);
-}
-
-.fab-icon {
-  position: absolute;
-  transition: opacity 0.25s, transform 0.3s;
-}
-
-.fab-icon--plus {
-  opacity: 1;
-  transform: rotate(0);
-}
-
-.fab-icon--close {
-  opacity: 0;
-  transform: rotate(-90deg);
-}
-
-.fab-main-btn--open .fab-icon--plus {
-  opacity: 0;
-  transform: rotate(90deg);
-}
-
-.fab-main-btn--open .fab-icon--close {
-  opacity: 1;
-  transform: rotate(0);
-}
-
-.fab-options {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 10px;
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(14px);
-  transition: opacity 0.25s, transform 0.3s;
-}
-
-.fab-options--visible {
-  pointer-events: all;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.fab-option-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.fab-label {
-  background: #ffffff;
-  color: var(--clr-text);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  padding: 5px 12px;
-  border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  white-space: nowrap;
-  user-select: none;
-}
-
-.fab-option-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  transition: transform 0.2s, box-shadow 0.2s;
-  flex-shrink: 0;
-}
-
-.fab-option-btn:hover {
-  transform: scale(1.1);
-}
-
-.fab-patient-btn {
-  background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark));
-  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.4);
-}
-
-.fab-patient-btn:hover {
-  box-shadow: 0 6px 18px rgba(20, 141, 158, 0.55);
-}
-
-.fab-visit-btn {
-  background: linear-gradient(135deg, var(--clr-primary), var(--clr-primary-dark));
-  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.4);
-}
-
-.fab-visit-btn:hover {
-  box-shadow: 0 6px 18px rgba(20, 141, 158, 0.55);
-}
 
 /* 
    PATIENT DETAILS
@@ -4022,21 +3889,7 @@ main {
     font-size: var(--fs-base) !important;
   }
 
-  /* FAB */
-  .fab-container {
-    bottom: 22px;
-    right: 18px;
-  }
 
-  .fab-main-btn {
-    width: 52px;
-    height: 52px;
-  }
-
-  .fab-option-btn {
-    width: 44px;
-    height: 44px;
-  }
 
   /* Stat cards  force 2 columns, compact layout */
   .stats-column .row {
@@ -5141,13 +4994,8 @@ main {
     border-color: #5A8A9C;
 }
 
-/*  FAB backdrop (closes FAB on outside click)  */
-.fab-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 998;
-  background: transparent;
-}
+
+
 /* 
    ADD VISIT PAGE    /patient/:id/add-visit
    Full-page layout: form (left) + visit history (right)
@@ -6353,21 +6201,6 @@ main {
     border-radius: 12px;
   }
 
-  /* FAB */
-  .fab-container {
-    bottom: 16px;
-    right: 14px;
-  }
-
-  .fab-main-btn {
-    width: 48px;
-    height: 48px;
-  }
-
-  .fab-option-btn {
-    width: 40px;
-    height: 40px;
-  }
 
   /* Back button */
   .navbar-back-btn {
@@ -6551,8 +6384,7 @@ main {
   .slots-toggle-btn,
   .pp-modal__close,
   .kb-clear-link,
-  .clear-btn,
-  .fab-option-btn {
+  .clear-btn {
     min-height: unset;
   }
 }

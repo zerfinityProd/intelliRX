@@ -1,7 +1,8 @@
 import { Component, HostListener, Input, Output, EventEmitter, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Observable, Subscription } from 'rxjs';
+import { Observable, Subscription, firstValueFrom } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { AuthenticationService, User } from '../../services/authenticationService';
 import { AuthorizationService } from '../../services/authorizationService';
 import { ThemeService } from '../../services/themeService';
@@ -62,12 +63,45 @@ export class NavbarComponent implements OnInit, OnDestroy {
       || url.startsWith('/admin/subscription');
   }
 
+  /** True when the current route is the doctor dashboard (/home) */
+  get isOnDoctorDashboard(): boolean {
+    return this.router.url === '/home' || this.router.url.startsWith('/home?');
+  }
+
+  /**
+   * Reception Dashboard button should only appear when the user has the
+   * receptionist role but NOT the doctor role.
+   *
+   * Rationale: doctor role already includes all reception-level permissions,
+   * so when both roles are assigned the doctor dashboard is sufficient.
+   * Showing a separate Reception Dashboard button alongside Doctor Dashboard
+   * is redundant and confusing.
+   *
+   * Matrix:
+   *  admin only                → Admin Dashboard only
+   *  admin + doctor            → Admin Dashboard + Doctor Dashboard
+   *  admin + reception         → Admin Dashboard + Reception Dashboard
+   *  admin + doctor + reception→ Admin Dashboard + Doctor Dashboard
+   *  doctor only               → Doctor Dashboard
+   *  reception only            → Reception Dashboard
+   */
+  get showReceptionDashboard(): boolean {
+    return this.isReceptionist && !this.isDoctor;
+  }
+
   async ngOnInit(): Promise<void> {
+    // Wait for Firebase auth to restore session before reading the user's email.
+    // On a hard page refresh currentUserValue is null until onAuthStateChanged fires,
+    // so skipping this wait causes role lookups to be silently skipped and isAdmin /
+    // isDoctor to stay false — hiding the Admin Dashboard button.
+    await firstValueFrom(this.authService.authReady$.pipe(filter(ready => ready)));
+
     const email = this.authService.currentUserValue?.email;
     if (email) {
       const role = await this.authorizationService.getUserRole(email);
       const globalRoles = await this.authorizationService.getUserGlobalRoles(email);
-      this.isAdmin = role === 'subscription_owner' || globalRoles.includes('admin');
+      this.isAdmin = globalRoles.includes('admin');
+
       this.isDoctor = globalRoles.includes('doctor');
       this.isReceptionist = globalRoles.includes('receptionist') || globalRoles.includes('recep');
 

@@ -117,9 +117,9 @@ export class AuthorizationService {
             // Fallback: if where-query returned 0 docs, fetch all and match client-side.
             // This handles cases where Firestore field keys have invisible characters.
             if (rawUserDocs.length === 0) {
-                console.warn('[AuthZ] where-query returned 0 docs for', normalized, '— trying client-side fallback');
+                console.debug('[AuthZ] where-query returned 0 docs for', normalized, '— trying client-side fallback');
                 const allUsers = await this.userRepo.getAllUsers(300);
-                console.log('[AuthZ] Fetched', allUsers.length, 'docs from users collection for fallback');
+                console.debug('[AuthZ] Fetched', allUsers.length, 'docs from users collection for fallback');
 
                 const matchedUser = allUsers.find(u => {
                     for (const key of Object.keys(u)) {
@@ -127,7 +127,7 @@ export class AuthorizationService {
                         if (typeof val !== 'string') continue;
                         const cleanValue = stripInvisible(val).toLowerCase();
                         if (cleanValue === normalized) {
-                            console.log('[AuthZ] Fallback matched doc', u.id, 'via key', JSON.stringify(key));
+                            console.debug('[AuthZ] Fallback matched doc', u.id, 'via key', JSON.stringify(key));
                             return true;
                         }
                     }
@@ -135,18 +135,18 @@ export class AuthorizationService {
                 });
 
                 if (!matchedUser) {
-                    console.warn('[AuthZ] User not found in users collection (even with fallback):', normalized);
+                    console.debug('[AuthZ] User not found in users collection (even with fallback):', normalized);
                     return null;
                 }
 
-                console.log('[AuthZ] Found user via client-side fallback:', matchedUser.id);
+                console.debug('[AuthZ] Found user via client-side fallback:', matchedUser.id);
                 rawUserDocs = [{ id: matchedUser.id!, data: matchedUser }];
             }
 
             // Handle multiple user documents: aggregate clinic_users from ALL docs.
             let rawUserDoc = rawUserDocs[0];
             if (rawUserDocs.length > 1) {
-                console.warn('[AuthZ] Found', rawUserDocs.length, 'user docs for email:', normalized,
+                console.debug('[AuthZ] Found', rawUserDocs.length, 'user docs for email:', normalized,
                     '— IDs:', rawUserDocs.map(d => d.id).join(', '), '— aggregating assignments from all');
             }
             const userData = rawUserDoc.data;
@@ -170,19 +170,17 @@ export class AuthorizationService {
             const globalRoles = getField(userData, 'global_roles');
             const globalRolesArray: string[] = (globalRoles && Array.isArray(globalRoles)) ? [...globalRoles] : [];
             if (globalRolesArray.length > 0) {
-                for (const r of globalRolesArray) {
-                    if (r === 'recep' || r === 'receptionist') {
-                        role = 'receptionist';
-                        break;
-                    }
-                    // Treat 'admin' as 'subscription_owner' — they share the same portal access
-                    if (r === 'admin') {
-                        role = 'subscription_owner';
-                        break;
-                    }
-                    if (KNOWN_ROLES.includes(r)) {
-                        role = r;
-                        break;
+                // Priority: admin/subscription_owner roles take precedence over clinical roles.
+                // This ensures a user with ['doctor', 'admin'] resolves to subscription_owner,
+                // not 'doctor' (which would hide the Admin Dashboard link in the navbar).
+                if (globalRolesArray.includes('z_admin')) {
+                    role = 'z_admin';
+                } else if (globalRolesArray.includes('admin') || globalRolesArray.includes('subscription_owner')) {
+                    role = 'subscription_owner';
+                } else {
+                    for (const r of globalRolesArray) {
+                        if (r === 'recep' || r === 'receptionist') { role = 'receptionist'; break; }
+                        if (KNOWN_ROLES.includes(r)) { role = r; break; }
                     }
                 }
             }
@@ -200,19 +198,11 @@ export class AuthorizationService {
             const allCuDocs: Array<{ id: string; data: any }> = [];
             for (const doc of rawUserDocs) {
                 const cuEntries = await this.userRepo.getClinicUsersByUserId(doc.id);
-                console.log(`[AuthZ] clinic_users query for user_id="${doc.id}" returned ${cuEntries.length} docs`);
-                cuEntries.forEach((cu, i) => {
-                    console.log(`[AuthZ]   clinic_users[${i}] id=${cu.id}`,
-                        `clinic_id="${cu.clinic_id}"`,
-                        `status="${(cu as any)['status'] ?? '(missing→active)'}"`,
-                        `user_id="${cu.user_id}"`
-                    );
-                });
                 allCuDocs.push(...cuEntries.map(cu => ({ id: cu.id!, data: cu })));
             }
 
             if (allCuDocs.length === 0) {
-                console.warn('[AuthZ] No clinic_users entries found for any user docs of email:', normalized);
+                console.debug('[AuthZ] No clinic_users entries found for any user docs of email:', normalized);
             }
 
             const assignments: ClinicAssignment[] = [];
@@ -223,7 +213,7 @@ export class AuthorizationService {
                 const cuData = cuDoc.data;
                 const status = cuData['status'] || 'active';
                 if (status !== 'active') {
-                    console.log(`[AuthZ]   → SKIPPED (status="${status}")`, cuDoc.id);
+                    console.debug(`[AuthZ]   → SKIPPED (status="${status}")`, cuDoc.id);
                     continue;
                 }
                 const cId = cuData['clinic_id'] || '';
@@ -241,7 +231,7 @@ export class AuthorizationService {
                         clinicSubMap.set(cId, clinic.subscription_id || '');
                     }
                 } catch {
-                    console.warn(`[AuthZ] Could not fetch clinic doc for clinic_id=${cId}`);
+                    console.debug(`[AuthZ] Could not fetch clinic doc for clinic_id=${cId}`);
                 }
             }
 
@@ -258,7 +248,7 @@ export class AuthorizationService {
                         assignments.push({ subscriptionId: subId, clinicId: cId });
                     }
                 } else {
-                    console.warn(`[AuthZ]   → SKIPPED (missing subId or clinicId)`, cuDoc.id, { subId, cId });
+                    console.debug(`[AuthZ]   → SKIPPED (missing subId or clinicId)`, cuDoc.id, { subId, cId });
                 }
             }
             // Role is resolved solely from the users collection global_roles.
@@ -276,7 +266,17 @@ export class AuthorizationService {
             // Extract subscriptionId and clinicIds from assignments
             const subscriptionIds = [...new Set(assignments.map(a => a.subscriptionId))];
             const clinicIds = [...new Set(assignments.map(a => a.clinicId))];
-            const subscriptionId = subscriptionIds.length > 0 ? subscriptionIds[0] : '';
+            // Primary: derive subscriptionId from clinic assignments.
+            // Fallback: read the subscription_id field directly from the user doc.
+            // This covers admin-only users who have no clinic_users entries.
+            let subscriptionId = subscriptionIds.length > 0 ? subscriptionIds[0] : '';
+            if (!subscriptionId) {
+                const docSubId = getField(userData, 'subscription_id');
+                if (docSubId && typeof docSubId === 'string') {
+                    subscriptionId = docSubId;
+                    console.debug('[AuthZ] subscriptionId resolved from user doc field:', subscriptionId);
+                }
+            }
 
             const result: UserLookupResult = {
                 userId,
@@ -312,7 +312,7 @@ export class AuthorizationService {
         try {
             const permissions = await this.userRepo.getRolePermissions(roleName);
             if (!permissions.length) {
-                console.warn(`No global role defaults for: roles/${roleName}`);
+                console.debug(`No global role defaults for: roles/${roleName}`);
             }
             this.roleDefaultsCache.set(roleName, permissions);
             return permissions;
@@ -347,7 +347,7 @@ export class AuthorizationService {
             const result = await this.lookupUser(email);
             return result !== null;
         } catch (error) {
-            console.warn('Access check failed for:', email, error);
+            console.debug('Access check failed for:', email, error);
             return false;
         }
     }
@@ -368,7 +368,7 @@ export class AuthorizationService {
             return existing.role;
         }
 
-        console.log('[AuthZ] Auto-provisioning user doc for:', normalized);
+        console.debug('[AuthZ] Auto-provisioning user doc for:', normalized);
 
         const defaultRole = 'doctor';
         await this.userRepo.createUser({
@@ -381,7 +381,7 @@ export class AuthorizationService {
 
         this.lookupCache.delete(normalized);
 
-        console.log('[AuthZ] Auto-provisioned user doc for:', normalized);
+        console.debug('[AuthZ] Auto-provisioned user doc for:', normalized);
         return defaultRole;
     }
 
@@ -424,29 +424,26 @@ export class AuthorizationService {
             const result = await this.lookupUser(email);
             if (!result) return { ...DEFAULT_PERMISSIONS };
 
-            // Merge permissions from ALL global_roles so that admin+doctor
-            // users get both admin and doctor permissions (e.g. canAppointment).
-            const allRoles = result.globalRoles.length > 0
-                ? result.globalRoles
-                : [result.role];
+            // Use global_roles directly from the user document.
+            // Each role name maps 1-to-1 to a document in the 'roles' collection
+            // (e.g. global_roles: ["admin", "doctor"] → roles/admin + roles/doctor).
+            // Only normalize the legacy 'recep' shorthand → 'receptionist'.
+            const roleNames = result.globalRoles
+                .map(r => r === 'recep' ? 'receptionist' : r);
 
-            // Map role names: 'admin' → 'subscription_owner', 'receptionist'/'recep' stays
-            const resolvedRoleNames = allRoles.map(r => {
-                if (r === 'admin') return 'subscription_owner';
-                if (r === 'recep') return 'receptionist';
-                return r;
-            });
+            if (roleNames.length === 0) {
+                console.warn('[AuthZ] getUserPermissions: no global_roles found for', email);
+                return { ...DEFAULT_PERMISSIONS };
+            }
 
-            // Load permissions from each role and merge them (union)
+            // Load permissions from each role document and merge (union)
             let mergedPermNames: string[] = [];
-            for (const roleName of new Set(resolvedRoleNames)) {
+            for (const roleName of new Set(roleNames)) {
                 const permNames = await this.loadRoleDefaults(roleName);
                 mergedPermNames = mergedPermNames.concat(permNames);
             }
 
-            const permissions = this.mapPermissionNames([...new Set(mergedPermNames)]);
-
-            return permissions;
+            return this.mapPermissionNames([...new Set(mergedPermNames)]);
         } catch (error) {
             console.warn('getUserPermissions failed for:', email, error);
             return { ...DEFAULT_PERMISSIONS };
@@ -495,17 +492,17 @@ export class AuthorizationService {
             // Fallback: clinic docs may be missing the subscription_id field, which causes
             // lookupUser to build zero assignments. Try finding the subscription by owner_email.
             const normalized = normalizeEmail(email);
-            console.warn('[AuthZ] getUserSubscriptionId: no assignments from lookupUser for', normalized,
+            console.debug('[AuthZ] getUserSubscriptionId: no assignments from lookupUser for', normalized,
                 '— falling back to subscriptions query by owner_email');
             try {
                 const allSubs = await this.subscriptionRepo.getSubscriptions();
                 const ownerSub = allSubs.find(s => (s as any)['owner_email'] === normalized);
                 if (ownerSub) {
-                    console.log('[AuthZ] Fallback subscription found via owner_email:', ownerSub.id);
+                    console.debug('[AuthZ] Fallback subscription found via owner_email:', ownerSub.id);
                     return ownerSub.id;
                 }
             } catch (fallbackErr) {
-                console.warn('[AuthZ] Fallback subscriptions query failed:', fallbackErr);
+                console.debug('[AuthZ] Fallback subscriptions query failed:', fallbackErr);
             }
 
             return null;
@@ -541,6 +538,25 @@ export class AuthorizationService {
         } catch (error) {
             console.warn('getSubscriptionIds failed for:', email, error);
             return [];
+        }
+    }
+
+    /**
+     * Returns true when the given email is the owner_email of ANY subscription.
+     * This is the authoritative admin check — it searches across all subscriptions
+     * so it works even when the user's clinic_users records point to a different sub
+     * (e.g. due to historical cross-subscription data leaks).
+     */
+    async isSubscriptionOwner(email: string): Promise<boolean> {
+        try {
+            const normalized = normalizeEmail(email);
+            const allSubs = await this.subscriptionRepo.getSubscriptions();
+            return allSubs.some(
+                s => (s as any).owner_email?.toLowerCase().trim() === normalized
+            );
+        } catch (error) {
+            console.warn('[AuthZ] isSubscriptionOwner check failed for:', email, error);
+            return false;
         }
     }
 
@@ -632,7 +648,7 @@ export class AuthorizationService {
             // a compound query which silently returns 0 rows on user_id mismatch.
             const cuEntries = await this.userRepo.getClinicUsersByUserId(result.userId);
 
-            console.log('[Avail] clinic_users for userId', result.userId, '→', cuEntries.length, 'docs',
+            console.debug('[Avail] clinic_users for userId', result.userId, '→', cuEntries.length, 'docs',
                 cuEntries.map(cu =>
                     `id=${cu.id} clinic_id=${cu.clinic_id} status=${(cu as any)['status']} avail_keys=${Object.keys(cu.availability || {}).join(',') || 'none'}`
                 ).join(' | '));
@@ -654,7 +670,7 @@ export class AuthorizationService {
                 }) ?? allMatchingDocs[0];
 
             const availability = matchingDoc.availability;
-            console.log('[Avail] matched doc', matchingDoc.id,
+            console.debug('[Avail] matched doc', matchingDoc.id,
                 'status=', (matchingDoc as any)['status'],
                 'availability=', JSON.stringify(availability));
 
@@ -790,13 +806,7 @@ export class AuthorizationService {
         }
     }
 
-    async allowEmail(email: string): Promise<void> {
 
-    }
-
-    async denyEmail(email: string): Promise<void> {
-
-    }
 
     /**
      * Check whether the subscription linked to a given email is still valid.
@@ -850,7 +860,7 @@ export class AuthorizationService {
             expiry.setDate(expiry.getDate() + validityDays);
             const valid_until = expiry.toISOString();
             await this.subscriptionRepo.updateSubscription(subId, { valid_until } as any);
-            console.log('[AuthZ] Backfilled valid_until:', valid_until, 'for sub:', subId);
+            console.debug('[AuthZ] Backfilled valid_until:', valid_until, 'for sub:', subId);
             return valid_until;
         } catch (e) {
             console.warn('[AuthZ] resolveValidUntil backfill failed for sub:', subId, e);

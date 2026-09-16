@@ -1,0 +1,404 @@
+/* ============================================================
+   CLINIC / ORG SELECTOR  —  Matches Login page design
+   ============================================================ */
+
+/* ── Page shell — same as .login-page ── */
+.selector-page {
+  position: relative;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #E0F4F7 0%, #E0F4F7 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow: hidden;
+}
+
+/* ── Subtle decorative blobs (very soft, like login page) ── */
+.selector-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.selector-blob--1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, #1CB5C9 0%, transparent 70%);
+  top: -140px;
+  right: -100px;
+}
+
+.selector-blob--2 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, #148D9E 0%, transparent 70%);
+  bottom: -100px;
+  left: -60px;
+}
+
+/* ── Centered column ── */
+.selector-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  animation: selectorFadeIn 0.5s ease both;
+}
+
+@keyframes selectorFadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Card — same as .login-card ── */
+.selector-card {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  padding: 28px 32px;
+  animation: selectorFadeIn 0.5s ease both;
+}
+
+/* ── Logo header — same style as login ── */
+.selector-header {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.selector-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.selector-logo svg {
+  filter: drop-shadow(0 2px 8px rgba(20, 141, 158, 0.2));
+}
+
+.selector-logo-text {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: #0A2540;
+}
+
+/* ── Card header ── */
+.selector-card-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.selector-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0A2540;
+  margin: 0 0 6px;
+  letter-spacing: -0.2px;
+}
+
+.selector-subtitle {
+  font-size: 13px;
+  color: #5A8A9C;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ── Options list ── */
+.selector-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.selector-options::-webkit-scrollbar {
+  width: 4px;
+}
+.selector-options::-webkit-scrollbar-track {
+  background: transparent;
+}
+.selector-options::-webkit-scrollbar-thumb {
+  background: #C8DDE3;
+  border-radius: 4px;
+}
+
+/* ── Individual option button ── */
+.selector-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  background: #ffffff;
+  border: 1.5px solid #C8DDE3;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+  position: relative;
+}
+
+.selector-option:hover {
+  background: #E0F4F7;
+  border-color: #148D9E;
+  box-shadow: 0 1px 6px rgba(20, 141, 158, 0.12);
+}
+
+.selector-option--selected {
+  background: #E0F4F7;
+  border-color: #148D9E;
+  box-shadow: 0 0 0 3px rgba(20, 141, 158, 0.15);
+}
+
+/* ── Avatar ── */
+.selector-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 10px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* ── Labels ── */
+.selector-option-labels {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.selector-option-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0A2540;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selector-option-sub {
+  font-size: 12px;
+  color: #5A8A9C;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Check mark ── */
+.selector-check {
+  color: #148D9E;
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.15s ease, transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  flex-shrink: 0;
+}
+
+.selector-check--visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* ── Continue button — same as .btn.btn-primary in login ── */
+.selector-continue-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: #C8DDE3;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: not-allowed;
+  transition:
+    background 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.12s ease;
+  letter-spacing: 0.1px;
+}
+
+.selector-continue-btn--active {
+  background: #148D9E;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.3);
+}
+
+.selector-continue-btn--active:hover {
+  background: #0E6877;
+  box-shadow: 0 6px 18px rgba(20, 141, 158, 0.35);
+  transform: translateY(-1px);
+}
+
+.selector-continue-btn--active:active {
+  transform: translateY(0);
+}
+
+.selector-continue-btn:disabled {
+  pointer-events: none;
+}
+
+/* ── Button loading state ── */
+.selector-btn-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.selector-btn-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: selectorSpin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes selectorSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Full-page loading state ── */
+.selector-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 0;
+  color: #5A8A9C;
+  font-size: 14px;
+}
+
+.selector-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #E0F4F7;
+  border-top-color: #148D9E;
+  border-radius: 50%;
+  animation: selectorSpin 0.8s linear infinite;
+}
+
+/* ── Footer note ── */
+.selector-footer-note {
+  color: #5A8A9C;
+  font-size: 12px;
+  text-align: center;
+  margin: 16px 0 0;
+  letter-spacing: 0.2px;
+}
+
+/* ── Dark mode ── */
+/* :host-context pierces Angular view encapsulation to match
+   data-theme="dark" set on the <html> element by ThemeService */
+:host-context([data-theme="dark"]) .selector-page {
+  background: var(--dk-bg1);
+}
+
+:host-context([data-theme="dark"]) .selector-logo-text {
+  color: var(--dk-text1);
+}
+
+:host-context([data-theme="dark"]) .selector-logo svg circle {
+  stroke: #1CB5C9;
+}
+
+:host-context([data-theme="dark"]) .selector-logo svg path {
+  stroke: #1CB5C9;
+}
+
+:host-context([data-theme="dark"]) .selector-card {
+  background: var(--dk-bg2);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--dk-border);
+}
+
+:host-context([data-theme="dark"]) .selector-title {
+  color: var(--dk-text1);
+}
+
+:host-context([data-theme="dark"]) .selector-subtitle {
+  color: var(--dk-text2);
+}
+
+:host-context([data-theme="dark"]) .selector-option {
+  background: var(--dk-bg3);
+  border-color: var(--dk-border);
+}
+
+:host-context([data-theme="dark"]) .selector-option:hover {
+  background: #1A3352;
+  border-color: #148D9E;
+}
+
+:host-context([data-theme="dark"]) .selector-option--selected {
+  background: rgba(20, 141, 158, 0.12);
+  border-color: #148D9E;
+}
+
+:host-context([data-theme="dark"]) .selector-option-name {
+  color: var(--dk-text1);
+}
+
+:host-context([data-theme="dark"]) .selector-option-sub {
+  color: var(--dk-text2);
+}
+
+:host-context([data-theme="dark"]) .selector-options::-webkit-scrollbar-thumb {
+  background: var(--dk-border);
+}
+
+:host-context([data-theme="dark"]) .selector-loading {
+  color: var(--dk-text2);
+}
+
+:host-context([data-theme="dark"]) .selector-spinner {
+  border-color: var(--dk-border);
+  border-top-color: #148D9E;
+}
+
+:host-context([data-theme="dark"]) .selector-footer-note {
+  color: var(--dk-text2);
+}
+
+:host-context([data-theme="dark"]) .selector-blob--1 {
+  opacity: 0.15;
+}
+
+:host-context([data-theme="dark"]) .selector-blob--2 {
+  opacity: 0.1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .selector-card {
+    padding: 24px 18px;
+    border-radius: 16px;
+  }
+
+  .selector-title {
+    font-size: 18px;
+  }
+}

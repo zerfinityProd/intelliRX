@@ -43,6 +43,10 @@ export class ClinicService {
     return this.clinicRepo.getClinicName(clinicId);
   }
 
+  async getClinicSummary(clinicId: string): Promise<{ name: string; address?: string } | null> {
+    return this.clinicRepo.getClinicSummary(clinicId);
+  }
+
   // ─── CREATE ───
 
   async createClinic(
@@ -50,7 +54,7 @@ export class ClinicService {
   ): Promise<string> {
     try {
       const id = await this.clinicRepo.createClinic(clinicData);
-      console.log('✓ Clinic created:', id);
+      console.debug('[Clinic] Created:', id);
       return id;
     } catch (error) {
       console.error('Error creating clinic:', error);
@@ -63,7 +67,7 @@ export class ClinicService {
   async updateClinic(clinicId: string, updates: Partial<Clinic>): Promise<void> {
     try {
       await this.clinicRepo.updateClinic(clinicId, updates);
-      console.log('✓ Clinic updated:', clinicId);
+      console.debug('[Clinic] Updated:', clinicId);
     } catch (error) {
       console.error('Error updating clinic:', error);
       throw error;

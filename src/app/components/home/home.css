@@ -606,6 +606,22 @@
   line-height: 1;
 }
 
+.widget-banner__address {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.015em;
+  line-height: 1;
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
 .widget-banner__cta {
   background: #fff;
   color: #0E6877;

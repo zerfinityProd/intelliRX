@@ -1,3 +1,10 @@
+/* Inline wrapper for social button icon + label */
+.social-btn-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 /* Portal badge styling */
 .portal-badge {
   display: inline-block;

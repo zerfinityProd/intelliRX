@@ -52,7 +52,7 @@ export abstract class PatientRepository {
 
   // ── Visits ──────────────────────────────────────────────────
 
-  abstract getPatientVisits(patientId: string): Promise<Visit[]>;
+  abstract getPatientVisits(patientId: string, clinicId?: string): Promise<Visit[]>;
 
   abstract addVisit(
     visitData: Omit<Visit, 'id' | 'created_at'>

@@ -21,6 +21,7 @@ import { todayLocalISO } from '../../utilities/local-date';
 import { isSlotInPast as sharedIsSlotInPast } from '../../utilities/date-helpers';
 import { Doctor } from '../../interfaces/doctor';
 import { NotificationService } from '../../services/notificationService';
+import { WhatsappService } from '../../services/whatsapp.service';
 
 
 
@@ -105,6 +106,8 @@ export class AddAppointmentComponent implements OnInit {
   /** Slots blocked by doctor leave — shown as disabled with a 'Leave' tag. */
   leaveBlockedSlots: string[] = [];
 
+  whatsappConsent: boolean = true;  // WhatsApp opt-in — ticked by default
+
   errorMessage: string = '';
   newPatientWarning: string = '';
   isSubmitting: boolean = false;
@@ -120,6 +123,7 @@ export class AddAppointmentComponent implements OnInit {
   private timeSlotService = inject(TimeSlotService);
   private leaveService = inject(LeaveService);
   private notificationService = inject(NotificationService);
+  private whatsappService = inject(WhatsappService);
   private patientContextService = inject(PatientContextService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
@@ -261,16 +265,24 @@ export class AddAppointmentComponent implements OnInit {
       // Receptionist / admin+receptionist: can choose any doctor.
       this.canChooseDoctor = true;
 
-      this.subscriptionId = rawEmail
-        ? await this.authorizationService.getUserSubscriptionId(rawEmail).catch(() => null)
-        : null;
+      // Always prefer the already-active context (set at login / clinic-switch).
+      // Only fall back to a fresh getUserSubscriptionId lookup when context is
+      // genuinely absent — prevents overwriting the correct sub with sub_1.
+      this.subscriptionId = this.clinicContextService.getSubscriptionId();
+      if (!this.subscriptionId && rawEmail) {
+        this.subscriptionId = await this.authorizationService.getUserSubscriptionId(rawEmail).catch(() => null);
+      }
 
       // Load ALL clinics under the subscription (not just user-assigned ones)
       if (rawEmail && this.subscriptionId) {
         try {
           const allClinics = await this.authorizationService.getAllClinicsForSubscription(this.subscriptionId);
           this.clinics = allClinics.map(c => ({ id: c.id, label: c.name || c.id }));
-          this.selectedClinicId = allClinics.length > 0 ? allClinics[0].id : '';
+          // Preserve the already-selected clinic from context; only default to
+          // the first clinic when there is no prior selection.
+          const ctxClinicId = this.clinicContextService.getSelectedClinicId();
+          const ctxIsValid = ctxClinicId && allClinics.some(c => c.id === ctxClinicId);
+          this.selectedClinicId = ctxIsValid ? ctxClinicId : (allClinics.length > 0 ? allClinics[0].id : '');
           this.clinicContextService.setClinicContext(
             this.selectedClinicId || null,
             this.subscriptionId ?? null
@@ -388,7 +400,7 @@ export class AddAppointmentComponent implements OnInit {
       ? normalizeEmail(this.selectedDoctor.email)
       : '';
 
-    console.log('[Slots] refreshTimeSlotsForClinic →',
+    console.debug('[Slots] refreshTimeSlotsForClinic →',
       'clinic:', this.selectedClinicId,
       'date:', effectiveDate,
       'doctorEmail:', doctorEmail || '(empty – no filtering)',
@@ -401,7 +413,7 @@ export class AddAppointmentComponent implements OnInit {
       true // invalidate cache to get fresh schedule data
     );
 
-    console.log('[Slots] result →', result.slots.length, 'slots', result.slots.slice(0, 3));
+    console.debug('[Slots] result →', result.slots.length, 'slots', result.slots.slice(0, 3));
 
     this.allTimeSlots = result.slots;
     this.doctorLeaveInfo = result.leaveInfo;
@@ -782,7 +794,7 @@ export class AddAppointmentComponent implements OnInit {
           return normalized.startsWith(digits) || normalized.includes(digits);
         });
       }
-      console.log(`📞 Phone lookup (clinic=${clinicId}): ${merged.length} raw, ${allResults.length} match(es)`);
+      console.debug(`📞 Phone lookup (clinic=${clinicId}): ${merged.length} raw, ${allResults.length} match(es)`);
     } catch (err) {
       console.warn('Phone lookup failed:', err);
     }
@@ -1059,6 +1071,27 @@ export class AddAppointmentComponent implements OnInit {
         '📅 Appointment Booked',
         `Appointment for ${patientName} on ${this.appointmentDate} at ${this.formatSlotLabel(this.selectedTimeSlot)}.`,
         `appointment-booked-${Date.now()}`
+      );
+
+      // Fire WhatsApp notification (fire-and-forget — never blocks the user flow)
+      const apptForWa: any = {
+        datetime: apptDatetime,
+        doctor_name: this.selectedDoctor?.name || '',
+        clinic_name: this.clinics.find(c => c.id === this.selectedClinicId)?.label || this.selectedClinicId || '',
+      };
+      const patientForWa: any = {
+        id: patientId,
+        name: patientName,
+        phone: patientPhone,
+        whatsapp_consent: this.whatsappConsent,
+        whatsapp_country_code: '+91',    // default India; stored per-patient when set
+      };
+      // Override country code with stored patient data if available
+      if (this.matchedPatient) {
+        patientForWa.whatsapp_country_code = (this.matchedPatient as any).whatsapp_country_code ?? '+91';
+      }
+      this.whatsappService.notifyAppointment(apptForWa, patientForWa).catch(e =>
+        console.warn('[WhatsApp] Appointment notification failed (non-blocking):', e)
       );
 
       this.clearFormSession();

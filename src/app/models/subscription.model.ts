@@ -19,7 +19,7 @@ export interface Subscription {
   entity_name: string;          // e.g. "City Health Group"
   owner_email: string;          // email of the subscription owner/admin
   billing_email?: string;       // billing contact (defaults to owner_email)
-  plan: SubscriptionPlan;
+  plan?: SubscriptionPlan;      // may be absent in legacy/incomplete Firestore docs
   status: 'active' | 'inactive' | 'suspended';
   /** ISO date string — subscription blocks login after this date (e.g. "2026-08-01T00:00:00.000Z") */
   valid_until?: string;

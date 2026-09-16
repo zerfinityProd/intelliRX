@@ -7,6 +7,7 @@ import { ClinicContextService } from '../../services/clinicContextService';
 import { NotificationService } from '../../services/notificationService';
 import { PatientContextService } from '../../services/patientContextService';
 import { todayLocalISO } from '../../utilities/local-date';
+import { WhatsappService, COUNTRY_CODES } from '../../services/whatsapp.service';
 
 // SweetAlert2 is NOT imported at the top level.
 // It is dynamically imported only when a dialog is actually needed,
@@ -48,6 +49,11 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   readonly bloodGroupOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
   selectedBloodGroup: string = '';
 
+  // ── WhatsApp opt-in ──────────────────────────────────────────────────────────
+  whatsappConsent: boolean = false;
+  whatsappCountryCode: string = '+91';
+  readonly countryCodes = COUNTRY_CODES;
+
   todayDate: string = todayLocalISO();
 
   errorMessage: string = '';
@@ -61,6 +67,7 @@ export class AddPatientComponent implements OnInit, OnDestroy {
   private readonly clinicContextService = inject(ClinicContextService);
   private readonly notificationService = inject(NotificationService);
   private readonly patientContextService = inject(PatientContextService);
+  private readonly whatsappService = inject(WhatsappService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -331,6 +338,12 @@ export class AddPatientComponent implements OnInit, OnDestroy {
       const ailmentsText = this.ailmentChips.join(', ');
       if (ailmentsText) patientData.ailments = ailmentsText;
       if (this.selectedBloodGroup) patientData.bloodGroup = this.selectedBloodGroup;
+
+      // WhatsApp opt-in fields
+      patientData.whatsapp_consent = this.whatsappConsent;
+      if (this.whatsappConsent) {
+        patientData.whatsapp_country_code = this.whatsappCountryCode;
+      }
 
       const clinicId = this.clinicContextService.getSelectedClinicId();
       const patientId = await this.patientService.createPatient({

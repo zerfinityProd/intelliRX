@@ -13,6 +13,10 @@ export interface Patient {
   family_id?: string;          // auto-generated family identifier (e.g. "sharma_9876543210")
   created_at?: string;         // ISO datetime — when the patient was first registered
   last_updated?: string;       // ISO datetime string
+
+  // ── WhatsApp notification opt-in ──────────────────────────────────────────
+  whatsapp_consent?: boolean;       // true = patient opted in to WhatsApp notifications
+  whatsapp_country_code?: string;   // E.164 country code prefix e.g. "+91", "+1", "+44"
 }
 
 export interface Illness {

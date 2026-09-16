@@ -2,25 +2,16 @@
 
   <!-- ── Header ── -->
   <div class="hw-header">
-    <div class="hw-header-left">
-      <span class="hw-hint" *ngIf="currentMode === 'chart'">Click to select · Double-click to deselect</span>
-    </div>
-    <div class="hw-header-right">
-      <button class="hw-mode-tab" [class.active]="currentMode === 'chart'" (click)="setMode('chart')">Chart</button>
-      <button class="hw-mode-tab" [class.active]="currentMode === 'notes'" (click)="setMode('notes')">
-        Notes <span class="hw-badge" [style.visibility]="selectedCount > 0 ? 'visible' : 'hidden'">{{ selectedCount }}</span>
-      </button>
-      <div class="hw-count-chip">
-        <span>{{ selectedCount }}</span>
-        <span>selected</span>
-      </div>
-      <button class="hw-clear-btn" (click)="clearSelection()" [disabled]="selectedCount === 0" title="Clear selection">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-          <path d="M18 6L6 18M6 6l12 12"></path>
-        </svg>
-        Clear
-      </button>
-    </div>
+    <button class="hw-mode-tab" [class.active]="currentMode === 'chart'" (click)="setMode('chart')">Chart</button>
+    <button class="hw-mode-tab" [class.active]="currentMode === 'notes'" (click)="setMode('notes')">
+      Notes <span class="hw-badge" [style.visibility]="selectedCount > 0 ? 'visible' : 'hidden'">{{ selectedCount }}</span>
+    </button>
+    <button class="hw-clear-btn" (click)="clearSelection()" [disabled]="selectedCount === 0" title="Clear selection">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M18 6L6 18M6 6l12 12"></path>
+      </svg>
+      Clear
+    </button>
   </div>
 
   <!-- ── Chart View ── -->

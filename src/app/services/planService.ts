@@ -30,6 +30,14 @@ export class PlanService {
     return this.planRepo.getPlanByKey(key);
   }
 
+  async savePlan(key: string, data: Omit<PlanDetail, 'key'>): Promise<void> {
+    return this.planRepo.savePlan(key, data);
+  }
+
+  async deletePlan(key: string): Promise<void> {
+    return this.planRepo.deletePlan(key);
+  }
+
   invalidateCache(): void {
     this.planRepo.invalidateCache();
   }

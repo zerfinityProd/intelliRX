@@ -100,7 +100,7 @@ export class PatientService {
     try {
       const existingPatient = await this.findExistingPatient(patientData.name, patientData.phone);
       if (existingPatient) {
-        console.log('✓ Found existing patient, updating:', existingPatient.id);
+        console.debug('[Patient] Found existing patient — updating in place.');
         const updateData: Partial<Patient> = {
           name: patientData.name,
           phone: patientData.phone,
@@ -127,7 +127,7 @@ export class PatientService {
       };
 
       const patientId = await this.patientRepo.addPatient(fullPatientData);
-      console.log('✓ Patient created:', patientId);
+      console.debug('[Patient] New patient record created.');
       return patientId;
     } catch (error) {
       console.error('❌ Error creating patient:', error);
@@ -172,7 +172,12 @@ export class PatientService {
 
   async getPatientVisits(patientId: string): Promise<Visit[]> {
     try {
-      return await this.patientRepo.getPatientVisits(patientId);
+      // Always scope visits to the currently selected clinic.
+      // When share_patients_across_clinics is ON, the patient record is visible
+      // to all clinics in the subscription, but each clinic must only see
+      // visits it created — visit history is never shared across clinics.
+      const clinicId = this.clinicContextService.getSelectedClinicId() || undefined;
+      return await this.patientRepo.getPatientVisits(patientId, clinicId);
     } catch (error) {
       console.error('❌ Error fetching visits:', error);
       return [];

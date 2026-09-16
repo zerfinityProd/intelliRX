@@ -61,23 +61,29 @@ export class HomeComponent implements OnInit {
   userRole: string = 'doctor';
   dashboardDoctors: Doctor[] = [];
   selectedDashboardDoctorId: string = '';
-  dashboardClinics: Array<{ id: string; label: string }> = [];
+  dashboardClinics: Array<{ id: string; label: string; address: string }> = [];
   selectedDashboardClinicId: string = '';
   doctorContextReady: boolean = false;
   private readonly doctorClinicCache = new Map<string, string[]>();
 
   // Doctor clinic switcher (for doctors with multiple clinics)
-  doctorClinics: Array<{ id: string; label: string }> = [];
+  doctorClinics: Array<{ id: string; label: string; address: string }> = [];
   selectedDoctorClinicId: string = '';
 
   /** Display label for the currently active clinic in the appointment banner */
   get selectedClinicLabel(): string {
     if (this.userRole === 'doctor') {
-      // Use the doctor's own clinic switcher list
       return this.doctorClinics.find(c => c.id === this.selectedDoctorClinicId)?.label || '';
     }
-    // Receptionist: use the dashboard clinic list
     return this.dashboardClinics.find(c => c.id === this.selectedDashboardClinicId)?.label || '';
+  }
+
+  /** Address for the currently active clinic shown below the clinic name */
+  get selectedClinicAddress(): string {
+    if (this.userRole === 'doctor') {
+      return this.doctorClinics.find(c => c.id === this.selectedDoctorClinicId)?.address || '';
+    }
+    return this.dashboardClinics.find(c => c.id === this.selectedDashboardClinicId)?.address || '';
   }
 
   // Slot viewer
@@ -132,6 +138,11 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Mark this browser session as "inside the app" so that if the user opens
+    // /app/login in a second tab, the login component can detect the multi-tab
+    // scenario and auto-redirect instead of showing the login form.
+    try { sessionStorage.setItem('irx.appActive', '1'); } catch { /* ignore */ }
+
     // Restore search term from sessionStorage (persists across refresh)
     const savedSearch = sessionStorage.getItem('home_searchTerm');
     if (savedSearch) {
@@ -385,10 +396,14 @@ export class HomeComponent implements OnInit {
           const clinicIds = await this.authorizationService.getUserClinicIds(rawEmail);
           // Resolve real clinic names
           const clinicEntries = await Promise.all(
-            clinicIds.map(async id => ({
-              id,
-              label: await this.clinicService.getClinicName(id).catch(() => id)
-            }))
+            clinicIds.map(async id => {
+              const summary = await this.clinicService.getClinicSummary(id).catch(() => null);
+              return {
+                id,
+                label: summary?.name || id,
+                address: summary?.address || ''
+              };
+            })
           );
           this.dashboardClinics = clinicEntries;
           this.selectedDashboardClinicId = clinicIds[0] ?? '';
@@ -419,8 +434,8 @@ export class HomeComponent implements OnInit {
       for (const a of assignments) {
         if (!seen.has(a.clinicId)) {
           seen.add(a.clinicId);
-          const clinicName = await this.clinicService.getClinicName(a.clinicId).catch(() => a.clinicId);
-          this.doctorClinics.push({ id: a.clinicId, label: clinicName });
+          const summary = await this.clinicService.getClinicSummary(a.clinicId).catch(() => null);
+          this.doctorClinics.push({ id: a.clinicId, label: summary?.name || a.clinicId, address: summary?.address || '' });
         }
       }
       this.selectedDoctorClinicId = this.clinicContextService.getSelectedClinicId() || (assignments[0]?.clinicId ?? '');

@@ -231,7 +231,17 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     await this.initDoctorCache();
 
     try {
-      this.appointments = await this.appointmentService.getAppointments();
+      const raw = await this.appointmentService.getAppointments();
+      // Extra guard: doctors should only ever see their own appointments.
+      // This prevents stale cache or role-resolution edge cases from leaking
+      // another doctor's appointments into this doctor's board.
+      if (this.userRole === 'doctor' && this.currentUserEmail) {
+        this.appointments = raw.filter(
+          a => !a.doctor_id || normalizeEmail(a.doctor_id) === this.currentUserEmail
+        );
+      } else {
+        this.appointments = raw;
+      }
     } catch (e) {
       this.errorMessage = 'Failed to load appointments.';
       this.appointments = [];
@@ -272,7 +282,15 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     // Guard: skip if subscription context is not available yet
     if (!this.clinicContextService.getSubscriptionId()) return;
     try {
-      this.appointments = await this.appointmentService.getAppointments();
+      const raw = await this.appointmentService.getAppointments();
+      // Same doctor-scoping guard as the initial load
+      if (this.userRole === 'doctor' && this.currentUserEmail) {
+        this.appointments = raw.filter(
+          a => !a.doctor_id || normalizeEmail(a.doctor_id) === this.currentUserEmail
+        );
+      } else {
+        this.appointments = raw;
+      }
       this.cdr.detectChanges();
     } catch {
       // No-op: avoid breaking UI refresh loop
@@ -518,7 +536,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
    * → clinic_users → subscription_id.
    */
   private async ensureClinicContext(): Promise<void> {
-    // Already set (from login or localStorage) — nothing to do.
+    // Already set (from login or sessionStorage) — nothing to do.
     if (this.clinicContextService.getSubscriptionId()) return;
 
     // Wait for Firebase auth to resolve before reading user email
@@ -531,11 +549,23 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     if (!email) return;
 
     try {
-      const clinicIds = await this.authorizationService.getUserClinicIds(email);
+      // Prefer assignments so we use the subscription that matches the user's actual
+      // clinic assignment, rather than blindly taking assignments[0] which is always sub_1.
+      const assignments = await this.authorizationService.getUserAssignments(email).catch(() => []);
+      if (assignments.length > 0) {
+        // Use the first assignment's subscription + clinic as the initial context.
+        // (If the user has multiple subs/clinics, the clinic-selector will prompt them.)
+        const subId = assignments[0].subscriptionId;
+        const clinicId = assignments[0].clinicId;
+        this.clinicContextService.setClinicContext(clinicId || null, subId);
+        return;
+      }
+
+      // Fallback: no clinic_users entries — resolve subscription directly
       const subscriptionId = await this.authorizationService.getUserSubscriptionId(email).catch(() => null);
-      if (clinicIds.length > 0 || subscriptionId) {
+      if (subscriptionId) {
         this.clinicContextService.setClinicContext(
-          clinicIds[0] || null,
+          this.clinicContextService.getSelectedClinicId(),
           subscriptionId
         );
       }
@@ -543,6 +573,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       // Non-critical — proceed without; requireSubscriptionId will throw if truly missing.
     }
   }
+
 
   goHome(): void { this.router.navigate(['/home']); }
   bookNew(): void { this.router.navigate(['/add-appointment'], { queryParams: { from: 'appointments' } }); }

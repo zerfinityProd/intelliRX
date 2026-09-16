@@ -24,36 +24,147 @@
 
           <!-- Plan Selection -->
           <div class="form-group">
-            <label>Select a Plan</label>
+            <label class="plan-label">Select a Plan</label>
+
+            <!-- ── Billing cycle toggle ── -->
+            <div class="rw-cycle-wrap" *ngIf="plans.length > 0">
+              <div class="rw-cycle-track" role="radiogroup" aria-label="Billing cycle">
+
+                <button class="rw-cycle-btn"
+                  [class.rw-cycle-btn--active]="billingCycle === 'monthly'"
+                  (click)="setBillingCycle('monthly')"
+                  id="rw-cycle-monthly" type="button" role="radio"
+                  [attr.aria-checked]="billingCycle === 'monthly'">
+                  Monthly
+                </button>
+
+                <button class="rw-cycle-btn"
+                  [class.rw-cycle-btn--active]="billingCycle === 'quarterly'"
+                  (click)="setBillingCycle('quarterly')"
+                  id="rw-cycle-quarterly" type="button" role="radio"
+                  [attr.aria-checked]="billingCycle === 'quarterly'">
+                  Quarterly
+                  <span class="rw-cycle-badge" *ngIf="maxQuarterlySavings > 0">
+                    Save {{ maxQuarterlySavings }}%
+                  </span>
+                </button>
+
+                <button class="rw-cycle-btn"
+                  [class.rw-cycle-btn--active]="billingCycle === 'yearly'"
+                  (click)="setBillingCycle('yearly')"
+                  id="rw-cycle-yearly" type="button" role="radio"
+                  [attr.aria-checked]="billingCycle === 'yearly'">
+                  Yearly
+                  <span class="rw-cycle-badge" *ngIf="maxYearlySavings > 0">
+                    Save {{ maxYearlySavings }}%
+                  </span>
+                </button>
+
+              </div>
+            </div>
+
+            <!-- Plan cards -->
             <div class="plan-cards" *ngIf="plans.length > 0; else loadingPlans">
               <div
                 class="plan-card"
                 *ngFor="let plan of plans"
                 [class.selected]="selectedPlan === plan.key"
+                [class.plan-card--pro]="plan.key === 'pro'"
                 (click)="selectPlan(plan.key)"
+                [id]="'rw-card-' + plan.key"
               >
+                <!-- Radio indicator -->
                 <div class="plan-card-radio">
                   <span class="radio-dot" [class.active]="selectedPlan === plan.key"></span>
                 </div>
-                <div class="plan-card-info">
-                  <div class="plan-card-name">{{ plan.label }}</div>
-                  <div class="plan-card-details">
-                    <span>{{ plan.max_clinics }} clinic{{ plan.max_clinics > 1 ? 's' : '' }}</span>
-                    <span class="dot-sep">·</span>
-                    <span>{{ plan.max_doctors }} doctor{{ plan.max_doctors > 1 ? 's' : '' }}</span>
-                    <span class="dot-sep">·</span>
-                    <span>{{ plan.max_patients }} patients</span>
+
+                <!-- Plan info -->
+                <div class="plan-card-body">
+                  <div class="plan-card-head">
+                    <div class="plan-card-name">{{ plan.label }}</div>
+                    <p class="plan-card-desc" *ngIf="plan.description">{{ plan.description }}</p>
                   </div>
+
+                  <!-- Price block -->
+                  <div class="plan-price-block">
+                    <div class="plan-price-row">
+                      <span class="plan-price-currency">₹</span>
+                      <span class="plan-price-amount">{{ getPricePerMonth(plan) | number:'1.0-0' }}</span>
+                      <span class="plan-price-period">/mo</span>
+                      <span class="plan-savings-chip" *ngIf="getSavings(plan) > 0">
+                        🎉 Save {{ getSavings(plan) }}%
+                      </span>
+                    </div>
+                    <div class="plan-price-billed" *ngIf="billingCycle !== 'monthly'">
+                      Billed as
+                      <span class="plan-price-total">₹{{ getTotalCharge(plan) | number:'1.0-0' }}</span>
+                      {{ billingCycle === 'quarterly' ? '/ quarter' : '/ year' }}
+                    </div>
+                    <div class="plan-price-billed" *ngIf="billingCycle === 'monthly'">
+                      Billed monthly
+                    </div>
+                  </div>
+
+                  <div class="plan-divider"></div>
+
+                  <!-- Feature list -->
+                  <ul class="plan-features">
+                    <li class="plan-feature">
+                      <span class="plan-feature-icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                      Up to <strong>{{ plan.max_clinics }}</strong> Clinic{{ plan.max_clinics !== 1 ? 's' : '' }}
+                    </li>
+                    <li class="plan-feature">
+                      <span class="plan-feature-icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                      Up to <strong>{{ plan.max_doctors }}</strong> Doctor{{ plan.max_doctors !== 1 ? 's' : '' }}
+                    </li>
+                    <li class="plan-feature">
+                      <span class="plan-feature-icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                      Up to <strong>{{ plan.max_receptionists }}</strong> Receptionist{{ plan.max_receptionists !== 1 ? 's' : '' }}
+                    </li>
+                    <li class="plan-feature">
+                      <span class="plan-feature-icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                      Up to <strong>{{ plan.max_patients }}</strong> Patients
+                    </li>
+                    <!-- Extra features from DB -->
+                    <li class="plan-feature" *ngFor="let feat of (plan.features || [])">
+                      <span class="plan-feature-icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round">
+                          <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                      </span>
+                      {{ feat }}
+                    </li>
+                  </ul>
                 </div>
+
+                <!-- Popular badge -->
                 <div class="plan-card-badge" *ngIf="plan.key === 'pro'">Popular</div>
               </div>
             </div>
+
             <ng-template #loadingPlans>
               <div class="plan-cards">
                 <div class="plan-card skeleton" *ngFor="let i of [1,2,3]">
                   <div class="plan-card-radio"><span class="radio-dot"></span></div>
-                  <div class="plan-card-info">
+                  <div class="plan-card-body">
                     <div class="skeleton-line skeleton-name"></div>
+                    <div class="skeleton-line skeleton-price"></div>
                     <div class="skeleton-line skeleton-details"></div>
                   </div>
                 </div>
@@ -61,7 +172,8 @@
             </ng-template>
           </div>
 
-          <button type="submit" class="btn btn-primary btn-full" [disabled]="isProcessing || !selectedPlan">
+          <button type="submit" class="btn btn-primary btn-full" [disabled]="isProcessing || !selectedPlan"
+            style="margin-top: 0.5rem;">
             {{ isProcessing ? 'Setting up...' : 'Complete Setup' }}
           </button>
         </form>

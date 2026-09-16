@@ -1,14 +1,13 @@
 // IntelliRX Service Worker
-const CACHE_NAME = 'intellirx-cache-v1';
+const CACHE_NAME = 'intellirx-cache-v3';
 
 // Assets to pre-cache on install
 const PRECACHE_ASSETS = [
-  '/',
   '/icon-192x192.png',
   '/icon-512x512.png'
 ];
 
-// Install — pre-cache shell assets
+// Install — pre-cache static assets only
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE_ASSETS))
@@ -28,26 +27,35 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — network-first strategy (good for a data-heavy app like IntelliRX)
+// Fetch — network-first strategy
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and Firebase/API calls
-  if (event.request.method !== 'GET') return;
-
   const url = new URL(event.request.url);
 
-  // Don't cache Firebase, Google APIs, or external resources
-  if (
-    url.origin !== location.origin &&
-    !url.hostname.includes('fonts.googleapis.com') &&
-    !url.hostname.includes('fonts.gstatic.com')
-  ) {
-    return;
+  // Only handle GET requests over http/https
+  if (event.request.method !== 'GET') return;
+  if (!url.protocol.startsWith('http')) return;
+
+  // Never intercept navigation requests (Angular SPA routes like /home,
+  // /admin/dashboard). The server (Firebase Hosting) serves index.html for
+  // all paths. Let the browser handle these natively — no SW involvement.
+  if (event.request.mode === 'navigate') return;
+
+  // Skip Firebase, Google APIs, and other external origins
+  // (except Google Fonts which we can cache)
+  const isGoogleFont =
+    url.hostname === 'fonts.googleapis.com' ||
+    url.hostname === 'fonts.gstatic.com';
+
+  if (url.origin !== location.origin && !isGoogleFont) {
+    return; // let browser handle external requests natively
   }
 
+  // For same-origin static assets (JS, CSS, images) and Google Fonts:
+  // network-first, fall back to cache. Always return a valid Response.
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache successful responses
+        // Cache successful responses for static assets
         if (response.ok) {
           const responseClone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -56,9 +64,18 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => {
-        // Fall back to cache if network fails
-        return caches.match(event.request);
-      })
+      .catch(() =>
+        // Fall back to cache; if nothing cached, return a 503 (never undefined)
+        caches.match(event.request).then(
+          (cached) =>
+            cached ||
+            new Response('Resource unavailable offline.', {
+              status: 503,
+              statusText: 'Service Unavailable',
+              headers: { 'Content-Type': 'text/plain' },
+            })
+        )
+      )
   );
 });
+
