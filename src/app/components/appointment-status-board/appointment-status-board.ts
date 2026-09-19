@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, ViewEncapsulation, HostListener } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, ViewEncapsulation, HostListener, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Appointment } from '../../models/appointment.model';
@@ -12,7 +12,7 @@ import { BoardColumn } from '../../interfaces/board-column';
   styleUrl: './appointment-status-board.css',
   encapsulation: ViewEncapsulation.None
 })
-export class AppointmentStatusBoardComponent {
+export class AppointmentStatusBoardComponent implements OnChanges {
 
   // Header data
   @Input() searchTerm: string = '';
@@ -178,9 +178,38 @@ export class AppointmentStatusBoardComponent {
     }
   }
 
-  // ── Existing methods ────────────────────────────────────────
+  // ── Performance Optimization: Cache cards grouped by status ─
+  // Pre-grouping appointments into a Map on changes avoids running
+  // filteredAppointments.filter(...) 9+ times per change detection cycle.
+  private cardsByStatusCache = new Map<string, Appointment[]>();
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['filteredAppointments'] || changes['columns']) {
+      this.rebuildCardsByStatusCache();
+    }
+  }
+
+  private rebuildCardsByStatusCache(): void {
+    const map = new Map<string, Appointment[]>();
+    const cols = this.columns || [];
+    for (let i = 0; i < cols.length; i++) {
+      map.set(cols[i].id, []);
+    }
+    const appts = this.filteredAppointments || [];
+    for (let i = 0; i < appts.length; i++) {
+      const a = appts[i];
+      const list = map.get(a.status);
+      if (list) {
+        list.push(a);
+      } else {
+        map.set(a.status, [a]);
+      }
+    }
+    this.cardsByStatusCache = map;
+  }
+
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.cardsByStatusCache.get(status) || [];
   }
 
   isToday(datetime: any): boolean {

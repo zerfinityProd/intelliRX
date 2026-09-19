@@ -59,6 +59,11 @@ export function generateTimeSlotsFromClinicTimings(
   return Array.from(slotSet).sort();
 }
 
+// ── Module-level constants for time slot & weekday lookups ────
+// Hoisted outside functions to eliminate heap re-allocation on every call.
+const WEEKDAY_SHORT_CODES = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
+const WEEKDAY_THREE_LETTER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 /**
  * Looks up a doctor's available timing labels for a specific date from the
  * availability map, trying ALL known day-key formats so it works regardless
@@ -78,13 +83,9 @@ export function getAvailabilityLabelsForDay(
 ): { labels: string[] | undefined; scheduled: boolean } {
   const dayIndex = date.getDay(); // 0=Sun … 6=Sat
 
-  // All known formats for each weekday, in priority order
-  const SHORT_CODES = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
-  const THREE_LETTER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-
   const keysToTry = [
-    SHORT_CODES[dayIndex],   // 'Th'  – admin-dashboard / admin-setup
-    THREE_LETTER[dayIndex],  // 'thu' – staff-config-modal (owner dashboard)
+    WEEKDAY_SHORT_CODES[dayIndex],   // 'Th'  – admin-dashboard / admin-setup
+    WEEKDAY_THREE_LETTER[dayIndex],  // 'thu' – staff-config-modal (owner dashboard)
   ];
 
   const scheduled = Object.keys(availability).length > 0;
@@ -105,8 +106,7 @@ export function getAvailabilityLabelsForDay(
  * Returns: "Su", "M", "T", "W", "Th", "F", "Sa"
  */
 export function getWeekdayCode(date: Date): string {
-  const codes = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
-  return codes[date.getDay()];
+  return WEEKDAY_SHORT_CODES[date.getDay()];
 }
 
 /**
@@ -118,9 +118,9 @@ export function getWeekdayCode(date: Date): string {
  */
 export function isClinicOpenOnDate(weekdays: string[] | undefined | null, date: Date): boolean {
   if (!weekdays || weekdays.length === 0) return true; // no schedule → assume open
-  const dayCode = getWeekdayCode(date);
+  const dayCodeLower = getWeekdayCode(date).toLowerCase();
   // Case-insensitive comparison to handle variations
-  return weekdays.some(w => w.toLowerCase() === dayCode.toLowerCase());
+  return weekdays.some(w => w.toLowerCase() === dayCodeLower);
 }
 
 /**
