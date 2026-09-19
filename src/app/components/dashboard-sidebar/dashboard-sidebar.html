@@ -15,14 +15,14 @@
         Calendar
       </div>
       <div style="display:flex;align-items:center;gap:6px">
-        <button class="rh-cal-nav" (click)="prevMonthClicked.emit()">
+        <button class="rh-cal-nav" (click)="prevMonthClicked.emit()" aria-label="Previous month" title="Previous month">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
         <span class="rh-cal-label">{{ calMonthLabel }}</span>
-        <button class="rh-cal-nav" (click)="nextMonthClicked.emit()">
+        <button class="rh-cal-nav" (click)="nextMonthClicked.emit()" aria-label="Next month" title="Next month">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-            stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><polyline points="9 18 15 12 9 6"></polyline></svg>
         </button>
       </div>
     </div>
