@@ -130,11 +130,27 @@ async function sendAppointmentNotification(data: any, env: Env): Promise<void> {
   await callMetaApi(payload, env);
 }
 
+// Helper to validate PDF URL (must be a valid http or https URL)
+function isValidHttpUrl(urlString?: string): boolean {
+  if (!urlString || typeof urlString !== 'string') return false;
+  try {
+    const parsed = new URL(urlString);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 // ─── Prescription Ready ───────────────────────────────────────────────────────
 // Template: prescription_ready
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} pdfUrl
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
+  // Security check: validate pdfUrl protocol to prevent XSS / malicious links
+  if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
+    throw new Error('Invalid or unallowed pdfUrl protocol');
+  }
+
   const payload = {
     messaging_product: 'whatsapp',
     to: data.phone,
