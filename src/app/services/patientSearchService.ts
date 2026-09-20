@@ -83,7 +83,8 @@ export class PatientSearchService {
                 this.paginationState.hasMore = phoneSettled.hasMore;
                 const idResults = idResult ? [idResult] : [];
                 allResults = this.mergeAndDeduplicateResults(
-                    [...idResults, ...phoneSettled.results],
+                    idResults,
+                    phoneSettled.results,
                     containsSettled.results
                 );
             } else {
@@ -100,7 +101,8 @@ export class PatientSearchService {
                 this.paginationState.hasMore = nameSettled.hasMore;
                 const idResults = idResult ? [idResult] : [];
                 allResults = this.mergeAndDeduplicateResults(
-                    [...idResults, ...nameSettled.results],
+                    idResults,
+                    nameSettled.results,
                     containsSettled.results
                 );
             }
@@ -136,8 +138,13 @@ export class PatientSearchService {
                     this.paginationState.lastNameCursor,
                     clinicId
                 );
-                const existingIds = new Set(this.cachedResults.map(p => p.id));
-                newResults = results.filter(p => !existingIds.has(p.id));
+                // Single pass to construct ID set without intermediate .map() allocation
+                const existingIds = new Set<string>();
+                for (let i = 0; i < this.cachedResults.length; i++) {
+                    const id = this.cachedResults[i].id;
+                    if (id) existingIds.add(id);
+                }
+                newResults = results.filter(p => p.id !== undefined && !existingIds.has(p.id));
                 this.paginationState.lastNameCursor = lastCursor;
                 this.paginationState.hasMore = hasMore;
             }
@@ -165,12 +172,23 @@ export class PatientSearchService {
         this.paginationState = { lastPhoneCursor: null, lastNameCursor: null, hasMore: false };
     }
 
-    private mergeAndDeduplicateResults(results1: Patient[], results2: Patient[]): Patient[] {
+    /**
+     * Deduplicates patients across multiple result arrays without creating
+     * intermediate array concatenations.
+     */
+    private mergeAndDeduplicateResults(...resultSets: Patient[][]): Patient[] {
         const seen = new Set<string>();
         const merged: Patient[] = [];
-        for (const patient of [...results1, ...results2]) {
-            const key = patient.id || '';
-            if (key && !seen.has(key)) { seen.add(key); merged.push(patient); }
+        for (let i = 0; i < resultSets.length; i++) {
+            const list = resultSets[i];
+            for (let j = 0; j < list.length; j++) {
+                const patient = list[j];
+                const key = patient.id || '';
+                if (key && !seen.has(key)) {
+                    seen.add(key);
+                    merged.push(patient);
+                }
+            }
         }
         return merged;
     }

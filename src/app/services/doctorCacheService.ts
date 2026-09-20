@@ -94,8 +94,10 @@ export class DoctorCacheService {
     getDoctorFilterOptions(appointments: Appointment[]): Array<{ email: string; name: string }> {
         const seen = new Set<string>();
         const options: Array<{ email: string; name: string }> = [];
-        for (const appt of appointments) {
-            const email = (appt.doctor_id || '').trim().toLowerCase();
+        for (let i = 0; i < appointments.length; i++) {
+            const rawId = appointments[i].doctor_id;
+            if (!rawId) continue;
+            const email = rawId.trim().toLowerCase();
             if (!email || seen.has(email)) continue;
             seen.add(email);
             options.push({ email, name: this.nameCache.get(email) || email });

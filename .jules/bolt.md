@@ -1,0 +1,3 @@
+## 2026-03-06 - Template-bound date/time parsing GC allocations
+**Learning:** Functions called in Angular template bindings (e.g. `isSlotInPast(slot)` in `add-appointment.html`) execute repeatedly on every change detection pass for every rendered slot. Using `.split().map(Number)` inside these functions creates thousands of short-lived array allocations and callback closures per second, causing GC pressure and UI micro-stutters.
+**Action:** Use direct substring indexing (`indexOf`/`substring`) and `parseInt` in helper functions that are evaluated within template bindings or high-frequency loops.
