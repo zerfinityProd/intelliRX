@@ -59,6 +59,10 @@ export function generateTimeSlotsFromClinicTimings(
   return Array.from(slotSet).sort();
 }
 
+// Module-level constants to prevent repeated array allocations per call
+const SHORT_CODES = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
+const THREE_LETTER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
 /**
  * Looks up a doctor's available timing labels for a specific date from the
  * availability map, trying ALL known day-key formats so it works regardless
@@ -77,10 +81,6 @@ export function getAvailabilityLabelsForDay(
   date: Date
 ): { labels: string[] | undefined; scheduled: boolean } {
   const dayIndex = date.getDay(); // 0=Sun … 6=Sat
-
-  // All known formats for each weekday, in priority order
-  const SHORT_CODES = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
-  const THREE_LETTER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   const keysToTry = [
     SHORT_CODES[dayIndex],   // 'Th'  – admin-dashboard / admin-setup
@@ -105,8 +105,7 @@ export function getAvailabilityLabelsForDay(
  * Returns: "Su", "M", "T", "W", "Th", "F", "Sa"
  */
 export function getWeekdayCode(date: Date): string {
-  const codes = ['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'];
-  return codes[date.getDay()];
+  return SHORT_CODES[date.getDay()];
 }
 
 /**
@@ -118,9 +117,9 @@ export function getWeekdayCode(date: Date): string {
  */
 export function isClinicOpenOnDate(weekdays: string[] | undefined | null, date: Date): boolean {
   if (!weekdays || weekdays.length === 0) return true; // no schedule → assume open
-  const dayCode = getWeekdayCode(date);
-  // Case-insensitive comparison to handle variations
-  return weekdays.some(w => w.toLowerCase() === dayCode.toLowerCase());
+  const lowerDayCode = getWeekdayCode(date).toLowerCase();
+  // Case-insensitive comparison; lowerDayCode is computed once outside loop
+  return weekdays.some(w => w.toLowerCase() === lowerDayCode);
 }
 
 /**
@@ -148,6 +147,11 @@ export function filterTimingsByAvailability(
     }
     return timings; // no restriction configured → all blocks
   }
-  const labelSet = new Set(availableLabels.map(l => l.toUpperCase()));
+  // Single pass loop to construct Set without intermediate .map() allocation
+  const labelSet = new Set<string>();
+  for (let i = 0; i < availableLabels.length; i++) {
+    const l = availableLabels[i];
+    if (l) labelSet.add(l.toUpperCase());
+  }
   return timings.filter(t => labelSet.has((t.label || '').toUpperCase()));
 }
