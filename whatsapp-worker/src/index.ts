@@ -45,7 +45,7 @@ export default {
 
     // Security check — only IntelliRX Angular app can call this worker
     const secret = request.headers.get('X-Worker-Secret');
-    if (secret !== env.WORKER_SECRET) {
+    if (!env.WORKER_SECRET || secret !== env.WORKER_SECRET) {
       return new Response('Unauthorized', {
         status: 401,
         headers: corsHeaders(origin),
@@ -87,8 +87,9 @@ export default {
       });
 
     } catch (error: any) {
+      // Security: Log full error details server-side, but return sanitized error message to prevent leaking upstream/internal details
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: 'Failed to process notification request' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
