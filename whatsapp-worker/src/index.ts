@@ -87,8 +87,9 @@ export default {
       });
 
     } catch (error: any) {
+      // Security: Do not leak error details or internal Meta API responses to the client
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: 'Internal server error' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
