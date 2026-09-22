@@ -278,10 +278,13 @@ export class RegisterWizardComponent implements OnInit {
   }
 
   private generateTempPassword(): string {
+    // Security: Use Web Crypto API (crypto.getRandomValues) for CSPRNG instead of Math.random() to prevent password prediction.
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    const randomBuffer = new Uint32Array(16);
+    crypto.getRandomValues(randomBuffer);
     let password = '';
     for (let i = 0; i < 16; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+      password += chars.charAt(randomBuffer[i] % chars.length);
     }
     return password;
   }
