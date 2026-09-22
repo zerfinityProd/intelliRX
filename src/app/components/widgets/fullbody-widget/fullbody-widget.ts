@@ -14,6 +14,8 @@ export class FullbodyWidgetComponent implements OnInit {
   @Input() initialSelected: string[] = [];
   @Input() initialNotes: { [id: string]: string } = {};
   selectedBoneIds: string[] = [];
+  // Performance optimization: Set for O(1) lookup in template isSelected() checks across 200+ SVG bones
+  private selectedBoneSet: Set<string> = new Set();
   boneNotes: { [id: string]: string } = {};
   @Output() selectionChange = new EventEmitter<string[]>();
   @Output() notesChange = new EventEmitter<{ [id: string]: string }>();
@@ -31,6 +33,7 @@ export class FullbodyWidgetComponent implements OnInit {
   ngOnInit() {
     if (this.initialSelected && this.initialSelected.length > 0) {
       this.selectedBoneIds = [...this.initialSelected];
+      this.selectedBoneSet = new Set(this.selectedBoneIds);
     }
     this.boneNotes = { ...this.initialNotes };
   }
@@ -321,8 +324,10 @@ export class FullbodyWidgetComponent implements OnInit {
     const index = this.selectedBoneIds.indexOf(boneId);
     if (index === -1) {
       this.selectedBoneIds.push(boneId);
+      this.selectedBoneSet.add(boneId);
     } else {
       this.selectedBoneIds.splice(index, 1);
+      this.selectedBoneSet.delete(boneId);
       // Clear note when bone is deselected
       delete this.boneNotes[boneId];
       this.notesChange.emit({ ...this.boneNotes });
@@ -332,8 +337,12 @@ export class FullbodyWidgetComponent implements OnInit {
     this.selectionChange.emit(this.selectedBoneIds);
   }
 
+  /**
+   * Performance-critical: checks if a bone is selected in O(1) time using Set.has().
+   * Called repeatedly by template bindings during change detection across 200+ SVG elements.
+   */
   isSelected(boneId: string): boolean {
-    return this.selectedBoneIds.includes(boneId);
+    return this.selectedBoneSet.has(boneId);
   }
 
   // Count selections for badges
@@ -355,6 +364,7 @@ export class FullbodyWidgetComponent implements OnInit {
 
   clearSelection() {
     this.selectedBoneIds = [];
+    this.selectedBoneSet.clear();
     this.boneNotes = {};
     this.selectionChange.emit(this.selectedBoneIds);
     this.notesChange.emit({});
