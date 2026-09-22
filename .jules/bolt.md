@@ -1,0 +1,3 @@
+## 2026-09-22 - Optimize template lookup bound methods using Set datastructure
+**Learning:** Method calls inside templates bound across large lists or complex SVGs (e.g., 200+ elements) trigger on every change detection pass. Using array operations like `Array.includes()` in `isSelected()` results in $O(N)$ overhead per element ($O(N^2)$ per check pass). Replacing linear scans with a backing `Set<T>` ($O(1)$) drastically reduces change detection execution time.
+**Action:** When template bindings invoke lookup methods for repetitive UI items (like interactive SVGs or long lists), maintain a mirror `Set<T>` for $O(1)$ queries.
