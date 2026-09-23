@@ -436,6 +436,36 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     this.visitTrendChart.update();
   }
 
+  /**
+   * Pre-builds a Map of visits indexed by date string key ('YYYY-M-D').
+   * Performance optimization: Pre-indexing visits in O(V) time avoids linear filtering
+   * and Date object creation across all 35-42 calendar cells (reducing from O(D * V) to O(D + V)).
+   */
+  private buildVisitsByDateMap(): Map<string, Visit[]> {
+    const map = new Map<string, Visit[]>();
+    if (!this.visits || this.visits.length === 0) return map;
+
+    for (const visit of this.visits) {
+      if (!visit.created_at) continue;
+      let visitDate: Date;
+      if (typeof (visit.created_at as any).toDate === 'function') {
+        visitDate = (visit.created_at as any).toDate();
+      } else {
+        visitDate = new Date(visit.created_at);
+      }
+      if (isNaN(visitDate.getTime())) continue;
+
+      const key = `${visitDate.getFullYear()}-${visitDate.getMonth()}-${visitDate.getDate()}`;
+      const existing = map.get(key);
+      if (existing) {
+        existing.push(visit);
+      } else {
+        map.set(key, [visit]);
+      }
+    }
+    return map;
+  }
+
   private generateCalendar(): void {
     const year = this.currentMonth.getFullYear();
     const month = this.currentMonth.getMonth();
@@ -456,35 +486,37 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     // Days for next month
     const totalCells = Math.ceil((daysInMonth + prevMonthDays) / 7) * 7;
     const nextMonthDays = totalCells - (daysInMonth + prevMonthDays);
+
+    // Build date lookup map once per calendar generation
+    const visitsByDateMap = this.buildVisitsByDateMap();
     
     this.calendarDays = [];
     
     // Previous month days
     for (let i = prevMonthDays - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
-      this.calendarDays.push(this.createCalendarDay(date, false));
+      this.calendarDays.push(this.createCalendarDay(date, false, visitsByDateMap));
     }
     
     // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(year, month, i);
-      this.calendarDays.push(this.createCalendarDay(date, true));
+      this.calendarDays.push(this.createCalendarDay(date, true, visitsByDateMap));
     }
     
     // Next month days
     for (let i = 1; i <= nextMonthDays; i++) {
       const date = new Date(year, month + 1, i);
-      this.calendarDays.push(this.createCalendarDay(date, false));
+      this.calendarDays.push(this.createCalendarDay(date, false, visitsByDateMap));
     }
   }
 
-  private createCalendarDay(date: Date, isCurrentMonth: boolean): CalendarDay {
-    const dayVisits = this.getVisitsForDate(date);
+  private createCalendarDay(date: Date, isCurrentMonth: boolean, visitsByDateMap: Map<string, Visit[]>): CalendarDay {
+    const dayVisits = this.getVisitsForDate(date, visitsByDateMap);
     const today = new Date();
     const isToday = date.getDate() === today.getDate() &&
                     date.getMonth() === today.getMonth() &&
                     date.getFullYear() === today.getFullYear();
-    
     
     return {
       date,
@@ -497,7 +529,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     };
   }
 
-  private getVisitsForDate(date: Date): Visit[] {
+  /** Look up visits for a specific date using pre-indexed Map in O(1) time. */
+  private getVisitsForDate(date: Date, visitsByDateMap?: Map<string, Visit[]>): Visit[] {
+    if (visitsByDateMap) {
+      const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+      return visitsByDateMap.get(key) || [];
+    }
+    // Fallback if map not provided
     return this.visits.filter(visit => {
       let visitDate: Date;
       if (visit.created_at && typeof (visit.created_at as any).toDate === 'function') {
@@ -505,7 +543,6 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
       } else {
         visitDate = new Date(visit.created_at);
       }
-      
       return visitDate.getDate() === date.getDate() &&
              visitDate.getMonth() === date.getMonth() &&
              visitDate.getFullYear() === date.getFullYear();
