@@ -123,11 +123,20 @@
   <ng-container *ngIf="searchResults.length === 0 && searchTerm && searchTerm.trim().length >= 3 && !isSearching && !errorMessage">
     <div class="kb-empty-state">
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
-        stroke-linecap="round" stroke-linejoin="round">
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
         <circle cx="11" cy="11" r="8"></circle>
         <path d="m21 21-4.35-4.35"></path>
       </svg>
       <p>No patients found for <strong>"{{ searchTerm }}"</strong></p>
+      <button *ngIf="permissions.canAddPatient" class="btn btn-sm btn-outline-primary mt-2 d-inline-flex align-items-center gap-1"
+        (click)="openAddPatientForm()" aria-label="Add new patient">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        Add New Patient
+      </button>
     </div>
   </ng-container>
 
