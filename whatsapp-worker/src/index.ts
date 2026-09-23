@@ -23,6 +23,24 @@ function corsHeaders(origin: string | null): Record<string, string> {
   };
 }
 
+/**
+ * Constant-time string comparison to prevent timing side-channel attacks when
+ * validating secret tokens.
+ */
+function constantTimeCompare(a: string | null, b: string | null): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') {
+    return false;
+  }
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const origin = request.headers.get('Origin');
@@ -43,9 +61,10 @@ export default {
       });
     }
 
-    // Security check — only IntelliRX Angular app can call this worker
+    // Security check — only IntelliRX Angular app can call this worker.
+    // Use constant-time comparison to prevent timing side-channel attacks.
     const secret = request.headers.get('X-Worker-Secret');
-    if (secret !== env.WORKER_SECRET) {
+    if (!constantTimeCompare(secret, env.WORKER_SECRET)) {
       return new Response('Unauthorized', {
         status: 401,
         headers: corsHeaders(origin),
@@ -87,8 +106,9 @@ export default {
       });
 
     } catch (error: any) {
+      // Log internal error details server-side only; do not leak sensitive API responses or tokens to client
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: 'An internal error occurred while processing the request' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
