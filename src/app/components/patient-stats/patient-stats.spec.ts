@@ -52,6 +52,32 @@ function createPatientStatsComponent() {
     closeVisitModal() {
       this.showVisitModal = false;
       this.selectedDateVisits = [];
+    },
+
+    buildVisitsByDateMap() {
+      const map = new Map<string, any[]>();
+      if (!this.visits || this.visits.length === 0) return map;
+
+      for (const visit of this.visits) {
+        const rawDate = visit.created_at || visit.createdAt;
+        if (!rawDate) continue;
+        let visitDate: Date;
+        if (typeof rawDate.toDate === 'function') {
+          visitDate = rawDate.toDate();
+        } else {
+          visitDate = new Date(rawDate);
+        }
+        if (isNaN(visitDate.getTime())) continue;
+
+        const key = `${visitDate.getFullYear()}-${visitDate.getMonth()}-${visitDate.getDate()}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.push(visit);
+        } else {
+          map.set(key, [visit]);
+        }
+      }
+      return map;
     }
   };
 
@@ -117,6 +143,22 @@ describe('PatientStatsComponent', () => {
       comp.showVisitModal = true;
       comp.closeVisitModal();
       expect(comp.showVisitModal).toBe(false);
+    });
+  });
+
+  describe('buildVisitsByDateMap', () => {
+    it('indexes visits by YYYY-M-D date string in O(1) key lookups', () => {
+      const v1 = makeVisit('2024-03-15T10:00:00');
+      const v2 = makeVisit('2024-03-15T14:30:00');
+      const v3 = makeVisit('2024-03-16T09:00:00');
+      comp.visits = [v1, v2, v3];
+
+      const map = comp.buildVisitsByDateMap();
+      const targetDate = new Date('2024-03-15T10:00:00');
+      const key = `${targetDate.getFullYear()}-${targetDate.getMonth()}-${targetDate.getDate()}`;
+
+      expect(map.has(key)).toBe(true);
+      expect(map.get(key)?.length).toBe(2);
     });
   });
 });
