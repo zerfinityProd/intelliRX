@@ -1,0 +1,3 @@
+## 2026-09-24 - Pre-grouping Array Filters into Map Lookups in Grid Rendering
+**Learning:** Performing array filtering (`Array.prototype.filter`) and repeated `Date` parsing inside grid rendering loops (e.g. 35–42 calendar day cells) creates unnecessary O(C * N) iterations and object allocations. Pre-grouping dataset arrays into a `Map` keyed by formatted date strings (`YYYY-M-D`) in a single pass reduces rendering complexity to O(N + C) and eliminates redundant date allocations.
+**Action:** When building calendar grids or nested list components that group item lists by date or category, pre-compute a lookup Map in a single pass before iterating over the UI grid cells.

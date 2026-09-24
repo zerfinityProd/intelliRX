@@ -457,34 +457,54 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     const totalCells = Math.ceil((daysInMonth + prevMonthDays) / 7) * 7;
     const nextMonthDays = totalCells - (daysInMonth + prevMonthDays);
     
+    // Optimization: Pre-group visits by YYYY-MM-DD key into a Map in a single pass (O(N))
+    // rather than running array filter (O(N)) for every calendar grid cell (O(C * N)).
+    const visitsByDateMap = new Map<string, Visit[]>();
+    for (let i = 0; i < this.visits.length; i++) {
+      const visit = this.visits[i];
+      let visitDate: Date;
+      if (visit.created_at && typeof (visit.created_at as any).toDate === 'function') {
+        visitDate = (visit.created_at as any).toDate();
+      } else {
+        visitDate = new Date(visit.created_at);
+      }
+      const key = `${visitDate.getFullYear()}-${visitDate.getMonth()}-${visitDate.getDate()}`;
+      const existing = visitsByDateMap.get(key);
+      if (existing) {
+        existing.push(visit);
+      } else {
+        visitsByDateMap.set(key, [visit]);
+      }
+    }
+
     this.calendarDays = [];
     
     // Previous month days
     for (let i = prevMonthDays - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
-      this.calendarDays.push(this.createCalendarDay(date, false));
+      this.calendarDays.push(this.createCalendarDay(date, false, visitsByDateMap));
     }
     
     // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(year, month, i);
-      this.calendarDays.push(this.createCalendarDay(date, true));
+      this.calendarDays.push(this.createCalendarDay(date, true, visitsByDateMap));
     }
     
     // Next month days
     for (let i = 1; i <= nextMonthDays; i++) {
       const date = new Date(year, month + 1, i);
-      this.calendarDays.push(this.createCalendarDay(date, false));
+      this.calendarDays.push(this.createCalendarDay(date, false, visitsByDateMap));
     }
   }
 
-  private createCalendarDay(date: Date, isCurrentMonth: boolean): CalendarDay {
-    const dayVisits = this.getVisitsForDate(date);
+  private createCalendarDay(date: Date, isCurrentMonth: boolean, visitsByDateMap: Map<string, Visit[]>): CalendarDay {
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    const dayVisits = visitsByDateMap.get(key) || [];
     const today = new Date();
     const isToday = date.getDate() === today.getDate() &&
                     date.getMonth() === today.getMonth() &&
                     date.getFullYear() === today.getFullYear();
-    
     
     return {
       date,
@@ -495,21 +515,6 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
       visitCount: dayVisits.length,
       visits: dayVisits
     };
-  }
-
-  private getVisitsForDate(date: Date): Visit[] {
-    return this.visits.filter(visit => {
-      let visitDate: Date;
-      if (visit.created_at && typeof (visit.created_at as any).toDate === 'function') {
-        visitDate = (visit.created_at as any).toDate();
-      } else {
-        visitDate = new Date(visit.created_at);
-      }
-      
-      return visitDate.getDate() === date.getDate() &&
-             visitDate.getMonth() === date.getMonth() &&
-             visitDate.getFullYear() === date.getFullYear();
-    });
   }
 
   previousMonth(): void {
