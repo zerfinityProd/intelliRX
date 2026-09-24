@@ -1143,7 +1143,19 @@ export class AddVisitPageComponent implements OnInit {
     }
 
     private openPrintWindow(saved: boolean): void {
-        const patientName = this.patient?.name || 'Patient';
+        // Sanitize user inputs to prevent DOM XSS when generating print window HTML
+        const escapeHtml = (str: string | null | undefined): string => {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        };
+
+        const rawPatientName = this.patient?.name || 'Patient';
+        const patientName = escapeHtml(rawPatientName);
         const patientAge = this.getPatientAge();
         const now = new Date().toLocaleString('en-US', {
             year: 'numeric', month: 'short', day: 'numeric',
@@ -1163,7 +1175,7 @@ export class AddVisitPageComponent implements OnInit {
         // Build per-tooth notes block for print
         const toothNoteLines = this.selectedTeethIds
             .filter(id => this.toothNotes[id])
-            .map(id => `<div style="margin-bottom:4px"><span style="font-weight:600">Tooth ${id}:</span> ${this.toothNotes[id]}</div>`)
+            .map(id => `<div style="margin-bottom:4px"><span style="font-weight:600">Tooth ${escapeHtml(String(id))}:</span> ${escapeHtml(this.toothNotes[id])}</div>`)
             .join('');
         const toothNotesBlock = toothNoteLines
             ? `<div class="field"><span class="label">Tooth Notes</span><span class="value">${toothNoteLines}</span></div>`
@@ -1173,8 +1185,8 @@ export class AddVisitPageComponent implements OnInit {
         const boneNoteLines = this.selectedBoneIds
             .filter(id => this.boneNotes[id])
             .map(id => {
-                const name = id; // boneNames is on the widget; use raw id here (readable enough)
-                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.boneNotes[id]}</div>`;
+                const name = id;
+                return `<div style="margin-bottom:4px"><span style="font-weight:600">${escapeHtml(name)}:</span> ${escapeHtml(this.boneNotes[id])}</div>`;
             }).join('');
         const boneNotesBlock = boneNoteLines
             ? `<div class="field"><span class="label">Bone Notes</span><span class="value">${boneNoteLines}</span></div>`
@@ -1185,22 +1197,22 @@ export class AddVisitPageComponent implements OnInit {
             .filter(id => this.muscleNotes[id])
             .map(id => {
                 const name = this.getSelectedMuscleNames()[this.selectedMuscleIds.indexOf(id)] || id;
-                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.muscleNotes[id]}</div>`;
+                return `<div style="margin-bottom:4px"><span style="font-weight:600">${escapeHtml(name)}:</span> ${escapeHtml(this.muscleNotes[id])}</div>`;
             }).join('');
         const muscleNotesBlock = muscleNoteLines
             ? `<div class="field"><span class="label">Muscle Notes</span><span class="value">${muscleNoteLines}</span></div>`
             : '';
 
         const examRows = this.examinations.map(e =>
-            `<tr><td>${e.testName}</td><td>${e.status || '-'}</td><td>${e.result || '-'}</td></tr>`
+            `<tr><td>${escapeHtml(e.testName)}</td><td>${escapeHtml(e.status) || '-'}</td><td>${escapeHtml(e.result) || '-'}</td></tr>`
         ).join('');
 
         const medRows = this.medicines.map(m =>
-            `<tr><td>${m.name}</td><td>${m.dosage || '-'}</td><td>${m.frequency || '-'}</td><td>${m.durationDays ? m.durationDays + ' days' : '-'}</td></tr>`
+            `<tr><td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.dosage) || '-'}</td><td>${escapeHtml(m.frequency) || '-'}</td><td>${m.durationDays ? escapeHtml(m.durationDays) + ' days' : '-'}</td></tr>`
         ).join('');
 
         const field = (label: string, value: string) =>
-            value ? `<div class="field"><span class="label">${label}</span><span class="value">${value}</span></div>` : '';
+            value ? `<div class="field"><span class="label">${escapeHtml(label)}</span><span class="value">${escapeHtml(value)}</span></div>` : '';
 
         const html = `
 <!DOCTYPE html>
