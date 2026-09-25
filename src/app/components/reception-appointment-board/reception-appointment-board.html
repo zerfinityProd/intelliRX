@@ -11,7 +11,7 @@
         <path d="m21 21-4.35-4.35"></path>
       </svg>
       <input type="text" [ngModel]="searchTerm" (ngModelChange)="searchTermChange.emit($event)" class="rh-search-input" placeholder="Search patient name or phone…" />
-      <button *ngIf="searchTerm" class="rh-search-clear" (click)="searchTermChange.emit('')">✕</button>
+      <button *ngIf="searchTerm" class="rh-search-clear" (click)="searchTermChange.emit('')" aria-label="Clear search">✕</button>
     </div>
 
     <!-- Date filter -->
@@ -77,7 +77,7 @@
       <line x1="12" y1="16" x2="12.01" y2="16"></line>
     </svg>
     {{ errorMessage }}
-    <button (click)="errorDismissed.emit()">✕</button>
+    <button (click)="errorDismissed.emit()" aria-label="Dismiss error">✕</button>
   </div>
 
   <!-- Loading -->

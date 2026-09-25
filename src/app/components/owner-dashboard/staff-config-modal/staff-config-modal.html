@@ -2,7 +2,7 @@
   <div class="modal-content">
     <div class="modal-header">
       <h2>Configure {{ staff?.name || 'Staff' }}</h2>
-      <button class="btn-close" (click)="close()">×</button>
+      <button class="btn-close" (click)="close()" aria-label="Close dialog">×</button>
     </div>
 
     <div class="modal-body" *ngIf="staff">
