@@ -120,7 +120,7 @@
   <!-- ── Kanban Board ── -->
   <div *ngIf="!isLoading" class="kb-board">
 
-    <div *ngFor="let col of columns"
+    <div *ngFor="let col of columns; trackBy: trackByColId"
       class="kb-column"
       [class.kb-column--drag-over]="dragOverColumn === col.id"
       (dragover)="columnDragOver.emit({ event: $event, columnId: col.id })"
@@ -186,7 +186,7 @@
         </div>
 
         <!-- Appointment Card -->
-        <div *ngFor="let appt of cardsFor(col.id)"
+        <div *ngFor="let appt of cardsFor(col.id); trackBy: trackByApptId"
           class="kb-card"
           [class.kb-card--updating]="updatingId === appt.id"
           [class.kb-card--today]="isToday(appt.datetime)"

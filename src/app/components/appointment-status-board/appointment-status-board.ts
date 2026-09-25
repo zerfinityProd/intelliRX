@@ -202,5 +202,15 @@ export class AppointmentStatusBoardComponent {
   getDoctorDisplayName(appt: Appointment): string {
     return this.doctorNameResolver(appt);
   }
+
+  // ── TrackBy functions for *ngFor performance optimization ────
+  // Prevents full DOM destruction/re-creation of appointment cards and Kanban columns on state/array reference updates
+  trackByApptId(index: number, appt: Appointment): string {
+    return appt.id || index.toString();
+  }
+
+  trackByColId(index: number, col: BoardColumn): string {
+    return col.id;
+  }
 }
 
