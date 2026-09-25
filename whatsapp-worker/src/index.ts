@@ -88,7 +88,7 @@ export default {
 
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: 'An error occurred processing the request' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
