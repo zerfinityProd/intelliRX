@@ -36,7 +36,7 @@
             stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
         </button>
 
-        <div class="kb-date-nav__center" (click)="toggleCalendar()" title="Click to pick a date">
+        <div class="kb-date-nav__center" (click)="toggleCalendar()" (keydown.enter)="toggleCalendar()" (keydown.space)="$event.preventDefault(); toggleCalendar()" role="button" tabindex="0" aria-label="Open date picker" title="Click to pick a date">
           <svg class="kb-date-nav__cal-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="4" width="18" height="18" rx="2"></rect>
@@ -49,12 +49,12 @@
           <!-- Custom Calendar Dropdown -->
           <div *ngIf="showCalendar" class="kb-cal-dropdown" (click)="$event.stopPropagation()">
             <div class="kb-cal__header">
-              <button class="kb-cal__nav-btn" (click)="calPrevMonth(); $event.stopPropagation()" type="button">
+              <button class="kb-cal__nav-btn" (click)="calPrevMonth(); $event.stopPropagation()" type="button" aria-label="Previous month">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
               </button>
               <span class="kb-cal__month-label">{{ calMonthLabel }}</span>
-              <button class="kb-cal__nav-btn" (click)="calNextMonth(); $event.stopPropagation()" type="button">
+              <button class="kb-cal__nav-btn" (click)="calNextMonth(); $event.stopPropagation()" type="button" aria-label="Next month">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                   stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
               </button>
@@ -108,7 +108,7 @@
       <line x1="12" y1="16" x2="12.01" y2="16"></line>
     </svg>
     {{ errorMessage }}
-    <button (click)="errorDismissed.emit()">✕</button>
+    <button (click)="errorDismissed.emit()" aria-label="Dismiss error">✕</button>
   </div>
 
   <!-- Loading -->
