@@ -87,8 +87,9 @@ export default {
       });
 
     } catch (error: any) {
+      // Security: Log error details server-side, but return generic error message to client to prevent information leakage
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: 'Failed to send WhatsApp notification' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
