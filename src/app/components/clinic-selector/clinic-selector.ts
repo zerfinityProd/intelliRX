@@ -45,7 +45,7 @@ export class ClinicSelectorComponent implements OnInit {
     private state!: ClinicSelectorState;
 
     /** Accent colors cycled for each option avatar */
-    private readonly COLORS = ['#148D9E', '#0E6877', '#1CB5C9', '#2ecc71', '#9b59b6', '#e67e22'];
+    private readonly COLORS = ['#15803D', '#166534', '#22C55E', '#10b981', '#6366f1', '#f59e0b'];
 
     async ngOnInit(): Promise<void> {
         const nav = this.router.getCurrentNavigation();

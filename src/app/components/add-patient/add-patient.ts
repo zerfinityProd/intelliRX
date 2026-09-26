@@ -376,14 +376,14 @@ export class AddPatientComponent implements OnInit, OnDestroy {
         icon: 'success',
         showConfirmButton: true,
         confirmButtonText: 'Add Visit',
-        confirmButtonColor: '#148D9E',
+        confirmButtonColor: isDark ? '#75e037' : '#15803D',
         showDenyButton: true,
         denyButtonText: 'OK',
         denyButtonColor: '#94a3b8',
         allowOutsideClick: false,
         allowEscapeKey: false,
-        background: isDark ? '#1f1f1f' : '#ffffff',
-        color: isDark ? '#e0e0e0' : '#1e293b',
+        background: isDark ? '#242831' : '#ffffff',
+        color: isDark ? '#F8FAFC' : '#0F172A',
       });
 
       // Clear the pending flag — user has acted on the popup
@@ -473,9 +473,9 @@ export class AddPatientComponent implements OnInit, OnDestroy {
           confirmButtonColor: '#ef4444',
           showDenyButton: true,
           denyButtonText: 'Keep editing',
-          denyButtonColor: '#148D9E',
-          background: isDark ? '#1f1f1f' : '#ffffff',
-          color: isDark ? '#e0e0e0' : '#1e293b',
+          denyButtonColor: isDark ? '#75e037' : '#15803D',
+          background: isDark ? '#242831' : '#ffffff',
+          color: isDark ? '#F8FAFC' : '#0F172A',
         }).then(result => {
           if (result.isConfirmed) {
             this.close.emit();

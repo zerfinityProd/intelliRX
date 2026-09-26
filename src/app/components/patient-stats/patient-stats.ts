@@ -150,9 +150,9 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   private buildPill(text: string, type: 'illness' | 'allergy'): string {
     const isIllness = type === 'illness';
     const bg = isIllness ? '#eef2ff' : '#fff1f2';
-    const color = isIllness ? '#117A8B' : '#e11d48';
-    const border = isIllness ? '#B5DDE5' : '#fecdd3';
-    const dot = isIllness ? '#148D9E' : '#f43f5e';
+    const color = isIllness ? '#15803D' : '#e11d48';
+    const border = isIllness ? '#bbf7d0' : '#fecdd3';
+    const dot = isIllness ? '#15803D' : '#f43f5e';
 
     return `
       <span style="
@@ -247,7 +247,7 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
           font-family:'Poppins',sans-serif;
           font-size:11px;
           font-weight:600;
-          color:#148D9E;
+          color:var(--clr-primary, #15803D);
           text-transform:uppercase;
           letter-spacing:0.07em;
           margin-bottom:6px;
@@ -342,6 +342,10 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
       this.visitTrendChart.destroy();
     }
 
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const chartLineColor = isDark ? '#75e037' : '#15803D';
+    const chartAreaColor = isDark ? 'rgba(117, 224, 55, 0.15)' : 'rgba(21, 128, 61, 0.1)';
+
     const config: ChartConfiguration = {
       type: 'line',
       data: {
@@ -349,13 +353,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
         datasets: [{
           label: 'Visits',
           data: this.monthlyVisitsData.map(d => d.count),
-          borderColor: '#148D9E',
-          backgroundColor: 'rgba(20, 141, 158, 0.1)',
+          borderColor: chartLineColor,
+          backgroundColor: chartAreaColor,
           borderWidth: 3,
           tension: 0.4,
           fill: true,
           pointRadius: 5,
-          pointBackgroundColor: '#148D9E',
+          pointBackgroundColor: chartLineColor,
           pointBorderColor: '#ffffff',
           pointBorderWidth: 2,
           pointHoverRadius: 7
@@ -369,7 +373,7 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
             display: false
           },
           tooltip: {
-            backgroundColor: '#1e293b',
+            backgroundColor: isDark ? '#242831' : '#1e293b',
             padding: 12,
             titleFont: {
               size: 14,
@@ -378,7 +382,7 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
             bodyFont: {
               size: 13
             },
-            borderColor: '#148D9E',
+            borderColor: chartLineColor,
             borderWidth: 1,
             displayColors: false,
             callbacks: {

@@ -41,16 +41,16 @@
           [title]="appointmentsOnDate(day).length + ' appointment(s)'">
           <span class="rh-cal-num">{{ day.getDate() }}</span>
           <span *ngIf="appointmentsOnDate(day).length > 0" class="rh-cal-dot"
-            [style.background]="isToday(day)||isCalSelected(day) ? 'rgba(255,255,255,0.85)' : '#1CB5C9'"></span>
+            [style.background]="isToday(day)||isCalSelected(day) ? 'rgba(255,255,255,0.85)' : 'var(--clr-accent, #22C55E)'"></span>
         </div>
       </ng-container>
     </div>
     <div class="rh-cal-legend">
       <span style="display:flex;align-items:center;gap:4px">
-        <span style="width:8px;height:8px;border-radius:50%;background:#148D9E;flex-shrink:0"></span> Today
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--clr-primary, #15803D);flex-shrink:0"></span> Today
       </span>
       <span style="display:flex;align-items:center;gap:4px">
-        <span style="width:8px;height:8px;border-radius:50%;background:#1CB5C9;flex-shrink:0"></span> Appointments
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--clr-accent, #22C55E);flex-shrink:0"></span> Appointments
       </span>
     </div>
   </div>

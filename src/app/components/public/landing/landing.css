@@ -33,7 +33,7 @@
   position: absolute;
   top: -20%; left: -10%;
   width: 50%; height: 50%;
-  background: radial-gradient(circle, rgba(20, 141, 158, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(21, 128, 61, 0.15) 0%, transparent 70%);
   z-index: 0;
 }
 
@@ -108,12 +108,12 @@
 .btn-primary {
   background-color: var(--accent-primary);
   color: white;
-  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.3);
+  box-shadow: 0 4px 14px rgba(21, 128, 61, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(20, 141, 158, 0.4);
+  box-shadow: 0 6px 20px rgba(21, 128, 61, 0.4);
 }
 
 .btn-outline {
@@ -132,20 +132,20 @@
 }
 
 @keyframes pulse-soft {
-  0% { box-shadow: 0 0 0 0 rgba(20, 141, 158, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(20, 141, 158, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(20, 141, 158, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(21, 128, 61, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(21, 128, 61, 0); }
 }
 
 .badge {
   display: inline-block;
   padding: 0.5rem 1rem;
-  background: rgba(20, 141, 158, 0.1);
+  background: rgba(21, 128, 61, 0.1);
   color: var(--accent-primary);
   border-radius: 20px;
   font-weight: 600;
   margin-bottom: 1.5rem;
-  border: 1px solid rgba(20, 141, 158, 0.2);
+  border: 1px solid rgba(21, 128, 61, 0.2);
 }
 
 /* Mockup UI */
@@ -280,7 +280,7 @@
 .video-placeholder {
   width: 100%;
   aspect-ratio: 16/9;
-  background: linear-gradient(135deg, rgba(20,141,158,0.1), rgba(0,0,0,0.05));
+  background: linear-gradient(135deg, rgba(21,128,61,0.1), rgba(0,0,0,0.05));
   border: 1px solid var(--border-color);
   border-radius: 12px;
   display: flex;
@@ -340,7 +340,7 @@
 .pricing-card.featured {
   border: 2px solid var(--accent-primary);
   transform: scale(1.05);
-  box-shadow: 0 20px 40px rgba(20, 141, 158, 0.15);
+  box-shadow: 0 20px 40px rgba(21, 128, 61, 0.15);
 }
 
 @media (max-width: 900px) {
@@ -424,7 +424,7 @@
 }
 
 .zerfinity-card {
-  background: linear-gradient(135deg, rgba(20,141,158,0.05), transparent);
+  background: linear-gradient(135deg, rgba(21,128,61,0.05), transparent);
 }
 
 .zerfinity-link {

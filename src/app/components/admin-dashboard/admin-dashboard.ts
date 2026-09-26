@@ -959,6 +959,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
     if (turningOn) {
       // Warn the user before enabling overlapping slots
       const { default: Swal } = await import('sweetalert2');
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       const result = await Swal.fire({
         title: 'Allow Time-Clash?',
         html: `Enabling this will allow a doctor's availability slots to <strong>overlap across different clinics</strong>.<br><br>
@@ -967,8 +968,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         showCancelButton: true,
         confirmButtonText: 'Yes, allow it',
         cancelButtonText: 'Cancel',
-        confirmButtonColor: '#148D9E',
-        cancelButtonColor: '#6c757d',
+        confirmButtonColor: isDark ? '#75e037' : '#15803D',
+        cancelButtonColor: '#64748b',
+        background: isDark ? '#242831' : '#ffffff',
+        color: isDark ? '#F8FAFC' : '#0F172A',
       });
       if (!result.isConfirmed) return; // user cancelled — leave toggle as-is
     }
@@ -1707,6 +1710,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
         // Config is ON — clash is allowed but warn the user and ask to confirm
         const { default: Swal } = await import('sweetalert2');
         const clashList = clashMessages.map(m => `<li>${m}</li>`).join('');
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
         const result = await Swal.fire({
           title: 'Time Overlap Detected',
           html: `The following slots overlap across clinics:<br><ul style="text-align:left;margin-top:8px">${clashList}</ul><br>
@@ -1715,8 +1719,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           showCancelButton: true,
           confirmButtonText: 'Yes, save anyway',
           cancelButtonText: 'Cancel',
-          confirmButtonColor: '#148D9E',
-          cancelButtonColor: '#6c757d',
+          confirmButtonColor: isDark ? '#75e037' : '#15803D',
+          cancelButtonColor: '#64748b',
+          background: isDark ? '#242831' : '#ffffff',
+          color: isDark ? '#F8FAFC' : '#0F172A',
         });
         if (!result.isConfirmed) return; // user cancelled
       }
@@ -1855,6 +1861,7 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
           // Config is ON — warn but allow proceeding
           const { default: Swal } = await import('sweetalert2');
           const conflictList = crossConflicts.map(m => `<li>${m}</li>`).join('');
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
           const result = await Swal.fire({
             title: 'Cross-Clinic Conflict Detected',
             html: `The following cross-clinic overlaps were found:<br>
@@ -1864,8 +1871,10 @@ export class AdminDashboardComponent implements OnInit, OnDestroy {
             showCancelButton: true,
             confirmButtonText: 'Yes, save anyway',
             cancelButtonText: 'Cancel',
-            confirmButtonColor: '#148D9E',
-            cancelButtonColor: '#6c757d',
+            confirmButtonColor: isDark ? '#75e037' : '#15803D',
+            cancelButtonColor: '#64748b',
+            background: isDark ? '#242831' : '#ffffff',
+            color: isDark ? '#F8FAFC' : '#0F172A',
           });
           if (!result.isConfirmed) {
             this.isSaving = false;

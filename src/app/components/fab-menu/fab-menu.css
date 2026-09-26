@@ -33,46 +33,52 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  border: none;
+  border: var(--neu-bevel);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ffffff;
-  background: linear-gradient(135deg, #148D9E, #0E6877);
-  box-shadow: 0 4px 16px rgba(20, 141, 158, 0.40);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  color: var(--clr-primary, #15803D);
+  background: var(--clr-surface);
+  box-shadow: var(--neu-shadow-md);
+  transition: var(--t-fast);
   flex-shrink: 0;
   outline-offset: 3px;
 }
 
 .fab-btn:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 22px rgba(20, 141, 158, 0.55);
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: var(--neu-shadow-hover);
+  color: var(--clr-primary-dark, #166534);
+}
+
+.fab-btn:active {
+  transform: scale(0.96) translateY(1px);
+  box-shadow: var(--neu-inset-sm);
 }
 
 .fab-btn:focus-visible {
-  outline: 2px solid #148D9E;
+  outline: 2px solid var(--clr-primary);
   outline-offset: 3px;
 }
 
 /* ── Tooltip label (appears to the right of the button on hover) ── */
 .fab-tooltip {
   position: absolute;
-  left: calc(100% + 10px);
+  left: calc(100% + 12px);
   top: 50%;
-  transform: translateY(-50%);
-  background: #ffffff;
-  color: #0A2540;
+  transform: translateY(-50%) translateX(-4px);
+  background: var(--clr-surface);
+  border: var(--neu-bevel);
+  color: var(--clr-text, #0F172A);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
-  padding: 5px 12px;
-  border-radius: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  box-shadow: var(--neu-shadow-sm);
   pointer-events: none;
   opacity: 0;
-  transform: translateY(-50%) translateX(-4px);
   transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
@@ -83,14 +89,28 @@
 
 /* ── Dark theme ── */
 [data-theme="dark"] .fab-btn {
-  background: linear-gradient(135deg, #148D9E, #0E6877);
-  box-shadow: 0 4px 16px rgba(20, 141, 158, 0.30);
+  background: #242831;
+  color: #75e037;
+  border: 1px solid #3a4252;
+  box-shadow: 6px 6px 14px #13161a, -4px -4px 10px #2f3542;
+}
+
+[data-theme="dark"] .fab-btn:hover {
+  color: #8ef046;
+  border-color: #75e037;
+  box-shadow: 6px 6px 16px #13161a, -4px -4px 12px #2f3542, 0 0 12px rgba(117, 224, 55, 0.35);
+}
+
+[data-theme="dark"] .fab-btn:active {
+  background: #1e2229;
+  box-shadow: inset 3px 3px 6px #13161a, inset -2px -2px 5px #2f3542;
 }
 
 [data-theme="dark"] .fab-tooltip {
-  background: #1A2E3B;
-  color: #C8DDE3;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  background: #242831;
+  color: #F8FAFC;
+  border: 1px solid #3a4252;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 
 /* ══════════════════════════════════════════════════════════════

@@ -158,8 +158,8 @@ export class DayViewModalComponent implements OnChanges {
 
   getStatusColor(status: string): string {
     switch (status) {
-      case 'scheduled': return '#148D9E';
-      case 'completed': return '#10b981';
+      case 'scheduled': return '#15803D';
+      case 'completed': return '#16A34A';
       case 'cancelled': return '#ef4444';
       default: return '#64748b';
     }
@@ -167,7 +167,7 @@ export class DayViewModalComponent implements OnChanges {
 
   getStatusBg(status: string): string {
     switch (status) {
-      case 'scheduled': return 'linear-gradient(135deg, #E7F5F7, #DAF0F4)';
+      case 'scheduled': return 'linear-gradient(135deg, #E6F7EC, #DCFCE7)';
       case 'completed': return 'linear-gradient(135deg, #d1fae5, #ecfdf5)';
       case 'cancelled': return 'linear-gradient(135deg, #fee2e2, #fef2f2)';
       default: return '#f1f5f9';
@@ -176,7 +176,7 @@ export class DayViewModalComponent implements OnChanges {
 
   getStatusBorder(status: string): string {
     switch (status) {
-      case 'scheduled': return '#B5DDE5';
+      case 'scheduled': return '#86EFAC';
       case 'completed': return '#6ee7b7';
       case 'cancelled': return '#fecaca';
       default: return '#e2e8f0';

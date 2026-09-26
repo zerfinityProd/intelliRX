@@ -265,7 +265,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         confirmButtonText: 'Continue',
         cancelButtonText: 'Cancel',
         allowOutsideClick: true,
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#75e037' : '#15803D'
       });
       if (subResult.isDismissed) return;
       chosenSubId = String(subResult.value ?? subscriptionIds[0]);
@@ -304,7 +304,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         confirmButtonText: 'Switch',
         cancelButtonText: 'Cancel',
         allowOutsideClick: true,
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#75e037' : '#15803D'
       });
       if (clinicResult.isDismissed) return;
       chosenClinicId = String(clinicResult.value ?? clinicsInSub[0]);

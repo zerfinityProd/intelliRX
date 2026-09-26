@@ -15,9 +15,9 @@
   letter-spacing: 0.5px;
   text-transform: uppercase;
   border-radius: 20px;
-  background: rgba(20, 141, 158, 0.1);
-  color: #148D9E;
-  border: 1px solid rgba(20, 141, 158, 0.2);
+  background: var(--clr-primary-light, rgba(21, 128, 61, 0.1));
+  color: var(--clr-primary, #15803D);
+  border: 1px solid var(--clr-primary, rgba(21, 128, 61, 0.2));
 }
 
 .portal-badge--app {

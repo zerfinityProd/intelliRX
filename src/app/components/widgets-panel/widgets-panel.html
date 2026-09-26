@@ -52,6 +52,57 @@
     <button class="widget-banner__cta" (click)="goToAppointmentsClicked.emit()">View All →</button>
   </div>
 
+  <!-- ── WIDGET: Practice KPI Stats Row ── -->
+  <div class="widget-stats-row">
+    <div class="widget-mini-stat" (click)="goToAppointmentsClicked.emit()" role="button" tabindex="0"
+      title="View today's appointments">
+      <div class="widget-mini-stat__icon widget-mini-stat__icon--today">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+      </div>
+      <div class="widget-mini-stat__body">
+        <div class="widget-mini-stat__num">{{ todayAppointmentCount }}</div>
+        <div class="widget-mini-stat__label">Today</div>
+      </div>
+    </div>
+
+    <div class="widget-mini-stat" (click)="goToAppointmentsClicked.emit()" role="button" tabindex="0"
+      title="View this month's appointments">
+      <div class="widget-mini-stat__icon widget-mini-stat__icon--month">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+          <line x1="16" y1="2" x2="16" y2="6"></line>
+          <line x1="8" y1="2" x2="8" y2="6"></line>
+          <line x1="3" y1="10" x2="21" y2="10"></line>
+        </svg>
+      </div>
+      <div class="widget-mini-stat__body">
+        <div class="widget-mini-stat__num">{{ thisMonthCount }}</div>
+        <div class="widget-mini-stat__label">This Month</div>
+      </div>
+    </div>
+
+    <div class="widget-mini-stat" title="Total registered patients">
+      <div class="widget-mini-stat__icon widget-mini-stat__icon--patients">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      </div>
+      <div class="widget-mini-stat__body">
+        <div class="widget-mini-stat__num">{{ totalPatients > 0 ? totalPatients : '—' }}</div>
+        <div class="widget-mini-stat__label">Patients</div>
+      </div>
+    </div>
+  </div>
+
 
 
 
@@ -101,7 +152,7 @@
         <span class="doctor-select-pill__name">{{ selectedDashboardDoctor.name }}</span>
         <span class="doctor-select-pill__spec">{{ selectedDashboardDoctor.specialty }}</span>
       </div>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#148D9E" stroke-width="2.5"
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--clr-primary, #15803D)" stroke-width="2.5"
         stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
@@ -160,7 +211,7 @@
           [title]="'Click to view — ' + appointmentsOnDate(day).length + ' appointment(s)'">
           <span class="cal-day-num">{{ day.getDate() }}</span>
           <span *ngIf="appointmentsOnDate(day).length > 0" class="cal-dot"
-            [style.background]="isToday(day)||isSelected(day) ? 'rgba(255,255,255,0.85)' : '#1CB5C9'"></span>
+            [style.background]="isToday(day)||isSelected(day) ? 'rgba(255,255,255,0.85)' : 'var(--clr-accent, #22C55E)'"></span>
         </div>
       </ng-container>
     </div>
@@ -168,16 +219,12 @@
     <!-- Calendar legend -->
     <div class="cal-legend">
       <div class="d-flex align-items-center gap-1">
-        <div style="width:8px;height:8px;border-radius:50%;background:#148D9E;flex-shrink:0"></div> Today
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--clr-primary, #15803D);flex-shrink:0"></div> Today
       </div>
       <div class="d-flex align-items-center gap-1">
-        <div style="width:8px;height:8px;border-radius:50%;background:#1CB5C9;flex-shrink:0"></div> Appointments
+        <div style="width:8px;height:8px;border-radius:50%;background:var(--clr-accent, #22C55E);flex-shrink:0"></div> Appointments
       </div>
     </div>
   </div>
-
-
-
-
 
 </div><!-- /kanban-col--widgets -->

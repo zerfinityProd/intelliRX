@@ -1,11 +1,10 @@
 /* ═══════════════════════════════════════════════════════════
-   MY LEAVES — Premium Design
-   Matches IntelliRX design system (teal, cards, gradients)
+   MY LEAVES — Neumorphic Dark Knobs & Porcelain Emerald
 ═══════════════════════════════════════════════════════════ */
 
 .lv-page {
   min-height: calc(100vh - 64px);
-  background: var(--clr-bg, #F0F7F9);
+  background: var(--clr-bg, #E8ECF2);
   padding: 28px 20px 40px;
 }
 
@@ -26,26 +25,26 @@
   width: 48px;
   height: 48px;
   border-radius: 14px;
-  background: linear-gradient(135deg, #148D9E, #1CB5C9);
+  background: linear-gradient(135deg, var(--clr-primary, #15803D), var(--clr-accent, #22C55E));
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.3);
+  box-shadow: 0 4px 14px rgba(21, 128, 61, 0.25);
 }
 
 .lv-page-title {
   font-size: 22px;
   font-weight: 800;
-  color: var(--clr-text, #0A2540);
+  color: var(--clr-text, #0F172A);
   margin: 0;
   letter-spacing: -0.3px;
 }
 
 .lv-page-sub {
   font-size: 13px;
-  color: var(--clr-text-muted, #5A8A9C);
+  color: var(--clr-text-muted, #64748B);
   margin: 2px 0 0;
 }
 
@@ -67,14 +66,14 @@
   background: var(--clr-surface, #fff);
   border-radius: 16px;
   padding: 24px;
-  border: 1px solid var(--clr-border, #C8DDE3);
-  box-shadow: 0 2px 12px rgba(10, 37, 64, 0.04);
+  border: 1px solid var(--clr-border, #CBD5E1);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.04);
   transition: box-shadow 0.2s;
 }
 
 .lv-apply-card:hover,
 .lv-history-card:hover {
-  box-shadow: 0 4px 20px rgba(10, 37, 64, 0.08);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
 }
 
 /* ── Card Header ── */
@@ -96,20 +95,20 @@
 }
 
 .lv-card-header__icon--apply {
-  background: linear-gradient(135deg, #148D9E, #1CB5C9);
+  background: linear-gradient(135deg, var(--clr-primary, #15803D), var(--clr-accent, #22C55E));
   color: #fff;
-  box-shadow: 0 3px 10px rgba(20, 141, 158, 0.25);
+  box-shadow: 0 3px 10px rgba(21, 128, 61, 0.22);
 }
 
 .lv-card-header__icon--history {
-  background: var(--clr-primary-light, #E0F4F7);
-  color: var(--clr-primary, #148D9E);
+  background: var(--clr-primary-light, #E6F7EC);
+  color: var(--clr-primary, #15803D);
 }
 
 .lv-card-title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--clr-text, #0A2540);
+  color: var(--clr-text, #0F172A);
   margin: 0;
   flex: 1;
 }
@@ -117,8 +116,8 @@
 .lv-count-badge {
   font-size: 12px;
   font-weight: 700;
-  background: var(--clr-primary-light, #E0F4F7);
-  color: var(--clr-primary, #148D9E);
+  background: var(--clr-primary-light, #E6F7EC);
+  color: var(--clr-primary, #15803D);
   padding: 2px 10px;
   border-radius: 20px;
   flex-shrink: 0;
@@ -135,7 +134,7 @@
   gap: 6px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--clr-text-muted, #5A8A9C);
+  color: var(--clr-text-muted, #64748B);
   margin-bottom: 6px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -148,10 +147,10 @@
 .lv-input {
   width: 100%;
   padding: 10px 14px;
-  border: 1.5px solid var(--clr-border, #C8DDE3);
+  border: 1.5px solid var(--clr-border, #CBD5E1);
   border-radius: 10px;
-  background: var(--clr-bg, #F0F7F9);
-  color: var(--clr-text, #0A2540);
+  background: var(--clr-bg, #E8ECF2);
+  color: var(--clr-text, #0F172A);
   font-size: 14px;
   font-weight: 500;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -160,8 +159,8 @@
 }
 
 .lv-input:focus {
-  border-color: var(--clr-primary, #148D9E);
-  box-shadow: 0 0 0 3px rgba(20, 141, 158, 0.12);
+  border-color: var(--clr-primary, #15803D);
+  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.15);
 }
 
 .lv-input--error {
@@ -180,16 +179,16 @@
 .lv-date-error svg { flex-shrink: 0; margin-top: 1px; }
 @keyframes lv-err-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 
-:host-context([data-theme="dark"]) .lv-date-error { color: #e05555; }
+:host-context([data-theme="dark"]) .lv-date-error { color: #f87171; }
 :host-context([data-theme="dark"]) .lv-input--error {
-  border-color: #e05555 !important;
-  box-shadow: 0 0 0 3px rgba(224, 85, 85, 0.15) !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.15) !important;
 }
 
 .lv-select {
   appearance: none;
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%235A8A9C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2364748B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 14px center;
   padding-right: 38px;
@@ -205,19 +204,19 @@
   padding: 12px 20px;
   border: none;
   border-radius: 12px;
-  background: linear-gradient(135deg, #148D9E, #1CB5C9);
+  background: linear-gradient(135deg, var(--clr-primary, #15803D), var(--clr-accent, #22C55E));
   color: #fff;
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   transition: transform 0.15s, box-shadow 0.2s, opacity 0.15s;
-  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.3);
+  box-shadow: 0 4px 14px rgba(21, 128, 61, 0.25);
   margin-top: 4px;
 }
 
 .lv-btn-apply:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(20, 141, 158, 0.4);
+  box-shadow: 0 6px 20px rgba(21, 128, 61, 0.35);
 }
 
 .lv-btn-apply:active:not(:disabled) {
@@ -243,8 +242,8 @@
 .lv-spinner--large {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(20, 141, 158, 0.2);
-  border-top-color: #148D9E;
+  border: 3px solid rgba(21, 128, 61, 0.2);
+  border-top-color: #15803D;
   border-radius: 50%;
   animation: lv-spin 0.7s linear infinite;
   margin: 0 auto 12px;
@@ -260,9 +259,9 @@
   margin-top: 16px;
   padding: 10px 14px;
   border-radius: 10px;
-  background: var(--clr-primary-light, #E0F4F7);
+  background: var(--clr-primary-light, #E6F7EC);
   font-size: 12px;
-  color: var(--clr-primary, #148D9E);
+  color: var(--clr-primary, #15803D);
   line-height: 1.5;
 }
 
@@ -285,13 +284,13 @@
 .lv-empty__title {
   font-size: 16px;
   font-weight: 700;
-  color: var(--clr-text, #0A2540);
+  color: var(--clr-text, #0F172A);
   margin-bottom: 4px;
 }
 
 .lv-empty__desc {
   font-size: 13px;
-  color: var(--clr-text-muted, #5A8A9C);
+  color: var(--clr-text-muted, #64748B);
 }
 
 /* ── Leave List ── */
@@ -307,14 +306,14 @@
   gap: 14px;
   padding: 14px 16px;
   border-radius: 12px;
-  border: 1px solid var(--clr-border, #C8DDE3);
-  background: var(--clr-bg, #F0F7F9);
+  border: 1px solid var(--clr-border, #CBD5E1);
+  background: var(--clr-bg, #E8ECF2);
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .lv-item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 3px 12px rgba(10, 37, 64, 0.06);
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.06);
 }
 
 .lv-item--approved { border-left: 3px solid #10b981; }
@@ -326,14 +325,14 @@
   width: 48px;
   height: 48px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #148D9E, #1CB5C9);
+  background: linear-gradient(135deg, var(--clr-primary, #15803D), var(--clr-accent, #22C55E));
   color: #fff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(20, 141, 158, 0.2);
+  box-shadow: 0 2px 8px rgba(21, 128, 61, 0.2);
 }
 
 .lv-item__day {
@@ -366,15 +365,15 @@
   gap: 4px;
   font-size: 12px;
   font-weight: 700;
-  color: var(--clr-primary, #148D9E);
-  background: var(--clr-primary-light, #E0F4F7);
+  color: var(--clr-primary, #15803D);
+  background: var(--clr-primary-light, #E6F7EC);
   padding: 2px 10px;
   border-radius: 20px;
 }
 
 .lv-item__date-full {
   font-size: 12px;
-  color: var(--clr-text-muted, #5A8A9C);
+  color: var(--clr-text-muted, #64748B);
 }
 
 /* Status + Actions */
@@ -415,9 +414,9 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid var(--clr-border, #C8DDE3);
+  border: 1px solid var(--clr-border, #CBD5E1);
   background: var(--clr-surface, #fff);
-  color: var(--clr-text-muted, #5A8A9C);
+  color: var(--clr-text-muted, #64748B);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -432,138 +431,175 @@
 }
 
 /* ═══════════════════════════════════════════════════════════
-   DARK MODE
+   DARK MODE — Neumorphic Charcoal & Lime Knobs
 ═══════════════════════════════════════════════════════════ */
 :host-context([data-theme="dark"]) .lv-page {
-  background: var(--dk-bg0, #0d0d0d);
+  background: #1e2229;
 }
 
 :host-context([data-theme="dark"]) .lv-page-title {
-  color: var(--dk-text1, #e0e0e0);
+  color: #F8FAFC;
 }
 
 :host-context([data-theme="dark"]) .lv-page-sub {
-  color: var(--dk-text2, #888);
+  color: #94A3B8;
+}
+
+:host-context([data-theme="dark"]) .lv-page-header__icon {
+  background: #191c23;
+  border: 1px solid #3a4252;
+  color: #75e037;
+  box-shadow: inset 1px 1px 3px #13161a, 0 0 10px rgba(117, 224, 55, 0.25);
 }
 
 :host-context([data-theme="dark"]) .lv-apply-card,
 :host-context([data-theme="dark"]) .lv-history-card {
-  background: var(--dk-bg1, #1a1a1a);
-  border-color: var(--dk-border, #2a2a2a);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  background: #242831;
+  border-color: #3a4252;
+  box-shadow: 6px 6px 14px #13161a, -4px -4px 10px #2f3542;
 }
 
 :host-context([data-theme="dark"]) .lv-apply-card:hover,
 :host-context([data-theme="dark"]) .lv-history-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 8px 8px 18px #13161a, -6px -6px 14px #2f3542;
 }
 
 :host-context([data-theme="dark"]) .lv-card-title {
-  color: var(--dk-text1, #e0e0e0);
+  color: #F8FAFC;
+}
+
+:host-context([data-theme="dark"]) .lv-card-header__icon--apply {
+  background: #191c23;
+  border: 1px solid #3a4252;
+  color: #75e037;
+  box-shadow: inset 1px 1px 3px #13161a, 0 0 8px rgba(117, 224, 55, 0.2);
 }
 
 :host-context([data-theme="dark"]) .lv-card-header__icon--history {
-  background: rgba(20, 141, 158, 0.15);
-  color: #1CB5C9;
+  background: #191c23;
+  border: 1px solid #3a4252;
+  color: #75e037;
+  box-shadow: inset 1px 1px 3px #13161a;
 }
 
 :host-context([data-theme="dark"]) .lv-count-badge {
-  background: rgba(20, 141, 158, 0.15);
-  color: #1CB5C9;
+  background: #191c23;
+  border: 1px solid rgba(117, 224, 55, 0.3);
+  color: #75e037;
 }
 
 :host-context([data-theme="dark"]) .lv-label {
-  color: var(--dk-text2, #888);
+  color: #94A3B8;
 }
 
 :host-context([data-theme="dark"]) .lv-input {
-  background: var(--dk-bg2, #222);
-  border-color: var(--dk-border, #2a2a2a);
-  color: var(--dk-text1, #e0e0e0);
+  background: #191c23;
+  border-color: #3a4252;
+  color: #F8FAFC;
+  box-shadow: inset 2px 2px 5px #13161a, inset -1px -1px 3px #2f3542;
   color-scheme: dark;
 }
 
 :host-context([data-theme="dark"]) .lv-input:focus {
-  border-color: #1CB5C9;
-  box-shadow: 0 0 0 3px rgba(28, 181, 201, 0.15);
+  border-color: #75e037;
+  box-shadow: inset 2px 2px 5px #13161a, 0 0 0 2px rgba(117, 224, 55, 0.25);
 }
 
-:host-context([data-theme="dark"]) .lv-select {
-  background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+:host-context([data-theme="dark"]) .lv-btn-apply {
+  background: #75e037;
+  color: #0f1410;
+  font-weight: 700;
+  box-shadow: 0 0 16px rgba(117, 224, 55, 0.35);
+}
+
+:host-context([data-theme="dark"]) .lv-btn-apply:hover:not(:disabled) {
+  background: #8ef046;
+  box-shadow: 0 0 20px rgba(117, 224, 55, 0.5);
 }
 
 :host-context([data-theme="dark"]) .lv-tip {
-  background: rgba(20, 141, 158, 0.1);
-  color: #1CB5C9;
+  background: rgba(117, 224, 55, 0.08);
+  border: 1px solid rgba(117, 224, 55, 0.25);
+  color: #75e037;
 }
 
 :host-context([data-theme="dark"]) .lv-empty__title {
-  color: var(--dk-text1, #e0e0e0);
+  color: #F8FAFC;
 }
 
 :host-context([data-theme="dark"]) .lv-empty__desc {
-  color: var(--dk-text2, #888);
+  color: #94A3B8;
 }
 
 :host-context([data-theme="dark"]) .lv-item {
-  background: var(--dk-bg2, #222);
-  border-color: var(--dk-border, #2a2a2a);
+  background: #242831;
+  border-color: #3a4252;
+  box-shadow: 4px 4px 10px #13161a, -2px -2px 6px #2f3542;
 }
 
 :host-context([data-theme="dark"]) .lv-item:hover {
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 6px 6px 14px #13161a, -4px -4px 10px #2f3542;
+}
+
+:host-context([data-theme="dark"]) .lv-item__date-badge {
+  background: #191c23;
+  border: 1px solid #3a4252;
+  color: #75e037;
+  box-shadow: inset 1px 1px 3px #13161a;
 }
 
 :host-context([data-theme="dark"]) .lv-item__date-full {
-  color: var(--dk-text2, #888);
+  color: #94A3B8;
 }
 
 :host-context([data-theme="dark"]) .lv-timing-chip {
-  background: rgba(20, 141, 158, 0.12);
-  color: #1CB5C9;
+  background: rgba(117, 224, 55, 0.12);
+  border: 1px solid rgba(117, 224, 55, 0.25);
+  color: #75e037;
 }
 
 :host-context([data-theme="dark"]) .lv-status--approved {
-  background: rgba(16, 185, 129, 0.12);
+  background: rgba(16, 185, 129, 0.15);
   color: #34d399;
 }
 
 :host-context([data-theme="dark"]) .lv-status--pending {
-  background: rgba(245, 158, 11, 0.12);
+  background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
 }
 
 :host-context([data-theme="dark"]) .lv-status--rejected {
-  background: rgba(239, 68, 68, 0.12);
+  background: rgba(239, 68, 68, 0.15);
   color: #f87171;
 }
 
 :host-context([data-theme="dark"]) .lv-btn-cancel {
-  background: var(--dk-bg1, #1a1a1a);
-  border-color: var(--dk-border, #2a2a2a);
-  color: var(--dk-text2, #888);
+  background: #191c23;
+  border-color: #3a4252;
+  color: #94A3B8;
+  box-shadow: inset 1px 1px 3px #13161a;
 }
 
 :host-context([data-theme="dark"]) .lv-btn-cancel:hover {
   border-color: #f87171;
   color: #f87171;
-  background: rgba(239, 68, 68, 0.1);
+  background: rgba(239, 68, 68, 0.15);
 }
 
-/* ── Fix native <select> in dark mode — full override strips Chrome's striped artefact ── */
+/* ── Fix native <select> in dark mode ── */
 :host-context([data-theme="dark"]) .lv-select {
   -webkit-appearance: none;
   appearance: none;
-  /* Full background shorthand overrides both color AND the browser's native texture */
-  background: var(--dk-bg2, #222) url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%231CB5C9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center;
-  color: var(--dk-text1, #e0e0e0);
-  border-color: var(--dk-border, #2a2a2a);
+  background: #191c23 url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%2375e037' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center;
+  color: #F8FAFC;
+  border-color: #3a4252;
+  box-shadow: inset 2px 2px 5px #13161a, inset -1px -1px 3px #2f3542;
   color-scheme: dark;
 }
 
 :host-context([data-theme="dark"]) .lv-select option {
-  background: var(--dk-bg2, #222);
-  color: var(--dk-text1, #e0e0e0);
+  background: #242831;
+  color: #F8FAFC;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -590,6 +626,6 @@
     width: 100%;
     justify-content: space-between;
     padding-top: 6px;
-    border-top: 1px solid var(--clr-border, #C8DDE3);
+    border-top: 1px solid var(--clr-border, #CBD5E1);
   }
 }

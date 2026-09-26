@@ -1058,12 +1058,12 @@ export class AddAppointmentComponent implements OnInit {
         icon: 'success',
         showConfirmButton: true,
         confirmButtonText: 'View Appointments',
-        confirmButtonColor: '#148D9E',
+        confirmButtonColor: isDark ? '#75e037' : '#15803D',
         showDenyButton: true,
         denyButtonText: 'Go Home',
         denyButtonColor: '#94a3b8',
-        background: isDark ? '#1f1f1f' : '#ffffff',
-        color: isDark ? '#e0e0e0' : '#1e293b',
+        background: isDark ? '#242831' : '#ffffff',
+        color: isDark ? '#F8FAFC' : '#0F172A',
       });
 
       // Fire browser notification

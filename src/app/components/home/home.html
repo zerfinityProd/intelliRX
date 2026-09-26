@@ -13,6 +13,8 @@
     [hasMoreResults]="hasMoreResults"
     [isLoadingMore]="isLoadingMore"
     [permissions]="permissions"
+    [todayAppointments]="todayAppointments"
+    [selectedClinicLabel]="selectedClinicLabel"
     (searchTermChange)="searchTerm = $event"
     (searchInputChanged)="onSearchInput()"
     (clearSearchClicked)="clearSearch()"
@@ -20,12 +22,16 @@
     (addPatientClicked)="openAddPatientForm()"
     (viewPatientClicked)="viewPatientDetails($event)"
     (addVisitClicked)="openAddVisitForm($event)"
-    (addAppointmentClicked)="openAddAppointmentForm($event)">
+    (addAppointmentClicked)="openAddAppointmentForm($event)"
+    (addVisitForApptClicked)="openAddVisitForAppt($event)"
+    (goToAppointmentsClicked)="goToAppointments()">
   </app-search-panel>
 
   <!-- RIGHT COLUMN — Widgets Panel (child component) -->
   <app-widgets-panel
     [todayAppointmentCount]="todayAppointmentCount"
+    [thisMonthCount]="thisMonthCount"
+    [totalPatients]="totalPatients"
     [isLoadingAppts]="isLoadingAppts"
     [selectedDashboardDoctor]="selectedDashboardDoctor"
     [selectedClinicLabel]="selectedClinicLabel"

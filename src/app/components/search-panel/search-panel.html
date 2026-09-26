@@ -131,9 +131,209 @@
     </div>
   </ng-container>
 
-  <!-- Idle state — no search yet -->
+  <!-- Idle state — no search yet: Quick Actions + Today's Schedule/Hero -->
   <ng-container *ngIf="searchResults.length === 0 && !searchTerm">
-    <div class="kb-idle-state"></div>
+    <!-- ── Quick Clinical Actions ── -->
+    <div class="kb-section-header">
+      <div class="kb-section-header__left">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span class="kb-section-title">Quick Actions</span>
+      </div>
+      <span class="kb-section-hint">Frequent clinical tasks</span>
+    </div>
+
+    <div class="kb-quick-actions-grid">
+      <div class="kb-qa-card" (click)="openAddPatientForm()" role="button" tabindex="0"
+        aria-label="Register new patient">
+        <div class="kb-qa-card__icon kb-qa-card__icon--patient">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="8.5" cy="7" r="4"></circle>
+            <line x1="20" y1="8" x2="20" y2="14"></line>
+            <line x1="23" y1="11" x2="17" y2="11"></line>
+          </svg>
+        </div>
+        <div class="kb-qa-card__title">Register Patient</div>
+        <div class="kb-qa-card__desc">New patient file</div>
+      </div>
+
+      <div class="kb-qa-card" (click)="openAddAppointmentForm()" role="button" tabindex="0"
+        aria-label="Book new appointment">
+        <div class="kb-qa-card__icon kb-qa-card__icon--appt">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+            <line x1="12" y1="14" x2="12" y2="18"></line>
+            <line x1="10" y1="16" x2="14" y2="16"></line>
+          </svg>
+        </div>
+        <div class="kb-qa-card__title">Book Appointment</div>
+        <div class="kb-qa-card__desc">Schedule visit</div>
+      </div>
+
+      <div class="kb-qa-card" (click)="goToAppointmentsClicked.emit()" role="button" tabindex="0"
+        aria-label="View all appointments">
+        <div class="kb-qa-card__icon kb-qa-card__icon--queue">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+        </div>
+        <div class="kb-qa-card__title">Appointments</div>
+        <div class="kb-qa-card__desc">All bookings & queue</div>
+      </div>
+
+      <div class="kb-qa-card" (click)="focusSearchInput()" role="button" tabindex="0"
+        aria-label="Quick search directory">
+        <div class="kb-qa-card__icon kb-qa-card__icon--search">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </div>
+        <div class="kb-qa-card__title">Quick Search</div>
+        <div class="kb-qa-card__desc">Lookup by phone or ID</div>
+      </div>
+    </div>
+
+    <!-- ── Today's Queue (when appointments exist) ── -->
+    <div *ngIf="todayAppointments && todayAppointments.length > 0" class="kb-today-queue">
+      <div class="kb-section-header">
+        <div class="kb-section-header__left">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span class="kb-section-title">Today's Patient Queue</span>
+        </div>
+        <span class="kb-badge-pill">{{ todayAppointments.length }} Scheduled</span>
+      </div>
+
+      <div class="kb-patient-list">
+        <div *ngFor="let appt of todayAppointments" class="kb-patient-card">
+          <div class="kb-patient-card__left">
+            <div class="kb-patient-avatar">{{ (appt.patientName || '?').charAt(0).toUpperCase() }}</div>
+          </div>
+          <div class="kb-patient-card__body">
+            <div class="kb-patient-card__name">{{ appt.patientName }}</div>
+            <div class="kb-patient-card__meta">
+              <span *ngIf="appt.patientPhone">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.99 12"></path>
+                  <path d="M1.85 3.5A2 2 0 0 1 3.84 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 8.91a16 16 0 0 0 6 6"></path>
+                </svg>
+                {{ appt.patientPhone }}
+              </span>
+              <span class="kb-patient-card__fid">{{ appt.datetime | date:'shortTime' }}</span>
+              <span class="kb-patient-card__fid">{{ appt.status }}</span>
+            </div>
+            <div class="kb-patient-card__sub" *ngIf="appt.reason">
+              <span>{{ appt.reason }}</span>
+            </div>
+          </div>
+          <div class="kb-patient-card__actions kb-patient-card__actions--row">
+            <button *ngIf="permissions.canAddVisit" class="kb-action-btn kb-action-btn--primary"
+              [attr.aria-label]="'Add visit for ' + appt.patientName"
+              (click)="addVisitForApptClicked.emit(appt); $event.stopPropagation()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
+              Visit
+            </button>
+            <button class="kb-action-btn kb-action-btn--ghost"
+              (click)="goToAppointmentsClicked.emit(); $event.stopPropagation()">
+              View
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Soft Neumorphic Welcome Hero (when queue is clear) ── -->
+    <div *ngIf="!todayAppointments || todayAppointments.length === 0" class="kb-welcome-card">
+      <div class="kb-welcome-card__icon-well">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+
+      <div class="kb-welcome-card__content">
+        <h3 class="kb-welcome-card__title">All Caught Up for Today</h3>
+        <p class="kb-welcome-card__text">
+          No appointments are currently scheduled for today at
+          <strong>{{ selectedClinicLabel ? selectedClinicLabel : 'your clinic' }}</strong>.
+          You can register a new walk-in patient or search for existing clinical records.
+        </p>
+
+        <div class="kb-welcome-card__actions">
+          <button class="btn btn-primary" (click)="openAddPatientForm()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Register Walk-In Patient
+          </button>
+          <button class="btn btn-outline-secondary" (click)="openAddAppointmentForm()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            Schedule Future Appointment
+          </button>
+        </div>
+
+        <div class="kb-welcome-card__hints">
+          <span class="kb-welcome-hint-pill" (click)="focusSearchInput()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            Search by 10-digit mobile number
+          </span>
+          <span class="kb-welcome-hint-pill" (click)="focusSearchInput()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            Search by Patient ID
+          </span>
+          <span class="kb-welcome-hint-pill" (click)="focusSearchInput()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            Search by Patient Name
+          </span>
+        </div>
+      </div>
+    </div>
   </ng-container>
 
 </div><!-- /kanban-col--search -->
