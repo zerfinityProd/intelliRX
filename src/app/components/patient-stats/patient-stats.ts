@@ -75,8 +75,13 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
   allergiesList: string[] = [];
   ailmentsList: string[] = [];
 
+  // Performance Optimization: Map-based lookup index for patient visits by date key ('YYYY-M-D')
+  // Reduces calendar grid resolution from O(C * N) to O(N + C) with zero redundant Date allocations.
+  private visitsByDateMap = new Map<string, Visit[]>();
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['patient'] || changes['visits']) {
+      this.buildVisitsByDateMap();
       this.calculateStats();
       this.generateCalendar();
       this.prepareAllergiesList();
@@ -497,19 +502,41 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     };
   }
 
-  private getVisitsForDate(date: Date): Visit[] {
-    return this.visits.filter(visit => {
+  /**
+   * Performance Optimization: Build an O(1) date key index for visits once when inputs change.
+   * Converts ISO strings / Firestore Timestamps to local Date objects once per visit.
+   */
+  private buildVisitsByDateMap(): void {
+    this.visitsByDateMap.clear();
+    if (!this.visits || this.visits.length === 0) return;
+
+    for (const visit of this.visits) {
+      if (!visit || !visit.created_at) continue;
       let visitDate: Date;
-      if (visit.created_at && typeof (visit.created_at as any).toDate === 'function') {
+      if (typeof (visit.created_at as any).toDate === 'function') {
         visitDate = (visit.created_at as any).toDate();
       } else {
         visitDate = new Date(visit.created_at);
       }
-      
-      return visitDate.getDate() === date.getDate() &&
-             visitDate.getMonth() === date.getMonth() &&
-             visitDate.getFullYear() === date.getFullYear();
-    });
+      if (isNaN(visitDate.getTime())) continue;
+
+      const key = `${visitDate.getFullYear()}-${visitDate.getMonth()}-${visitDate.getDate()}`;
+      const list = this.visitsByDateMap.get(key);
+      if (list) {
+        list.push(visit);
+      } else {
+        this.visitsByDateMap.set(key, [visit]);
+      }
+    }
+  }
+
+  /**
+   * Performance Optimization: Fast O(1) visit lookup for each calendar cell
+   * using pre-computed `visitsByDateMap` instead of filtering `this.visits` O(N) times.
+   */
+  private getVisitsForDate(date: Date): Visit[] {
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    return this.visitsByDateMap.get(key) || [];
   }
 
   previousMonth(): void {

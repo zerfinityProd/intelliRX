@@ -4,6 +4,7 @@ function createPatientStatsComponent() {
   const component = {
     patient: null as any,
     visits: [] as any[],
+    visitsByDateMap: new Map<string, any[]>(),
     
     stats: {
       totalVisits: 0,
@@ -17,8 +18,34 @@ function createPatientStatsComponent() {
 
     ngOnChanges(changes: any) {
       if ((changes.patient || changes.visits) && this.patient) {
+        this.buildVisitsByDateMap();
         this.calculateStats();
       }
+    },
+
+    buildVisitsByDateMap() {
+      this.visitsByDateMap.clear();
+      if (!this.visits || this.visits.length === 0) return;
+
+      for (const visit of this.visits) {
+        const rawDate = visit.created_at || visit.createdAt;
+        if (!rawDate) continue;
+        const visitDate = typeof rawDate.toDate === 'function' ? rawDate.toDate() : new Date(rawDate);
+        if (isNaN(visitDate.getTime())) continue;
+
+        const key = `${visitDate.getFullYear()}-${visitDate.getMonth()}-${visitDate.getDate()}`;
+        const list = this.visitsByDateMap.get(key);
+        if (list) {
+          list.push(visit);
+        } else {
+          this.visitsByDateMap.set(key, [visit]);
+        }
+      }
+    },
+
+    getVisitsForDate(date: Date) {
+      const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+      return this.visitsByDateMap.get(key) || [];
     },
 
     calculateStats() {
@@ -117,6 +144,26 @@ describe('PatientStatsComponent', () => {
       comp.showVisitModal = true;
       comp.closeVisitModal();
       expect(comp.showVisitModal).toBe(false);
+    });
+  });
+
+  describe('visitsByDateMap & getVisitsForDate optimization', () => {
+    it('indexes visits by date key correctly', () => {
+      comp.patient = makePatient();
+      const v1 = { id: 'v1', created_at: new Date('2025-05-10T10:00:00') };
+      const v2 = { id: 'v2', created_at: new Date('2025-05-10T14:00:00') };
+      const v3 = { id: 'v3', created_at: new Date('2025-05-11T09:00:00') };
+      comp.visits = [v1, v2, v3];
+
+      comp.ngOnChanges({ patient: {}, visits: {} });
+
+      const day1 = new Date('2025-05-10T00:00:00');
+      const day2 = new Date('2025-05-11T00:00:00');
+      const day3 = new Date('2025-05-12T00:00:00');
+
+      expect(comp.getVisitsForDate(day1)).toEqual([v1, v2]);
+      expect(comp.getVisitsForDate(day2)).toEqual([v3]);
+      expect(comp.getVisitsForDate(day3)).toEqual([]);
     });
   });
 });
