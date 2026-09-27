@@ -12,8 +12,9 @@
       </h2>
       <div class="d-flex align-items-center gap-2">
         <!-- Stepper pills -->
-        <div class="appt-stepper">
-          <div class="appt-step" [class.appt-step--active]="true" [class.appt-step--done]="step === 'appointment-details'">
+        <div class="appt-stepper" aria-label="Appointment booking steps">
+          <div class="appt-step" [class.appt-step--active]="true" [class.appt-step--done]="step === 'appointment-details'"
+            [attr.aria-current]="step === 'new-patient-info' ? 'step' : null">
             <div class="appt-step__circle">
               <svg *ngIf="step === 'appointment-details'" width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -24,7 +25,8 @@
             <span class="appt-step__label">Patient</span>
           </div>
           <div class="appt-step__line" [class.appt-step__line--filled]="step === 'appointment-details'"></div>
-          <div class="appt-step" [class.appt-step--active]="step === 'appointment-details'">
+          <div class="appt-step" [class.appt-step--active]="step === 'appointment-details'"
+            [attr.aria-current]="step === 'appointment-details' ? 'step' : null">
             <div class="appt-step__circle">2</div>
             <span class="appt-step__label">Appointment</span>
           </div>
@@ -389,7 +391,7 @@
         </div>
 
         <div *ngIf="!isLoadingSlots && appointmentDate && allTimeSlots.length > 0">
-          <div class="slots-grid">
+          <div class="slots-grid" role="group" aria-label="Available time slots">
             <button *ngFor="let slot of allTimeSlots"
               class="slot-btn"
               [class.slot-selected]="selectedTimeSlot === slot"
@@ -398,6 +400,9 @@
               [class.slot-past]="isSlotInPast(slot)"
               [class.slot-leave]="isSlotLeaveBlocked(slot)"
               [disabled]="bookedSlots.includes(slot) || isSlotBookedBySamePatient(slot) || isSlotInPast(slot) || isSlotLeaveBlocked(slot)"
+              [attr.aria-label]="formatSlotLabel(slot) + ' - ' + getSlotStatusText(slot)"
+              [attr.aria-pressed]="selectedTimeSlot === slot"
+              [attr.title]="getSlotStatusText(slot)"
               (click)="selectedTimeSlot = slot"
               type="button">
               <span class="slot-time">{{ formatSlotLabel(slot) }}</span>
