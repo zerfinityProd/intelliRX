@@ -462,6 +462,15 @@ export class AddAppointmentComponent implements OnInit {
     return this.samePatientBookedSlots.includes(slot);
   }
 
+  /** Human-readable status description for slot ARIA labels and tooltips */
+  getSlotStatusText(slot: string): string {
+    if (this.isSlotLeaveBlocked(slot)) return 'Blocked - Doctor on leave';
+    if (this.isSlotBookedBySamePatient(slot)) return 'Booked by this patient';
+    if (this.bookedSlots.includes(slot)) return 'Booked';
+    if (this.isSlotInPast(slot)) return 'Past time slot';
+    return 'Available';
+  }
+
   async onDoctorChange(): Promise<void> {
     // Refresh time slots to apply the new doctor's availability
     await this.refreshTimeSlotsForClinic(this.appointmentDate);
