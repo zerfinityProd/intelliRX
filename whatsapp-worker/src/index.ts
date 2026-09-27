@@ -45,7 +45,7 @@ export default {
 
     // Security check — only IntelliRX Angular app can call this worker
     const secret = request.headers.get('X-Worker-Secret');
-    if (secret !== env.WORKER_SECRET) {
+    if (!timingSafeEqual(secret, env.WORKER_SECRET)) {
       return new Response('Unauthorized', {
         status: 401,
         headers: corsHeaders(origin),
@@ -98,6 +98,26 @@ export default {
     }
   }
 };
+
+/**
+ * Timing-safe string comparison to prevent timing side-channel attacks on secret comparison.
+ */
+function timingSafeEqual(a: string | null, b: string): boolean {
+  if (!a) return false;
+  const encoder = new TextEncoder();
+  const aBuf = encoder.encode(a);
+  const bBuf = encoder.encode(b);
+
+  if (aBuf.byteLength !== bBuf.byteLength) {
+    return false;
+  }
+
+  let diff = 0;
+  for (let i = 0; i < aBuf.byteLength; i++) {
+    diff |= aBuf[i] ^ bBuf[i];
+  }
+  return diff === 0;
+}
 
 // ─── Appointment Confirmation ─────────────────────────────────────────────────
 // Template: appointment_confirm
