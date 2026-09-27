@@ -436,6 +436,37 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     this.visitTrendChart.update();
   }
 
+  /**
+   * Pre-aggregates visits into a Map keyed by date ("YYYY-MM-DD") in O(N) time.
+   * Replaces quadratic O(CELLS * VISITS) filtering with O(1) map lookups during calendar generation.
+   */
+  private buildVisitsByDateMap(): Map<string, Visit[]> {
+    const visitsMap = new Map<string, Visit[]>();
+    if (!this.visits) return visitsMap;
+
+    for (const visit of this.visits) {
+      if (!visit.created_at) continue;
+      let visitDate: Date;
+      if (typeof (visit.created_at as any).toDate === 'function') {
+        visitDate = (visit.created_at as any).toDate();
+      } else {
+        visitDate = new Date(visit.created_at);
+      }
+
+      if (isNaN(visitDate.getTime())) continue;
+
+      const key = `${visitDate.getFullYear()}-${String(visitDate.getMonth() + 1).padStart(2, '0')}-${String(visitDate.getDate()).padStart(2, '0')}`;
+      const existing = visitsMap.get(key);
+      if (existing) {
+        existing.push(visit);
+      } else {
+        visitsMap.set(key, [visit]);
+      }
+    }
+
+    return visitsMap;
+  }
+
   private generateCalendar(): void {
     const year = this.currentMonth.getFullYear();
     const month = this.currentMonth.getMonth();
@@ -457,29 +488,32 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
     const totalCells = Math.ceil((daysInMonth + prevMonthDays) / 7) * 7;
     const nextMonthDays = totalCells - (daysInMonth + prevMonthDays);
     
+    // Pre-build O(N) date lookup map once for all calendar cells
+    const visitsMap = this.buildVisitsByDateMap();
+
     this.calendarDays = [];
     
     // Previous month days
     for (let i = prevMonthDays - 1; i >= 0; i--) {
       const date = new Date(year, month - 1, prevMonthLastDay - i);
-      this.calendarDays.push(this.createCalendarDay(date, false));
+      this.calendarDays.push(this.createCalendarDay(date, false, visitsMap));
     }
     
     // Current month days
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(year, month, i);
-      this.calendarDays.push(this.createCalendarDay(date, true));
+      this.calendarDays.push(this.createCalendarDay(date, true, visitsMap));
     }
     
     // Next month days
     for (let i = 1; i <= nextMonthDays; i++) {
       const date = new Date(year, month + 1, i);
-      this.calendarDays.push(this.createCalendarDay(date, false));
+      this.calendarDays.push(this.createCalendarDay(date, false, visitsMap));
     }
   }
 
-  private createCalendarDay(date: Date, isCurrentMonth: boolean): CalendarDay {
-    const dayVisits = this.getVisitsForDate(date);
+  private createCalendarDay(date: Date, isCurrentMonth: boolean, visitsMap?: Map<string, Visit[]>): CalendarDay {
+    const dayVisits = visitsMap ? this.getVisitsFromMap(date, visitsMap) : this.getVisitsForDate(date);
     const today = new Date();
     const isToday = date.getDate() === today.getDate() &&
                     date.getMonth() === today.getMonth() &&
@@ -495,6 +529,11 @@ export class PatientStatsComponent implements OnChanges, AfterViewInit, OnDestro
       visitCount: dayVisits.length,
       visits: dayVisits
     };
+  }
+
+  private getVisitsFromMap(date: Date, visitsMap: Map<string, Visit[]>): Visit[] {
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return visitsMap.get(key) || [];
   }
 
   private getVisitsForDate(date: Date): Visit[] {
