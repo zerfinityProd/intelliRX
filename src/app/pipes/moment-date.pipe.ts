@@ -29,6 +29,10 @@ export class MomentDatePipe implements PipeTransform {
     'numeric':  'DD/MM/YYYY',            // 06/03/2025
   };
 
+  // Performance Optimization (Bolt ⚡): Cache formatted date strings to avoid repeated Moment.js parsing/formatting overhead during change detection.
+  private readonly cache = new Map<string, string>();
+  private readonly MAX_CACHE_SIZE = 500;
+
   transform(value: any, format: string = 'default'): string {
     if (!value) return 'N/A';
 
@@ -37,14 +41,45 @@ export class MomentDatePipe implements PipeTransform {
       value = value.toDate();
     }
 
+    // Relative format is dynamic relative to current wall time → skip memoization
+    if (format === 'relative') {
+      const m = moment(value);
+      return m.isValid() ? m.fromNow() : 'N/A';
+    }
+
+    // Extract primitive cache key value where possible
+    let keyVal: any = value;
+    if (value instanceof Date) {
+      keyVal = value.getTime();
+    } else if (typeof value !== 'string' && typeof value !== 'number') {
+      // Fallback for non-primitive object types that aren't Date/Timestamp
+      const m = moment(value);
+      if (!m.isValid()) return 'N/A';
+      const fmt = this.FORMATS[format] ?? format;
+      return m.format(fmt);
+    }
+
+    const cacheKey = `${format}|${keyVal}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)!;
+    }
+
     const m = moment(value);
     if (!m.isValid()) return 'N/A';
 
-    // 'relative' is a special case → "2 hours ago"
-    if (format === 'relative') return m.fromNow();
-
     // Look up preset or use as raw moment format string
     const fmt = this.FORMATS[format] ?? format;
-    return m.format(fmt);
+    const result = m.format(fmt);
+
+    // Evict oldest entry if max cache size is reached (simple LRU/FIFO eviction)
+    if (this.cache.size >= this.MAX_CACHE_SIZE) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
+    }
+
+    this.cache.set(cacheKey, result);
+    return result;
   }
 }
