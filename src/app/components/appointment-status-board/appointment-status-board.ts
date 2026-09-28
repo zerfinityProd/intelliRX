@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, ViewEncapsulation, HostListener } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, ViewEncapsulation, HostListener, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Appointment } from '../../models/appointment.model';
@@ -12,7 +12,7 @@ import { BoardColumn } from '../../interfaces/board-column';
   styleUrl: './appointment-status-board.css',
   encapsulation: ViewEncapsulation.None
 })
-export class AppointmentStatusBoardComponent {
+export class AppointmentStatusBoardComponent implements OnChanges, OnInit {
 
   // Header data
   @Input() searchTerm: string = '';
@@ -178,17 +178,65 @@ export class AppointmentStatusBoardComponent {
     }
   }
 
-  // ── Existing methods ────────────────────────────────────────
+  // ── Performance Optimizations ──────────────────────────────
+  /**
+   * PERFORMANCE OPTIMIZATION:
+   * Pre-aggregated map indexing appointments by status in O(N) when filteredAppointments
+   * changes. Replaces repeated O(COLUMNS * APPOINTMENTS) array filter evaluations in templates
+   * with O(1) stable reference lookups.
+   */
+  private cardsByStatusMap = new Map<string, Appointment[]>();
+
+  /** Cached local date tuple to prevent allocating 'new Date()' on every card check in isToday */
+  private todayY = 0;
+  private todayM = 0;
+  private todayD = 0;
+
+  ngOnInit(): void {
+    this.refreshTodayCache();
+    this.updateCardsByStatus();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['filteredAppointments'] || changes['columns']) {
+      this.refreshTodayCache();
+      this.updateCardsByStatus();
+    }
+  }
+
+  private refreshTodayCache(): void {
+    const t = new Date();
+    this.todayY = t.getFullYear();
+    this.todayM = t.getMonth();
+    this.todayD = t.getDate();
+  }
+
+  private updateCardsByStatus(): void {
+    const map = new Map<string, Appointment[]>();
+    for (const col of this.columns) {
+      map.set(col.id, []);
+    }
+    for (const appt of this.filteredAppointments || []) {
+      const list = map.get(appt.status);
+      if (list) {
+        list.push(appt);
+      } else {
+        map.set(appt.status, [appt]);
+      }
+    }
+    this.cardsByStatusMap = map;
+  }
+
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.cardsByStatusMap.get(status) || [];
   }
 
   isToday(datetime: any): boolean {
+    if (!datetime) return false;
     const d = new Date(datetime);
-    const t = new Date();
-    return d.getFullYear() === t.getFullYear()
-      && d.getMonth() === t.getMonth()
-      && d.getDate() === t.getDate();
+    return d.getFullYear() === this.todayY
+      && d.getMonth() === this.todayM
+      && d.getDate() === this.todayD;
   }
 
   formatTime(datetime: any): string {
