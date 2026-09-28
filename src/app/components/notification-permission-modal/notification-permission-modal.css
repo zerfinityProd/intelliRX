@@ -20,7 +20,7 @@
   border-radius: 20px;
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.18),
-    0 4px 16px rgba(20, 141, 158, 0.08);
+    0 4px 16px rgba(21, 128, 61, 0.08);
   padding: 36px 32px 28px;
   z-index: 1051;
   display: flex;
@@ -36,7 +36,7 @@
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #e8f8fb 0%, #d0f0f5 100%);
+  background: linear-gradient(135deg, #E6F7EC 0%, #dcfce7 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -47,7 +47,7 @@
 .ntf-bell {
   width: 30px;
   height: 30px;
-  color: #148D9E;
+  color: #15803D;
 }
 
 .ntf-badge {
@@ -72,7 +72,7 @@
 .ntf-title {
   font-size: 18px;
   font-weight: 700;
-  color: #0f2d35;
+  color: #0F172A;
   margin: 0 0 10px;
   line-height: 1.3;
 }
@@ -101,20 +101,20 @@
   align-items: center;
   gap: 9px;
   font-size: 13px;
-  color: #2d5a64;
+  color: #334155;
   font-weight: 500;
 }
 
 .ntf-benefits svg {
   flex-shrink: 0;
-  color: #148D9E;
+  color: #15803D;
 }
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 .ntf-btn-enable {
   width: 100%;
   padding: 13px 20px;
-  background: linear-gradient(135deg, #148D9E 0%, #0f7080 100%);
+  background: linear-gradient(135deg, #15803D 0%, #166534 100%);
   color: #ffffff;
   border: none;
   border-radius: 12px;
@@ -122,14 +122,14 @@
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-  box-shadow: 0 4px 14px rgba(20, 141, 158, 0.35);
+  box-shadow: 0 4px 14px rgba(21, 128, 61, 0.35);
   margin-bottom: 12px;
   letter-spacing: 0.01em;
 }
 
 .ntf-btn-enable:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(20, 141, 158, 0.45);
+  box-shadow: 0 6px 20px rgba(21, 128, 61, 0.45);
 }
 
 .ntf-btn-enable:active:not(:disabled) {
@@ -155,8 +155,8 @@
 }
 
 .ntf-btn-notnow:hover:not(:disabled) {
-  color: #148D9E;
-  background: rgba(20, 141, 158, 0.06);
+  color: #15803D;
+  background: rgba(21, 128, 61, 0.06);
 }
 
 .ntf-btn-notnow:disabled {
@@ -231,4 +231,69 @@
 
 @keyframes ntf-spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Dark Mode ── */
+:host-context([data-theme="dark"]) .ntf-modal,
+[data-theme="dark"] .ntf-modal {
+  background: #242831;
+  border: 1px solid #3a4252;
+  box-shadow: 12px 12px 32px #13161a, -8px -8px 24px #2f3542;
+}
+
+:host-context([data-theme="dark"]) .ntf-icon-wrap,
+[data-theme="dark"] .ntf-icon-wrap {
+  background: #191c23;
+  border: 1px solid #3a4252;
+  box-shadow: inset 1px 1px 4px #13161a;
+}
+
+:host-context([data-theme="dark"]) .ntf-bell,
+[data-theme="dark"] .ntf-bell {
+  color: #75e037;
+}
+
+:host-context([data-theme="dark"]) .ntf-title,
+[data-theme="dark"] .ntf-title {
+  color: #F8FAFC;
+}
+
+:host-context([data-theme="dark"]) .ntf-desc,
+[data-theme="dark"] .ntf-desc {
+  color: #94A3B8;
+}
+
+:host-context([data-theme="dark"]) .ntf-benefits li,
+[data-theme="dark"] .ntf-benefits li {
+  color: #CBD5E1;
+}
+
+:host-context([data-theme="dark"]) .ntf-benefits svg,
+[data-theme="dark"] .ntf-benefits svg {
+  color: #75e037;
+}
+
+:host-context([data-theme="dark"]) .ntf-btn-enable,
+[data-theme="dark"] .ntf-btn-enable {
+  background: #75e037;
+  color: #0f1410;
+  font-weight: 700;
+  box-shadow: 0 0 16px rgba(117, 224, 55, 0.4);
+}
+
+:host-context([data-theme="dark"]) .ntf-btn-enable:hover:not(:disabled),
+[data-theme="dark"] .ntf-btn-enable:hover:not(:disabled) {
+  background: #8ef046;
+  box-shadow: 0 0 20px rgba(117, 224, 55, 0.55);
+}
+
+:host-context([data-theme="dark"]) .ntf-btn-notnow,
+[data-theme="dark"] .ntf-btn-notnow {
+  color: #94A3B8;
+}
+
+:host-context([data-theme="dark"]) .ntf-btn-notnow:hover:not(:disabled),
+[data-theme="dark"] .ntf-btn-notnow:hover:not(:disabled) {
+  color: #75e037;
+  background: rgba(117, 224, 55, 0.1);
 }

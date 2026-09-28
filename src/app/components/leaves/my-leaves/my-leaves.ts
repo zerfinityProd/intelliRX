@@ -98,6 +98,15 @@ export class MyLeavesComponent implements OnInit {
     }
   }
 
+  private get swalTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      confirmButtonColor: isDark ? '#75e037' : '#15803D',
+      background: isDark ? '#242831' : '#ffffff',
+      color: isDark ? '#F8FAFC' : '#0F172A',
+    };
+  }
+
   async loadLeaves() {
     this.isLoading = true;
     try {
@@ -111,7 +120,9 @@ export class MyLeavesComponent implements OnInit {
         icon: 'error',
         title: 'Could Not Load Leaves',
         text: e?.message || 'Please check your connection and try again.',
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: this.swalTheme.confirmButtonColor,
+        background: this.swalTheme.background,
+        color: this.swalTheme.color
       });
     } finally {
       this.isLoading = false;
@@ -128,7 +139,9 @@ export class MyLeavesComponent implements OnInit {
         icon: 'error',
         title: 'Invalid Date',
         text: 'You cannot apply leave for a past date.',
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: this.swalTheme.confirmButtonColor,
+        background: this.swalTheme.background,
+        color: this.swalTheme.color
       });
       this.newLeave.date = '';
       return;
@@ -140,7 +153,9 @@ export class MyLeavesComponent implements OnInit {
         icon: 'error',
         title: 'Invalid Date',
         text: 'Leave can only be applied up to 1 year in advance.',
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: this.swalTheme.confirmButtonColor,
+        background: this.swalTheme.background,
+        color: this.swalTheme.color
       });
       this.newLeave.date = '';
       return;
@@ -159,7 +174,9 @@ export class MyLeavesComponent implements OnInit {
         icon: 'error',
         title: 'Missing Context',
         text: 'Could not determine user or clinic. Please try logging out and back in.',
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: this.swalTheme.confirmButtonColor,
+        background: this.swalTheme.background,
+        color: this.swalTheme.color
       });
       return;
     }
@@ -177,7 +194,9 @@ export class MyLeavesComponent implements OnInit {
           icon: 'warning',
           title: 'Already Applied',
           text: `You already have a ${duplicate.timing} leave on this date.`,
-          confirmButtonColor: '#148D9E'
+          confirmButtonColor: this.swalTheme.confirmButtonColor,
+          background: this.swalTheme.background,
+          color: this.swalTheme.color
         });
         this.isSubmitting = false;
         return;
@@ -196,14 +215,13 @@ export class MyLeavesComponent implements OnInit {
       await this.loadLeaves();
 
       const { default: Swal } = await import('sweetalert2');
-      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
       Swal.fire({
         icon: 'success',
         title: 'Leave Applied!',
         text: 'Your leave has been recorded and appointment bookings will be blocked accordingly.',
-        confirmButtonColor: '#148D9E',
-        background: isDark ? '#1f1f1f' : '#ffffff',
-        color: isDark ? '#e0e0e0' : '#1e293b',
+        confirmButtonColor: this.swalTheme.confirmButtonColor,
+        background: this.swalTheme.background,
+        color: this.swalTheme.color,
       });
     } catch (e: any) {
       console.error('Leave apply error:', e);
@@ -212,7 +230,9 @@ export class MyLeavesComponent implements OnInit {
         icon: 'error',
         title: 'Failed to Apply Leave',
         text: e?.message || 'An unexpected error occurred. Please try again.',
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: this.swalTheme.confirmButtonColor,
+        background: this.swalTheme.background,
+        color: this.swalTheme.color
       });
     } finally {
       this.isSubmitting = false;
@@ -221,7 +241,6 @@ export class MyLeavesComponent implements OnInit {
 
   async cancelLeave(id: string) {
     const { default: Swal } = await import('sweetalert2');
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const result = await Swal.fire({
       title: 'Cancel Leave?',
       text: 'Are you sure you want to cancel this leave request?',
@@ -231,8 +250,8 @@ export class MyLeavesComponent implements OnInit {
       cancelButtonText: 'Keep It',
       confirmButtonColor: '#dc2626',
       cancelButtonColor: '#94a3b8',
-      background: isDark ? '#1f1f1f' : '#ffffff',
-      color: isDark ? '#e0e0e0' : '#1e293b',
+      background: this.swalTheme.background,
+      color: this.swalTheme.color,
     });
     if (!result.isConfirmed) return;
     try {
@@ -243,15 +262,17 @@ export class MyLeavesComponent implements OnInit {
         title: 'Leave Cancelled',
         timer: 1500,
         showConfirmButton: false,
-        background: isDark ? '#1f1f1f' : '#ffffff',
-        color: isDark ? '#e0e0e0' : '#1e293b'
+        background: this.swalTheme.background,
+        color: this.swalTheme.color
       });
     } catch (e) {
       Swal.fire({
         icon: 'error',
         title: 'Failed',
         text: 'Could not cancel the leave. Please try again.',
-        confirmButtonColor: '#148D9E'
+        confirmButtonColor: this.swalTheme.confirmButtonColor,
+        background: this.swalTheme.background,
+        color: this.swalTheme.color
       });
     }
   }

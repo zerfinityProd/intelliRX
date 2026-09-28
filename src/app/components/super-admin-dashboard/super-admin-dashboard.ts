@@ -410,15 +410,15 @@ export class SuperAdminDashboardComponent implements OnInit {
   get statusDonutSegments() {
     const c = this.subStatusCounts;
     return this.buildDonut([
-      { label: 'Active',    count: c.active,    color: '#1CB5C9' },
+      { label: 'Active',    count: c.active,    color: '#22C55E' },
       { label: 'Expired',   count: c.expired,   color: '#E05252' },
-      { label: 'Inactive',  count: c.inactive,  color: '#A0AEB5' },
+      { label: 'Inactive',  count: c.inactive,  color: '#94A3B8' },
       { label: 'Suspended', count: c.suspended, color: '#F59E0B' },
     ]);
   }
 
   get planDonutSegments() {
-    const planColors = ['#148D9E','#0E7A8C','#1CB5C9','#37C8D9','#6DD7E4','#A0E5ED'];
+    const planColors = ['#15803D', '#22C55E', '#16A34A', '#4ADE80', '#166534', '#86EFAC'];
     const countMap = new Map<string, number>();
     for (const s of this.subscriptions) {
       const key = s.plan?.name || 'unknown';
@@ -427,7 +427,7 @@ export class SuperAdminDashboardComponent implements OnInit {
     const entries = Array.from(countMap.entries()).map(([label, count], i) => ({
       label, count, color: planColors[i % planColors.length],
     }));
-    return this.buildDonut(entries.length ? entries : [{ label: 'No subs', count: 1, color: '#C8DDE3' }]);
+    return this.buildDonut(entries.length ? entries : [{ label: 'No subs', count: 1, color: '#CBD5E1' }]);
   }
 
   get expiryDonutSegments() {
@@ -446,7 +446,7 @@ export class SuperAdminDashboardComponent implements OnInit {
     return this.buildDonut([
       { label: 'Already expired', count: already,  color: '#E05252' },
       { label: 'Expiring ≤7d',    count: within7,  color: '#F59E0B' },
-      { label: 'Expiring ≤30d',   count: within30, color: '#1CB5C9' },
+      { label: 'Expiring ≤30d',   count: within30, color: '#3B82F6' },
       { label: 'Valid >30d',      count: beyond,   color: '#22C55E' },
     ]);
   }

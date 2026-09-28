@@ -14,8 +14,10 @@ import { Doctor } from '../../interfaces/doctor';
   encapsulation: ViewEncapsulation.None
 })
 export class WidgetsPanelComponent {
-  // Banner
+  // Banner & Stats
   @Input() todayAppointmentCount: number = 0;
+  @Input() thisMonthCount: number = 0;
+  @Input() totalPatients: number = 0;
   @Input() isLoadingAppts: boolean = true;
   @Input() selectedDashboardDoctor: Doctor | null = null;
   @Input() selectedClinicLabel: string = '';

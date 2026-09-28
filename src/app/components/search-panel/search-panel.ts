@@ -6,6 +6,8 @@ import { Patient } from '../../models/patient.model';
 import { UserPermissions } from '../../services/authorizationService';
 import { MomentDatePipe } from '../../pipes/moment-date.pipe';
 
+import { Appointment } from '../../models/appointment.model';
+
 @Component({
   selector: 'app-search-panel',
   standalone: true,
@@ -22,6 +24,8 @@ export class SearchPanelComponent {
   @Input() hasMoreResults: boolean = false;
   @Input() isLoadingMore: boolean = false;
   @Input() permissions!: UserPermissions;
+  @Input() todayAppointments: Appointment[] = [];
+  @Input() selectedClinicLabel: string = '';
 
   @Output() searchTermChange = new EventEmitter<string>();
   @Output() searchInputChanged = new EventEmitter<void>();
@@ -30,7 +34,9 @@ export class SearchPanelComponent {
   @Output() addPatientClicked = new EventEmitter<void>();
   @Output() viewPatientClicked = new EventEmitter<Patient>();
   @Output() addVisitClicked = new EventEmitter<Patient>();
-  @Output() addAppointmentClicked = new EventEmitter<Patient>();
+  @Output() addAppointmentClicked = new EventEmitter<Patient | undefined>();
+  @Output() addVisitForApptClicked = new EventEmitter<Appointment>();
+  @Output() goToAppointmentsClicked = new EventEmitter<void>();
 
   onSearchInput(): void {
     this.searchInputChanged.emit();
@@ -60,7 +66,15 @@ export class SearchPanelComponent {
     this.addVisitClicked.emit(patient);
   }
 
-  openAddAppointmentForm(patient: Patient): void {
+  openAddAppointmentForm(patient?: Patient): void {
     this.addAppointmentClicked.emit(patient);
+  }
+
+  focusSearchInput(): void {
+    const el = document.getElementById('patient-search') as HTMLInputElement | null;
+    if (el) {
+      el.focus();
+      el.select();
+    }
   }
 }

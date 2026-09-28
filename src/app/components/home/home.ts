@@ -300,7 +300,7 @@ export class HomeComponent implements OnInit {
       showCancelButton: false,
       confirmButtonText: 'Continue',
       allowOutsideClick: false,
-      confirmButtonColor: '#148D9E'
+      confirmButtonColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#75e037' : '#15803D'
     });
     return String(result.value ?? subscriptionIds[0]);
   }
@@ -327,7 +327,7 @@ export class HomeComponent implements OnInit {
       showCancelButton: false,
       confirmButtonText: 'Continue',
       allowOutsideClick: false,
-      confirmButtonColor: '#148D9E'
+      confirmButtonColor: document.documentElement.getAttribute('data-theme') === 'dark' ? '#75e037' : '#15803D'
     });
     return String(result.value ?? clinicIds[0]);
   }
@@ -622,13 +622,17 @@ export class HomeComponent implements OnInit {
   }
 
   get todayAppointmentCount(): number {
+    return this.todayAppointments.length;
+  }
+
+  get todayAppointments(): Appointment[] {
     const t = new Date();
     return this.filterByDoctor(this.appointments.filter(a => {
       const d = new Date(a.datetime);
       return d.getFullYear() === t.getFullYear()
         && d.getMonth() === t.getMonth()
         && d.getDate() === t.getDate();
-    })).length;
+    }));
   }
 
   get thisMonthCount(): number {
@@ -894,6 +898,13 @@ export class HomeComponent implements OnInit {
     this.router.navigate(['/patient/add-visit'], { state: { origin: 'home', patientId: patient.id } });
   }
 
+  openAddVisitForAppt(appt: Appointment): void {
+    if (appt.patient_id) {
+      this.patientContextService.setPatient(appt.patient_id);
+      this.router.navigate(['/patient/add-visit'], { state: { origin: 'home', patientId: appt.patient_id } });
+    }
+  }
+
   closeAddVisitForm(): void { this.uiStateService.closeAddVisitForm(); }
   toggleVisitEditMode(): void { this.uiStateService.toggleVisitEditMode(); }
 
@@ -1003,14 +1014,14 @@ export class HomeComponent implements OnInit {
       icon: 'success',
       showConfirmButton: true,
       confirmButtonText: 'Add Visit',
-      confirmButtonColor: '#148D9E',
+      confirmButtonColor: isDark ? '#75e037' : '#15803D',
       showDenyButton: true,
       denyButtonText: 'OK',
       denyButtonColor: '#94a3b8',
       allowOutsideClick: false,
       allowEscapeKey: false,
-      background: isDark ? '#1f1f1f' : '#ffffff',
-      color: isDark ? '#e0e0e0' : '#1e293b',
+      background: isDark ? '#242831' : '#ffffff',
+      color: isDark ? '#F8FAFC' : '#0F172A',
     });
 
     sessionStorage.removeItem('pendingPatientSuccess');

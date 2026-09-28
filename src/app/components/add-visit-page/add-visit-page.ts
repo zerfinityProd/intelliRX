@@ -890,11 +890,11 @@ export class AddVisitPageComponent implements OnInit {
                     text: 'The visit has been updated successfully.',
                     icon: 'success',
                     confirmButtonText: 'OK',
-                    confirmButtonColor: '#148D9E',
+                    confirmButtonColor: isDark ? '#75e037' : '#15803D',
                     timer: 2000,
                     timerProgressBar: true,
-                    background: isDark ? '#1f1f1f' : '#ffffff',
-                    color: isDark ? '#e0e0e0' : '#1e293b',
+                    background: isDark ? '#242831' : '#ffffff',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
                 });
 
                 // Fire browser notification
@@ -1024,11 +1024,11 @@ export class AddVisitPageComponent implements OnInit {
                     title: 'Visit Added!',
                     icon: 'success',
                     confirmButtonText: 'OK',
-                    confirmButtonColor: '#148D9E',
+                    confirmButtonColor: isDark ? '#75e037' : '#15803D',
                     timer: 2000,
                     timerProgressBar: true,
-                    background: isDark ? '#1f1f1f' : '#ffffff',
-                    color: isDark ? '#e0e0e0' : '#1e293b',
+                    background: isDark ? '#242831' : '#ffffff',
+                    color: isDark ? '#F8FAFC' : '#0F172A',
                 });
 
                 // Fire browser notification
@@ -1110,9 +1110,9 @@ export class AddVisitPageComponent implements OnInit {
                 confirmButtonColor: '#ef4444',
                 showDenyButton: true,
                 denyButtonText: 'Keep editing',
-                denyButtonColor: '#148D9E',
-                background: isDark ? '#1f1f1f' : '#ffffff',
-                color: isDark ? '#e0e0e0' : '#1e293b',
+                denyButtonColor: isDark ? '#75e037' : '#15803D',
+                background: isDark ? '#242831' : '#ffffff',
+                color: isDark ? '#F8FAFC' : '#0F172A',
             }).then(result => {
                 if (result.isConfirmed) {
                     this.clearFormSession();
@@ -1211,10 +1211,10 @@ export class AddVisitPageComponent implements OnInit {
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1e293b;padding:28px 36px;}
-    h1{font-size:20px;font-weight:700;color:#148D9E;margin-bottom:2px;}
+    h1{font-size:20px;font-weight:700;color:#15803D;margin-bottom:2px;}
     .subtitle{font-size:12px;color:#64748b;margin-bottom:18px;}
     .section{margin-bottom:16px;}
-    .section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#148D9E;border-bottom:1.5px solid #e2e8f0;padding-bottom:3px;margin-bottom:8px;}
+    .section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#15803D;border-bottom:1.5px solid #e2e8f0;padding-bottom:3px;margin-bottom:8px;}
     .field{display:flex;gap:8px;margin-bottom:5px;}
     .label{font-weight:600;min-width:130px;color:#475569;}
     .value{flex:1;color:#1e293b;}
@@ -1392,14 +1392,14 @@ export class AddVisitPageComponent implements OnInit {
             icon: 'question',
             showConfirmButton: true,
             confirmButtonText: 'Yes, link it',
-            confirmButtonColor: '#148D9E',
+            confirmButtonColor: isDark ? '#75e037' : '#15803D',
             showDenyButton: true,
             denyButtonText: 'No, walk-in',
-            denyButtonColor: '#6b7280',
+            denyButtonColor: '#64748b',
             showCloseButton: true,
             allowOutsideClick: false,
-            background: isDark ? '#1f1f1f' : '#ffffff',
-            color: isDark ? '#e0e0e0' : '#1e293b',
+            background: isDark ? '#242831' : '#ffffff',
+            color: isDark ? '#F8FAFC' : '#0F172A',
         });
 
         if (result.isConfirmed) return 'link';

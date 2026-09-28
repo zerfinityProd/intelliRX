@@ -106,8 +106,8 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
   private autoCancelCleanup: (() => void) | null = null;
 
   readonly columns: BoardColumn[] = [
-    { id: 'scheduled', label: 'Scheduled', color: '#E7F5F7', accent: '#148D9E', icon: 'clock' },
-    { id: 'completed', label: 'Completed', color: '#E7F5F7', accent: '#1CB5C9', icon: 'check' },
+    { id: 'scheduled', label: 'Scheduled', color: 'var(--clr-primary-light, #E6F7EC)', accent: 'var(--clr-primary, #15803D)', icon: 'clock' },
+    { id: 'completed', label: 'Completed', color: 'rgba(34, 197, 94, 0.12)', accent: 'var(--clr-accent, #22C55E)', icon: 'check' },
     { id: 'cancelled', label: 'Cancelled', color: '#fee2e2', accent: '#ef4444', icon: 'x' },
   ];
 
