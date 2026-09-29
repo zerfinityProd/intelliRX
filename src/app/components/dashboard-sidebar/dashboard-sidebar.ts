@@ -16,7 +16,40 @@ export class DashboardSidebarComponent {
   @Input() selectedCalDate: Date | null = null;
   @Input() scheduledCount: number = 0;
   @Input() completedTodayCount: number = 0;
-  @Input() appointments: Appointment[] = [];
+
+  private _appointments: Appointment[] = [];
+  private apptsByDateMap = new Map<string, Appointment[]>();
+
+  // Performance optimization: Pre-index appointments by YYYY-MM-DD date key when input updates.
+  // Prevents running O(N) date-parsing filters across 35–42 calendar cells (120+ calls per change detection cycle).
+  @Input()
+  set appointments(value: Appointment[]) {
+    this._appointments = value || [];
+    this.updateApptsByDateMap();
+  }
+  get appointments(): Appointment[] {
+    return this._appointments;
+  }
+
+  private updateApptsByDateMap(): void {
+    const map = new Map<string, Appointment[]>();
+    for (const appt of this._appointments) {
+      if (!appt.datetime) continue;
+      const d = new Date(appt.datetime);
+      if (isNaN(d.getTime())) continue;
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const key = `${y}-${m}-${day}`;
+      const list = map.get(key);
+      if (list) {
+        list.push(appt);
+      } else {
+        map.set(key, [appt]);
+      }
+    }
+    this.apptsByDateMap = map;
+  }
 
   @Output() prevMonthClicked = new EventEmitter<void>();
   @Output() nextMonthClicked = new EventEmitter<void>();
@@ -38,12 +71,13 @@ export class DashboardSidebarComponent {
       && date.getDate() === this.selectedCalDate.getDate();
   }
 
+  // Performance optimization: O(1) date map lookup returning pre-filtered appointments
   appointmentsOnDate(date: Date): Appointment[] {
-    return this.appointments.filter(a => {
-      const d = new Date(a.datetime);
-      return d.getFullYear() === date.getFullYear()
-        && d.getMonth() === date.getMonth()
-        && d.getDate() === date.getDate();
-    });
+    if (!date) return [];
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const key = `${y}-${m}-${day}`;
+    return this.apptsByDateMap.get(key) || [];
   }
 }
