@@ -88,8 +88,11 @@ export default {
 
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
+      // Fail securely: do not expose raw Meta API error bodies or stack traces to client
+      const isValidationError = error?.message?.includes('Invalid');
+      const clientMessage = isValidationError ? error.message : 'Failed to send WhatsApp message';
+      return new Response(JSON.stringify({ error: clientMessage }), {
+        status: isValidationError ? 400 : 500,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders(origin),
@@ -119,11 +122,21 @@ function timingSafeEqual(a: string | null, b: string): boolean {
   return diff === 0;
 }
 
+// Helper to validate phone numbers (E.164 / digits, 7-15 digits)
+function isValidPhoneNumber(phone?: string): boolean {
+  if (!phone || typeof phone !== 'string') return false;
+  return /^\+?\d{7,15}$/.test(phone.trim());
+}
+
 // ─── Appointment Confirmation ─────────────────────────────────────────────────
 // Template: appointment_confirm
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} date, {{5}} time, {{6}} address
 async function sendAppointmentNotification(data: any, env: Env): Promise<void> {
+  if (!isValidPhoneNumber(data.phone)) {
+    throw new Error('Invalid phone number format');
+  }
+
   const payload = {
     messaging_product: 'whatsapp',
     to: data.phone,          // E.164 format e.g. "919876543210"
@@ -166,6 +179,10 @@ function isValidHttpUrl(urlString?: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} pdfUrl
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
+  if (!isValidPhoneNumber(data.phone)) {
+    throw new Error('Invalid phone number format');
+  }
+
   // Security check: validate pdfUrl protocol to prevent XSS / malicious links
   if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
     throw new Error('Invalid or unallowed pdfUrl protocol');
