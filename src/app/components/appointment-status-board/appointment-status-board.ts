@@ -24,7 +24,34 @@ export class AppointmentStatusBoardComponent {
 
   // Board data
   @Input() columns: BoardColumn[] = [];
-  @Input() filteredAppointments: Appointment[] = [];
+
+  private _filteredAppointments: Appointment[] = [];
+  private cardsCache = new Map<Appointment['status'], Appointment[]>();
+
+  // Performance optimization: Pre-group appointments by status whenever input array reference updates.
+  // This avoids running O(N) array filtering 9+ times per change detection pass in templates.
+  @Input()
+  set filteredAppointments(value: Appointment[]) {
+    this._filteredAppointments = value || [];
+    this.updateCardsCache();
+  }
+  get filteredAppointments(): Appointment[] {
+    return this._filteredAppointments;
+  }
+
+  private updateCardsCache(): void {
+    const map = new Map<Appointment['status'], Appointment[]>();
+    for (const appt of this._filteredAppointments) {
+      const list = map.get(appt.status);
+      if (list) {
+        list.push(appt);
+      } else {
+        map.set(appt.status, [appt]);
+      }
+    }
+    this.cardsCache = map;
+  }
+
   @Input() isLoading: boolean = false;
   @Input() errorMessage: string = '';
   @Input() updatingId: string | null = null;
@@ -179,8 +206,9 @@ export class AppointmentStatusBoardComponent {
   }
 
   // ── Existing methods ────────────────────────────────────────
+  // Performance optimization: Returns stable array reference from pre-indexed Map in O(1) time
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.cardsCache.get(status) || [];
   }
 
   isToday(datetime: any): boolean {
