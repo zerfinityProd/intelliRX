@@ -368,10 +368,13 @@ export class FirestoreApiService {
 
   /** Generate a 20-char random document ID (same charset as Firestore auto-IDs). */
   generateDocId(): string {
+    // Security: Use CSPRNG crypto.getRandomValues instead of Math.random to prevent ID prediction attacks
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const randomBuffer = new Uint32Array(20);
+    crypto.getRandomValues(randomBuffer);
     let id = '';
     for (let i = 0; i < 20; i++) {
-      id += chars.charAt(Math.floor(Math.random() * chars.length));
+      id += chars.charAt(randomBuffer[i] % chars.length);
     }
     return id;
   }
