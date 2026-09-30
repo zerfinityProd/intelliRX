@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewEncapsulation, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Appointment } from '../../models/appointment.model';
@@ -13,7 +13,7 @@ import { BoardColumn } from '../../interfaces/board-column';
   styleUrl: './reception-appointment-board.css',
   encapsulation: ViewEncapsulation.None
 })
-export class ReceptionAppointmentBoardComponent {
+export class ReceptionAppointmentBoardComponent implements OnChanges {
   // Toolbar inputs
   @Input() searchTerm: string = '';
   @Input() selectedDate: string = '';
@@ -67,16 +67,55 @@ export class ReceptionAppointmentBoardComponent {
   @Output() columnDragLeave = new EventEmitter<{ event: DragEvent; columnId: string }>();
   @Output() columnDrop = new EventEmitter<{ event: DragEvent; columnId: string }>();
 
-  cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+  // Performance Optimization: Cache grouped appointments by status to avoid O(N) array filtering
+  // 3 times per column on every change detection pass.
+  private groupedCardsCache: Record<string, Appointment[]> = {};
+  private doctorNameCache = new WeakMap<Appointment, string>();
+  private todayDateString: string = new Date().toDateString();
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['filteredAppointments'] || changes['columns']) {
+      this.updateGroupedCards();
+    }
+    if (changes['doctorNameResolver']) {
+      this.doctorNameCache = new WeakMap<Appointment, string>();
+    }
   }
 
+  /** Pre-groups filteredAppointments into a status dictionary in O(N) time. */
+  private updateGroupedCards(): void {
+    const grouped: Record<string, Appointment[]> = {};
+    const cols = this.columns || [];
+    for (let i = 0; i < cols.length; i++) {
+      grouped[cols[i].id] = [];
+    }
+    const appts = this.filteredAppointments || [];
+    for (let i = 0; i < appts.length; i++) {
+      const appt = appts[i];
+      if (!grouped[appt.status]) {
+        grouped[appt.status] = [];
+      }
+      grouped[appt.status].push(appt);
+    }
+    this.groupedCardsCache = grouped;
+  }
+
+  /**
+   * O(1) lookup for appointments in a specific status column.
+   * Prevents repeated O(N) filtering during Angular template change detection.
+   */
+  cardsFor(status: Appointment['status']): Appointment[] {
+    if (!this.groupedCardsCache[status] && this.filteredAppointments) {
+      this.updateGroupedCards();
+    }
+    return this.groupedCardsCache[status] || [];
+  }
+
+  /** Cache today's date string comparison to avoid extra Date allocations. */
   isToday(datetime: any): boolean {
+    if (!datetime) return false;
     const d = new Date(datetime);
-    const t = new Date();
-    return d.getFullYear() === t.getFullYear()
-      && d.getMonth() === t.getMonth()
-      && d.getDate() === t.getDate();
+    return d.toDateString() === this.todayDateString;
   }
 
   formatTime(datetime: any): string {
@@ -87,8 +126,15 @@ export class ReceptionAppointmentBoardComponent {
     return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${period}`;
   }
 
+  /** Memoized doctor display name resolver to prevent multiple function executions per card. */
   getDoctorDisplayName(appt: Appointment): string {
-    return this.doctorNameResolver(appt);
+    if (!appt) return '';
+    let name = this.doctorNameCache.get(appt);
+    if (name === undefined) {
+      name = this.doctorNameResolver(appt) || '';
+      this.doctorNameCache.set(appt, name);
+    }
+    return name;
   }
 
   onDateInput(value: string): void {
