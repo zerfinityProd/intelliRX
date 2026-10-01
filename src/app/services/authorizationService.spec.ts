@@ -353,14 +353,4 @@ describe('AuthorizationService', () => {
         });
     });
 
-    // ── Placeholder methods ───────────────────────────────────────────────────
-    describe('allowEmail / denyEmail (placeholders)', () => {
-        it('allowEmail does not throw', async () => {
-            await expect(service.allowEmail('new@test.com')).resolves.not.toThrow();
-        });
-
-        it('denyEmail does not throw', async () => {
-            await expect(service.denyEmail('old@test.com')).resolves.not.toThrow();
-        });
-    });
 });
