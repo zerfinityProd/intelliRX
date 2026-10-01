@@ -64,6 +64,13 @@ export default {
       });
     }
 
+    if (!body || typeof body !== 'object') {
+      return new Response('Invalid request body', {
+        status: 400,
+        headers: corsHeaders(origin),
+      });
+    }
+
     try {
       if (url.pathname === '/notify/appointment') {
         await sendAppointmentNotification(body, env);
@@ -88,7 +95,8 @@ export default {
 
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      // Security: return generic error message to avoid leaking internal details or Meta API responses
+      return new Response(JSON.stringify({ error: 'An error occurred while processing the notification request' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
@@ -124,6 +132,10 @@ function timingSafeEqual(a: string | null, b: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} date, {{5}} time, {{6}} address
 async function sendAppointmentNotification(data: any, env: Env): Promise<void> {
+  if (!data?.phone || typeof data.phone !== 'string') {
+    throw new Error('Invalid or missing phone number');
+  }
+
   const payload = {
     messaging_product: 'whatsapp',
     to: data.phone,          // E.164 format e.g. "919876543210"
@@ -166,6 +178,10 @@ function isValidHttpUrl(urlString?: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} pdfUrl
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
+  if (!data?.phone || typeof data.phone !== 'string') {
+    throw new Error('Invalid or missing phone number');
+  }
+
   // Security check: validate pdfUrl protocol to prevent XSS / malicious links
   if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
     throw new Error('Invalid or unallowed pdfUrl protocol');
