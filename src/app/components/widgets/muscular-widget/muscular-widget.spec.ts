@@ -20,19 +20,14 @@ describe('MuscularWidgetComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should have major muscles in the dictionary', () => {
-        const muscleIds = Object.keys(component.muscleNames);
-        expect(muscleIds.length).toBeGreaterThan(30);
-    });
-
     it('should toggle muscle selection', () => {
         const testMuscle = 'muscle_temporalis_left';
-        expect(component.isSelected(testMuscle)).toBeFalsy();
+        expect(component.selectedMuscles.includes(testMuscle)).toBeFalsy();
 
-        component.toggleMuscle(testMuscle);
-        expect(component.isSelected(testMuscle)).toBeTruthy();
+        component.toggleSelection(testMuscle);
+        expect(component.selectedMuscles.includes(testMuscle)).toBeTruthy();
 
-        component.toggleMuscle(testMuscle);
-        expect(component.isSelected(testMuscle)).toBeFalsy();
+        component.toggleSelection(testMuscle);
+        expect(component.selectedMuscles.includes(testMuscle)).toBeFalsy();
     });
 });

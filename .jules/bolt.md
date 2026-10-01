@@ -1,3 +1,7 @@
+## 2026-10-01 - Pre-group appointments by status in Kanban board components
+**Learning:** Kanban board components (`AppointmentStatusBoardComponent`, `ReceptionAppointmentBoardComponent`) evaluated `cardsFor(status)` in template bindings up to 3 times per column per change detection cycle, executing `Array.prototype.filter()` and allocating new array instances repeatedly. Pre-indexing appointments into a `Map<string, Appointment[]>` via `@Input()` setter reduced lookup complexity to `O(1)` and preserved array reference stability (including empty arrays), eliminating redundant re-evaluations and GC pressure during change detection.
+**Action:** When a component filters an `@Input()` array in template functions or getters, pre-group the data into a Map or object in an `@Input()` setter or `ngOnChanges` to return stable pre-cached array references.
+
 ## 2026-09-18 - Pre-index visits by date key for calendar rendering
 **Learning:** `PatientStatsComponent` generated calendar day cells (35–42 cells per grid) by invoking `.filter()` across all patient visits for every cell, executing `O(CELLS * VISITS)` timestamp parsing and date matching. Pre-building an `O(N)` map keyed by `YYYY-MM-DD` reduces lookups to `O(1)`.
 **Action:** When rendering calendar/grid components displaying visits or appointments, check if events are filtered per cell and pre-aggregate into a date-keyed Map beforehand.
