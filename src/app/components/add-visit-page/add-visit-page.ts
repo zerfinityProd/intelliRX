@@ -1142,8 +1142,19 @@ export class AddVisitPageComponent implements OnInit {
         }
     }
 
+    escapeHtml(str: string | number | null | undefined): string {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     private openPrintWindow(saved: boolean): void {
-        const patientName = this.patient?.name || 'Patient';
+        const rawPatientName = this.patient?.name || 'Patient';
+        const patientName = this.escapeHtml(rawPatientName);
         const patientAge = this.getPatientAge();
         const now = new Date().toLocaleString('en-US', {
             year: 'numeric', month: 'short', day: 'numeric',
@@ -1163,7 +1174,7 @@ export class AddVisitPageComponent implements OnInit {
         // Build per-tooth notes block for print
         const toothNoteLines = this.selectedTeethIds
             .filter(id => this.toothNotes[id])
-            .map(id => `<div style="margin-bottom:4px"><span style="font-weight:600">Tooth ${id}:</span> ${this.toothNotes[id]}</div>`)
+            .map(id => `<div style="margin-bottom:4px"><span style="font-weight:600">Tooth ${this.escapeHtml(id)}:</span> ${this.escapeHtml(this.toothNotes[id])}</div>`)
             .join('');
         const toothNotesBlock = toothNoteLines
             ? `<div class="field"><span class="label">Tooth Notes</span><span class="value">${toothNoteLines}</span></div>`
@@ -1173,8 +1184,8 @@ export class AddVisitPageComponent implements OnInit {
         const boneNoteLines = this.selectedBoneIds
             .filter(id => this.boneNotes[id])
             .map(id => {
-                const name = id; // boneNames is on the widget; use raw id here (readable enough)
-                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.boneNotes[id]}</div>`;
+                const name = this.escapeHtml(id); // boneNames is on the widget; use raw id here (readable enough)
+                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.escapeHtml(this.boneNotes[id])}</div>`;
             }).join('');
         const boneNotesBlock = boneNoteLines
             ? `<div class="field"><span class="label">Bone Notes</span><span class="value">${boneNoteLines}</span></div>`
@@ -1184,23 +1195,24 @@ export class AddVisitPageComponent implements OnInit {
         const muscleNoteLines = this.selectedMuscleIds
             .filter(id => this.muscleNotes[id])
             .map(id => {
-                const name = this.getSelectedMuscleNames()[this.selectedMuscleIds.indexOf(id)] || id;
-                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.muscleNotes[id]}</div>`;
+                const rawName = this.getSelectedMuscleNames()[this.selectedMuscleIds.indexOf(id)] || id;
+                const name = this.escapeHtml(rawName);
+                return `<div style="margin-bottom:4px"><span style="font-weight:600">${name}:</span> ${this.escapeHtml(this.muscleNotes[id])}</div>`;
             }).join('');
         const muscleNotesBlock = muscleNoteLines
             ? `<div class="field"><span class="label">Muscle Notes</span><span class="value">${muscleNoteLines}</span></div>`
             : '';
 
         const examRows = this.examinations.map(e =>
-            `<tr><td>${e.testName}</td><td>${e.status || '-'}</td><td>${e.result || '-'}</td></tr>`
+            `<tr><td>${this.escapeHtml(e.testName)}</td><td>${this.escapeHtml(e.status) || '-'}</td><td>${this.escapeHtml(e.result) || '-'}</td></tr>`
         ).join('');
 
         const medRows = this.medicines.map(m =>
-            `<tr><td>${m.name}</td><td>${m.dosage || '-'}</td><td>${m.frequency || '-'}</td><td>${m.durationDays ? m.durationDays + ' days' : '-'}</td></tr>`
+            `<tr><td>${this.escapeHtml(m.name)}</td><td>${this.escapeHtml(m.dosage) || '-'}</td><td>${this.escapeHtml(m.frequency) || '-'}</td><td>${m.durationDays ? this.escapeHtml(String(m.durationDays)) + ' days' : '-'}</td></tr>`
         ).join('');
 
         const field = (label: string, value: string) =>
-            value ? `<div class="field"><span class="label">${label}</span><span class="value">${value}</span></div>` : '';
+            value ? `<div class="field"><span class="label">${this.escapeHtml(label)}</span><span class="value">${this.escapeHtml(value)}</span></div>` : '';
 
         const html = `
 <!DOCTYPE html>
