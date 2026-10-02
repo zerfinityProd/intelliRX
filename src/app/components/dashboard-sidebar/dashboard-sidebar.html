@@ -36,11 +36,11 @@
         <div *ngIf="day" class="rh-cal-cell"
           [class.rh-cal-cell--today]="isToday(day)"
           [class.rh-cal-cell--selected]="isCalSelected(day)"
-          [class.rh-cal-cell--has-appts]="appointmentsOnDate(day).length > 0 && !isToday(day) && !isCalSelected(day)"
+          [class.rh-cal-cell--has-appts]="hasAppointments(day) && !isToday(day) && !isCalSelected(day)"
           (click)="calDayClicked.emit(day)"
-          [title]="appointmentsOnDate(day).length + ' appointment(s)'">
+          [title]="getAppointmentCount(day) + ' appointment(s)'">
           <span class="rh-cal-num">{{ day.getDate() }}</span>
-          <span *ngIf="appointmentsOnDate(day).length > 0" class="rh-cal-dot"
+          <span *ngIf="hasAppointments(day)" class="rh-cal-dot"
             [style.background]="isToday(day)||isCalSelected(day) ? 'rgba(255,255,255,0.85)' : '#1CB5C9'"></span>
         </div>
       </ng-container>
