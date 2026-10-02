@@ -2,3 +2,9 @@
 :host {
   display: contents;
 }
+
+.kb-patient-card:focus-visible {
+  outline: 2px solid var(--primary-color, #148d9e);
+  outline-offset: 2px;
+  border-color: var(--primary-color, #148d9e);
+}

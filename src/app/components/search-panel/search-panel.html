@@ -49,7 +49,12 @@
     <!-- Patient Cards (Kanban-style) -->
     <div class="kb-patient-list">
       <div *ngFor="let patient of searchResults" class="kb-patient-card"
-        (dblclick)="openAddVisitForm(patient)">
+        tabindex="0"
+        role="article"
+        [attr.aria-label]="'Patient ' + (patient.name || '') + ', ID: ' + patient.id + '. Double-click or press Enter to add visit.'"
+        title="Double-click or press Enter to add visit"
+        (dblclick)="openAddVisitForm(patient)"
+        (keydown.enter)="openAddVisitForm(patient)">
         <div class="kb-patient-card__left">
           <div class="kb-patient-avatar">{{ (patient.name || '?').charAt(0).toUpperCase() }}</div>
         </div>
