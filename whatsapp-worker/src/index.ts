@@ -69,6 +69,12 @@ export default {
         await sendAppointmentNotification(body, env);
 
       } else if (url.pathname === '/notify/prescription') {
+        if (body?.pdfUrl && !isValidHttpUrl(body.pdfUrl)) {
+          return new Response('Invalid or unallowed pdfUrl protocol', {
+            status: 400,
+            headers: corsHeaders(origin),
+          });
+        }
         await sendPrescriptionNotification(body, env);
 
       } else {
