@@ -87,9 +87,16 @@ export default {
       });
 
     } catch (error: any) {
+      // Log detailed error internally without exposing sensitive details to the client
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
+      const isValidationError = error instanceof ValidationError;
+      const status = isValidationError ? 400 : 500;
+      const responseMessage = isValidationError
+        ? error.message
+        : 'Failed to send notification';
+
+      return new Response(JSON.stringify({ error: responseMessage }), {
+        status,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders(origin),
@@ -161,6 +168,13 @@ function isValidHttpUrl(urlString?: string): boolean {
   }
 }
 
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
 // ─── Prescription Ready ───────────────────────────────────────────────────────
 // Template: prescription_ready
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
@@ -168,7 +182,7 @@ function isValidHttpUrl(urlString?: string): boolean {
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
   // Security check: validate pdfUrl protocol to prevent XSS / malicious links
   if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
-    throw new Error('Invalid or unallowed pdfUrl protocol');
+    throw new ValidationError('Invalid or unallowed pdfUrl protocol');
   }
 
   const payload = {
