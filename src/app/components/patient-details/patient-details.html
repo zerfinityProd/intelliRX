@@ -34,7 +34,7 @@
         <div>
           <h2 class="patient-name-heading">
             {{ patient.name }}
-            <button *ngIf="permissions.canEdit" class="edit-icon-button" (click)="openEditPatientInfo()" title="Edit patient">
+            <button *ngIf="permissions.canEdit" class="edit-icon-button" (click)="openEditPatientInfo()" title="Edit patient" aria-label="Edit patient">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -42,7 +42,7 @@
               </svg>
             </button>
             <button *ngIf="canDelete" class="edit-icon-button delete-patient-btn" (click)="confirmDeletePatient()"
-              title="Delete patient">
+              title="Delete patient" aria-label="Delete patient">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="3 6 5 6 21 6"></polyline>
@@ -276,7 +276,7 @@
 
                     <div class="vg-cell vg-cell--actions">
                       <button *ngIf="permissions.canEditVisit" class="vg-action-btn vg-action-btn--edit"
-                        (click)="startEditVisit(visit); $event.stopPropagation()" title="Edit visit">
+                        (click)="startEditVisit(visit); $event.stopPropagation()" title="Edit visit" aria-label="Edit visit">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                           stroke-linecap="round" stroke-linejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -284,7 +284,7 @@
                         </svg>
                       </button>
                       <button *ngIf="canDelete" class="vg-action-btn vg-action-btn--delete"
-                        (click)="confirmDeleteVisit(visit); $event.stopPropagation()" title="Delete visit">
+                        (click)="confirmDeleteVisit(visit); $event.stopPropagation()" title="Delete visit" aria-label="Delete visit">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                           stroke-linecap="round" stroke-linejoin="round">
                           <polyline points="3 6 5 6 21 6"></polyline>
