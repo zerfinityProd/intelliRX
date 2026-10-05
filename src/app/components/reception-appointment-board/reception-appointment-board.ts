@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewEncapsulation, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Appointment } from '../../models/appointment.model';
@@ -13,7 +13,13 @@ import { BoardColumn } from '../../interfaces/board-column';
   styleUrl: './reception-appointment-board.css',
   encapsulation: ViewEncapsulation.None
 })
-export class ReceptionAppointmentBoardComponent {
+export class ReceptionAppointmentBoardComponent implements OnChanges {
+  // Performance cache: Group appointments by status to avoid O(C * N) filtering
+  // on every change detection pass when template calls cardsFor(col.id).
+  private cardsByStatus = new Map<string, Appointment[]>();
+  private lastAppointmentsRef: Appointment[] | null = null;
+  private readonly EMPTY_CARDS: Appointment[] = [];
+
   // Toolbar inputs
   @Input() searchTerm: string = '';
   @Input() selectedDate: string = '';
@@ -67,8 +73,39 @@ export class ReceptionAppointmentBoardComponent {
   @Output() columnDragLeave = new EventEmitter<{ event: DragEvent; columnId: string }>();
   @Output() columnDrop = new EventEmitter<{ event: DragEvent; columnId: string }>();
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['filteredAppointments']) {
+      this.updateCardsByStatus();
+    }
+  }
+
+  /**
+   * Returns appointments for the specified status.
+   * Optimized with a cached Map lookup (O(1)) instead of array filtering (O(N))
+   * on every template evaluation pass during Angular change detection.
+   */
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    if (this.lastAppointmentsRef !== this.filteredAppointments) {
+      this.updateCardsByStatus();
+    }
+    return this.cardsByStatus.get(status) || this.EMPTY_CARDS;
+  }
+
+  private updateCardsByStatus(): void {
+    this.lastAppointmentsRef = this.filteredAppointments;
+    this.cardsByStatus.clear();
+    if (!this.filteredAppointments || this.filteredAppointments.length === 0) {
+      return;
+    }
+    for (const appt of this.filteredAppointments) {
+      const status = appt.status;
+      let list = this.cardsByStatus.get(status);
+      if (!list) {
+        list = [];
+        this.cardsByStatus.set(status, list);
+      }
+      list.push(appt);
+    }
   }
 
   isToday(datetime: any): boolean {
