@@ -88,7 +88,8 @@ export default {
 
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      // Security: Return a generic error message to caller to prevent leaking internal system or upstream API details
+      return new Response(JSON.stringify({ error: 'Failed to send WhatsApp notification' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
@@ -102,21 +103,24 @@ export default {
 /**
  * Timing-safe string comparison to prevent timing side-channel attacks on secret comparison.
  */
-function timingSafeEqual(a: string | null, b: string): boolean {
-  if (!a) return false;
+export function timingSafeEqual(a: string | null, b: string): boolean {
+  if (!a || !b) return false;
   const encoder = new TextEncoder();
   const aBuf = encoder.encode(a);
   const bBuf = encoder.encode(b);
 
-  if (aBuf.byteLength !== bBuf.byteLength) {
-    return false;
-  }
-
-  let diff = 0;
-  for (let i = 0; i < aBuf.byteLength; i++) {
+  let diff = aBuf.byteLength ^ bBuf.byteLength;
+  const minLen = Math.min(aBuf.byteLength, bBuf.byteLength);
+  for (let i = 0; i < minLen; i++) {
     diff |= aBuf[i] ^ bBuf[i];
   }
   return diff === 0;
+}
+
+/** Helper to validate E.164 phone format (digits only, 7-15 digits) */
+export function isValidPhone(phone?: any): boolean {
+  if (!phone || typeof phone !== 'string') return false;
+  return /^\d{7,15}$/.test(phone.trim());
 }
 
 // ─── Appointment Confirmation ─────────────────────────────────────────────────
@@ -124,6 +128,10 @@ function timingSafeEqual(a: string | null, b: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} date, {{5}} time, {{6}} address
 async function sendAppointmentNotification(data: any, env: Env): Promise<void> {
+  if (!isValidPhone(data?.phone)) {
+    throw new Error('Invalid or missing phone number');
+  }
+
   const payload = {
     messaging_product: 'whatsapp',
     to: data.phone,          // E.164 format e.g. "919876543210"
@@ -151,7 +159,7 @@ async function sendAppointmentNotification(data: any, env: Env): Promise<void> {
 }
 
 // Helper to validate PDF URL (must be a valid http or https URL)
-function isValidHttpUrl(urlString?: string): boolean {
+export function isValidHttpUrl(urlString?: string): boolean {
   if (!urlString || typeof urlString !== 'string') return false;
   try {
     const parsed = new URL(urlString);
@@ -166,6 +174,10 @@ function isValidHttpUrl(urlString?: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} pdfUrl
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
+  if (!isValidPhone(data?.phone)) {
+    throw new Error('Invalid or missing phone number');
+  }
+
   // Security check: validate pdfUrl protocol to prevent XSS / malicious links
   if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
     throw new Error('Invalid or unallowed pdfUrl protocol');
