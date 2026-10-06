@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewEncapsulation } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewEncapsulation, OnChanges, OnInit, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Appointment } from '../../models/appointment.model';
@@ -13,7 +13,7 @@ import { BoardColumn } from '../../interfaces/board-column';
   styleUrl: './reception-appointment-board.css',
   encapsulation: ViewEncapsulation.None
 })
-export class ReceptionAppointmentBoardComponent {
+export class ReceptionAppointmentBoardComponent implements OnChanges, OnInit {
   // Toolbar inputs
   @Input() searchTerm: string = '';
   @Input() selectedDate: string = '';
@@ -67,8 +67,39 @@ export class ReceptionAppointmentBoardComponent {
   @Output() columnDragLeave = new EventEmitter<{ event: DragEvent; columnId: string }>();
   @Output() columnDrop = new EventEmitter<{ event: DragEvent; columnId: string }>();
 
+  // Map of status -> list of appointments for O(1) retrieval during column rendering
+  private cardsByStatusMap = new Map<Appointment['status'], Appointment[]>();
+
+  ngOnInit(): void {
+    this.rebuildCardsMap();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['filteredAppointments']) {
+      this.rebuildCardsMap();
+    }
+  }
+
+  // Pre-groups appointments by status to avoid filtering filteredAppointments
+  // multiple times per column on every change detection pass.
+  private rebuildCardsMap(): void {
+    this.cardsByStatusMap.clear();
+    if (!this.filteredAppointments) return;
+
+    for (const appt of this.filteredAppointments) {
+      if (!appt || !appt.status) continue;
+      let list = this.cardsByStatusMap.get(appt.status);
+      if (!list) {
+        list = [];
+        this.cardsByStatusMap.set(appt.status, list);
+      }
+      list.push(appt);
+    }
+  }
+
+  // Returns list of appointments for a given column status using O(1) map lookup
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.cardsByStatusMap.get(status) || [];
   }
 
   isToday(datetime: any): boolean {
