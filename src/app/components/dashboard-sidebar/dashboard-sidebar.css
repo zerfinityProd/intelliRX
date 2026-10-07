@@ -2,3 +2,14 @@
 :host {
   display: contents;
 }
+
+button.rh-cal-cell {
+  font-family: inherit;
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
