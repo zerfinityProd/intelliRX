@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, ViewEncapsulation, HostListener } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ViewChild, ElementRef, ViewEncapsulation, HostListener, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Appointment } from '../../models/appointment.model';
@@ -12,7 +12,7 @@ import { BoardColumn } from '../../interfaces/board-column';
   styleUrl: './appointment-status-board.css',
   encapsulation: ViewEncapsulation.None
 })
-export class AppointmentStatusBoardComponent {
+export class AppointmentStatusBoardComponent implements OnChanges {
 
   // Header data
   @Input() searchTerm: string = '';
@@ -178,9 +178,35 @@ export class AppointmentStatusBoardComponent {
     }
   }
 
+  // Cache of appointments grouped by status to avoid O(N) filtering in HTML template on every digest cycle
+  private cardsByStatusMap = new Map<Appointment['status'], Appointment[]>();
+  private readonly EMPTY_CARDS: Appointment[] = [];
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['filteredAppointments']) {
+      this.rebuildCardsByStatusMap();
+    }
+  }
+
+  /** Group filteredAppointments by status once when input changes */
+  private rebuildCardsByStatusMap(): void {
+    this.cardsByStatusMap.clear();
+    if (!this.filteredAppointments) return;
+
+    for (const appt of this.filteredAppointments) {
+      const list = this.cardsByStatusMap.get(appt.status);
+      if (list) {
+        list.push(appt);
+      } else {
+        this.cardsByStatusMap.set(appt.status, [appt]);
+      }
+    }
+  }
+
   // ── Existing methods ────────────────────────────────────────
+  /** O(1) status card lookup returning pre-grouped array from map */
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.cardsByStatusMap.get(status) || this.EMPTY_CARDS;
   }
 
   isToday(datetime: any): boolean {
