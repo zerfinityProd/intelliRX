@@ -1,3 +1,7 @@
 ## 2026-09-18 - Pre-index visits by date key for calendar rendering
 **Learning:** `PatientStatsComponent` generated calendar day cells (35–42 cells per grid) by invoking `.filter()` across all patient visits for every cell, executing `O(CELLS * VISITS)` timestamp parsing and date matching. Pre-building an `O(N)` map keyed by `YYYY-MM-DD` reduces lookups to `O(1)`.
 **Action:** When rendering calendar/grid components displaying visits or appointments, check if events are filtered per cell and pre-aggregate into a date-keyed Map beforehand.
+
+## 2026-10-09 - Memoize board filter getters and pre-group cards by status
+**Learning:** `AppointmentStatusBoardComponent` and `ReceptionAppointmentBoardComponent` templates evaluated `cardsFor(col.id)` multiple times per column on every change detection pass, triggering parent `filteredAppointments` getters that executed repeated `new Date()` parses, filtering, and `O(N log N)` sorting. Pre-grouping appointments by status into a Map via an `@Input()` setter and memoizing `filteredAppointments` in the parent component reduced change detection workload to `O(1)`. Re-assigning `this.appointments = [...this.appointments]` on local status mutations ensures cache invalidation without breaking instant UI feedback.
+**Action:** In Angular board/kanban components evaluated during frequent change detection passes, pre-index items by status in an `@Input()` setter and memoize parent filter getters using array reference checks.
