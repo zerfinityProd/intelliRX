@@ -214,7 +214,26 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
 
     // ── Filtered view ──
 
+    // Cache variables for filteredAppointments getter memoization
+    private cachedAppointmentsRef: Appointment[] | null = null;
+    private cachedSelectedDate: string | null = null;
+    private cachedFilterClinicId: string | null = null;
+    private cachedFilterDoctorId: string | null = null;
+    private cachedSearchTerm: string | null = null;
+    private cachedFilteredAppointments: Appointment[] = [];
+
     get filteredAppointments(): Appointment[] {
+        // Return memoized result if source inputs haven't changed
+        if (
+            this.cachedAppointmentsRef === this.appointments &&
+            this.cachedSelectedDate === this.selectedDate &&
+            this.cachedFilterClinicId === this.filterClinicId &&
+            this.cachedFilterDoctorId === this.filterDoctorId &&
+            this.cachedSearchTerm === this.searchTerm
+        ) {
+            return this.cachedFilteredAppointments;
+        }
+
         let result = this.appointments;
 
         if (this.selectedDate) {
@@ -254,6 +273,14 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
                 return matchesNameOrAilments || matchesPhoneDigits || matchesPhoneRaw;
             });
         }
+
+        // Cache computed result
+        this.cachedAppointmentsRef = this.appointments;
+        this.cachedSelectedDate = this.selectedDate;
+        this.cachedFilterClinicId = this.filterClinicId;
+        this.cachedFilterDoctorId = this.filterDoctorId;
+        this.cachedSearchTerm = this.searchTerm;
+        this.cachedFilteredAppointments = result;
 
         return result;
     }
@@ -400,6 +427,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
             await this.appointmentService.cancelAppointment(this.cancellingAppt.id, reason);
             this.cancellingAppt.status = 'cancelled';
             this.cancellingAppt.cancellationReason = reason;
+            this.appointments = [...this.appointments];
             this.closeCancelModal();
         } catch {
             this.cancelError = 'Failed to cancel appointment. Please try again.';
@@ -423,6 +451,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         try {
             await this.appointmentService.updateAppointmentStatus(appt.id!, status);
             appt.status = status;
+            this.appointments = [...this.appointments];
         } catch {
             this.errorMessage = 'Failed to update status.';
         } finally {
@@ -772,6 +801,7 @@ export class ReceptionHomeComponent implements OnInit, OnDestroy {
         const apptId = this.reschedulingAppt.id;
 
         this.reschedulingAppt.datetime = newDate;
+        this.appointments = [...this.appointments];
         this.cancelReschedule();
         this.cdr.detectChanges();
 

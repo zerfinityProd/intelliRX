@@ -24,7 +24,33 @@ export class AppointmentStatusBoardComponent {
 
   // Board data
   @Input() columns: BoardColumn[] = [];
-  @Input() filteredAppointments: Appointment[] = [];
+
+  private _filteredAppointments: Appointment[] = [];
+  private cardsByStatus = new Map<string, Appointment[]>();
+
+  @Input()
+  set filteredAppointments(value: Appointment[]) {
+    this._filteredAppointments = value || [];
+    this.updateCardsByStatus();
+  }
+  get filteredAppointments(): Appointment[] {
+    return this._filteredAppointments;
+  }
+
+  private updateCardsByStatus(): void {
+    const map = new Map<string, Appointment[]>();
+    for (const appt of this._filteredAppointments) {
+      const status = appt.status || 'scheduled';
+      let list = map.get(status);
+      if (!list) {
+        list = [];
+        map.set(status, list);
+      }
+      list.push(appt);
+    }
+    this.cardsByStatus = map;
+  }
+
   @Input() isLoading: boolean = false;
   @Input() errorMessage: string = '';
   @Input() updatingId: string | null = null;
@@ -180,7 +206,7 @@ export class AppointmentStatusBoardComponent {
 
   // ── Existing methods ────────────────────────────────────────
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.cardsByStatus.get(status) || [];
   }
 
   isToday(datetime: any): boolean {

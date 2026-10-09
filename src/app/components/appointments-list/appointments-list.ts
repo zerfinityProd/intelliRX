@@ -111,7 +111,22 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     { id: 'cancelled', label: 'Cancelled', color: '#fee2e2', accent: '#ef4444', icon: 'x' },
   ];
 
+  // Cache variables for filteredAppointments getter memoization
+  private cachedAppointmentsRef: Appointment[] | null = null;
+  private cachedSearchTerm: string | null = null;
+  private cachedSelectedDate: string | null = null;
+  private cachedFilteredAppointments: Appointment[] = [];
+
   get filteredAppointments(): Appointment[] {
+    // Return memoized result if source inputs haven't changed
+    if (
+      this.cachedAppointmentsRef === this.appointments &&
+      this.cachedSearchTerm === this.searchTerm &&
+      this.cachedSelectedDate === this.selectedDate
+    ) {
+      return this.cachedFilteredAppointments;
+    }
+
     let result = this.appointments;
 
     const termRaw = this.searchTerm.trim();
@@ -151,6 +166,12 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
         });
       }
     }
+
+    // Cache computed result
+    this.cachedAppointmentsRef = this.appointments;
+    this.cachedSearchTerm = this.searchTerm;
+    this.cachedSelectedDate = this.selectedDate;
+    this.cachedFilteredAppointments = result;
 
     return result;
   }
@@ -315,6 +336,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     try {
       await this.appointmentService.updateAppointmentStatus(appt.id!, status);
       appt.status = status;
+      this.appointments = [...this.appointments];
     } catch {
       this.errorMessage = 'Failed to update status. Please try again.';
     } finally {
@@ -369,6 +391,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
       if (this.cancellingAppt) {
         this.cancellingAppt.status = 'cancelled';
         this.cancellingAppt.cancellationReason = reason;
+        this.appointments = [...this.appointments];
       }
       this.closeCancelModal();
     } catch (err: any) {
@@ -506,6 +529,7 @@ export class AppointmentsListComponent implements OnInit, OnDestroy {
     const apptId = this.postponingAppt.id;
 
     this.postponingAppt.datetime = newDate;
+    this.appointments = [...this.appointments];
     this.cancelPostpone();             // closes modal immediately
     this.cdr.detectChanges();
 
