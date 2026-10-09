@@ -4,6 +4,13 @@ export interface Env {
   WORKER_SECRET: string;
 }
 
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
 const metaApiUrl = (phoneNumberId: string) =>
   `https://graph.facebook.com/v19.0/${phoneNumberId}/messages`;
 
@@ -88,8 +95,13 @@ export default {
 
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 500,
+      const isValidation = error instanceof ValidationError;
+      const status = isValidation ? 400 : 500;
+      // Prevent leaking internal stack traces or Meta API responses (CWE-209)
+      const errorMessage = isValidation ? error.message : 'An internal error occurred';
+
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status,
         headers: {
           'Content-Type': 'application/json',
           ...corsHeaders(origin),
@@ -168,7 +180,7 @@ function isValidHttpUrl(urlString?: string): boolean {
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
   // Security check: validate pdfUrl protocol to prevent XSS / malicious links
   if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
-    throw new Error('Invalid or unallowed pdfUrl protocol');
+    throw new ValidationError('Invalid or unallowed pdfUrl protocol');
   }
 
   const payload = {
