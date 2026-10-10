@@ -28,7 +28,36 @@ export class ReceptionAppointmentBoardComponent {
 
   // Board data
   @Input() columns: BoardColumn[] = [];
-  @Input() filteredAppointments: Appointment[] = [];
+
+  private _filteredAppointments: Appointment[] = [];
+  private cardsByStatus = new Map<string, Appointment[]>();
+
+  // Performance Optimization:
+  // Pre-aggregate appointments by status in an O(N) map when input changes.
+  // This eliminates O(N) .filter() scanning and transient array allocations in template
+  // expressions (e.g. cardsFor(col.id)) during change detection runs.
+  @Input()
+  set filteredAppointments(value: Appointment[]) {
+    this._filteredAppointments = value || [];
+    this.updateCardsByStatus();
+  }
+  get filteredAppointments(): Appointment[] {
+    return this._filteredAppointments;
+  }
+
+  private updateCardsByStatus(): void {
+    this.cardsByStatus.clear();
+    for (const appt of this._filteredAppointments) {
+      const status = appt.status;
+      let list = this.cardsByStatus.get(status);
+      if (!list) {
+        list = [];
+        this.cardsByStatus.set(status, list);
+      }
+      list.push(appt);
+    }
+  }
+
   @Input() isLoading: boolean = false;
   @Input() errorMessage: string = '';
   @Input() updatingId: string | null = null;
@@ -68,7 +97,7 @@ export class ReceptionAppointmentBoardComponent {
   @Output() columnDrop = new EventEmitter<{ event: DragEvent; columnId: string }>();
 
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.cardsByStatus.get(status) || [];
   }
 
   isToday(datetime: any): boolean {
