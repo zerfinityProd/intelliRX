@@ -88,7 +88,8 @@ export default {
 
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      // Fail securely — do not leak raw error message or stack trace to client
+      return new Response(JSON.stringify({ error: 'An error occurred while processing the request' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
@@ -124,6 +125,10 @@ function timingSafeEqual(a: string | null, b: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} date, {{5}} time, {{6}} address
 async function sendAppointmentNotification(data: any, env: Env): Promise<void> {
+  if (!data || typeof data !== 'object' || !data.phone || typeof data.phone !== 'string') {
+    throw new Error('Invalid payload: missing or invalid phone number');
+  }
+
   const payload = {
     messaging_product: 'whatsapp',
     to: data.phone,          // E.164 format e.g. "919876543210"
@@ -166,6 +171,10 @@ function isValidHttpUrl(urlString?: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} pdfUrl
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
+  if (!data || typeof data !== 'object' || !data.phone || typeof data.phone !== 'string') {
+    throw new Error('Invalid payload: missing or invalid phone number');
+  }
+
   // Security check: validate pdfUrl protocol to prevent XSS / malicious links
   if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
     throw new Error('Invalid or unallowed pdfUrl protocol');
