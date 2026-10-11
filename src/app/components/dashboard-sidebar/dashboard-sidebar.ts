@@ -16,7 +16,17 @@ export class DashboardSidebarComponent {
   @Input() selectedCalDate: Date | null = null;
   @Input() scheduledCount: number = 0;
   @Input() completedTodayCount: number = 0;
-  @Input() appointments: Appointment[] = [];
+  private _appointments: Appointment[] = [];
+  // Performance optimization: Pre-indexed map by 'YYYY-M-D' date key for O(1) calendar cell lookups
+  private apptsByDateMap = new Map<string, Appointment[]>();
+
+  @Input() set appointments(value: Appointment[]) {
+    this._appointments = value || [];
+    this.updateApptsMap();
+  }
+  get appointments(): Appointment[] {
+    return this._appointments;
+  }
 
   @Output() prevMonthClicked = new EventEmitter<void>();
   @Output() nextMonthClicked = new EventEmitter<void>();
@@ -38,12 +48,27 @@ export class DashboardSidebarComponent {
       && date.getDate() === this.selectedCalDate.getDate();
   }
 
-  appointmentsOnDate(date: Date): Appointment[] {
-    return this.appointments.filter(a => {
+  /** Pre-indexes appointments into a Map keyed by 'YYYY-M-D' in O(N) time */
+  private updateApptsMap(): void {
+    const map = new Map<string, Appointment[]>();
+    for (const a of this._appointments) {
+      if (!a.datetime) continue;
       const d = new Date(a.datetime);
-      return d.getFullYear() === date.getFullYear()
-        && d.getMonth() === date.getMonth()
-        && d.getDate() === date.getDate();
-    });
+      if (isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      let list = map.get(key);
+      if (!list) {
+        list = [];
+        map.set(key, list);
+      }
+      list.push(a);
+    }
+    this.apptsByDateMap = map;
+  }
+
+  /** Performance optimization: O(1) map lookup instead of O(N) array filter per calendar cell */
+  appointmentsOnDate(date: Date): Appointment[] {
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    return this.apptsByDateMap.get(key) || [];
   }
 }

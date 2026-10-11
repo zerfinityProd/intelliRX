@@ -24,7 +24,17 @@ export class AppointmentStatusBoardComponent {
 
   // Board data
   @Input() columns: BoardColumn[] = [];
-  @Input() filteredAppointments: Appointment[] = [];
+  private _filteredAppointments: Appointment[] = [];
+  // Performance optimization: Pre-grouped map by appointment status for O(1) kanban column lookups
+  private groupedCards = new Map<string, Appointment[]>();
+
+  @Input() set filteredAppointments(value: Appointment[]) {
+    this._filteredAppointments = value || [];
+    this.updateGroupedCards();
+  }
+  get filteredAppointments(): Appointment[] {
+    return this._filteredAppointments;
+  }
   @Input() isLoading: boolean = false;
   @Input() errorMessage: string = '';
   @Input() updatingId: string | null = null;
@@ -179,8 +189,24 @@ export class AppointmentStatusBoardComponent {
   }
 
   // ── Existing methods ────────────────────────────────────────
+  /** Pre-groups filtered appointments into a Map by status in O(N) time */
+  private updateGroupedCards(): void {
+    const map = new Map<string, Appointment[]>();
+    for (const appt of this._filteredAppointments) {
+      const status = appt.status || '';
+      let list = map.get(status);
+      if (!list) {
+        list = [];
+        map.set(status, list);
+      }
+      list.push(appt);
+    }
+    this.groupedCards = map;
+  }
+
+  /** Performance optimization: O(1) map lookup instead of O(N) array filter per column */
   cardsFor(status: Appointment['status']): Appointment[] {
-    return this.filteredAppointments.filter(a => a.status === status);
+    return this.groupedCards.get(status) || [];
   }
 
   isToday(datetime: any): boolean {
