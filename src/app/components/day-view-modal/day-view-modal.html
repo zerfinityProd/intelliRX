@@ -2,7 +2,7 @@
      DAY VIEW MODAL — Google Calendar Style
 ══════════════════════════════════════════════ -->
 <div class="dv-backdrop" (click)="onBackdropClick()">
-  <div class="dv-modal" (click)="onModalClick($event)">
+  <div class="dv-modal" (click)="onModalClick($event)" role="dialog" aria-modal="true" [attr.aria-label]="'Schedule for ' + dateLabel">
 
     <!-- ── Header ── -->
     <div class="dv-header">
@@ -142,6 +142,7 @@
               <!-- Inline Actions (scheduled only) -->
               <div *ngIf="slot.appointment.status === 'scheduled'" class="dv-appt-block__actions">
                 <button class="dv-action-btn dv-action-btn--visit"
+                  [attr.aria-label]="(slot.appointment!.patient_id ? 'Add visit for ' : 'Add patient for ') + slot.appointment!.patientName"
                   (click)="onAddVisit(slot.appointment!, $event)">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -153,6 +154,7 @@
                   {{ slot.appointment!.patient_id ? 'Add Visit' : 'Add Patient' }}
                 </button>
                 <button class="dv-action-btn dv-action-btn--reschedule"
+                  [attr.aria-label]="'Reschedule appointment for ' + slot.appointment!.patientName"
                   (click)="onReschedule(slot.appointment!, $event)">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -162,6 +164,7 @@
                   Reschedule
                 </button>
                 <button class="dv-action-btn dv-action-btn--cancel"
+                  [attr.aria-label]="'Cancel appointment for ' + slot.appointment!.patientName"
                   (click)="onCancel(slot.appointment!, $event)">
                   <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -177,7 +180,8 @@
             <button *ngIf="!slot.appointment && !slot.isPast && !isPastDate"
               class="dv-empty-slot"
               (click)="onBookSlot(slot.time)"
-              [title]="'Book appointment at ' + slot.label">
+              [title]="'Book appointment at ' + slot.label"
+              [attr.aria-label]="'Book appointment at ' + slot.label">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round" stroke-linejoin="round">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
