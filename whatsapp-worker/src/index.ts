@@ -88,7 +88,7 @@ export default {
 
     } catch (error: any) {
       console.error('Error sending WhatsApp message:', error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: 'Failed to send notification' }), {
         status: 500,
         headers: {
           'Content-Type': 'application/json',
@@ -102,8 +102,8 @@ export default {
 /**
  * Timing-safe string comparison to prevent timing side-channel attacks on secret comparison.
  */
-function timingSafeEqual(a: string | null, b: string): boolean {
-  if (!a) return false;
+function timingSafeEqual(a: string | null, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
   const encoder = new TextEncoder();
   const aBuf = encoder.encode(a);
   const bBuf = encoder.encode(b);
@@ -119,11 +119,22 @@ function timingSafeEqual(a: string | null, b: string): boolean {
   return diff === 0;
 }
 
+// Helper to validate phone number format (E.164 / 7-15 digits)
+function isValidPhone(phone?: any): boolean {
+  if (typeof phone !== 'string') return false;
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 7 && digits.length <= 15;
+}
+
 // ─── Appointment Confirmation ─────────────────────────────────────────────────
 // Template: appointment_confirm
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} date, {{5}} time, {{6}} address
 async function sendAppointmentNotification(data: any, env: Env): Promise<void> {
+  if (!isValidPhone(data?.phone)) {
+    throw new Error('Invalid phone number');
+  }
+
   const payload = {
     messaging_product: 'whatsapp',
     to: data.phone,          // E.164 format e.g. "919876543210"
@@ -166,6 +177,10 @@ function isValidHttpUrl(urlString?: string): boolean {
 // Variables: {{1}} patientName, {{2}} doctorName (no Dr. prefix),
 //            {{3}} clinicName, {{4}} pdfUrl
 async function sendPrescriptionNotification(data: any, env: Env): Promise<void> {
+  if (!isValidPhone(data?.phone)) {
+    throw new Error('Invalid phone number');
+  }
+
   // Security check: validate pdfUrl protocol to prevent XSS / malicious links
   if (data.pdfUrl && !isValidHttpUrl(data.pdfUrl)) {
     throw new Error('Invalid or unallowed pdfUrl protocol');
